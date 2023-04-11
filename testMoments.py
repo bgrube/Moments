@@ -7,29 +7,23 @@ import ROOT
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
 
+  # linear combinaton of legendre polynomials up to degree 5
+  legendrePolLC = ROOT.TF1(
+    f"legendrePolLC",
+    "  [0] * ROOT::Math::legendre(0, x)"
+    "+ [1] * ROOT::Math::legendre(1, x)"
+    "+ [2] * ROOT::Math::legendre(2, x)"
+    "+ [3] * ROOT::Math::legendre(3, x)"
+    "+ [4] * ROOT::Math::legendre(4, x)"
+    "+ [5] * ROOT::Math::legendre(5, x)",
+    -1, 1
+  )
+  legendrePolLC.SetParameters(0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
+  # legendrePolLC.SetLineStyle(1)
+  # legendrePolLC.SetLineWidth(2)
+  # legendrePolLC.SetMaximum(1)
+  # legendrePolLC.SetMinimum(-1)
 
-  legendrePols = []
-  for order in range(5):
-      func = ROOT.TF1(f"legPol_{order}", "ROOT::Math::legendre([0],x)", -1, 1)
-      func.SetParameter(0, order)
-      func.SetLineStyle(1)
-      func.SetLineWidth(2)
-      func.SetLineColor(order + 1)
-      legendrePols.append(func)
-
-  legendrePols[0].SetMaximum(1)
-  legendrePols[0].SetMinimum(-1)
-  legendrePols[0].SetTitle("Legendre polynomials")
-
-  canv = ROOT.TCanvas("legendre")
-  legend = ROOT.TLegend(0.4, 0.7, 0.6, 0.89)
-  for order, legendrePol in enumerate(legendrePols):
-      legend.AddEntry(legendrePol, f" LegendrePol(x; {order})", "l")
-      if order == 0:
-          legendrePol.Draw()
-      else:
-          legendrePol.Draw("SAME")
-
-  legend.Draw("SAME")
-
-  canv.SaveAs("foo.pdf")
+  canv = ROOT.TCanvas()
+  legendrePolLC.Draw()
+  canv.SaveAs(f"{legendrePolLC.GetName()}.pdf")
