@@ -2,7 +2,7 @@
 
 
 import math
-from typing import Any, List
+from typing import Any, Collection, List, Tuple
 
 from uncertainties import UFloat, ufloat
 
@@ -22,61 +22,68 @@ namespace PyVars
 ''')
 
 
-if __name__ == "__main__":
-  ROOT.gROOT.SetBatch(True)  # type: ignore
-  # ROOT.EnableImplicitMT(10)  # type: ignore  #TODO does not work
-
+def generateDataLegPolLC(
+  nmbEvents:  int               = 100000,
+  maxDegree:  int               = 5,
+  parameters: Collection[float] = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125),  # make sure that resulting linear combination is positive definite
+) -> Tuple[str, str]:
+  '''Generates data according to linear combination of Legendre polynomials'''
+  assert len(parameters) >= maxDegree + 1, f"Need at least {maxDegree + 1} parameters; only {len(parameters)} given: {parameters}"
   # linear combination of legendre polynomials up to given degree
-  maxDegree = 5
   terms = tuple(f"[{degree}] * ROOT::Math::legendre({degree}, x)" for degree in range(maxDegree + 1))
   legendrePolLC = ROOT.TF1("legendrePolLC", " + ".join(terms), -1, +1)  # type: ignore
   legendrePolLC.SetNpx(1000)  # used in numeric integration performed by GetRandom()
-  legendrePolLC.SetParameters(0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
+  for index, parameter in enumerate(parameters):
+    legendrePolLC.SetParameter(index, parameter)
   legendrePolLC.SetMinimum(0)
 
+  # draw function
   canv = ROOT.TCanvas()  # type: ignore
   legendrePolLC.Draw()
   canv.SaveAs(f"{legendrePolLC.GetName()}.pdf")
 
-  # generate data according to linear combination of legendre polynomials
+  # generate random data that follow linear combination of legendre polynomials
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
   declareInCpp(legendrePolLC = legendrePolLC)
-  nmbEvents = 100000
+  treeName = "data"
+  fileName = f"{legendrePolLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  dfData = df.Define("val", "PyVars::legendrePolLC.GetRandom()") \
-             .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
-             .Snapshot("data", f"{legendrePolLC.GetName()}.root")  # snapshot is needed or else the `val` column would be regenerated for every triggered loop
-                                                                   # use noop filter to log when event loop is running
+  df.Define("val", "PyVars::legendrePolLC.GetRandom()") \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `val` column would be regenerated for every triggered loop
+                                   # use noop filter to log when event loop is running
+  return treeName, fileName
+
+
+if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)  # type: ignore
+
+  # get data
+  nmbEvents = 100000
+  maxDegree = 5
+  treeName, fileName = generateDataLegPolLC(nmbEvents, maxDegree)
+  ROOT.EnableImplicitMT(10)  # type: ignore  #TODO does not work
+  df = ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
   # plot data
-  hist = dfData.Histo1D(ROOT.RDF.TH1DModel(f"{legendrePolLC.GetName()}_hist", "", 100, -1, +1), "val")  # type: ignore
+  canv = ROOT.TCanvas()  # type: ignore
+  hist = df.Histo1D(ROOT.RDF.TH1DModel("data", "", 100, -1, +1), "val")  # type: ignore
   hist.SetMinimum(0)
   hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
   # print("!!!", dfData.AsNumpy())
 
+  # calculate moments
   moments: List[UFloat] = []
   for degree in range(maxDegree + 5):
-    # calculate unnormalized moments
-    dfMoment = dfData.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
-    # print(f"!!! {degree}", dfMoment.AsNumpy())
+    # unnormalized moments
+    dfMoment = df.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
     momentVal = dfMoment.Sum("legendrePol").GetValue()
     momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
     # normalize moments
     legendrePolIntegral = 2 / (2 * degree + 1)
     norm = 1 / (nmbEvents * legendrePolIntegral)
     moments.append(ufloat(momentVal * norm, momentErr * norm))
-  print(moments)
-
-  moments: List[UFloat] = []
-  for degree in range(maxDegree + 5):
-    # calculate normalized moments
-    legendrePolIntegral = 2 / (2 * degree + 1)
-    norm = 1 / (nmbEvents * legendrePolIntegral)
-    dfMoment = dfData.Define("legendrePol", f"{norm} * ROOT::Math::legendre({degree}, val)")
-    momentVal = dfMoment.Sum("legendrePol").GetValue()
-    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
-    moments.append(ufloat(momentVal, momentErr))
   print(moments)
   for degree, moment in enumerate(moments):
     print(f"Moment degree {degree} = {moment}")
