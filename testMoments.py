@@ -23,17 +23,10 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.EnableImplicitMT()    # type: ignore
 
-  # linear combination of legendre polynomials up to degree 5
-  legendrePolLC = ROOT.TF1(  # type: ignore
-    f"legendrePolLC",
-    "  [0] * ROOT::Math::legendre(0, x)"
-    "+ [1] * ROOT::Math::legendre(1, x)"
-    "+ [2] * ROOT::Math::legendre(2, x)"
-    "+ [3] * ROOT::Math::legendre(3, x)"
-    "+ [4] * ROOT::Math::legendre(4, x)"
-    "+ [5] * ROOT::Math::legendre(5, x)",
-    -1, +1
-  )
+  # linear combination of legendre polynomials up to fiven degree
+  degree = 5
+  terms = tuple(f"[{i}] * ROOT::Math::legendre({i}, x)" for i in range(degree + 1))
+  legendrePolLC = ROOT.TF1("legendrePolLC", " + ".join(terms), -1, +1)  # type: ignore
   legendrePolLC.SetNpx(1000)  # used in numeric integration performed by GetRandom()
   legendrePolLC.SetParameters(0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
   legendrePolLC.SetMinimum(0)
