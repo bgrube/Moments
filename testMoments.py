@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 
+import math
 from typing import Any, List
+
+from uncertainties import UFloat, ufloat
 
 import ROOT
 
@@ -38,7 +41,8 @@ if __name__ == "__main__":
   # generate data according to linear combination of legendre polynomials
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
   declareInCpp(legendrePolLC = legendrePolLC)
-  df = ROOT.RDataFrame(100000)  # type: ignore
+  nmbEvents = 100000
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   dfData = df.Define("val", "PyVars::legendrePolLC.GetRandom()")
   # dfData.Snapshot("data", f"{legendrePolLC.GetName()}.root")
 
@@ -49,8 +53,10 @@ if __name__ == "__main__":
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # calculate unnormalized moments
-  moments: List[float] = []
-  for degree in range(maxDegree + 1):
+  moments: List[UFloat] = []
+  for degree in range(maxDegree + 5):
     dfMoment = dfData.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
-    moments.append(dfMoment.Sum("legendrePol").GetValue())
+    momentVal = dfMoment.Sum("legendrePol").GetValue()
+    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
+    moments.append(ufloat(momentVal, momentErr))
   print(moments)
