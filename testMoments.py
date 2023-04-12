@@ -24,7 +24,7 @@ namespace PyVars
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
-  ROOT.EnableImplicitMT()    # type: ignore
+  # ROOT.EnableImplicitMT(10)  # type: ignore  #TODO does not work
 
   # linear combination of legendre polynomials up to given degree
   maxDegree = 5
@@ -43,20 +43,40 @@ if __name__ == "__main__":
   declareInCpp(legendrePolLC = legendrePolLC)
   nmbEvents = 100000
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  dfData = df.Define("val", "PyVars::legendrePolLC.GetRandom()")
-  # dfData.Snapshot("data", f"{legendrePolLC.GetName()}.root")
+  dfData = df.Define("val", "PyVars::legendrePolLC.GetRandom()") \
+             .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+             .Snapshot("data", f"{legendrePolLC.GetName()}.root")  # snapshot is needed or else the `val` column would be regenerated for every triggered loop
+                                                                   # use noop filter to log when event loop is running
 
   # plot data
   hist = dfData.Histo1D(ROOT.RDF.TH1DModel(f"{legendrePolLC.GetName()}_hist", "", 100, -1, +1), "val")  # type: ignore
   hist.SetMinimum(0)
   hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
+  # print("!!!", dfData.AsNumpy())
 
-  # calculate unnormalized moments
   moments: List[UFloat] = []
   for degree in range(maxDegree + 5):
+    # calculate unnormalized moments
     dfMoment = dfData.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
+    # print(f"!!! {degree}", dfMoment.AsNumpy())
+    momentVal = dfMoment.Sum("legendrePol").GetValue()
+    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
+    # normalize moments
+    legendrePolIntegral = 2 / (2 * degree + 1)
+    norm = 1 / (nmbEvents * legendrePolIntegral)
+    moments.append(ufloat(momentVal * norm, momentErr * norm))
+  print(moments)
+
+  moments: List[UFloat] = []
+  for degree in range(maxDegree + 5):
+    # calculate normalized moments
+    legendrePolIntegral = 2 / (2 * degree + 1)
+    norm = 1 / (nmbEvents * legendrePolIntegral)
+    dfMoment = dfData.Define("legendrePol", f"{norm} * ROOT::Math::legendre({degree}, val)")
     momentVal = dfMoment.Sum("legendrePol").GetValue()
     momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
     moments.append(ufloat(momentVal, momentErr))
   print(moments)
+  for degree, moment in enumerate(moments):
+    print(f"Moment degree {degree} = {moment}")
