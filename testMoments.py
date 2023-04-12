@@ -44,14 +44,13 @@ def generateDataLegPolLC(
   canv.SaveAs(f"{legendrePolLC.GetName()}.pdf")
 
   # generate random data that follow linear combination of legendre polynomials
-  ROOT.gRandom.SetSeed(1234567890)  # type: ignore
   declareInCpp(legendrePolLC = legendrePolLC)
   treeName = "data"
   fileName = f"{legendrePolLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  df.Define("val", "PyVars::legendrePolLC.GetRandom()") \
+  df.Define("cosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
-    .Snapshot(treeName, fileName)  # snapshot is needed or else the `val` column would be regenerated for every triggered loop
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `cosTheta` column would be regenerated for every triggered loop
                                    # use noop filter to log when event loop is running
   return treeName, fileName
 
@@ -64,7 +63,7 @@ def calculateLegMoments(
   moments: List[UFloat] = []
   for degree in range(maxDegree + 5):
     # unnormalized moments
-    dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
+    dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, cosTheta)")
     momentVal = dfMoment.Sum("legendrePol").GetValue()
     momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
     # normalize moments
@@ -111,38 +110,45 @@ def generateDataSphHarmLC(
   sphericalHarmLC.Draw("COLZ")
   canv.SaveAs(f"{sphericalHarmLC.GetName()}.pdf")
 
-  # generate random data that follow linear combination of legendre polynomials
-  # ROOT.gRandom.SetSeed(1234567890)  # type: ignore
-  # declareInCpp(legendrePolLC = legendrePolLC)
+  # generate random data that follow linear combination of of spherical harmonics
+  declareInCpp(sphericalHarmLC = sphericalHarmLC)
   treeName = "data"
   fileName = f"{sphericalHarmLC.GetName()}.root"
-  # df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  # df.Define("val", "PyVars::legendrePolLC.GetRandom()") \
-  #   .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
-  #   .Snapshot(treeName, fileName)  # snapshot is needed or else the `val` column would be regenerated for every triggered loop
-  #                                  # use noop filter to log when event loop is running
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df.Define("point", "double x, y; PyVars::sphericalHarmLC.GetRandom2(x, y); std::vector<double> point = {x, y}; return point;") \
+    .Define("cosTheta", "point[0]") \
+    .Define("Phi",      "point[1]") \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+                                   # use noop filter to log when event loop is running
   return treeName, fileName
 
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
+  ROOT.gRandom.SetSeed(1234567890)  # type: ignore
 
   # get data
   nmbEvents = 100000
-  maxOrder = 5
-  treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125))  # make sure that resulting linear combination is positive definite
-  # maxOrder = 1
-  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.3, 0.25, -0.15, 0.125, -0.1))  # make sure that resulting linear combination is positive definite
+  # maxOrder = 5
+  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125))  # make sure that resulting linear combination is positive definite
+  maxOrder = 1
+  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.3, 0.25, -0.15, 0.125, -0.1))  # make sure that resulting linear combination is positive definite
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  # print("!!!", dataFrame.AsNumpy())
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
-  hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("data", "", 100, -1, +1), "val")  # type: ignore
-  hist.SetMinimum(0)
-  hist.Draw()
+  if "Phi" in dataFrame.GetColumnNames():
+    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("data", "", 100, -1, +1, 100, -180, +180), "cosTheta", "Phi")  # type: ignore
+    hist.SetMinimum(0)
+    hist.Draw("COLZ")
+  else:
+    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("data", "", 100, -1, +1), "cosTheta")  # type: ignore
+    hist.SetMinimum(0)
+    hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
-  # print("!!!", dfData.AsNumpy())
 
   # calculate moments
-  calculateLegMoments(dataFrame, maxDegree = maxOrder)
+  # calculateLegMoments(dataFrame, maxDegree = maxOrder)
