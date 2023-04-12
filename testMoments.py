@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from typing import Any
+from typing import Any, List
 
 import ROOT
 
@@ -23,9 +23,9 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.EnableImplicitMT()    # type: ignore
 
-  # linear combination of legendre polynomials up to fiven degree
-  degree = 5
-  terms = tuple(f"[{i}] * ROOT::Math::legendre({i}, x)" for i in range(degree + 1))
+  # linear combination of legendre polynomials up to given degree
+  maxDegree = 5
+  terms = tuple(f"[{degree}] * ROOT::Math::legendre({degree}, x)" for degree in range(maxDegree + 1))
   legendrePolLC = ROOT.TF1("legendrePolLC", " + ".join(terms), -1, +1)  # type: ignore
   legendrePolLC.SetNpx(1000)  # used in numeric integration performed by GetRandom()
   legendrePolLC.SetParameters(0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
@@ -40,10 +40,17 @@ if __name__ == "__main__":
   declareInCpp(legendrePolLC = legendrePolLC)
   df = ROOT.RDataFrame(100000)  # type: ignore
   dfData = df.Define("val", "PyVars::legendrePolLC.GetRandom()")
-  # dfData.Snapshot("test", "test.root")
+  # dfData.Snapshot("data", f"{legendrePolLC.GetName()}.root")
 
   # plot data
   hist = dfData.Histo1D(ROOT.RDF.TH1DModel(f"{legendrePolLC.GetName()}_hist", "", 100, -1, +1), "val")  # type: ignore
   hist.SetMinimum(0)
   hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
+
+  # calculate unnormalized moments
+  moments: List[float] = []
+  for degree in range(maxDegree + 1):
+    dfMoment = dfData.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
+    moments.append(dfMoment.Sum("legendrePol").GetValue())
+  print(moments)
