@@ -23,8 +23,8 @@ namespace PyVars
 
 
 def generateDataLegPolLC(
-  nmbEvents:  int               = 100000,
-  maxDegree:  int               = 5,
+  nmbEvents:  int,
+  maxDegree:  int,
   parameters: Collection[float] = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125),  # make sure that resulting linear combination is positive definite
 ) -> Tuple[str, str]:
   '''Generates data according to linear combination of Legendre polynomials'''
@@ -55,6 +55,27 @@ def generateDataLegPolLC(
   return treeName, fileName
 
 
+def calculateLegMoments(
+  dataFrame: Any,
+  maxDegree: int,
+) -> List[UFloat]:
+  nmbEvents = dataFrame.Count().GetValue()
+  moments: List[UFloat] = []
+  for degree in range(maxDegree + 5):
+    # unnormalized moments
+    dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
+    momentVal = dfMoment.Sum("legendrePol").GetValue()
+    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
+    # normalize moments
+    legendrePolIntegral = 2 / (2 * degree + 1)  # = int_-1^+1
+    norm = 1 / (nmbEvents * legendrePolIntegral)
+    moments.append(norm * ufloat(momentVal, momentErr))  # type: ignore
+  print(moments)
+  for degree, moment in enumerate(moments):
+    print(f"Moment degree {degree} = {moment}")
+  return moments
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
 
@@ -62,28 +83,16 @@ if __name__ == "__main__":
   nmbEvents = 100000
   maxDegree = 5
   treeName, fileName = generateDataLegPolLC(nmbEvents, maxDegree)
-  ROOT.EnableImplicitMT(10)  # type: ignore  #TODO does not work
-  df = ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  ROOT.EnableImplicitMT(10)  # type: ignore
+  dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
-  hist = df.Histo1D(ROOT.RDF.TH1DModel("data", "", 100, -1, +1), "val")  # type: ignore
+  hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("data", "", 100, -1, +1), "val")  # type: ignore
   hist.SetMinimum(0)
   hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
   # print("!!!", dfData.AsNumpy())
 
   # calculate moments
-  moments: List[UFloat] = []
-  for degree in range(maxDegree + 5):
-    # unnormalized moments
-    dfMoment = df.Define("legendrePol", f"ROOT::Math::legendre({degree}, val)")
-    momentVal = dfMoment.Sum("legendrePol").GetValue()
-    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
-    # normalize moments
-    legendrePolIntegral = 2 / (2 * degree + 1)
-    norm = 1 / (nmbEvents * legendrePolIntegral)
-    moments.append(ufloat(momentVal * norm, momentErr * norm))
-  print(moments)
-  for degree, moment in enumerate(moments):
-    print(f"Moment degree {degree} = {moment}")
+  calculateLegMoments(dataFrame, maxDegree)
