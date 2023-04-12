@@ -2,7 +2,7 @@
 
 
 import math
-from typing import Any, Collection, List, Tuple
+from typing import Any, Collection, Dict, List, Tuple
 
 from uncertainties import UFloat, ufloat
 
@@ -58,9 +58,9 @@ def generateDataLegPolLC(
 def calculateLegMoments(
   dataFrame: Any,
   maxDegree: int,
-) -> List[UFloat]:
+) -> Dict[Tuple[int, ...], UFloat]:
   nmbEvents = dataFrame.Count().GetValue()
-  moments: List[UFloat] = []
+  moments: Dict[Tuple[int, ...], UFloat] = {}
   for degree in range(maxDegree + 5):
     # unnormalized moments
     dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, cosTheta)")
@@ -69,10 +69,10 @@ def calculateLegMoments(
     # normalize moments
     legendrePolIntegral = 2 / (2 * degree + 1)  # = int_-1^+1
     norm = 1 / (nmbEvents * legendrePolIntegral)
-    moments.append(norm * ufloat(momentVal, momentErr))  # type: ignore
+    moment = norm * ufloat(momentVal, momentErr)  # type: ignore
+    print(f"H(L = {degree}) = {moment}")
+    moments[(degree, )] = moment
   print(moments)
-  for degree, moment in enumerate(moments):
-    print(f"Moment degree {degree} = {moment}")
   return moments
 
 
@@ -124,6 +124,27 @@ def generateDataSphHarmLC(
   return treeName, fileName
 
 
+def calculateSphHarmMoments(
+  dataFrame: Any,
+  maxL:      int,
+) -> Dict[Tuple[int, ...], UFloat]:
+  nmbEvents = dataFrame.Count().GetValue()
+  moments: Dict[Tuple[int, ...], UFloat] = {}
+  for L in range(2 * maxL + 2):
+    for M in range(min(L, 2) + 1):
+      # unnormalized moments
+      dfMoment = dataFrame.Define("sphericalHarm", f"ROOT::Math::sph_legendre({L}, {M}, std::acos(cosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
+      momentVal = dfMoment.Sum("sphericalHarm").GetValue()
+      momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
+      # normalize moments
+      norm = 1
+      moment = norm * ufloat(momentVal, momentErr)  # type: ignore
+      print(f"H(L = {L}, M = {M}) = {moment}")
+      moments[(L, M)] = moment
+  print(moments)
+  return moments
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
@@ -152,3 +173,4 @@ if __name__ == "__main__":
 
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
+  calculateSphHarmMoments(dataFrame, maxL = maxOrder)
