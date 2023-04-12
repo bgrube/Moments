@@ -10,8 +10,13 @@ import ROOT
 def declareInCpp(**kwargs: Any) -> None:
   '''Creates C++ variables (names given by keys) for PyROOT objects (given values) in PyVars:: namespace'''
   for key, value in kwargs.items():
-    #TODO long string
-    ROOT.gInterpreter.Declare(f"namespace PyVars {{ auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)}); }}")  # type: ignore
+    ROOT.gInterpreter.Declare(  # type: ignore
+f'''
+namespace PyVars
+{{
+  auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)});
+}}
+''')
 
 
 if __name__ == "__main__":
