@@ -209,11 +209,28 @@ if __name__ == "__main__":
   for index, trueValue in enumerate(trueValues):
     histTrue.SetBinContent(index + 1, trueValue)
     histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  # histTrue.SetMarkerStyle(0)  # type: ignore
+  histTrue.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histTrue.SetLineColor(ROOT.kBlue)  # type: ignore
   hStack.Add(histTrue, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
+  hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
   hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStack.GetName()}.pdf")
+
+  # draw residuals
+  residuals = tuple((moment[1].nominal_value - trueValues[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
+  histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
+  for index, residual in enumerate(residuals):
+    histRes.SetBinContent(index + 1, residual)
+    histRes.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+    histRes.GetXaxis().SetBinLabel(index + 1, histMeas.GetXaxis().GetBinLabel(index + 1))
+  histRes.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histRes.SetLineColor(ROOT.kBlue)  # type: ignore
+  histRes.SetMinimum(-3)
+  histRes.SetMaximum(+3)
+  canv = ROOT.TCanvas()  # type: ignore
+  histRes.Draw("PE")
+  canv.SaveAs(f"{histRes.GetName()}.pdf")
