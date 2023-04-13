@@ -105,8 +105,9 @@ def generateDataSphHarmLC(
     terms.append(f"std::sqrt((2 * {L} + 1 ) / (4 * TMath::Pi())) * ({' + '.join(termsM)})")
   print("linear combination =", " + ".join(terms))
   sphericalHarmLC = ROOT.TF2("sphericalHarmlLC", " + ".join(terms), -1, +1, -180, +180)  # type: ignore
-  sphericalHarmLC.SetNpx(100)  # used in numeric integration performed by GetRandom()
-  sphericalHarmLC.SetNpy(100)
+  sphericalHarmLC.SetNpx(500)  # used in numeric integration performed by GetRandom()
+  sphericalHarmLC.SetNpy(500)
+  sphericalHarmLC.SetContour(100)
   for index, parameter in enumerate(parameters):
     sphericalHarmLC.SetParameter(index, parameter)
   sphericalHarmLC.SetMinimum(0)
@@ -174,11 +175,11 @@ if __name__ == "__main__":
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   if "Phi" in dataFrame.GetColumnNames():
-    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("data", "", 25, -1, +1, 25, -180, +180), "cosTheta", "Phi")  # type: ignore
+    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", "", 25, -1, +1, 25, -180, +180), "cosTheta", "Phi")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
-    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("data", "", 100, -1, +1), "cosTheta")  # type: ignore
+    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("hData", "", 100, -1, +1), "cosTheta")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
@@ -186,6 +187,7 @@ if __name__ == "__main__":
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
   moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
   nmbBins = len(moments)
