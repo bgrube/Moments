@@ -32,6 +32,7 @@ def generateDataLegPolLC(
   assert len(parameters) >= maxDegree + 1, f"Need {maxDegree + 1} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of legendre polynomials up to given degree
   terms = tuple(f"[{degree}] * ROOT::Math::legendre({degree}, x)" for degree in range(maxDegree + 1))
+  print("linear combination =", " + ".join(terms))
   legendrePolLC = ROOT.TF1("legendrePolLC", " + ".join(terms), -1, +1)  # type: ignore
   legendrePolLC.SetNpx(1000)  # used in numeric integration performed by GetRandom()
   for index, parameter in enumerate(parameters):
@@ -102,7 +103,7 @@ def generateDataSphHarmLC(
       termsM.append(f"[{termIndex}] * {1 if M == 0 else 2} * ROOT::Math::sph_legendre({L}, {M}, std::acos(x)) * std::cos({M} * TMath::DegToRad() * y)")  # ROOT defines this as function of theta (not cos(theta)!); sigh
       termIndex += 1
     terms.append(f"std::sqrt((2 * {L} + 1 ) / (4 * TMath::Pi())) * ({' + '.join(termsM)})")
-  print("!!! LC =", " + ".join(terms))
+  print("linear combination =", " + ".join(terms))
   sphericalHarmLC = ROOT.TF2("sphericalHarmlLC", " + ".join(terms), -1, +1, -180, +180)  # type: ignore
   sphericalHarmLC.SetNpx(100)  # used in numeric integration performed by GetRandom()
   sphericalHarmLC.SetNpy(100)
@@ -132,9 +133,9 @@ def generateDataSphHarmLC(
 def calculateSphHarmMoments(
   dataFrame: Any,
   maxL:      int,  # maximum spin of decaying object
-) -> Dict[Tuple[int, ...], UFloat]:
+) -> List[Tuple[Tuple[int, ...], UFloat]]:
   nmbEvents = dataFrame.Count().GetValue()
-  moments: Dict[Tuple[int, ...], UFloat] = {}
+  moments: List[Tuple[Tuple[int, ...], UFloat]] = []
   for L in range(2 * maxL + 2):
     for M in range(min(L, 2) + 1):
       # unnormalized moments
@@ -146,7 +147,7 @@ def calculateSphHarmMoments(
       norm = 1 / (nmbEvents * math.sqrt((2 * L + 1) / (4 * math.pi)))
       moment = norm * ufloat(momentVal, momentErr)  # type: ignore
       print(f"H(L = {L}, M = {M}) = {moment}")
-      moments[(L, M)] = moment
+      moments.append(((L, M), moment))
   print(moments)
   return moments
 
@@ -156,14 +157,16 @@ if __name__ == "__main__":
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
 
   # get data
-  nmbEvents = 100000
-  # maxOrder = 5
+  nmbEvents = 10000
   # chose parameters such that resulting linear combinations are positive definite
-  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (1, 1, 0.5, -0.5, -0.25, 0.25))
-  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125))
+  # maxOrder = 5
+  # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
+  # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
+  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
   maxOrder = 2
-  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05))
-  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10))
+  # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
+  parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
+  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
@@ -182,23 +185,32 @@ if __name__ == "__main__":
 
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
-  moments: Dict[Tuple[int, ...], UFloat] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
 
-  # compare output with input
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
   nmbBins = len(moments)
-  histOut = ROOT.TH1D("Measured", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  binIndex = 1
-  for key, moment in moments.items():
-    histOut.SetBinContent(binIndex, moment.nominal_value)
-    histOut.SetBinError  (binIndex, moment.std_dev)
-    histOut.GetXaxis().SetBinLabel(binIndex, f"H({' '.join(tuple(str(n) for n in key))})")
-    binIndex += 1
-  histOut.SetLineColor(ROOT.kRed)  # type: ignore
-  histOut.SetMarkerColor(ROOT.kRed)  # type: ignore
-  histOut.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
-  histOut.SetMarkerSize(0.75)
-  hStack.Add(histOut, "PEX0")
+  # create histogram with measured values
+  histMeas = ROOT.TH1D("Measured values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, moment in enumerate(moments):
+    histMeas.SetBinContent(index + 1, moment[1].nominal_value)
+    histMeas.SetBinError  (index + 1, moment[1].std_dev)
+    histMeas.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
+  histMeas.SetLineColor(ROOT.kRed)  # type: ignore
+  histMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
+  histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  histMeas.SetMarkerSize(0.75)
+  hStack.Add(histMeas, "PEX0")
+  # create histogram with true values
+  # normalize parameters 0th moment and pad with 0
+  trueValues = [par / parameters[0] for par in parameters]
+  if len(trueValues) < len(moments):
+    trueValues += [0] * (len(moments) - len(trueValues))
+  histTrue = ROOT.TH1D("True values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, trueValue in enumerate(trueValues):
+    histTrue.SetBinContent(index + 1, trueValue)
+    histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  # histTrue.SetMarkerStyle(0)  # type: ignore
+  hStack.Add(histTrue, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
   hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
