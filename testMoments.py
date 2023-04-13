@@ -182,4 +182,26 @@ if __name__ == "__main__":
 
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
-  calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  moments: Dict[Tuple[int, ...], UFloat] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+
+  # compare output with input
+  hStack = ROOT.THStack("hCompare", "")  # type: ignore
+  nmbBins = len(moments)
+  histOut = ROOT.TH1D("Measured", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  binIndex = 1
+  for key, moment in moments.items():
+    histOut.SetBinContent(binIndex, moment.nominal_value)
+    histOut.SetBinError  (binIndex, moment.std_dev)
+    histOut.GetXaxis().SetBinLabel(binIndex, f"H({' '.join(tuple(str(n) for n in key))})")
+    binIndex += 1
+  histOut.SetLineColor(ROOT.kRed)  # type: ignore
+  histOut.SetMarkerColor(ROOT.kRed)  # type: ignore
+  histOut.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  histOut.SetMarkerSize(0.75)
+  hStack.Add(histOut, "PEX0")
+  canv = ROOT.TCanvas()  # type: ignore
+  hStack.Draw("NOSTACK")
+  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
+  # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
+  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+  canv.SaveAs(f"{hStack.GetName()}.pdf")
