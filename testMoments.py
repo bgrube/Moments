@@ -76,15 +76,18 @@ def calculateLegMoments(
   return moments
 
 
-# see e.g. Chung, PRD56 (1997) 7299; Suh-Urk's note Techniques of Amplitude Analysis for Two-pseudoscalar Systems; or E852, PRD 60 (1999) 092001
-# see also https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
+# following Chung, PRD56 (1997) 7299
+# see also
+#     Suh-Urk's note Techniques of Amplitude Analysis for Two-pseudoscalar Systems (twobody0.pdf)
+#     E852, PRD 60 (1999) 092001
+#     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataSphHarmLC(
   nmbEvents:  int,
-  maxL:       int,
+  maxL:       int,  # maximum spin of decaying object
   parameters: Collection[float],  # make sure that resulting linear combination is positive definite
 ) -> Tuple[str, str]:
   '''Generates data according to linear combination of spherical harmonics'''
-  nmbTerms = (maxL + 1) * (2 * maxL + 1) - ((maxL - 1) * (2 * maxL - 1))  # see Eqs. (15) to (17)
+  nmbTerms = 6 * maxL  # Eq. (17)
   assert len(parameters) >= nmbTerms, f"Need {nmbTerms} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of spherical harmonics up to given maximum orbital angular momentum
   # using Eq. (12) in Eq. (6): I = sum_L (2 L + 1 ) / (4pi)  H(L 0) (D_00^L)^* + sum_{M = 1}^L H(L M) 2 Re[D_M0^L]
@@ -128,7 +131,7 @@ def generateDataSphHarmLC(
 
 def calculateSphHarmMoments(
   dataFrame: Any,
-  maxL:      int,
+  maxL:      int,  # maximum spin of decaying object
 ) -> Dict[Tuple[int, ...], UFloat]:
   nmbEvents = dataFrame.Count().GetValue()
   moments: Dict[Tuple[int, ...], UFloat] = {}
@@ -158,9 +161,9 @@ if __name__ == "__main__":
   # chose parameters such that resulting linear combinations are positive definite
   # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (1, 1, 0.5, -0.5, -0.25, 0.25))
   # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125))
-  maxOrder = 1
-  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.1, 0.125, -0.075, 0.0625, -0.05))
-  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (2, 0.2, 0.25, -0.15, 0.125, -0.1))
+  maxOrder = 2
+  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05))
+  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10))
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
