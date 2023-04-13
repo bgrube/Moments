@@ -65,9 +65,9 @@ def calculateLegMoments(
     # unnormalized moments
     dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, cosTheta)")
     momentVal = dfMoment.Sum("legendrePol").GetValue()
-    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
-    # normalize moments
-    legendrePolIntegral = 2 / (2 * degree + 1)  # = int_-1^+1
+    momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
+    # normalize moments with respect to H(0)
+    legendrePolIntegral = 1 / (2 * degree + 1)  # = 1/2 * int_-1^+1; factor 1/2 takes into account integral for H(0)
     norm = 1 / (nmbEvents * legendrePolIntegral)
     moment = norm * ufloat(momentVal, momentErr)  # type: ignore
     print(f"H(L = {degree}) = {moment}")
@@ -94,10 +94,12 @@ def generateDataSphHarmLC(
   terms = []
   termIndex = 0
   for L in range(2 * maxL + 1):
+    termsM = []
     for M in range(min(L, 2) + 1):
-      terms.append(f"[{termIndex}] * ROOT::Math::sph_legendre({L}, {M}, std::acos(x)) * std::cos({M} * TMath::DegToRad() * y)")  # ROOT defines this as function of theta (not cos(theta)!); sigh
+      termsM.append(f"[{termIndex}] * {1 if M == 0 else 2} * ROOT::Math::sph_legendre({L}, {M}, std::acos(x)) * std::cos({M} * TMath::DegToRad() * y)")  # ROOT defines this as function of theta (not cos(theta)!); sigh
       termIndex += 1
-  # print("!!! LC =", " + ".join(terms))
+    terms.append(f"std::sqrt((2 * {L} + 1 ) / (4 * TMath::Pi())) * ({' + '.join(termsM)})")
+  print("!!! LC =", " + ".join(terms))
   sphericalHarmLC = ROOT.TF2("sphericalHarmlLC", " + ".join(terms), -1, +1, -180, +180)  # type: ignore
   sphericalHarmLC.SetNpx(100)  # used in numeric integration performed by GetRandom()
   sphericalHarmLC.SetNpy(100)
@@ -135,9 +137,10 @@ def calculateSphHarmMoments(
       # unnormalized moments
       dfMoment = dataFrame.Define("sphericalHarm", f"ROOT::Math::sph_legendre({L}, {M}, std::acos(cosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
       momentVal = dfMoment.Sum("sphericalHarm").GetValue()
-      momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]
-      # normalize moments
-      norm = 1
+      momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
+      # normalize moments with respect to H(0 0)
+      #     Integrate[Re[SphericalHarmonicY[L, M, x, y]] * Sin[x], {y, -Pi, Pi}, {x, 0, Pi}]
+      norm = 1 / (nmbEvents * math.sqrt((2 * L + 1) / (4 * math.pi)))
       moment = norm * ufloat(momentVal, momentErr)  # type: ignore
       print(f"H(L = {L}, M = {M}) = {moment}")
       moments[(L, M)] = moment
@@ -152,9 +155,12 @@ if __name__ == "__main__":
   # get data
   nmbEvents = 100000
   # maxOrder = 5
-  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125))  # make sure that resulting linear combination is positive definite
+  # chose parameters such that resulting linear combinations are positive definite
+  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (1, 1, 0.5, -0.5, -0.25, 0.25))
+  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125))
   maxOrder = 1
-  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.3, 0.25, -0.15, 0.125, -0.1))  # make sure that resulting linear combination is positive definite
+  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (1, 0.1, 0.125, -0.075, 0.0625, -0.05))
+  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = (2, 0.2, 0.25, -0.15, 0.125, -0.1))
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
@@ -162,7 +168,7 @@ if __name__ == "__main__":
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   if "Phi" in dataFrame.GetColumnNames():
-    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("data", "", 100, -1, +1, 100, -180, +180), "cosTheta", "Phi")  # type: ignore
+    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("data", "", 25, -1, +1, 25, -180, +180), "cosTheta", "Phi")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
