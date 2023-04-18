@@ -2,7 +2,7 @@
 
 
 import math
-from typing import Any, Collection, Dict, List, Tuple
+from typing import Any, Collection, Dict, List, Sequence, Tuple
 
 from uncertainties import UFloat, ufloat
 
@@ -166,13 +166,45 @@ ROOT.gROOT.LoadMacro("./wignerD.C++")
 #     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataPwd(
   nmbEvents:  int,
-  parameters: Collection[complex],
+  parameters: Dict[int, Tuple[complex, ...]],
 ) -> Tuple[str, str]:
-  '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2'''
+  '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
   # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and 42
-  foo = ROOT.TF2("foo", "std::norm(wignerDReflConj([0], [1], [2], [3], [4], y, x))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
-  foo.SetParameters(0, 0, 0, +1, +1)
-  print("!!!", foo.Eval(0, 0))
+  # foo = ROOT.TF2("foo", "std::norm(wignerDReflConj([0], [1], [2], [3], [4], x, y))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  # foo.SetParameters(0, 0, 0, +1, +1)
+  # print("!!!", foo.Eval(0, 0))
+  waveSet = {
+    # negative-reflectivity waves
+    -1 : [  # J, M, refl; see Eqs. (41) and (42)
+      (0, 0, -1),  # S_0
+      (1, 0, -1),  # P_0
+      (1, 1, -1),  # P_-
+      (2, 0, -1),  # D_0
+      (2, 1, -1),  # D_-
+    ],
+    # positive-reflectivity waves
+    +1 : [  # J, M, refl; see Eqs. (41) and (42)
+      (1, 1, +1),  # P_+
+      (2, 1, +1),  # D_+
+    ],
+  }
+  assert len(parameters) == len(waveSet), f"Need {len(waveSet)} parameters; only {len(parameters)} were given: {parameters}"
+  incoherentTerms = []
+  for refl in (-1, +1):
+    coherentTerms = []
+    for waveIndex, wave in enumerate(waveSet[refl]):
+      ell:    int = wave[0]
+      m:      int = wave[1]
+      refl:   int = wave[2]
+      parity: int = (-1)**ell
+      # see Eqs. (26) and (27) for rank = 1
+      V = f"std::complex<double>({parameters[refl][waveIndex].real}, {parameters[refl][waveIndex].imag})"
+      A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, x, y)"
+      coherentTerms.append(f"{V} * {A}")
+    incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
+  # see Eqs. (28) for rank = 1
+  intensity = ' + '.join(incoherentTerms)
+  print("intensity =", intensity)
 
   # generate random data that follow linear combination of of spherical harmonics
   # declareInCpp(sphericalHarmLC = sphericalHarmLC)
@@ -204,7 +236,21 @@ if __name__ == "__main__":
   # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
   # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
   # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
-  parameters = ()
+  parameters: Dict[int, Tuple[complex, ...]] = {
+    # negative-reflectivity waves
+    -1 : (
+       1   + 0j,    # S_0
+       0.3 - 0.8j,  # P_0
+      -0.4 + 0.1j,  # P_-
+      -0.1 - 0.2j,  # D_0
+       0.2 - 0.1j,  # D_-
+    ),
+    # positive-reflectivity waves
+    +1 : (
+       0.5 + 0j,    # P_+
+      -0.1 + 0.3j,  # D_+
+    ),
+  }
   treeName, fileName = generateDataPwd(nmbEvents, parameters)
   raise ValueError
   ROOT.EnableImplicitMT(10)  # type: ignore
