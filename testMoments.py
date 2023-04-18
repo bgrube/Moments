@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+import ctypes
 import math
 from typing import Any, Collection, Dict, List, Tuple
 
@@ -60,6 +61,7 @@ def calculateLegMoments(
   dataFrame: Any,
   maxDegree: int,
 ) -> Dict[Tuple[int, ...], UFloat]:
+  '''Calculates moments of Legendre polynomials'''
   nmbEvents = dataFrame.Count().GetValue()
   moments: Dict[Tuple[int, ...], UFloat] = {}
   for degree in range(maxDegree + 5):
@@ -77,7 +79,7 @@ def calculateLegMoments(
   return moments
 
 
-# following Chung, PRD56 (1997) 7299
+# follows Chung, PRD56 (1997) 7299
 # see also
 #     Suh-Urk's note Techniques of Amplitude Analysis for Two-pseudoscalar Systems (twobody0.pdf)
 #     E852, PRD 60 (1999) 092001
@@ -135,6 +137,7 @@ def calculateSphHarmMoments(
   dataFrame: Any,
   maxL:      int,  # maximum spin of decaying object
 ) -> List[Tuple[Tuple[int, ...], UFloat]]:
+  '''Calculates moments of spherical harmonics'''
   nmbEvents = dataFrame.Count().GetValue()
   moments: List[Tuple[Tuple[int, ...], UFloat]] = []
   for L in range(2 * maxL + 2):
@@ -153,6 +156,63 @@ def calculateSphHarmMoments(
   return moments
 
 
+# C++ implementation of (complex conjugated) Wigner D function
+WIGNER_D_CPP_CODE = """
+std::complex<double>
+wignerDConj(
+  const double theta,
+  const double phi,
+  const size_t twoJ,
+  const size_t twoM1,
+  const size_t twoM2)
+{
+  return twoJ + twoM1 + twoM2;
+}
+"""
+# ROOT.gInterpreter.Declare(WIGNER_D_CPP_CODE)
+ROOT.gROOT.LoadMacro("./wignerD.C++")
+
+
+# follows Chung, PRD56 (1997) 7299
+# see also
+#     Suh-Urk's note Techniques of Amplitude Analysis for Two-pseudoscalar Systems (twobody0.pdf)
+#     E852, PRD 60 (1999) 092001
+#     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
+def generateDataPwd(
+  nmbEvents:  int,
+  parameters: Collection[complex],
+) -> Tuple[str, str]:
+  '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2'''
+  # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and 42
+  foo = ROOT.TF2("foo", "std::norm(wignerDConj(x, y, [0], [1], [2]))", 0, math.pi, -math.pi, +math.pi)  # type: ignore
+  foo.SetParameters(0, 0, 0)
+  print("!!!", foo.Eval(0, 0))
+  foo.SetParameters(1, 0, 0)
+  print("!!!", foo.Eval(0, 0))
+  foo.SetParameters(0, 2, 0)
+  print("!!!", foo.Eval(0, 0))
+  foo.SetParameters(0, 0, 3)
+  print("!!!", foo.Eval(0, 0))
+  foo.SetParameters(1, 4, 0)
+  print("!!!", foo.Eval(0, 0))
+  foo.SetParameters(1, 4, 5)
+  print("!!!", foo.Eval(0, 0))
+
+  # generate random data that follow linear combination of of spherical harmonics
+  # declareInCpp(sphericalHarmLC = sphericalHarmLC)
+  treeName = "data"
+  fileName = f"foo.root"
+  # fileName = f"{sphericalHarmLC.GetName()}.root"
+  # df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  # df.Define("point", "double x, y; PyVars::sphericalHarmLC.GetRandom2(x, y); std::vector<double> point = {x, y}; return point;") \
+  #   .Define("cosTheta", "point[0]") \
+  #   .Define("Phi",      "point[1]") \
+  #   .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+  #   .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  #                                  # use noop filter to log when event loop is running
+  return treeName, fileName
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
@@ -161,13 +221,16 @@ if __name__ == "__main__":
   nmbEvents = 10000
   # chose parameters such that resulting linear combinations are positive definite
   # maxOrder = 5
-  # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
+  # # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
   # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
   # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
-  maxOrder = 2
-  # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
-  parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
-  treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+  # maxOrder = 2
+  # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
+  # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
+  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+  parameters = ()
+  treeName, fileName = generateDataPwd(nmbEvents, parameters)
+  raise ValueError
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
