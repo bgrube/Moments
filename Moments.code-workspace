@@ -4,5 +4,12 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"files.associations": {
+			".config": "Properties",
+			"*.config": "properties",
+			"testGsl.C": "cpp",
+			"wignerD.C": "cpp"
+		}
+	}
 }
