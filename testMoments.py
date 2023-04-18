@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 
-import ctypes
 import math
 from typing import Any, Collection, Dict, List, Tuple
 
@@ -157,19 +156,6 @@ def calculateSphHarmMoments(
 
 
 # C++ implementation of (complex conjugated) Wigner D function
-WIGNER_D_CPP_CODE = """
-std::complex<double>
-wignerDConj(
-  const double theta,
-  const double phi,
-  const size_t twoJ,
-  const size_t twoM1,
-  const size_t twoM2)
-{
-  return twoJ + twoM1 + twoM2;
-}
-"""
-# ROOT.gInterpreter.Declare(WIGNER_D_CPP_CODE)
 ROOT.gROOT.LoadMacro("./wignerD.C++")
 
 
@@ -184,18 +170,8 @@ def generateDataPwd(
 ) -> Tuple[str, str]:
   '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2'''
   # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and 42
-  foo = ROOT.TF2("foo", "std::norm(wignerDConj(x, y, [0], [1], [2]))", 0, math.pi, -math.pi, +math.pi)  # type: ignore
-  foo.SetParameters(0, 0, 0)
-  print("!!!", foo.Eval(0, 0))
-  foo.SetParameters(1, 0, 0)
-  print("!!!", foo.Eval(0, 0))
-  foo.SetParameters(0, 2, 0)
-  print("!!!", foo.Eval(0, 0))
-  foo.SetParameters(0, 0, 3)
-  print("!!!", foo.Eval(0, 0))
-  foo.SetParameters(1, 4, 0)
-  print("!!!", foo.Eval(0, 0))
-  foo.SetParameters(1, 4, 5)
+  foo = ROOT.TF2("foo", "std::norm(wignerDReflConj([0], [1], [2], [3], [4], y, x))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  foo.SetParameters(0, 0, 0, +1, +1)
   print("!!!", foo.Eval(0, 0))
 
   # generate random data that follow linear combination of of spherical harmonics
