@@ -243,7 +243,6 @@ def calculateTruePwdMoment(
   M: int,
 ) -> complex:
   '''Calculates value of moment with L and M for given production amplitudes'''
-  # print(f"!!! H({L} {M}):")
   # Eq. (29) for rank = 1
   sum = 0 + 0j
   for refl in (-1, +1):
@@ -261,12 +260,6 @@ def calculateTruePwdMoment(
         )
         sum += math.sqrt((2 * ell_2 + 1) / (2 * ell_1 + 1)) * prodAmps[refl][waveIndex_1] * prodAmps[refl][waveIndex_2].conjugate() * b \
                * py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, 0, 0, 0, ignore_invalid = True)  # (ell_2 0  L 0 | ell_1 0)
-        # factor = math.sqrt((2 * ell_2 + 1) / (2 * ell_1 + 1)) * b * py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, 0, 0, 0, ignore_invalid = True)
-        # if abs(factor) > 1e-16:
-        #   print(f"    refl = {refl}; ({ell_1}, {m_1}), ({ell_2}, {m_2}) = "
-        #     # f"{math.sqrt((2 * ell_2 + 1) / (2 * ell_1 + 1))} * {b} * {py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, 0, 0, 0, ignore_invalid = True)} = "
-        #     f"{factor} * {prodAmps[refl][waveIndex_1]} * {prodAmps[refl][waveIndex_2].conjugate()} = "
-        #     f"{factor * prodAmps[refl][waveIndex_1] * prodAmps[refl][waveIndex_2].conjugate()}")
   return sum
 
 
@@ -308,6 +301,11 @@ if __name__ == "__main__":
   # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
   # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
   # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+  # normalize parameters 0th moment and pad with 0
+  # trueMoments = [par / parameters[0] for par in parameters]
+  # if len(trueMoments) < len(moments):
+  #   trueMoments += [0] * (len(moments) - len(trueMoments))
+
   maxOrder = 2
   prodAmps: Dict[int, Tuple[complex, ...]] = {
     # negative-reflectivity waves
@@ -324,8 +322,7 @@ if __name__ == "__main__":
       -0.1 + 0.3j,  # D_+
     ),
   }
-  # calculateTruePwdMoment(prodAmps, 4, 1)
-  # raise ValueError
+  trueMoments: List[float] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
   treeName, fileName = generateDataPwd(nmbEvents, prodAmps)
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
@@ -345,8 +342,7 @@ if __name__ == "__main__":
 
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
-  moments:     List[Tuple[Tuple[int, ...], UFloat]]  = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
-  trueMoments: List[Tuple[Tuple[int, ...], complex]] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
+  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
@@ -362,18 +358,14 @@ if __name__ == "__main__":
   histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
   histMeas.SetMarkerSize(0.75)
   hStack.Add(histMeas, "PEX0")
-  # # create histogram with true values
-  # # normalize parameters 0th moment and pad with 0
-  # trueValues = [par / parameters[0] for par in parameters]
-  # if len(trueValues) < len(moments):
-  #   trueValues += [0] * (len(moments) - len(trueValues))
-  # histTrue = ROOT.TH1D("True values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  # for index, trueValue in enumerate(trueValues):
-  #   histTrue.SetBinContent(index + 1, trueValue)
-  #   histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  # histTrue.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  # histTrue.SetLineColor(ROOT.kBlue)  # type: ignore
-  # hStack.Add(histTrue, "PE")
+  # create histogram with true values
+  histTrue = ROOT.TH1D("True values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, trueMoment in enumerate(trueMoments):
+    histTrue.SetBinContent(index + 1, trueMoment)
+    histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  histTrue.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histTrue.SetLineColor(ROOT.kBlue)  # type: ignore
+  hStack.Add(histTrue, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
   hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
@@ -381,10 +373,9 @@ if __name__ == "__main__":
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStack.GetName()}.pdf")
-  raise ValueError
 
   # draw residuals
-  residuals = tuple((moment[1].nominal_value - trueValues[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
+  residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
   histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
   for index, residual in enumerate(residuals):
     histRes.SetBinContent(index + 1, residual)
