@@ -25,8 +25,8 @@ wignerD(
 	const int    twoJ,
 	const int    twoM1,
 	const int    twoM2,
-	const double phi,
-	const double theta
+	const double phi,   // [rad]
+	const double theta  // [rad]
 ) {
 	// swap spin projections for negative angle
 	int    _twoM1    = twoM1;
@@ -86,8 +86,8 @@ wignerDReflConj(
 	const int    twoM2,
 	const int    P,
 	const int    refl,
-	const double phi,
-	const double theta
+	const double phi,   // [rad]
+	const double theta  // [rad]
 ) {
 	std::complex<double> DFuncVal;
 	const int reflFactor = refl * P * powMinusOne((twoJ - twoM1) / 2);
@@ -106,6 +106,7 @@ wignerDReflConj(
 	return std::conj(DFuncVal);
 }
 
-// use typedef because templates are not allowed in TFormula expressions
+
+// need typedef because templates are not allowed in TFormula expressions
 // see https://root-forum.cern.ch/t/trying-to-define-imaginary-error-function/50032/10
 typedef std::complex<double> complexT;

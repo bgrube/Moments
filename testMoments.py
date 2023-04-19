@@ -45,10 +45,10 @@ def generateDataLegPolLC(
   canv.SaveAs(f"{legendrePolLC.GetName()}.pdf")
 
   # generate random data that follow linear combination of legendre polynomials
-  declareInCpp(legendrePolLC = legendrePolLC)
   treeName = "data"
   fileName = f"{legendrePolLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  declareInCpp(legendrePolLC = legendrePolLC)
   df.Define("cosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `cosTheta` column would be regenerated for every triggered loop
@@ -119,11 +119,11 @@ def generateDataSphHarmLC(
   canv.SaveAs(f"{sphericalHarmLC.GetName()}.pdf")
 
   # generate random data that follow linear combination of of spherical harmonics
-  declareInCpp(sphericalHarmLC = sphericalHarmLC)
   treeName = "data"
   fileName = f"{sphericalHarmLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  df.Define("point", "double x, y; PyVars::sphericalHarmLC.GetRandom2(x, y); std::vector<double> point = {x, y}; return point;") \
+  declareInCpp(sphericalHarmLC = sphericalHarmLC)
+  df.Define("point",    "double cosTheta, Phi; PyVars::sphericalHarmLC.GetRandom2(cosTheta, Phi); std::vector<double> point = {cosTheta, Phi}; return point;") \
     .Define("cosTheta", "point[0]") \
     .Define("Phi",      "point[1]") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
@@ -169,13 +169,10 @@ def generateDataPwd(
   parameters: Dict[int, Tuple[complex, ...]],
 ) -> Tuple[str, str]:
   '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
-  # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and 42
-  # foo = ROOT.TF2("foo", "std::norm(wignerDReflConj([0], [1], [2], [3], [4], x, y))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
-  # foo.SetParameters(0, 0, 0, +1, +1)
-  # print("!!!", foo.Eval(0, 0))
+  # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
   waveSet = {
     # negative-reflectivity waves
-    -1 : [  # J, M, refl; see Eqs. (41) and (42)
+    -1 : [  # J, M, refl; see Eq. (41)
       (0, 0, -1),  # S_0
       (1, 0, -1),  # P_0
       (1, 1, -1),  # P_-
@@ -183,7 +180,7 @@ def generateDataPwd(
       (2, 1, -1),  # D_-
     ],
     # positive-reflectivity waves
-    +1 : [  # J, M, refl; see Eqs. (41) and (42)
+    +1 : [  # J, M, refl; see Eq. (42)
       (1, 1, +1),  # P_+
       (2, 1, +1),  # D_+
     ],
@@ -198,16 +195,13 @@ def generateDataPwd(
       refl:   int = wave[2]
       parity: int = (-1)**ell
       # see Eqs. (26) and (27) for rank = 1
-      V = f"complexT({parameters[refl][waveIndex].real}, {parameters[refl][waveIndex].imag})"
-      A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, x, y)"
+      V = f"complexT({parameters[refl][waveIndex].real}, {parameters[refl][waveIndex].imag})"  # complexT is a typedef in wignerD.C
+      A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, TMath::DegToRad() * y, std::acos(x))"
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
   # see Eqs. (28) for rank = 1
   print("intensity =", " + ".join(incoherentTerms))
-  intensity = ROOT.TF2("intensity", " + ".join(incoherentTerms), -math.pi, +math.pi, 0, math.pi)  # type: ignore
-  # intensity = ROOT.TF2("intensity", "std::norm(complexT(1.0, 0.0) * std::sqrt((2 * 1 + 1) / (4 * TMath::Pi())) * wignerDReflConj(2, 2, 0, -1, -1, x, y))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
-  # intensity = ROOT.TF2("intensity", "TComplex(1.0, 0.0).Rho2()", -math.pi, +math.pi, 0, math.pi)  # type: ignore
-  # intensity = ROOT.TF2("intensity", "std::norm(complexT(1.0, 0.0))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  intensity = ROOT.TF2("intensity", " + ".join(incoherentTerms), -1, +1, -180, +180)  # type: ignore
   intensity.SetNpx(500)  # used in numeric integration performed by GetRandom()
   intensity.SetNpy(500)
   intensity.SetContour(100)
@@ -219,17 +213,16 @@ def generateDataPwd(
   canv.SaveAs(f"{intensity.GetName()}.pdf")
 
   # generate random data that follow linear combination of of spherical harmonics
-  # declareInCpp(sphericalHarmLC = sphericalHarmLC)
   treeName = "data"
-  fileName = f"foo.root"
-  # fileName = f"{sphericalHarmLC.GetName()}.root"
-  # df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  # df.Define("point", "double x, y; PyVars::sphericalHarmLC.GetRandom2(x, y); std::vector<double> point = {x, y}; return point;") \
-  #   .Define("cosTheta", "point[0]") \
-  #   .Define("Phi",      "point[1]") \
-  #   .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
-  #   .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-  #                                  # use noop filter to log when event loop is running
+  fileName = f"{intensity.GetName()}.root"
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  declareInCpp(intensity = intensity)
+  df.Define("point",    "double cosTheta, Phi; PyVars::intensity.GetRandom2(cosTheta, Phi); std::vector<double> point = {cosTheta, Phi}; return point;") \
+    .Define("cosTheta", "point[0]") \
+    .Define("Phi",      "point[1]") \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+                                   # use noop filter to log when event loop is running
   return treeName, fileName
 
 
@@ -264,7 +257,6 @@ if __name__ == "__main__":
     ),
   }
   treeName, fileName = generateDataPwd(nmbEvents, parameters)
-  raise ValueError
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
@@ -280,6 +272,7 @@ if __name__ == "__main__":
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
+  raise ValueError
 
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
