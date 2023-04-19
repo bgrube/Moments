@@ -4,6 +4,7 @@
 import math
 from typing import Any, Collection, Dict, List, Sequence, Tuple
 
+import py3nj
 from uncertainties import UFloat, ufloat
 
 import ROOT
@@ -158,6 +159,21 @@ def calculateSphHarmMoments(
 # C++ implementation of (complex conjugated) Wigner D function
 ROOT.gROOT.LoadMacro("./wignerD.C++")
 
+WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
+  # negative-reflectivity waves
+  -1 : [  # J, M, refl; see Eq. (41)
+    (0, 0),  # S_0
+    (1, 0),  # P_0
+    (1, 1),  # P_-
+    (2, 0),  # D_0
+    (2, 1),  # D_-
+  ],
+  # positive-reflectivity waves
+  +1 : [  # J, M, refl; see Eq. (42)
+    (1, 1),  # P_+
+    (2, 1),  # D_+
+  ],
+}
 
 # follows Chung, PRD56 (1997) 7299
 # see also
@@ -165,37 +181,21 @@ ROOT.gROOT.LoadMacro("./wignerD.C++")
 #     E852, PRD 60 (1999) 092001
 #     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataPwd(
-  nmbEvents:  int,
-  parameters: Dict[int, Tuple[complex, ...]],
+  nmbEvents: int,
+  prodAmps:  Dict[int, Tuple[complex, ...]],
 ) -> Tuple[str, str]:
   '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
   # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
-  waveSet = {
-    # negative-reflectivity waves
-    -1 : [  # J, M, refl; see Eq. (41)
-      (0, 0, -1),  # S_0
-      (1, 0, -1),  # P_0
-      (1, 1, -1),  # P_-
-      (2, 0, -1),  # D_0
-      (2, 1, -1),  # D_-
-    ],
-    # positive-reflectivity waves
-    +1 : [  # J, M, refl; see Eq. (42)
-      (1, 1, +1),  # P_+
-      (2, 1, +1),  # D_+
-    ],
-  }
-  assert len(parameters) == len(waveSet), f"Need {len(waveSet)} parameters; only {len(parameters)} were given: {parameters}"
+  assert len(prodAmps) == len(WAVE_SET), f"Need {len(WAVE_SET)} parameters; only {len(prodAmps)} were given: {prodAmps}"
   incoherentTerms = []
   for refl in (-1, +1):
     coherentTerms = []
-    for waveIndex, wave in enumerate(waveSet[refl]):
+    for waveIndex, wave in enumerate(WAVE_SET[refl]):
       ell:    int = wave[0]
       m:      int = wave[1]
-      refl:   int = wave[2]
       parity: int = (-1)**ell
       # see Eqs. (26) and (27) for rank = 1
-      V = f"complexT({parameters[refl][waveIndex].real}, {parameters[refl][waveIndex].imag})"  # complexT is a typedef in wignerD.C
+      V = f"complexT({prodAmps[refl][waveIndex].real}, {prodAmps[refl][waveIndex].imag})"  # complexT is a typedef in wignerD.C
       A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, TMath::DegToRad() * y, std::acos(x))"
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
@@ -226,6 +226,73 @@ def generateDataPwd(
   return treeName, fileName
 
 
+def theta(m: int) -> float:
+  '''Calculates normalization factor in reflectivity basis'''
+  # see Eq. (19)
+  if m > 0:
+    return 1 / math.sqrt(2)
+  elif m == 0:
+    return 1 / 2
+  else:
+    return 0
+
+
+def calculateTruePwdMoment(
+  prodAmps: Dict[int, Tuple[complex, ...]],
+  L: int,
+  M: int,
+) -> complex:
+  '''Calculates value of moment with L and M for given production amplitudes'''
+  # print(f"!!! H({L} {M}):")
+  # Eq. (29) for rank = 1
+  sum = 0 + 0j
+  for refl in (-1, +1):
+    for waveIndex_1, wave_1 in enumerate(WAVE_SET[refl]):
+      ell_1: int = wave_1[0]
+      m_1:   int = wave_1[1]
+      for waveIndex_2, wave_2 in enumerate(WAVE_SET[refl]):
+        ell_2: int = wave_2[0]
+        m_2:   int = wave_2[1]
+        b = theta(m_2) * theta(m_1) * (
+                               py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1,  2 * m_2,  2 * M,  2 * m_1, ignore_invalid = True)  # (ell_2  m_2  L  M | ell_1  m_1)
+          + (-1)**M *          py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1,  2 * m_2, -2 * M,  2 * m_1, ignore_invalid = True)  # (ell_2  m_2  L -M | ell_1  m_1)
+          - refl * (-1)**m_2 * py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, -2 * m_2,  2 * M,  2 * m_1, ignore_invalid = True)  # (ell_2 -m_2  L  M | ell_1  m_1)
+          - refl * (-1)**m_1 * py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1,  2 * m_2,  2 * M, -2 * m_1, ignore_invalid = True)  # (ell_2  m_2  L  M | ell_1 -m_1)
+        )
+        sum += math.sqrt((2 * ell_2 + 1) / (2 * ell_1 + 1)) * prodAmps[refl][waveIndex_1] * prodAmps[refl][waveIndex_2].conjugate() * b \
+               * py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, 0, 0, 0, ignore_invalid = True)  # (ell_2 0  L 0 | ell_1 0)
+        # factor = math.sqrt((2 * ell_2 + 1) / (2 * ell_1 + 1)) * b * py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, 0, 0, 0, ignore_invalid = True)
+        # if abs(factor) > 1e-16:
+        #   print(f"    refl = {refl}; ({ell_1}, {m_1}), ({ell_2}, {m_2}) = "
+        #     # f"{math.sqrt((2 * ell_2 + 1) / (2 * ell_1 + 1))} * {b} * {py3nj.clebsch_gordan(2 * ell_2, 2 * L, 2 * ell_1, 0, 0, 0, ignore_invalid = True)} = "
+        #     f"{factor} * {prodAmps[refl][waveIndex_1]} * {prodAmps[refl][waveIndex_2].conjugate()} = "
+        #     f"{factor * prodAmps[refl][waveIndex_1] * prodAmps[refl][waveIndex_2].conjugate()}")
+  return sum
+
+
+def calculateTruePwdMoments(
+  prodAmps: Dict[int, Tuple[complex, ...]],
+  maxL:     int,  # maximum spin of decaying object
+) -> List[float]:
+  '''Calculates true moments for given production amplitudes'''
+  moments: List[float] = []
+  for L in range(2 * maxL + 2):
+    for M in range(min(L, 2) + 1):
+      moment: complex = calculateTruePwdMoment(prodAmps, L, M)
+      if (abs(moment.imag) > 1e-15):
+        print(f"Warning: non vanishing imaginary part for moment H({L} {M}) = {moment}")
+      moments.append(moment.real)
+  # normalize to first moment
+  moments = [moment / moments[0] for moment in moments]
+  index = 0
+  for L in range(2 * maxL + 2):
+    for M in range(min(L, 2) + 1):
+      print(f"H_true(L = {L}, M = {M}) = {moments[index]}")
+      index += 1
+  print(moments)
+  return moments
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
@@ -241,14 +308,15 @@ if __name__ == "__main__":
   # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
   # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
   # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
-  parameters: Dict[int, Tuple[complex, ...]] = {
+  maxOrder = 2
+  prodAmps: Dict[int, Tuple[complex, ...]] = {
     # negative-reflectivity waves
     -1 : (
        1   + 0j,    # S_0
        0.3 - 0.8j,  # P_0
       -0.4 + 0.1j,  # P_-
       -0.1 - 0.2j,  # D_0
-       0.2 - 0.1j,  # D_-
+       0.2 - 0.5j,  # D_-
     ),
     # positive-reflectivity waves
     +1 : (
@@ -256,7 +324,9 @@ if __name__ == "__main__":
       -0.1 + 0.3j,  # D_+
     ),
   }
-  treeName, fileName = generateDataPwd(nmbEvents, parameters)
+  # calculateTruePwdMoment(prodAmps, 4, 1)
+  # raise ValueError
+  treeName, fileName = generateDataPwd(nmbEvents, prodAmps)
   ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
@@ -272,11 +342,11 @@ if __name__ == "__main__":
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
-  raise ValueError
 
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
-  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  moments:     List[Tuple[Tuple[int, ...], UFloat]]  = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  trueMoments: List[Tuple[Tuple[int, ...], complex]] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
@@ -292,18 +362,18 @@ if __name__ == "__main__":
   histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
   histMeas.SetMarkerSize(0.75)
   hStack.Add(histMeas, "PEX0")
-  # create histogram with true values
-  # normalize parameters 0th moment and pad with 0
-  trueValues = [par / parameters[0] for par in parameters]
-  if len(trueValues) < len(moments):
-    trueValues += [0] * (len(moments) - len(trueValues))
-  histTrue = ROOT.TH1D("True values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  for index, trueValue in enumerate(trueValues):
-    histTrue.SetBinContent(index + 1, trueValue)
-    histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  histTrue.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histTrue.SetLineColor(ROOT.kBlue)  # type: ignore
-  hStack.Add(histTrue, "PE")
+  # # create histogram with true values
+  # # normalize parameters 0th moment and pad with 0
+  # trueValues = [par / parameters[0] for par in parameters]
+  # if len(trueValues) < len(moments):
+  #   trueValues += [0] * (len(moments) - len(trueValues))
+  # histTrue = ROOT.TH1D("True values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  # for index, trueValue in enumerate(trueValues):
+  #   histTrue.SetBinContent(index + 1, trueValue)
+  #   histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  # histTrue.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  # histTrue.SetLineColor(ROOT.kBlue)  # type: ignore
+  # hStack.Add(histTrue, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
   hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
@@ -311,6 +381,7 @@ if __name__ == "__main__":
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStack.GetName()}.pdf")
+  raise ValueError
 
   # draw residuals
   residuals = tuple((moment[1].nominal_value - trueValues[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
