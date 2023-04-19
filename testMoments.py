@@ -198,13 +198,25 @@ def generateDataPwd(
       refl:   int = wave[2]
       parity: int = (-1)**ell
       # see Eqs. (26) and (27) for rank = 1
-      V = f"std::complex<double>({parameters[refl][waveIndex].real}, {parameters[refl][waveIndex].imag})"
+      V = f"complexT({parameters[refl][waveIndex].real}, {parameters[refl][waveIndex].imag})"
       A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, x, y)"
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
   # see Eqs. (28) for rank = 1
-  intensity = ' + '.join(incoherentTerms)
-  print("intensity =", intensity)
+  print("intensity =", " + ".join(incoherentTerms))
+  intensity = ROOT.TF2("intensity", " + ".join(incoherentTerms), -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  # intensity = ROOT.TF2("intensity", "std::norm(complexT(1.0, 0.0) * std::sqrt((2 * 1 + 1) / (4 * TMath::Pi())) * wignerDReflConj(2, 2, 0, -1, -1, x, y))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  # intensity = ROOT.TF2("intensity", "TComplex(1.0, 0.0).Rho2()", -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  # intensity = ROOT.TF2("intensity", "std::norm(complexT(1.0, 0.0))", -math.pi, +math.pi, 0, math.pi)  # type: ignore
+  intensity.SetNpx(500)  # used in numeric integration performed by GetRandom()
+  intensity.SetNpy(500)
+  intensity.SetContour(100)
+  intensity.SetMinimum(0)
+
+  # draw function
+  canv = ROOT.TCanvas()  # type: ignore
+  intensity.Draw("COLZ")
+  canv.SaveAs(f"{intensity.GetName()}.pdf")
 
   # generate random data that follow linear combination of of spherical harmonics
   # declareInCpp(sphericalHarmLC = sphericalHarmLC)

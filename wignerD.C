@@ -105,3 +105,7 @@ wignerDReflConj(
 
 	return std::conj(DFuncVal);
 }
+
+// use typedef because templates are not allowed in TFormula expressions
+// see https://root-forum.cern.ch/t/trying-to-define-imaginary-error-function/50032/10
+typedef std::complex<double> complexT;
