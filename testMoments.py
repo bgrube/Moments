@@ -421,6 +421,7 @@ if __name__ == "__main__":
   #TODO calculate and print chi^2 / ndf
   residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
   histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
+  chi2Ndf = sum(tuple(residual**2 for residual in residuals)) / (len(residuals) - 1)  # H(0, 0) has by definition a vanishing residual
   for index, residual in enumerate(residuals):
     histRes.SetBinContent(index + 1, residual)
     histRes.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
@@ -431,4 +432,8 @@ if __name__ == "__main__":
   histRes.SetMaximum(+3)
   canv = ROOT.TCanvas()  # type: ignore
   histRes.Draw("PE")
+  label = ROOT.TLatex()  # type: ignore
+  label.SetNDC()
+  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
+  label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2Ndf:.2f}")
   canv.SaveAs(f"{histRes.GetName()}.pdf")
