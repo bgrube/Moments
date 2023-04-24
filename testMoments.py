@@ -2,7 +2,7 @@
 
 
 import math
-from typing import Any, Collection, Dict, List, Sequence, Tuple
+from typing import Any, Collection, Dict, List, Tuple
 
 import py3nj
 from uncertainties import UFloat, ufloat
@@ -12,7 +12,7 @@ import ROOT
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
 def declareInCpp(**kwargs: Any) -> None:
-  '''Creates C++ variables (names given by keys) for PyROOT objects (given values) in PyVars:: namespace'''
+  '''Creates C++ variables (names defined by keys) for PyROOT objects (given by values) in PyVars:: namespace'''
   for key, value in kwargs.items():
     ROOT.gInterpreter.Declare(  # type: ignore
 f'''
@@ -50,9 +50,9 @@ def generateDataLegPolLC(
   fileName = f"{legendrePolLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(legendrePolLC = legendrePolLC)
-  df.Define("cosTheta", "PyVars::legendrePolLC.GetRandom()") \
+  df.Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
-    .Snapshot(treeName, fileName)  # snapshot is needed or else the `cosTheta` column would be regenerated for every triggered loop
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `CosTheta` column would be regenerated for every triggered loop
                                    # use noop filter to log when event loop is running
   return treeName, fileName
 
@@ -66,7 +66,7 @@ def calculateLegMoments(
   moments: Dict[Tuple[int, ...], UFloat] = {}
   for degree in range(maxDegree + 5):
     # unnormalized moments
-    dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, cosTheta)")
+    dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, CosTheta)")
     momentVal = dfMoment.Sum("legendrePol").GetValue()
     momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("legendrePol").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
     # normalize moments with respect to H(0)
@@ -124,8 +124,8 @@ def generateDataSphHarmLC(
   fileName = f"{sphericalHarmLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(sphericalHarmLC = sphericalHarmLC)
-  df.Define("point",    "double cosTheta, Phi; PyVars::sphericalHarmLC.GetRandom2(cosTheta, Phi); std::vector<double> point = {cosTheta, Phi}; return point;") \
-    .Define("cosTheta", "point[0]") \
+  df.Define("point",    "double CosTheta, Phi; PyVars::sphericalHarmLC.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
+    .Define("CosTheta", "point[0]") \
     .Define("Phi",      "point[1]") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
@@ -143,7 +143,7 @@ def calculateSphHarmMoments(
   for L in range(2 * maxL + 2):
     for M in range(min(L, 2) + 1):
       # unnormalized moments
-      dfMoment = dataFrame.Define("sphericalHarm", f"ROOT::Math::sph_legendre({L}, {M}, std::acos(cosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
+      dfMoment = dataFrame.Define("sphericalHarm", f"ROOT::Math::sph_legendre({L}, {M}, std::acos(CosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
       momentVal = dfMoment.Sum("sphericalHarm").GetValue()
       momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
       # normalize moments with respect to H(0 0)
@@ -217,8 +217,8 @@ def generateDataPwd(
   fileName = f"{intensity.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(intensity = intensity)
-  df.Define("point",    "double cosTheta, Phi; PyVars::intensity.GetRandom2(cosTheta, Phi); std::vector<double> point = {cosTheta, Phi}; return point;") \
-    .Define("cosTheta", "point[0]") \
+  df.Define("point",    "double CosTheta, Phi; PyVars::intensity.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
+    .Define("CosTheta", "point[0]") \
     .Define("Phi",      "point[1]") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
@@ -286,26 +286,68 @@ def calculateTruePwdMoments(
   return moments
 
 
+def calculateWignerDMoment(
+  dataFrame: Any,
+  L:         int,
+  M:         int,
+) -> Tuple[UFloat, UFloat]:  # real and imag part with uncertainty
+  '''Calculates unnormalized moment of Wigner-D function D^L_{M 0}'''
+  # unnormalized moment
+  dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, TMath::DegToRad() * Phi, std::acos(CosTheta))") \
+                      .Define("WignerDRe", "real(WignerD)") \
+                      .Define("WignerDIm", "imag(WignerD)")
+  momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()
+  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
+  momentErrRe = math.sqrt(nmbEvents) * dfMoment.StdDev("WignerDRe").GetValue()
+  momentErrIm = math.sqrt(nmbEvents) * dfMoment.StdDev("WignerDIm").GetValue()
+  return ufloat(momentVal.real, momentErrRe), ufloat(momentVal.imag, momentErrIm)
+
+
+def calculateWignerDMoments(
+  dataFrame: Any,
+  maxL:      int,  # maximum spin of decaying object
+) -> None:
+  '''Calculates moments of Wigner-D function D^L_{M 0}'''
+  nmbEvents = dataFrame.Count().GetValue()
+  # moments: List[Tuple[Tuple[int, ...], UFloat]] = []
+  for L in range(2 * maxL + 2):
+    for M in range(-L, +L + 1):
+      # unnormalized moments
+      momentRe, momentIm = calculateWignerDMoment(dataFrame, L, M)
+      # normalize moments with respect to H(0 0)
+      norm = 1 / nmbEvents
+      momentRe *= norm
+      momentIm *= norm
+      print(f"H(L = {L}, M = {M}) = {(momentRe, momentIm)}")
+  #     moments.append(((L, M), moment))
+  # print(moments)
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
 
   # get data
-  nmbEvents = 10000
+  nmbEvents = 1000
+  # # Legendre polynomials
   # chose parameters such that resulting linear combinations are positive definite
   # maxOrder = 5
   # # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
   # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
   # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
+
+  # # spherical harmonics
   # maxOrder = 2
   # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
   # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
   # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+
   # normalize parameters 0th moment and pad with 0
   # trueMoments = [par / parameters[0] for par in parameters]
   # if len(trueMoments) < len(moments):
   #   trueMoments += [0] * (len(moments) - len(trueMoments))
 
+  # partial-wave decomposition
   maxOrder = 2
   prodAmps: Dict[int, Tuple[complex, ...]] = {
     # negative-reflectivity waves
@@ -331,11 +373,11 @@ if __name__ == "__main__":
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   if "Phi" in dataFrame.GetColumnNames():
-    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", "", 25, -1, +1, 25, -180, +180), "cosTheta", "Phi")  # type: ignore
+    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", "", 25, -1, +1, 25, -180, +180), "CosTheta", "Phi")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
-    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("hData", "", 100, -1, +1), "cosTheta")  # type: ignore
+    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("hData", "", 100, -1, +1), "CosTheta")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
@@ -343,6 +385,7 @@ if __name__ == "__main__":
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
   moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  calculateWignerDMoments(dataFrame, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
@@ -375,6 +418,7 @@ if __name__ == "__main__":
   canv.SaveAs(f"{hStack.GetName()}.pdf")
 
   # draw residuals
+  #TODO calculate and print chi^2 / ndf
   residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
   histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
   for index, residual in enumerate(residuals):
