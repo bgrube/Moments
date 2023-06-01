@@ -2,6 +2,7 @@
 
 
 import math
+from scipy import stats
 from typing import Any, Collection, Dict, List, Tuple
 
 import py3nj
@@ -195,29 +196,30 @@ def generateDataPwd(
       m:      int = wave[1]
       parity: int = (-1)**ell
       # see Eqs. (26) and (27) for rank = 1
-      V = f"complexT({prodAmps[refl][waveIndex].real}, {prodAmps[refl][waveIndex].imag})"  # complexT is a typedef in wignerD.C
+      V = f"complexT({prodAmps[refl][waveIndex].real}, {prodAmps[refl][waveIndex].imag})"  # complexT is a typedef for std::complex<double> in wignerD.C
       A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, TMath::DegToRad() * y, std::acos(x))"
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
   # see Eqs. (28) for rank = 1
   print("intensity =", " + ".join(incoherentTerms))
-  intensity = ROOT.TF2("intensity", " + ".join(incoherentTerms), -1, +1, -180, +180)  # type: ignore
-  intensity.SetNpx(500)  # used in numeric integration performed by GetRandom()
-  intensity.SetNpy(500)
-  intensity.SetContour(100)
-  intensity.SetMinimum(0)
+  intensityFcn = ROOT.TF2("intensity", " + ".join(incoherentTerms), -1, +1, -180, +180)  # type: ignore
+  intensityFcn.SetTitle(";cos#theta;#phi [deg]")
+  intensityFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
+  intensityFcn.SetNpy(500)
+  intensityFcn.SetContour(100)
+  intensityFcn.SetMinimum(0)
 
   # draw function
   canv = ROOT.TCanvas()  # type: ignore
-  intensity.Draw("COLZ")
-  canv.SaveAs(f"{intensity.GetName()}.pdf")
+  intensityFcn.Draw("COLZ")
+  canv.SaveAs(f"{intensityFcn.GetName()}.pdf")
 
-  # generate random data that follow linear combination of of spherical harmonics
+  # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{intensity.GetName()}.root"
+  fileName = f"{intensityFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  declareInCpp(intensity = intensity)
-  df.Define("point",    "double CosTheta, Phi; PyVars::intensity.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
+  declareInCpp(intensityFcn = intensityFcn)
+  df.Define("point",    "double CosTheta, Phi; PyVars::intensityFcn.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
     .Define("CosTheta", "point[0]") \
     .Define("Phi",      "point[1]") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
@@ -323,9 +325,28 @@ def calculateWignerDMoments(
   # print(moments)
 
 
+def setupPlotStyle():
+  #TODO remove dependency from external file or add file to repo
+  ROOT.gROOT.LoadMacro("~/rootlogon.C")
+  ROOT.gROOT.ForceStyle()
+  ROOT.gStyle.SetCanvasDefW(600)
+  ROOT.gStyle.SetCanvasDefH(600)
+  ROOT.gStyle.SetPalette(ROOT.kBird)
+  # ROOT.gStyle.SetPalette(ROOT.kViridis)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
+  ROOT.gStyle.SetLegendBorderSize(1)
+  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
+  # ROOT.gStyle.SetOptStat("i")  # show only integral
+  ROOT.gStyle.SetOptStat("")
+  ROOT.gStyle.SetStatFormat("8.8g")
+  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
+  ROOT.gStyle.SetTitleOffset(1.35, "Y")
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
+  setupPlotStyle()
 
   # get data
   nmbEvents = 1000
@@ -373,11 +394,11 @@ if __name__ == "__main__":
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   if "Phi" in dataFrame.GetColumnNames():
-    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", "", 25, -1, +1, 25, -180, +180), "CosTheta", "Phi")  # type: ignore
+    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "Phi")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
-    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("hData", "", 100, -1, +1), "CosTheta")  # type: ignore
+    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
@@ -385,7 +406,7 @@ if __name__ == "__main__":
   # calculate moments
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
   moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
-  calculateWignerDMoments(dataFrame, maxL = maxOrder)
+  # calculateWignerDMoments(dataFrame, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
@@ -421,7 +442,8 @@ if __name__ == "__main__":
   #TODO calculate and print chi^2 / ndf
   residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
   histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
-  chi2Ndf = sum(tuple(residual**2 for residual in residuals)) / (len(residuals) - 1)  # H(0, 0) has by definition a vanishing residual
+  chi2    = sum(tuple(residual**2 for residual in residuals))
+  ndf     = len(residuals) - 1  # H(0, 0) has by definition a vanishing residual
   for index, residual in enumerate(residuals):
     histRes.SetBinContent(index + 1, residual)
     histRes.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
@@ -432,8 +454,18 @@ if __name__ == "__main__":
   histRes.SetMaximum(+3)
   canv = ROOT.TCanvas()  # type: ignore
   histRes.Draw("PE")
+  # draw zero line
+  xAxis = histRes.GetXaxis()
+  line = ROOT.TLine()  # type: ignore
+  line.SetLineStyle(ROOT.kDashed)  # type: ignore
+  line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+  # shade 1 sigma region
+  box = ROOT.TBox()  # type: ignore
+  box.SetFillColorAlpha(ROOT.kBlack, 0.15)  # type: ignore
+  box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
+  # draw chi^2 info
   label = ROOT.TLatex()  # type: ignore
   label.SetNDC()
   label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
-  label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2Ndf:.2f}")
+  label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
   canv.SaveAs(f"{histRes.GetName()}.pdf")
