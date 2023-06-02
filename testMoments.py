@@ -2,6 +2,7 @@
 
 
 import math
+import numpy as np
 from scipy import stats
 from typing import Any, Collection, Dict, List, Tuple
 
@@ -144,12 +145,11 @@ def calculateSphHarmMoments(
   for L in range(2 * maxL + 2):
     for M in range(min(L, 2) + 1):
       # unnormalized moments
-      dfMoment = dataFrame.Define("sphericalHarm", f"ROOT::Math::sph_legendre({L}, {M}, std::acos(CosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
+      dfMoment = dataFrame.Define("sphericalHarm", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ROOT::Math::sph_legendre({L}, {M}, std::acos(CosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
       momentVal = dfMoment.Sum("sphericalHarm").GetValue()
       momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
       # normalize moments with respect to H(0 0)
-      #     Integrate[Re[SphericalHarmonicY[L, M, x, y]] * Sin[x], {y, -Pi, Pi}, {x, 0, Pi}]
-      norm = 1 / (nmbEvents * math.sqrt((2 * L + 1) / (4 * math.pi)))
+      norm = 1 / nmbEvents
       moment = norm * ufloat(momentVal, momentErr)  # type: ignore
       print(f"H(L = {L}, M = {M}) = {moment}")
       moments.append(((L, M), moment))
@@ -325,28 +325,72 @@ def calculateWignerDMoments(
   # print(moments)
 
 
+def calcIntegralMatrix(
+  maxL:      int,  # maximum orbital angular momentum
+  nmbEvents: int,  # number of events to generate
+) -> np.ndarray:
+  '''Calculates integral matrix of spherical harmonics'''
+  # generate isotropic distributions in cos theta and phi
+  # !Note! with multithreading enabled the random numbers seem to be the same in each thread
+  phaseSpaceData = ROOT.RDataFrame(nmbEvents) \
+                   .Define("Theta", "std::acos(gRandom->Uniform(-1, +1))") \
+                   .Define("Phi",   "gRandom->Uniform(-TMath::Pi(), +TMath::Pi())")
+  # define spherical harmonics
+  for L in range(maxL + 1):
+    for M in range(L + 1):
+      phaseSpaceData = phaseSpaceData.Define(f"Y_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::exp(complexT(0.0, 1.0) * (double){M} * Phi)")  # complexT is a typedef for std::complex<double> in wignerD.C
+  # define integral matrix
+  for L in range(maxL + 1):
+    for M in range(L + 1):
+      for Lp in range(maxL + 1):
+        for Mp in range(Lp + 1):
+          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}",
+          #   f"std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+  # calculate integral matrix
+  I = np.zeros((maxL + 1, maxL + 1, maxL + 1, maxL + 1), dtype = complex)
+  for L in range(maxL + 1):
+    for M in range(L + 1):
+      for Lp in range(maxL + 1):
+        for Mp in range(Lp + 1):
+          # print(f"I_{L}_{M}_{Lp}_{Mp} = {phaseSpaceData.Sum[ROOT.std.complex['double']](f'I_{L}_{M}_{Lp}_{Mp}').GetValue()}")
+          I[L][M][Lp][Mp] = (4 * math.pi / nmbEvents) * phaseSpaceData.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
+  return I
+
+
 def setupPlotStyle():
   #TODO remove dependency from external file or add file to repo
-  ROOT.gROOT.LoadMacro("~/rootlogon.C")
-  ROOT.gROOT.ForceStyle()
-  ROOT.gStyle.SetCanvasDefW(600)
-  ROOT.gStyle.SetCanvasDefH(600)
-  ROOT.gStyle.SetPalette(ROOT.kBird)
-  # ROOT.gStyle.SetPalette(ROOT.kViridis)
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
-  ROOT.gStyle.SetLegendBorderSize(1)
-  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
-  # ROOT.gStyle.SetOptStat("i")  # show only integral
-  ROOT.gStyle.SetOptStat("")
-  ROOT.gStyle.SetStatFormat("8.8g")
-  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
-  ROOT.gStyle.SetTitleOffset(1.35, "Y")
+  ROOT.gROOT.LoadMacro("~/rootlogon.C")  # type: ignore
+  ROOT.gROOT.ForceStyle()  # type: ignore
+  ROOT.gStyle.SetCanvasDefW(600)  # type: ignore
+  ROOT.gStyle.SetCanvasDefH(600)  # type: ignore
+  ROOT.gStyle.SetPalette(ROOT.kBird)  # type: ignore
+  # ROOT.gStyle.SetPalette(ROOT.kViridis)  # type: ignore
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)  # type: ignore
+  ROOT.gStyle.SetLegendBorderSize(1)  # type: ignore
+  # ROOT.gStyle.SetOptStat("ni")  # type: ignore  # show only name and integral
+  # ROOT.gStyle.SetOptStat("i")  # type: ignore  # show only integral
+  ROOT.gStyle.SetOptStat("")  # type: ignore
+  ROOT.gStyle.SetStatFormat("8.8g")  # type: ignore
+  ROOT.gStyle.SetTitleColor(1, "X")  # type: ignore  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
+  ROOT.gStyle.SetTitleOffset(1.35, "Y")  # type: ignore
 
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
   ROOT.gRandom.SetSeed(1234567890)  # type: ignore
+  # ROOT.EnableImplicitMT(10)  # type: ignore
   setupPlotStyle()
+
+  maxL = 2
+  I = calcIntegralMatrix(maxL, 100000)
+  for L in range(maxL + 1):
+    for M in range(L + 1):
+      for Lp in range(maxL + 1):
+        for Mp in range(Lp + 1):
+          # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[L][M][Lp][Mp]}")
+          print(f"|I_{L}_{M}_{Lp}_{Mp}| = {abs(I[L][M][Lp][Mp])}")
+  raise ValueError
 
   # get data
   nmbEvents = 1000
@@ -387,7 +431,6 @@ if __name__ == "__main__":
   }
   trueMoments: List[float] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
   treeName, fileName = generateDataPwd(nmbEvents, prodAmps)
-  ROOT.EnableImplicitMT(10)  # type: ignore
   dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
   # print("!!!", dataFrame.AsNumpy())
 
