@@ -2,6 +2,7 @@
 
 
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 from typing import Any, Collection, Dict, List, Tuple
@@ -339,6 +340,8 @@ def calcIntegralMatrix(
   for L in range(maxL + 1):
     for M in range(L + 1):
       phaseSpaceData = phaseSpaceData.Define(f"Y_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::exp(complexT(0.0, 1.0) * (double){M} * Phi)")  # complexT is a typedef for std::complex<double> in wignerD.C
+      phaseSpaceData = phaseSpaceData.Define(f"reY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
+      phaseSpaceData = phaseSpaceData.Define(f"imY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::sin({M} * Phi)")
   # define integral matrix
   for L in range(maxL + 1):
     for M in range(L + 1):
@@ -347,13 +350,14 @@ def calcIntegralMatrix(
           # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}",
           #   f"std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
           phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
   I = np.zeros((maxL + 1, maxL + 1, maxL + 1, maxL + 1), dtype = complex)
   for L in range(maxL + 1):
     for M in range(L + 1):
       for Lp in range(maxL + 1):
         for Mp in range(Lp + 1):
-          # print(f"I_{L}_{M}_{Lp}_{Mp} = {phaseSpaceData.Sum[ROOT.std.complex['double']](f'I_{L}_{M}_{Lp}_{Mp}').GetValue()}")
           I[L][M][Lp][Mp] = (4 * math.pi / nmbEvents) * phaseSpaceData.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
   return I
 
@@ -384,12 +388,30 @@ if __name__ == "__main__":
 
   maxL = 2
   I = calcIntegralMatrix(maxL, 100000)
+  dim = (maxL + 1) * (maxL + 2) // 2
+  Imatrix = np.zeros((dim, dim), dtype = complex)
   for L in range(maxL + 1):
     for M in range(L + 1):
       for Lp in range(maxL + 1):
         for Mp in range(Lp + 1):
-          # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[L][M][Lp][Mp]}")
-          print(f"|I_{L}_{M}_{Lp}_{Mp}| = {abs(I[L][M][Lp][Mp])}")
+          print(f"I_{L}_{M}_{Lp}_{Mp} = {I[L][M][Lp][Mp]}")
+          # print(f"|I_{L}_{M}_{Lp}_{Mp}| = {abs(I[L][M][Lp][Mp])}")
+          Imatrix[L * (L + 1) // 2 + M][Lp * (Lp + 1) // 2 + Mp] = I[L][M][Lp][Mp]
+  print(Imatrix)
+  eigenVals, eigenVecs = np.linalg.eig(Imatrix)
+  print(f"eigenvalues  = {eigenVals}")
+  print(f"eigenvectors = {eigenVecs}")
+  print(f"determinant  = {np.linalg.det(Imatrix)}")
+  ImatrixInv = np.linalg.inv(Imatrix)
+  print(f"inverse      = {ImatrixInv}")
+  plt.matshow(ImatrixInv.real)
+  plt.savefig("real.pdf")
+  plt.matshow(ImatrixInv.imag)
+  plt.savefig("imag.pdf")
+  plt.matshow(np.absolute(ImatrixInv))
+  plt.savefig("abs.pdf")
+  plt.matshow(np.angle(ImatrixInv))
+  plt.savefig("arg.pdf")
   raise ValueError
 
   # get data
