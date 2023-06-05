@@ -326,39 +326,44 @@ def calculateWignerDMoments(
   # print(moments)
 
 
-def calcIntegralMatrix(
-  maxL:      int,  # maximum orbital angular momentum
+def generate2BodyPhaseSpace(
   nmbEvents: int,  # number of events to generate
-) -> np.ndarray:
-  '''Calculates integral matrix of spherical harmonics'''
+) -> Any:
+  '''Generated RDataFrame with two-body phase-space distribution for theta and phi'''
   # generate isotropic distributions in cos theta and phi
   # !Note! with multithreading enabled the random numbers seem to be the same in each thread
-  phaseSpaceData = ROOT.RDataFrame(nmbEvents) \
-                   .Define("Theta", "std::acos(gRandom->Uniform(-1, +1))") \
-                   .Define("Phi",   "gRandom->Uniform(-TMath::Pi(), +TMath::Pi())")
+  return ROOT.RDataFrame(nmbEvents) \
+             .Define("Theta", "std::acos(gRandom->Uniform(-1, +1))") \
+             .Define("Phi",   "gRandom->Uniform(-TMath::Pi(), +TMath::Pi())")
+
+
+def calcIntegralMatrix(
+  phaseSpaceDataFrame: Any,
+  maxL:                int,  # maximum orbital angular momentum
+  nmbEvents:           int,  # number of events in RDataFrame
+) -> np.ndarray:
+  '''Calculates integral matrix of spherical harmonics from provided phase-space data'''
   # define spherical harmonics
   for L in range(maxL + 1):
     for M in range(L + 1):
-      phaseSpaceData = phaseSpaceData.Define(f"Y_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::exp(complexT(0.0, 1.0) * (double){M} * Phi)")  # complexT is a typedef for std::complex<double> in wignerD.C
-      phaseSpaceData = phaseSpaceData.Define(f"reY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
-      phaseSpaceData = phaseSpaceData.Define(f"imY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::sin({M} * Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Y_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::exp(complexT(0.0, 1.0) * (double){M} * Phi)")  # complexT is a typedef for std::complex<double> in wignerD.C
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"reY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"imY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::sin({M} * Phi)")
   # define integral matrix
   for L in range(maxL + 1):
     for M in range(L + 1):
       for Lp in range(maxL + 1):
         for Mp in range(Lp + 1):
-          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}",
-          #   f"std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
   I = np.zeros((maxL + 1, maxL + 1, maxL + 1, maxL + 1), dtype = complex)
   for L in range(maxL + 1):
     for M in range(L + 1):
       for Lp in range(maxL + 1):
         for Mp in range(Lp + 1):
-          I[L][M][Lp][Mp] = (4 * math.pi / nmbEvents) * phaseSpaceData.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
+          I[L][M][Lp][Mp] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
   return I
 
 
@@ -386,8 +391,9 @@ if __name__ == "__main__":
   # ROOT.EnableImplicitMT(10)  # type: ignore
   setupPlotStyle()
 
-  maxL = 2
-  I = calcIntegralMatrix(maxL, 100000)
+  maxL      = 2
+  nmbEvents = 100000
+  I = calcIntegralMatrix(generate2BodyPhaseSpace(nmbEvents), maxL, nmbEvents)
   dim = (maxL + 1) * (maxL + 2) // 2
   Imatrix = np.zeros((dim, dim), dtype = complex)
   for L in range(maxL + 1):
@@ -397,13 +403,13 @@ if __name__ == "__main__":
           print(f"I_{L}_{M}_{Lp}_{Mp} = {I[L][M][Lp][Mp]}")
           # print(f"|I_{L}_{M}_{Lp}_{Mp}| = {abs(I[L][M][Lp][Mp])}")
           Imatrix[L * (L + 1) // 2 + M][Lp * (Lp + 1) // 2 + Mp] = I[L][M][Lp][Mp]
-  print(Imatrix)
   eigenVals, eigenVecs = np.linalg.eig(Imatrix)
   print(f"eigenvalues  = {eigenVals}")
   print(f"eigenvectors = {eigenVecs}")
   print(f"determinant  = {np.linalg.det(Imatrix)}")
+  print(f"I = \n{np.array2string(Imatrix, precision = 3, suppress_small = True, max_line_width = 150)}")
   ImatrixInv = np.linalg.inv(Imatrix)
-  print(f"inverse      = {ImatrixInv}")
+  print(f"I^-1 = \n{np.array2string(ImatrixInv, precision = 3, suppress_small = True, max_line_width = 150)}")
   plt.matshow(ImatrixInv.real)
   plt.savefig("real.pdf")
   plt.matshow(ImatrixInv.imag)
