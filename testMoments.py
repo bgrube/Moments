@@ -31,7 +31,7 @@ def generateDataLegPolLC(
   nmbEvents:  int,
   maxDegree:  int,
   parameters: Collection[float],
-) -> Tuple[str, str]:
+) -> Any:
   '''Generates data according to linear combination of Legendre polynomials'''
   assert len(parameters) >= maxDegree + 1, f"Need {maxDegree + 1} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of legendre polynomials up to given degree
@@ -56,8 +56,8 @@ def generateDataLegPolLC(
   df.Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `CosTheta` column would be regenerated for every triggered loop
-                                   # use noop filter to log when event loop is running
-  return treeName, fileName
+                                   # noop filter before snapshot logs when event loop is running
+  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
 
 def calculateLegMoments(
@@ -91,7 +91,7 @@ def generateDataSphHarmLC(
   nmbEvents:  int,
   maxL:       int,  # maximum spin of decaying object
   parameters: Collection[float],  # make sure that resulting linear combination is positive definite
-) -> Tuple[str, str]:
+) -> Any:
   '''Generates data according to linear combination of spherical harmonics'''
   nmbTerms = 6 * maxL  # Eq. (17)
   assert len(parameters) >= nmbTerms, f"Need {nmbTerms} parameters; only {len(parameters)} were given: {parameters}"
@@ -132,8 +132,8 @@ def generateDataSphHarmLC(
     .Define("Phi",      "point[1]") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                   # use noop filter to log when event loop is running
-  return treeName, fileName
+                                   # noop filter before snapshot logs when event loop is running
+  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
 
 def calculateSphHarmMoments(
@@ -185,7 +185,7 @@ WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
 def generateDataPwd(
   nmbEvents: int,
   prodAmps:  Dict[int, Tuple[complex, ...]],
-) -> Tuple[str, str]:
+) -> Any:
   '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
   # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
   assert len(prodAmps) == len(WAVE_SET), f"Need {len(WAVE_SET)} parameters; only {len(prodAmps)} were given: {prodAmps}"
@@ -225,8 +225,8 @@ def generateDataPwd(
     .Define("Phi",      "point[1]") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                   # use noop filter to log when event loop is running
-  return treeName, fileName
+                                   # noop filter before snapshot logs when event loop is running
+  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
 
 def theta(m: int) -> float:
@@ -326,7 +326,7 @@ def calculateWignerDMoments(
   # print(moments)
 
 
-def generate2BodyPhaseSpace(
+def generateData2BodyPS(
   nmbEvents:       int,          # number of events to generate
   perfectDetector: bool = True,  # if true data are generated without acceptance effects
 ) -> Any:
@@ -349,8 +349,8 @@ def generate2BodyPhaseSpace(
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
   fileName = "phaseSpace.root"
-  declareInCpp(acceptanceFcn = acceptanceFcn)
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  declareInCpp(acceptanceFcn = acceptanceFcn)
   df.Define("point", "double CosTheta, Phi; PyVars::acceptanceFcn.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
     .Define("Theta", "std::acos(point[0])") \
     .Define("Phi",   "TMath::DegToRad() * point[1]") \
@@ -410,13 +410,13 @@ def setupPlotStyle():
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
-  ROOT.gRandom.SetSeed(1234567890)  # type: ignore
+  ROOT.gRandom.SetSeed(123456789)  # type: ignore
   # ROOT.EnableImplicitMT(10)  # type: ignore
   setupPlotStyle()
 
   maxL      = 2
-  nmbEvents = 100000
-  I = calcIntegralMatrix(generate2BodyPhaseSpace(nmbEvents), maxL, nmbEvents)
+  nmbEvents = 1000
+  I = calcIntegralMatrix(generateData2BodyPS(nmbEvents), maxL, nmbEvents)
   dim = (maxL + 1) * (maxL + 2) // 2
   Imatrix = np.zeros((dim, dim), dtype = complex)
   for L in range(maxL + 1):
@@ -450,13 +450,13 @@ if __name__ == "__main__":
   # maxOrder = 5
   # # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
   # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
-  # treeName, fileName = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
+  # dataFrame = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
 
   # # spherical harmonics
   # maxOrder = 2
   # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
   # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
-  # treeName, fileName = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+  # dataFrame = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
 
   # normalize parameters 0th moment and pad with 0
   # trueMoments = [par / parameters[0] for par in parameters]
@@ -481,8 +481,7 @@ if __name__ == "__main__":
     ),
   }
   trueMoments: List[float] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
-  treeName, fileName = generateDataPwd(nmbEvents, prodAmps)
-  dataFrame = ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  dataFrame = generateDataPwd(nmbEvents, prodAmps)
   # print("!!!", dataFrame.AsNumpy())
 
   # plot data
