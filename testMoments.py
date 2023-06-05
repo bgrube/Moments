@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from typing import Any, Collection, Dict, List, Tuple
+from typing import Any, Collection, Dict, List, Optional, Tuple
 
 import py3nj
 from uncertainties import UFloat, ufloat
@@ -332,13 +332,12 @@ def calculateWignerDMoments(
 
 
 def generateData2BodyPS(
-  nmbEvents:       int,          # number of events to generate
-  perfectDetector: bool = True,  # if true data are generated without acceptance effects
+  nmbEvents:         int,  # number of events to generate
+  acceptanceFormula: Optional[str] = None,
 ) -> Any:
-  '''Generates RDataFrame with theta and phi for two-body phase-space distribution, weighted by acceptance if perfectDetector is False'''
+  '''Generates RDataFrame with two-body phase-space distribution weighted by given acceptance'''
   # construct acceptance function
-  formula = "1"
-  acceptanceFcn = ROOT.TF2("acceptance", "1" if perfectDetector else formula, -1, +1, -180, +180)  # type: ignore
+  acceptanceFcn = ROOT.TF2("acceptance", "1" if acceptanceFormula is None else acceptanceFormula, -1, +1, -180, +180)  # type: ignore
   acceptanceFcn.SetTitle(";cos#theta;#phi [deg]")
   acceptanceFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
   acceptanceFcn.SetNpy(500)
@@ -422,8 +421,9 @@ if __name__ == "__main__":
   setupPlotStyle()
 
   maxL      = 2
-  nmbEvents = 1000
-  I = calcIntegralMatrix(generateData2BodyPS(nmbEvents), maxL, nmbEvents)
+  nmbEvents = 100000
+  acceptanceFormula = "1 - x * x"
+  I = calcIntegralMatrix(generateData2BodyPS(nmbEvents, acceptanceFormula), maxL, nmbEvents)
   dim = (maxL + 1) * (maxL + 2) // 2
   Imatrix = np.zeros((dim, dim), dtype = complex)
   for L in range(maxL + 1):
