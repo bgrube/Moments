@@ -186,8 +186,9 @@ WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
 #     E852, PRD 60 (1999) 092001
 #     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataPwd(
-  nmbEvents: int,
-  prodAmps:  Dict[int, Tuple[complex, ...]],
+  nmbEvents:         int,
+  prodAmps:          Dict[int, Tuple[complex, ...]],
+  acceptanceFormula: Optional[str] = None,
 ) -> Any:
   '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
   # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
@@ -204,9 +205,10 @@ def generateDataPwd(
       A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, TMath::DegToRad() * y, std::acos(x))"
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
-  # see Eqs. (28) for rank = 1
-  print("intensity =", " + ".join(incoherentTerms))
-  intensityFcn = ROOT.TF2("intensity", " + ".join(incoherentTerms), -1, +1, -180, +180)  # type: ignore
+  # see Eq. (28) for rank = 1
+  intensityFormula = f"({' + '.join(incoherentTerms)})" + ("" if acceptanceFormula is None else f" * ({acceptanceFormula})")
+  print(f"intensity = {intensityFormula}")
+  intensityFcn = ROOT.TF2("intensity", intensityFormula, -1, +1, -180, +180)  # type: ignore
   intensityFcn.SetTitle(";cos#theta;#phi [deg]")
   intensityFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
   intensityFcn.SetNpy(500)
@@ -422,6 +424,7 @@ if __name__ == "__main__":
 
   maxL      = 2
   nmbEvents = 100000
+  # acceptanceFormula = "1"
   acceptanceFormula = "1 - x * x"
   I = calcIntegralMatrix(generateData2BodyPS(nmbEvents, acceptanceFormula), maxL, nmbEvents)
   dim = (maxL + 1) * (maxL + 2) // 2
@@ -448,7 +451,6 @@ if __name__ == "__main__":
   plt.savefig("Iinv_abs.pdf")
   plt.figure().colorbar(plt.matshow(np.angle(ImatrixInv)))
   plt.savefig("Iinv_arg.pdf")
-  raise ValueError
 
   # get data
   nmbEvents = 1000
@@ -488,7 +490,7 @@ if __name__ == "__main__":
     ),
   }
   trueMoments: List[float] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
-  dataFrame = generateDataPwd(nmbEvents, prodAmps)
+  dataFrame = generateDataPwd(nmbEvents, prodAmps, acceptanceFormula)
   # print("!!!", dataFrame.AsNumpy())
 
   # plot data
