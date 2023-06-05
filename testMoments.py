@@ -337,6 +337,39 @@ def generate2BodyPhaseSpace(
              .Define("Phi",   "gRandom->Uniform(-TMath::Pi(), +TMath::Pi())")
 
 
+def generate2BodyAcceptedPhaseSpace(
+  nmbEvents: int,  # number of events to generate
+) -> Any:
+  '''Generated RDataFrame with two-body phase-space distribution for theta and phi weighted by acceptance'''
+  # construct acceptance function
+  formula = "1"
+  acceptanceFcn = ROOT.TF2("acceptance", formula, -1, +1, -180, +180)  # type: ignore
+  acceptanceFcn.SetTitle(";cos#theta;#phi [deg]")
+  acceptanceFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
+  acceptanceFcn.SetNpy(500)
+  acceptanceFcn.SetContour(100)
+  acceptanceFcn.SetMinimum(0)
+
+  # draw function
+  canv = ROOT.TCanvas()  # type: ignore
+  acceptanceFcn.Draw("COLZ")
+  canv.SaveAs(f"{acceptanceFcn.GetName()}.pdf")
+
+  # generate isotropic distributions in cos theta and phi and weight with acceptance function
+  # generate random data that follow intensity given by partial-wave amplitudes
+  treeName = "data"
+  fileName = f"{acceptanceFcn.GetName()}.root"
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  declareInCpp(acceptanceFcn = acceptanceFcn)
+  df.Define("point", "double CosTheta, Phi; PyVars::acceptanceFcn.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
+    .Define("Theta", "std::acos(point[0])") \
+    .Define("Phi",   "TMath::DegToRad() * point[1]") \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+                                   # noop filter before snapshot logs when event loop is running
+  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+
+
 def calcIntegralMatrix(
   phaseSpaceDataFrame: Any,
   maxL:                int,  # maximum orbital angular momentum
@@ -393,7 +426,9 @@ if __name__ == "__main__":
 
   maxL      = 2
   nmbEvents = 100000
-  I = calcIntegralMatrix(generate2BodyPhaseSpace(nmbEvents), maxL, nmbEvents)
+  # phaseSpaceData = generate2BodyPhaseSpace(nmbEvents)
+  phaseSpaceData = generate2BodyAcceptedPhaseSpace(nmbEvents)
+  I = calcIntegralMatrix(phaseSpaceData, maxL, nmbEvents)
   dim = (maxL + 1) * (maxL + 2) // 2
   Imatrix = np.zeros((dim, dim), dtype = complex)
   for L in range(maxL + 1):
@@ -410,13 +445,13 @@ if __name__ == "__main__":
   print(f"I = \n{np.array2string(Imatrix, precision = 3, suppress_small = True, max_line_width = 150)}")
   ImatrixInv = np.linalg.inv(Imatrix)
   print(f"I^-1 = \n{np.array2string(ImatrixInv, precision = 3, suppress_small = True, max_line_width = 150)}")
-  plt.matshow(ImatrixInv.real)
+  plt.figure().colorbar(plt.matshow(ImatrixInv.real))
   plt.savefig("real.pdf")
-  plt.matshow(ImatrixInv.imag)
+  plt.figure().colorbar(plt.matshow(ImatrixInv.imag))
   plt.savefig("imag.pdf")
-  plt.matshow(np.absolute(ImatrixInv))
+  plt.figure().colorbar(plt.matshow(np.absolute(ImatrixInv)))
   plt.savefig("abs.pdf")
-  plt.matshow(np.angle(ImatrixInv))
+  plt.figure().colorbar(plt.matshow(np.angle(ImatrixInv)))
   plt.savefig("arg.pdf")
   raise ValueError
 
