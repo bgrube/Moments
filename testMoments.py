@@ -327,23 +327,13 @@ def calculateWignerDMoments(
 
 
 def generate2BodyPhaseSpace(
-  nmbEvents: int,  # number of events to generate
+  nmbEvents:       int,          # number of events to generate
+  perfectDetector: bool = True,  # if true data are generated without acceptance effects
 ) -> Any:
-  '''Generated RDataFrame with two-body phase-space distribution for theta and phi'''
-  # generate isotropic distributions in cos theta and phi
-  # !Note! with multithreading enabled the random numbers seem to be the same in each thread
-  return ROOT.RDataFrame(nmbEvents) \
-             .Define("Theta", "std::acos(gRandom->Uniform(-1, +1))") \
-             .Define("Phi",   "gRandom->Uniform(-TMath::Pi(), +TMath::Pi())")
-
-
-def generate2BodyAcceptedPhaseSpace(
-  nmbEvents: int,  # number of events to generate
-) -> Any:
-  '''Generated RDataFrame with two-body phase-space distribution for theta and phi weighted by acceptance'''
+  '''Generates RDataFrame with theta and phi for two-body phase-space distribution, weighted by acceptance if perfectDetector is False'''
   # construct acceptance function
   formula = "1"
-  acceptanceFcn = ROOT.TF2("acceptance", formula, -1, +1, -180, +180)  # type: ignore
+  acceptanceFcn = ROOT.TF2("acceptance", "1" if perfectDetector else formula, -1, +1, -180, +180)  # type: ignore
   acceptanceFcn.SetTitle(";cos#theta;#phi [deg]")
   acceptanceFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
   acceptanceFcn.SetNpy(500)
@@ -358,9 +348,9 @@ def generate2BodyAcceptedPhaseSpace(
   # generate isotropic distributions in cos theta and phi and weight with acceptance function
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{acceptanceFcn.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  fileName = "phaseSpace.root"
   declareInCpp(acceptanceFcn = acceptanceFcn)
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   df.Define("point", "double CosTheta, Phi; PyVars::acceptanceFcn.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
     .Define("Theta", "std::acos(point[0])") \
     .Define("Phi",   "TMath::DegToRad() * point[1]") \
@@ -426,9 +416,7 @@ if __name__ == "__main__":
 
   maxL      = 2
   nmbEvents = 100000
-  # phaseSpaceData = generate2BodyPhaseSpace(nmbEvents)
-  phaseSpaceData = generate2BodyAcceptedPhaseSpace(nmbEvents)
-  I = calcIntegralMatrix(phaseSpaceData, maxL, nmbEvents)
+  I = calcIntegralMatrix(generate2BodyPhaseSpace(nmbEvents), maxL, nmbEvents)
   dim = (maxL + 1) * (maxL + 2) // 2
   Imatrix = np.zeros((dim, dim), dtype = complex)
   for L in range(maxL + 1):
