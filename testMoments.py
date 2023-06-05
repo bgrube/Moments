@@ -54,6 +54,7 @@ def generateDataLegPolLC(
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(legendrePolLC = legendrePolLC)
   df.Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
+    .Define("Theta",    "std::acos(CosTheta)") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `CosTheta` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
@@ -127,9 +128,11 @@ def generateDataSphHarmLC(
   fileName = f"{sphericalHarmLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(sphericalHarmLC = sphericalHarmLC)
-  df.Define("point",    "double CosTheta, Phi; PyVars::sphericalHarmLC.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
+  df.Define("point",    "double CosTheta, PhiDeg; PyVars::sphericalHarmLC.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
-    .Define("Phi",      "point[1]") \
+    .Define("Theta",    "std::acos(CosTheta)") \
+    .Define("PhiDeg",   "point[1]") \
+    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
@@ -146,7 +149,7 @@ def calculateSphHarmMoments(
   for L in range(2 * maxL + 2):
     for M in range(min(L, 2) + 1):
       # unnormalized moments
-      dfMoment = dataFrame.Define("sphericalHarm", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ROOT::Math::sph_legendre({L}, {M}, std::acos(CosTheta)) * std::cos({M} * TMath::DegToRad() * Phi)")
+      dfMoment = dataFrame.Define("sphericalHarm", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
       momentVal = dfMoment.Sum("sphericalHarm").GetValue()
       momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
       # normalize moments with respect to H(0 0)
@@ -220,9 +223,11 @@ def generateDataPwd(
   fileName = f"{intensityFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(intensityFcn = intensityFcn)
-  df.Define("point",    "double CosTheta, Phi; PyVars::intensityFcn.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
+  df.Define("point",    "double CosTheta, PhiDeg; PyVars::intensityFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
-    .Define("Phi",      "point[1]") \
+    .Define("Theta",    "std::acos(CosTheta)") \
+    .Define("PhiDeg",   "point[1]") \
+    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
@@ -296,7 +301,7 @@ def calculateWignerDMoment(
 ) -> Tuple[UFloat, UFloat]:  # real and imag part with uncertainty
   '''Calculates unnormalized moment of Wigner-D function D^L_{M 0}'''
   # unnormalized moment
-  dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, TMath::DegToRad() * Phi, std::acos(CosTheta))") \
+  dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, theta)") \
                       .Define("WignerDRe", "real(WignerD)") \
                       .Define("WignerDIm", "imag(WignerD)")
   momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()
@@ -351,9 +356,11 @@ def generateData2BodyPS(
   fileName = "phaseSpace.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(acceptanceFcn = acceptanceFcn)
-  df.Define("point", "double CosTheta, Phi; PyVars::acceptanceFcn.GetRandom2(CosTheta, Phi); std::vector<double> point = {CosTheta, Phi}; return point;") \
-    .Define("Theta", "std::acos(point[0])") \
-    .Define("Phi",   "TMath::DegToRad() * point[1]") \
+  df.Define("point", "double CosTheta, PhiDeg; PyVars::acceptanceFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
+    .Define("CosTheta", "point[0]") \
+    .Define("Theta",    "std::acos(CosTheta)") \
+    .Define("PhiDeg",   "point[1]") \
+    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
@@ -434,13 +441,13 @@ if __name__ == "__main__":
   ImatrixInv = np.linalg.inv(Imatrix)
   print(f"I^-1 = \n{np.array2string(ImatrixInv, precision = 3, suppress_small = True, max_line_width = 150)}")
   plt.figure().colorbar(plt.matshow(ImatrixInv.real))
-  plt.savefig("real.pdf")
+  plt.savefig("Iinv_real.pdf")
   plt.figure().colorbar(plt.matshow(ImatrixInv.imag))
-  plt.savefig("imag.pdf")
+  plt.savefig("Iinv_imag.pdf")
   plt.figure().colorbar(plt.matshow(np.absolute(ImatrixInv)))
-  plt.savefig("abs.pdf")
+  plt.savefig("Iinv_abs.pdf")
   plt.figure().colorbar(plt.matshow(np.angle(ImatrixInv)))
-  plt.savefig("arg.pdf")
+  plt.savefig("Iinv_arg.pdf")
   raise ValueError
 
   # get data
@@ -487,7 +494,7 @@ if __name__ == "__main__":
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   if "Phi" in dataFrame.GetColumnNames():
-    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "Phi")  # type: ignore
+    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
