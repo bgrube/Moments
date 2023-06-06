@@ -170,18 +170,19 @@ def calculateSphHarmMoments(
   else:
     dim = (2 * maxL + 2) * (2 * maxL + 3) // 2
     I = np.zeros((dim, dim), dtype = complex)
-    print(f"!!! {I.shape}")
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
         for Lp in range(2 * maxL + 2):
           for Mp in range(Lp + 1):
             I[L * (L + 1) // 2 + M][Lp * (Lp + 1) // 2 + Mp] = integralMatrix[(L, M, Lp, Mp)]
-    # eigenVals, eigenVecs = np.linalg.eig(I)
-    # print(f"eigenvalues  = {eigenVals}")
-    # print(f"eigenvectors = {eigenVecs}")
-    # print(f"determinant  = {np.linalg.det(I)}")
+    eigenVals, eigenVecs = np.linalg.eig(I)
+    print(f"I eigenvalues = {eigenVals}")
+    # print(f"I eigenvectors = {eigenVecs}")
+    # print(f"I determinant = {np.linalg.det(I)}")
     print(f"I = \n{np.array2string(I, precision = 3, suppress_small = True, max_line_width = 150)}")
     Iinv = np.linalg.inv(I)
+    # eigenVals, eigenVecs = np.linalg.eig(Iinv)
+    # print(f"I^-1 eigenvalues = {eigenVals}")
     print(f"I^-1 = \n{np.array2string(Iinv, precision = 3, suppress_small = True, max_line_width = 150)}")
     plt.figure().colorbar(plt.matshow(Iinv.real))
     plt.savefig("Iinv_real.pdf")
@@ -191,7 +192,7 @@ def calculateSphHarmMoments(
     plt.savefig("Iinv_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
     plt.savefig("Iinv_arg.pdf")
-    H_true = np.matmul(H_meas, Iinv)
+    H_true = np.matmul(Iinv, H_meas)
   # reformat output
   momentsTrue: List[Tuple[Tuple[int, ...], UFloat]] = []
   index = 0
@@ -438,7 +439,7 @@ def calcIntegralMatrix(
       for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
-          # print(f"!!!BAR I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
+          print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
   return I
 
 
@@ -469,21 +470,22 @@ if __name__ == "__main__":
   # get data
   nmbEvents = 1000
   nmbMcEvents = 100000
-  acceptanceFormula = "1"
-  # acceptanceFormula = "1 - x * x"
+  # acceptanceFormula = "1"
+  acceptanceFormula = "1 - x * x"
+  # acceptanceFormula = "2 - x * x"
 
   # # Legendre polynomials
   # chose parameters such that resulting linear combinations are positive definite
   # maxOrder = 5
   # # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
   # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
-  # dataFrame = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
+  # dataModel = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
 
   # # spherical harmonics
   # maxOrder = 2
   # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
   # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
-  # dataFrame = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+  # dataModel = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
 
   # normalize parameters 0th moment and pad with 0
   # trueMoments = [par / parameters[0] for par in parameters]
@@ -508,26 +510,30 @@ if __name__ == "__main__":
     ),
   }
   trueMoments: List[float] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
-  dataFrame = generateDataPwd(nmbEvents, prodAmps, acceptanceFormula)
-  # print("!!!", dataFrame.AsNumpy())
+  dataModel = generateDataPwd(nmbEvents, prodAmps, acceptanceFormula)
+  # print("!!!", dataModel.AsNumpy())
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
-  if "Phi" in dataFrame.GetColumnNames():
-    hist = dataFrame.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")  # type: ignore
+  if "Phi" in dataModel.GetColumnNames():
+    hist = dataModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
-    hist = dataFrame.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")  # type: ignore
+    hist = dataModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # calculate moments
-  integralMatrix = calcIntegralMatrix(generateData2BodyPS(nmbMcEvents, acceptanceFormula), maxL = maxOrder, nmbEvents = nmbMcEvents)
-  # calculateLegMoments(dataFrame, maxDegree = maxOrder)
-  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder,  integralMatrix = integralMatrix)
-  # calculateWignerDMoments(dataFrame, maxL = maxOrder)
+  dataAcceptedPS = generateData2BodyPS(nmbMcEvents, acceptanceFormula)
+  integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxL = maxOrder, nmbEvents = nmbMcEvents)
+  print("Moments of accepted phase-space data")
+  calculateSphHarmMoments(dataAcceptedPS, maxL = maxOrder, integralMatrix = integralMatrix)
+  # calculateLegMoments(dataModel, maxDegree = maxOrder)
+  print("Moments of data generated according to model")
+  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataModel, maxL = maxOrder, integralMatrix = integralMatrix)
+  # calculateWignerDMoments(dataModel, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
   hStack = ROOT.THStack("hCompare", "")  # type: ignore
