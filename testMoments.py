@@ -429,9 +429,9 @@ def calcIntegralMatrix(
     for M in range(L + 1):
       for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
-          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
   I: Dict[Tuple[int, ...], complex] = {}
   for L in range(2 * maxL + 2):
@@ -440,6 +440,8 @@ def calcIntegralMatrix(
         for Mp in range(Lp + 1):
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
           print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
+  # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "reY_0_0", "reY_1_0", "Y_0_0", "Y_1_0"])
+  # raise ValueError
   return I
 
 
