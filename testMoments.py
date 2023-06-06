@@ -140,25 +140,68 @@ def generateDataSphHarmLC(
 
 
 def calculateSphHarmMoments(
-  dataFrame: Any,
-  maxL:      int,  # maximum spin of decaying object
+  dataFrame:      Any,
+  maxL:           int,  # maximum spin of decaying object
+  integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
 ) -> List[Tuple[Tuple[int, ...], UFloat]]:
   '''Calculates moments of spherical harmonics'''
-  nmbEvents = dataFrame.Count().GetValue()
-  moments: List[Tuple[Tuple[int, ...], UFloat]] = []
+  # define moments
+  dfMoment = dataFrame
   for L in range(2 * maxL + 2):
-    for M in range(min(L, 2) + 1):
+    for M in range(L + 1):
       # unnormalized moments
-      dfMoment = dataFrame.Define("sphericalHarm", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
-      momentVal = dfMoment.Sum("sphericalHarm").GetValue()
-      momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev("sphericalHarm").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
+      dfMoment = dfMoment.Define(f"sphericalHarm_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
+  # calculate moments
+  nmbEvents = dataFrame.Count().GetValue()
+  H_meas = []
+  for L in range(2 * maxL + 2):
+    for M in range(L + 1):
+      momentVal = dfMoment.Sum(f"sphericalHarm_{L}_{M}").GetValue()
+      momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev(f"sphericalHarm_{L}_{M}").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
       # normalize moments with respect to H(0 0)
       norm = 1 / nmbEvents
       moment = norm * ufloat(momentVal, momentErr)  # type: ignore
-      print(f"H(L = {L}, M = {M}) = {moment}")
-      moments.append(((L, M), moment))
-  print(moments)
-  return moments
+      print(f"H_meas(L = {L}, M = {M}) = {moment}")
+      # H_meas.append(moment)
+      H_meas.append(norm * momentVal)
+  # correct for acceptance
+  if integralMatrix is None:
+    H_true = H_meas
+  else:
+    dim = (2 * maxL + 2) * (2 * maxL + 3) // 2
+    I = np.zeros((dim, dim), dtype = complex)
+    print(f"!!! {I.shape}")
+    for L in range(2 * maxL + 2):
+      for M in range(L + 1):
+        for Lp in range(2 * maxL + 2):
+          for Mp in range(Lp + 1):
+            I[L * (L + 1) // 2 + M][Lp * (Lp + 1) // 2 + Mp] = integralMatrix[(L, M, Lp, Mp)]
+    # eigenVals, eigenVecs = np.linalg.eig(I)
+    # print(f"eigenvalues  = {eigenVals}")
+    # print(f"eigenvectors = {eigenVecs}")
+    # print(f"determinant  = {np.linalg.det(I)}")
+    print(f"I = \n{np.array2string(I, precision = 3, suppress_small = True, max_line_width = 150)}")
+    Iinv = np.linalg.inv(I)
+    print(f"I^-1 = \n{np.array2string(Iinv, precision = 3, suppress_small = True, max_line_width = 150)}")
+    plt.figure().colorbar(plt.matshow(Iinv.real))
+    plt.savefig("Iinv_real.pdf")
+    plt.figure().colorbar(plt.matshow(Iinv.imag))
+    plt.savefig("Iinv_imag.pdf")
+    plt.figure().colorbar(plt.matshow(np.absolute(Iinv)))
+    plt.savefig("Iinv_abs.pdf")
+    plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
+    plt.savefig("Iinv_arg.pdf")
+    H_true = np.matmul(H_meas, Iinv)
+  # reformat output
+  momentsTrue: List[Tuple[Tuple[int, ...], UFloat]] = []
+  index = 0
+  for L in range(2 * maxL + 2):
+    for M in range(L + 1):
+      print(f"H_true(L = {L}, M = {M}) = {H_true[index]}")
+      momentsTrue.append(((L, M), H_true[index]))
+      index += 1
+  # print(momentsTrue)
+  return momentsTrue
 
 
 # C++ implementation of (complex conjugated) Wigner D function
@@ -280,7 +323,7 @@ def calculateTruePwdMoments(
   '''Calculates true moments for given production amplitudes'''
   moments: List[float] = []
   for L in range(2 * maxL + 2):
-    for M in range(min(L, 2) + 1):
+    for M in range(L + 1):
       moment: complex = calculateTruePwdMoment(prodAmps, L, M)
       if (abs(moment.imag) > 1e-15):
         print(f"Warning: non vanishing imaginary part for moment H({L} {M}) = {moment}")
@@ -289,7 +332,7 @@ def calculateTruePwdMoments(
   moments = [moment / moments[0] for moment in moments]
   index = 0
   for L in range(2 * maxL + 2):
-    for M in range(min(L, 2) + 1):
+    for M in range(L + 1):
       print(f"H_true(L = {L}, M = {M}) = {moments[index]}")
       index += 1
   print(moments)
@@ -372,29 +415,30 @@ def calcIntegralMatrix(
   phaseSpaceDataFrame: Any,
   maxL:                int,  # maximum orbital angular momentum
   nmbEvents:           int,  # number of events in RDataFrame
-) -> np.ndarray:
+) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics from provided phase-space data'''
   # define spherical harmonics
-  for L in range(maxL + 1):
+  for L in range(2 * maxL + 2):
     for M in range(L + 1):
       phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Y_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::exp(complexT(0.0, 1.0) * (double){M} * Phi)")  # complexT is a typedef for std::complex<double> in wignerD.C
       phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"reY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
       phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"imY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::sin({M} * Phi)")
   # define integral matrix
-  for L in range(maxL + 1):
+  for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      for Lp in range(maxL + 1):
+      for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
           # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
           phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
           # phaseSpaceData = phaseSpaceData.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"{4 * math.pi / nmbEvents} * std::sqrt((2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
-  I = np.zeros((maxL + 1, maxL + 1, maxL + 1, maxL + 1), dtype = complex)
-  for L in range(maxL + 1):
+  I: Dict[Tuple[int, ...], complex] = {}
+  for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      for Lp in range(maxL + 1):
+      for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
-          I[L][M][Lp][Mp] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
+          I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
+          # print(f"!!!BAR I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
   return I
 
 
@@ -422,38 +466,12 @@ if __name__ == "__main__":
   # ROOT.EnableImplicitMT(10)  # type: ignore
   setupPlotStyle()
 
-  maxL      = 2
-  nmbEvents = 100000
-  # acceptanceFormula = "1"
-  acceptanceFormula = "1 - x * x"
-  I = calcIntegralMatrix(generateData2BodyPS(nmbEvents, acceptanceFormula), maxL, nmbEvents)
-  dim = (maxL + 1) * (maxL + 2) // 2
-  Imatrix = np.zeros((dim, dim), dtype = complex)
-  for L in range(maxL + 1):
-    for M in range(L + 1):
-      for Lp in range(maxL + 1):
-        for Mp in range(Lp + 1):
-          print(f"I_{L}_{M}_{Lp}_{Mp} = {I[L][M][Lp][Mp]}")
-          # print(f"|I_{L}_{M}_{Lp}_{Mp}| = {abs(I[L][M][Lp][Mp])}")
-          Imatrix[L * (L + 1) // 2 + M][Lp * (Lp + 1) // 2 + Mp] = I[L][M][Lp][Mp]
-  eigenVals, eigenVecs = np.linalg.eig(Imatrix)
-  print(f"eigenvalues  = {eigenVals}")
-  print(f"eigenvectors = {eigenVecs}")
-  print(f"determinant  = {np.linalg.det(Imatrix)}")
-  print(f"I = \n{np.array2string(Imatrix, precision = 3, suppress_small = True, max_line_width = 150)}")
-  ImatrixInv = np.linalg.inv(Imatrix)
-  print(f"I^-1 = \n{np.array2string(ImatrixInv, precision = 3, suppress_small = True, max_line_width = 150)}")
-  plt.figure().colorbar(plt.matshow(ImatrixInv.real))
-  plt.savefig("Iinv_real.pdf")
-  plt.figure().colorbar(plt.matshow(ImatrixInv.imag))
-  plt.savefig("Iinv_imag.pdf")
-  plt.figure().colorbar(plt.matshow(np.absolute(ImatrixInv)))
-  plt.savefig("Iinv_abs.pdf")
-  plt.figure().colorbar(plt.matshow(np.angle(ImatrixInv)))
-  plt.savefig("Iinv_arg.pdf")
-
   # get data
   nmbEvents = 1000
+  nmbMcEvents = 100000
+  acceptanceFormula = "1"
+  # acceptanceFormula = "1 - x * x"
+
   # # Legendre polynomials
   # chose parameters such that resulting linear combinations are positive definite
   # maxOrder = 5
@@ -506,8 +524,9 @@ if __name__ == "__main__":
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # calculate moments
+  integralMatrix = calcIntegralMatrix(generateData2BodyPS(nmbMcEvents, acceptanceFormula), maxL = maxOrder, nmbEvents = nmbMcEvents)
   # calculateLegMoments(dataFrame, maxDegree = maxOrder)
-  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder)
+  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataFrame, maxL = maxOrder,  integralMatrix = integralMatrix)
   # calculateWignerDMoments(dataFrame, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
@@ -516,8 +535,9 @@ if __name__ == "__main__":
   # create histogram with measured values
   histMeas = ROOT.TH1D("Measured values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
   for index, moment in enumerate(moments):
-    histMeas.SetBinContent(index + 1, moment[1].nominal_value)
-    histMeas.SetBinError  (index + 1, moment[1].std_dev)
+    histMeas.SetBinContent(index + 1, moment[1].real)
+    # histMeas.SetBinContent(index + 1, moment[1].nominal_value)
+    # histMeas.SetBinError  (index + 1, moment[1].std_dev)
     histMeas.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
   histMeas.SetLineColor(ROOT.kRed)  # type: ignore
   histMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
@@ -542,7 +562,8 @@ if __name__ == "__main__":
 
   # draw residuals
   #TODO calculate and print chi^2 / ndf
-  residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
+  residuals = tuple(moment[1].real - trueMoments[index] for index, moment in enumerate(moments))
+  # residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
   histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
   chi2    = sum(tuple(residual**2 for residual in residuals))
   ndf     = len(residuals) - 1  # H(0, 0) has by definition a vanishing residual
