@@ -9,7 +9,8 @@
 			".config": "Properties",
 			"*.config": "properties",
 			"testGsl.C": "cpp",
-			"wignerD.C": "cpp"
+			"wignerD.C": "cpp",
+			"Covariance.C": "cpp"
 		}
 	}
 }

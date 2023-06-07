@@ -139,6 +139,9 @@ def generateDataSphHarmLC(
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
 
+# C++ implementation of RDataFrame custom action that calculates covariance between two columns
+ROOT.gROOT.LoadMacro("./Covariance.C++")  # type: ignore
+
 def calculateSphHarmMoments(
   dataFrame:      Any,
   maxL:           int,  # maximum spin of decaying object
@@ -158,15 +161,17 @@ def calculateSphHarmMoments(
     for M in range(L + 1):
       momentVal = dfMoment.Sum(f"sphericalHarm_{L}_{M}").GetValue()
       momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev(f"sphericalHarm_{L}_{M}").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
+      foo = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"sphericalHarm_{L}_{M}", f"sphericalHarm_{L}_{M}"]).GetValue()  # type: ignore
+      print(f"!!! {momentErr - math.sqrt(nmbEvents) * math.sqrt(foo)}")
       # normalize moments with respect to H(0 0)
       norm = 1 / nmbEvents
       moment = norm * ufloat(momentVal, momentErr)  # type: ignore
       print(f"H_meas(L = {L}, M = {M}) = {moment}")
       # H_meas.append(moment)
-      H_meas.append(norm * momentVal)
+      H_meas.append(momentVal)
   # correct for acceptance
   if integralMatrix is None:
-    H_true = H_meas
+    H_true = H_meas / nmbEvents
   else:
     dim = (2 * maxL + 2) * (2 * maxL + 3) // 2
     I = np.zeros((dim, dim), dtype = complex)
@@ -192,7 +197,7 @@ def calculateSphHarmMoments(
     plt.savefig("Iinv_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
     plt.savefig("Iinv_arg.pdf")
-    H_true = np.matmul(Iinv, H_meas)
+    H_true = np.matmul(Iinv, H_meas) / nmbEvents
   # reformat output
   momentsTrue: List[Tuple[Tuple[int, ...], UFloat]] = []
   index = 0
@@ -206,7 +211,8 @@ def calculateSphHarmMoments(
 
 
 # C++ implementation of (complex conjugated) Wigner D function
-ROOT.gROOT.LoadMacro("./wignerD.C++")
+# also provides complexT typedef for std::complex<double>
+ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
 
 WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
   # negative-reflectivity waves
@@ -439,7 +445,7 @@ def calcIntegralMatrix(
       for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
-          print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
+          # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
   # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "reY_0_0", "reY_1_0", "Y_0_0", "Y_1_0"])
   # raise ValueError
   return I
