@@ -197,7 +197,7 @@ def calculateSphHarmMoments(
     plt.savefig("Iinv_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
     plt.savefig("Iinv_arg.pdf")
-    H_true = np.matmul(Iinv, H_meas) / nmbEvents
+    H_true = Iinv @ H_meas / nmbEvents
   # reformat output
   momentsTrue: List[Tuple[Tuple[int, ...], UFloat]] = []
   index = 0
