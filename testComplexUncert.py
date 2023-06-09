@@ -21,25 +21,42 @@ def getRandomCovariance(
 
 
 def func(x: np.ndarray) -> np.ndarray:
-  '''function for which to perform uncertainty propagation'''
+  '''Function for which to perform uncertainty propagation'''
+  # return x
   return 2 * x
 
 
+def funcJacobian(x: np.ndarray) -> np.ndarray:
+  '''Returns Jacobian matrix of function evaluated at given point'''
+  # return np.identity(x.shape[0])
+  return 2 * np.identity(x.shape[0])
+
+
 if __name__ == "__main__":
+  # define means and covariance matrix of input values
   rng = np.random.default_rng(seed = 12345)
   nmbVars = 4
-  means = rng.random(nmbVars)
-  covMat = getRandomCovariance(nmbVars, rng)
-  print(f"in: mu = {means}, V = \n{covMat}")
-  # generate Gaussian samples
-  nmbSamples = 1000000
-  samples = rng.multivariate_normal(mean = means, cov = covMat, size = nmbSamples)
-  print(samples.shape, samples[0])
+  xMeans = rng.random(nmbVars)
+  xCovMat = getRandomCovariance(nmbVars, rng)
 
-  funcVals = np.array([func(x) for x in samples])
-  print(funcVals.shape, funcVals[0])
-  meansSample  = np.mean(funcVals, axis = 0)
-  covMatSample = np.cov(funcVals, rowvar = False)
-  print(f"out: mu = {meansSample}, V = \n{covMatSample}")
-  # print(f"delta V = \n{covMat - covMatSample}")
-  print(f"factor = \n{np.divide(covMatSample, covMat)}")
+  # perform Monte Carlo uncertainty propagation
+  print(f"in: mu = {xMeans}, V = \n{xCovMat}")
+  # generate samples from multi-variate Gaussian
+  nmbSamples = 1000000
+  samples = rng.multivariate_normal(mean = xMeans, cov = xCovMat, size = nmbSamples)
+  print(samples.shape, samples[0])
+  # function values for each sample
+  ySamples = np.array([func(x) for x in samples])
+  print(ySamples.shape, ySamples[0])
+  # means and covariance matrix of function values
+  yMeansMc  = np.mean(ySamples, axis = 0)
+  yCovMatMc = np.cov(ySamples, rowvar = False)
+  print(f"MC: mu = {yMeansMc}, V = \n{yCovMatMc}")
+  print(f"factor = \n{np.divide(yCovMatMc, xCovMat)}")
+
+  # perform analytic uncertainty propagation
+  yMeans  = func(xMeans)
+  J = funcJacobian(xMeans)
+  yCovMat = J.T @ xCovMat @ J
+  print(f"analytic: mu = {yMeans}, V = \n{yCovMat}")
+  print(f"factor = \n{np.divide(yCovMat, xCovMat)}")

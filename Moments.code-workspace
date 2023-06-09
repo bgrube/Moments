@@ -11,6 +11,7 @@
 			"testGsl.C": "cpp",
 			"wignerD.C": "cpp",
 			"Covariance.C": "cpp"
-		}
+		},
+		"svn.ignoreMissingSvnWarning": true
 	}
 }
