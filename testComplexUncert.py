@@ -70,12 +70,12 @@ def testRealVectorCase(
   print(f"factor = \n{np.divide(yCovMat, yCovMatMc)}")
 
 
-def complexFromRealVector(xReal: npt.NDArray) -> npt.NDArray[np.complex128]:
+def realVecToComplexVec(xReal: npt.NDArray) -> npt.NDArray[np.complex128]:
   '''transforms R^2n vector of form [Re_0, Im_0, Re_1, Im_1, ...] to C^n vector [Re_0 + j Im_0, Re_1 + j Im_1, ...]'''
   return xReal[0::2] + 1j * xReal[1::2]
 
 
-def complexFromRealCov(
+def realCovToComplexCov(
   covReal:      npt.NDArray,
   pseudoCovMat: bool = False,
 ) -> npt.NDArray[np.complex128]:
@@ -88,10 +88,54 @@ def complexFromRealCov(
   # see https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrix_and_pseudo-covariance_matrix
   # and https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrices_of_real_and_imaginary_parts
   n = covReal.shape[0] // 2
+  V_Re_Re = covReal[0::2, 0::2]
+  V_Im_Im = covReal[1::2, 1::2]
+  V_Re_Im = covReal[0::2, 1::2]
+  V_Im_Re = covReal[1::2, 0::2]
   if pseudoCovMat:
-    return covReal[:n, :n] - covReal[n:, n:] + 1j * (covReal[:n, n:] + covReal[n:, :n])
+    return V_Re_Re - V_Im_Im + 1j * (V_Im_Re + V_Re_Im)
   else:
-    return covReal[:n, :n] + covReal[n:, n:] + 1j * (covReal[:n, n:] - covReal[n:, :n])
+    return V_Re_Re + V_Im_Im + 1j * (V_Im_Re - V_Re_Im)
+
+
+def realCovToComplexCov2(
+  covReal:      npt.NDArray,
+  pseudoCovMat: bool = False,
+) -> npt.NDArray[np.complex128]:
+  '''transforms R^{2n x 2n} covariance with block form
+  [[V(Re, Re),   V(Re, Im)]
+   [V(Re, Im)^T, V(Im, Im)]]
+  to either the Hermitian covariance matrix or the pseudo-covariance matrix, both being C^{n x n}
+  '''
+  # see https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrix_and_pseudo-covariance_matrix
+  # and https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrices_of_real_and_imaginary_parts
+  n = covReal.shape[0] // 2
+  V_Re_Re = covReal[:n, :n]
+  V_Im_Im = covReal[n:, n:]
+  V_Re_Im = covReal[:n, n:]
+  V_Im_Re = covReal[n:, :n]
+  if pseudoCovMat:
+    return V_Re_Re - V_Im_Im + 1j * (V_Im_Re + V_Re_Im)
+  else:
+    return V_Re_Re + V_Im_Im + 1j * (V_Im_Re - V_Re_Im)
+
+
+def complexCovToRealCov2(
+  covHermit: npt.NDArray[np.complex128],
+  covPseudo: npt.NDArray[np.complex128],
+) -> npt.NDArray:
+  '''transforms the C^{n x n} Hermitian and pseudo-covariance matrices into a R^{2n x 2n} covariance matrix with block form
+  [[V(Re, Re),   V(Re, Im)]
+   [V(Re, Im)^T, V(Im, Im)]]
+  '''
+  V_Re_Re = (np.real(covHermit) + np.real(covPseudo)) / 2
+  V_Im_Im = (np.real(covHermit) - np.real(covPseudo)) / 2
+  V_Re_Im = (np.imag(covPseudo) - np.imag(covHermit)) / 2
+  V_Im_Re = (np.imag(covPseudo) + np.imag(covHermit)) / 2
+  return np.block([
+    [V_Re_Re, V_Re_Im],
+    [V_Im_Re, V_Im_Im],
+  ])
 
 
 def complexFunc(x: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
@@ -153,26 +197,32 @@ if __name__ == "__main__":
 
   # test complex-valued vectors
   # perform Monte Carlo uncertainty propagation
-  xMeansComplex = complexFromRealVector(xMeans)
+  xMeansComplex = realVecToComplexVec(xMeans)
   print(f"in: mu = {xMeans} = {xMeansComplex}, V = \n{xCovMat}")
   # print(f"A = \n{A}")
   # generate samples from multi-variate Gaussian
-  nmbSamples = 1000000
+  nmbSamples = 100000
   samples = RNG.multivariate_normal(mean = xMeans, cov = xCovMat, size = nmbSamples)
   print(samples.shape, samples[0])
   # function values for each sample
-  ySamples = np.array([complexFunc(complexFromRealVector(x)) for x in samples])
+  ySamples = np.array([complexFunc(realVecToComplexVec(x)) for x in samples])
   print(ySamples.shape, ySamples[0])
   # means and covariance matrix of function values
   yMeansMc = np.mean(ySamples, axis = 0)
   yCovMatHermitMc = covMatrixComplex(ySamples)
   yCovMatPseudoMc = covMatrixComplex(ySamples, pseudoCovMat = True)
   # print(f"factor = \n{np.divide(yCovMatMc, xCovMat)}")
-  xCovMatHermit = complexFromRealCov(xCovMat)
-  xCovMatPseudo = complexFromRealCov(xCovMat, pseudoCovMat = True)
+  xCovMatHermit = realCovToComplexCov(xCovMat)
+  xCovMatPseudo = realCovToComplexCov(xCovMat, pseudoCovMat = True)
   # xCovMatPseudo = complexFromRealCov(xCovMat, pseudoCovMat = True)
-  print(f"MC: mu = {yMeansMc}\nV_y_Hermit = \n{yCovMatHermitMc}")
-  print(f"V_x_Hermit = \n{xCovMatHermit}")
-  print(f"foo = \n{np.divide(yCovMatHermitMc, np.cov(ySamples, rowvar = False))}")
+  print(f"MC: mu = {yMeansMc}")
+  print(f"V_y_Hermit = \n{np.real_if_close(yCovMatHermitMc, tol = 1000)}")
+  print(f"V_y_Hermit / V_x_Hermit = \n{np.divide(yCovMatHermitMc, xCovMatHermit)}")
+  print(f"V_y_Hermit / np.cov() = \n{np.divide(yCovMatHermitMc, np.cov(ySamples, rowvar = False))}")
   print(f"V_y_pseudo = \n{yCovMatPseudoMc}")
-  print(f"V_x_pseudo = \n{xCovMatPseudo}")
+  print(f"V_y_pseudo / V_x_pseudo = \n{np.divide(yCovMatPseudoMc, xCovMatPseudo)}")
+
+  foo = complexCovToRealCov2(xCovMatHermit, xCovMatPseudo)
+  print(f"!!! \n{foo}")
+  print(f"!!! \n{np.divide(xCovMatHermit, realCovToComplexCov2(foo))}")
+  print(f"!!! \n{np.divide(xCovMatPseudo, realCovToComplexCov2(foo, pseudoCovMat = True))}")
