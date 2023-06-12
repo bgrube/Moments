@@ -98,6 +98,23 @@ def realCovToComplexCov(
     return V_Re_Re + V_Im_Im + 1j * (V_Im_Re - V_Re_Im)
 
 
+def complexCovToRealCov(
+  covHermit: npt.NDArray[np.complex128],
+  covPseudo: npt.NDArray[np.complex128],
+) -> npt.NDArray:
+  '''transforms the C^{n x n} Hermitian and pseudo-covariance matrices into a R^{2n x 2n} covariance matrix with block form
+  [[V(Re, Re),   V(Re, Im)]
+   [V(Re, Im)^T, V(Im, Im)]]
+  '''
+  n = covHermit.shape[0]
+  covReal = np.zeros((2 * n, 2 * n))
+  covReal[0::2, 0::2] = (np.real(covHermit) + np.real(covPseudo)) / 2  # V_Re_Re
+  covReal[1::2, 1::2] = (np.real(covHermit) - np.real(covPseudo)) / 2  # V_Im_Im
+  covReal[0::2, 1::2] = (np.imag(covPseudo) - np.imag(covHermit)) / 2  # V_Re_Im
+  covReal[1::2, 0::2] = (np.imag(covPseudo) + np.imag(covHermit)) / 2  # V_Im_Re
+  return covReal
+
+
 def realCovToComplexCov2(
   covReal:      npt.NDArray,
   pseudoCovMat: bool = False,
@@ -201,7 +218,7 @@ if __name__ == "__main__":
   print(f"in: mu = {xMeans} = {xMeansComplex}, V = \n{xCovMat}")
   # print(f"A = \n{A}")
   # generate samples from multi-variate Gaussian
-  nmbSamples = 100000
+  nmbSamples = 1000000
   samples = RNG.multivariate_normal(mean = xMeans, cov = xCovMat, size = nmbSamples)
   print(samples.shape, samples[0])
   # function values for each sample
@@ -222,7 +239,7 @@ if __name__ == "__main__":
   print(f"V_y_pseudo = \n{yCovMatPseudoMc}")
   print(f"V_y_pseudo / V_x_pseudo = \n{np.divide(yCovMatPseudoMc, xCovMatPseudo)}")
 
-  foo = complexCovToRealCov2(xCovMatHermit, xCovMatPseudo)
-  print(f"!!! \n{foo}")
-  print(f"!!! \n{np.divide(xCovMatHermit, realCovToComplexCov2(foo))}")
-  print(f"!!! \n{np.divide(xCovMatPseudo, realCovToComplexCov2(foo, pseudoCovMat = True))}")
+  foo = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
+  print(f"!!! \n{np.divide(foo, xCovMat)}")
+  print(f"!!! \n{np.divide(xCovMatHermit, realCovToComplexCov(foo))}")
+  print(f"!!! \n{np.divide(xCovMatPseudo, realCovToComplexCov(foo, pseudoCovMat = True))}")
