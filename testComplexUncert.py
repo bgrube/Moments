@@ -233,13 +233,21 @@ if __name__ == "__main__":
   xCovMatPseudo = realCovToComplexCov(xCovMat, pseudoCovMat = True)
   # xCovMatPseudo = complexFromRealCov(xCovMat, pseudoCovMat = True)
   print(f"MC: mu = {yMeansMc}")
-  print(f"V_y_Hermit = \n{np.real_if_close(yCovMatHermitMc, tol = 1000)}")
+  print(f"V_y_Hermit = \n{yCovMatHermitMc}")
   print(f"V_y_Hermit / V_x_Hermit = \n{np.divide(yCovMatHermitMc, xCovMatHermit)}")
   print(f"V_y_Hermit / np.cov() = \n{np.divide(yCovMatHermitMc, np.cov(ySamples, rowvar = False))}")
   print(f"V_y_pseudo = \n{yCovMatPseudoMc}")
   print(f"V_y_pseudo / V_x_pseudo = \n{np.divide(yCovMatPseudoMc, xCovMatPseudo)}")
 
-  foo = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
-  print(f"!!! \n{np.divide(foo, xCovMat)}")
-  print(f"!!! \n{np.divide(xCovMatHermit, realCovToComplexCov(foo))}")
-  print(f"!!! \n{np.divide(xCovMatPseudo, realCovToComplexCov(foo, pseudoCovMat = True))}")
+  # xCovMatReal = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
+  # print(f"!!! \n{np.divide(xCovMatReal, xCovMat)}")
+  # print(f"!!! \n{np.divide(xCovMatHermit, realCovToComplexCov(xCovMatReal))}")
+  # print(f"!!! \n{np.divide(xCovMatPseudo, realCovToComplexCov(xCovMatReal, pseudoCovMat = True))}")
+
+  # augmented vectors and matrices
+  yCovMatAugMc = np.block([
+    [yCovMatHermitMc, yCovMatPseudoMc],
+    [np.conjugate(yCovMatPseudoMc), np.conjugate(yCovMatHermitMc)],
+  ])
+  ySamplesAug = np.block([ySamples, np.conjugate(ySamples)])
+  print(f"V_y_Aug / np.cov() = \n{np.real_if_close(np.divide(yCovMatAugMc, np.cov(ySamplesAug, rowvar = False)), tol = 100)}")
