@@ -53,21 +53,22 @@ def testRealVectorCase(
   nmbSamples = 1000000
   samples = RNG.multivariate_normal(mean = xMeans, cov = xCovMat, size = nmbSamples)
   print(samples.shape, samples[0])
-  # function values for each sample
+  # calculate function values for each sample
   ySamples = np.array([realFunc(x) for x in samples])
   print(ySamples.shape, ySamples[0])
-  # means and covariance matrix of function values
+  # calculate means and covariance matrix from function values
   yMeansMc  = np.mean(ySamples, axis = 0)
   yCovMatMc = np.cov(ySamples, rowvar = False)
-  print(f"MC: mu = {yMeansMc}, V = \n{yCovMatMc}")
-  print(f"factor = \n{np.divide(yCovMatMc, xCovMat)}")
+  print(f"MC: mu = {yMeansMc}")
+  print(f"V = \n{yCovMatMc}")
+  print(f"ratio = \n{yCovMatMc / xCovMat}")
 
   # perform analytic uncertainty propagation
   yMeans  = realFunc(xMeans)
   J       = realFuncJacobian(xMeans)
   yCovMat = J @ (xCovMat @ J.T)  #!Note! @ is left-associative
   print(f"analytic: mu = {yMeans}, V = \n{yCovMat}")
-  print(f"factor = \n{np.divide(yCovMat, yCovMatMc)}")
+  print(f"ratio = \n{yCovMat / yCovMatMc}")
 
 
 def realVecToComplexVec(xReal: npt.NDArray) -> npt.NDArray[np.complex128]:
@@ -87,7 +88,6 @@ def realCovToComplexCov(
   '''
   # see https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrix_and_pseudo-covariance_matrix
   # and https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrices_of_real_and_imaginary_parts
-  n = covReal.shape[0] // 2
   V_Re_Re = covReal[0::2, 0::2]
   V_Im_Im = covReal[1::2, 1::2]
   V_Re_Im = covReal[0::2, 1::2]
@@ -155,16 +155,6 @@ def complexCovToRealCov2(
   ])
 
 
-def complexFunc(x: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
-  '''Function for which to perform uncertainty propagation'''
-  return x
-
-
-def complexFuncJacobian(x: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
-  '''Returns Jacobian matrix of function evaluated at given point'''
-  return np.identity(x.shape[0], dtype = np.complex128)
-
-
 def covariance(
   x:    npt.NDArray,
   y:    npt.NDArray,
@@ -189,24 +179,63 @@ def covMatrixReal(x: npt.NDArray) -> npt.NDArray:
   return cov
 
 
+#TODO unify real and complex case
 def covMatrixComplex(
-  x:            npt.NDArray[np.complex128],
+  z:            npt.NDArray[np.complex128],
   pseudoCovMat: bool = False,
 ) -> npt.NDArray[np.complex128]:
   '''Computes Hermitian or pseudo-covariance matrix for C^n vector x of random variables'''
-  n = x.shape[1]
+  n = z.shape[1]
   cov = np.zeros((n, n), dtype = np.complex128)
-  xSums = np.sum(x, axis = 0)
+  xSums = np.sum(z, axis = 0)
   for i in range(n):
     for j in range(n):
-      cov[i, j] = covariance(x[:, i], x[:, j], xSums[i], xSums[j]) if pseudoCovMat \
-                  else covariance(x[:, i], np.conjugate(x[:, j]), xSums[i], np.conjugate(xSums[j]))  # identical to np.cov()
+      cov[i, j] = covariance(z[:, i], z[:, j], xSums[i], xSums[j]) if pseudoCovMat \
+                  else covariance(z[:, i], np.conjugate(z[:, j]), xSums[i], np.conjugate(xSums[j]))  # identical to np.cov(x, rowvar = False)
   return cov
+
+
+Acomplex = A[0::2, 0::2] + 1j * A[1::2, 1::2]
+def complexFunc(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
+  '''Function for which to perform uncertainty propagation'''
+  # return z
+  # return np.conjugate(z)
+  # return 2 * z
+  # return (2 + 2j) * z
+  # return Acomplex @ z
+  # return z * z
+  return z * np.conjugate(z)
+
+
+def complexFuncJacobian(z: npt.NDArray[np.complex128]) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
+  '''Returns Jacobian matrix of function evaluated at given point'''
+  # # f(z) = z
+  # J     = np.identity(z.shape[0], dtype = np.complex128)
+  # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # # f(z) = z^*
+  # J     = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # Jconj = np.identity(z.shape[0], dtype = np.complex128)
+  # # f(z) = 2 * z
+  # J = 2 * np.identity(z.shape[0], dtype = np.complex128)
+  # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # # f(z) = (1 + 2j) * z
+  # J = (2 + 2j) * np.identity(z.shape[0], dtype = np.complex128)
+  # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # # f(z) = Acomplex @ z
+  # J = Acomplex
+  # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # # f(z) = z * z
+  # J = 2 * z * np.identity(z.shape[0], dtype = np.complex128)
+  # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # f(z) = z * np.conjugate(z)
+  J = np.conjugate(z) * np.identity(z.shape[0], dtype = np.complex128)
+  Jconj = z * np.identity(z.shape[0], dtype = np.complex128)
+  return J, Jconj
 
 
 if __name__ == "__main__":
   # define means and covariance matrix of input values
-  xMeans = RNG.random(NMB_VARS)
+  xMeans = 10 + RNG.random(NMB_VARS)
   xCovMat = getRandomCovarianceReal(NMB_VARS, RNG)
 
   # test real-valued vectors
@@ -216,38 +245,56 @@ if __name__ == "__main__":
   # perform Monte Carlo uncertainty propagation
   xMeansComplex = realVecToComplexVec(xMeans)
   print(f"in: mu = {xMeans} = {xMeansComplex}, V = \n{xCovMat}")
-  # print(f"A = \n{A}")
+  print(f"A = \n{Acomplex}")
   # generate samples from multi-variate Gaussian
   nmbSamples = 1000000
   samples = RNG.multivariate_normal(mean = xMeans, cov = xCovMat, size = nmbSamples)
   print(samples.shape, samples[0])
-  # function values for each sample
+
+  # Hermitian and pseudo-covariance matrices
+  # calculate function values for each sample
   ySamples = np.array([complexFunc(realVecToComplexVec(x)) for x in samples])
   print(ySamples.shape, ySamples[0])
-  # means and covariance matrix of function values
+  # calculate means and covariance matrices from function values
   yMeansMc = np.mean(ySamples, axis = 0)
-  yCovMatHermitMc = covMatrixComplex(ySamples)
+  yCovMatHermitMc = np.cov(ySamples, rowvar = False)
   yCovMatPseudoMc = covMatrixComplex(ySamples, pseudoCovMat = True)
-  # print(f"factor = \n{np.divide(yCovMatMc, xCovMat)}")
-  xCovMatHermit = realCovToComplexCov(xCovMat)
-  xCovMatPseudo = realCovToComplexCov(xCovMat, pseudoCovMat = True)
-  # xCovMatPseudo = complexFromRealCov(xCovMat, pseudoCovMat = True)
+  xCovMatHermit   = realCovToComplexCov(xCovMat)
+  xCovMatPseudo   = realCovToComplexCov(xCovMat, pseudoCovMat = True)
   print(f"MC: mu = {yMeansMc}")
   print(f"V_y_Hermit = \n{yCovMatHermitMc}")
-  print(f"V_y_Hermit / V_x_Hermit = \n{np.divide(yCovMatHermitMc, xCovMatHermit)}")
-  print(f"V_y_Hermit / np.cov() = \n{np.divide(yCovMatHermitMc, np.cov(ySamples, rowvar = False))}")
+  print(f"ratio = \n{yCovMatHermitMc, xCovMatHermit}")
   print(f"V_y_pseudo = \n{yCovMatPseudoMc}")
-  print(f"V_y_pseudo / V_x_pseudo = \n{np.divide(yCovMatPseudoMc, xCovMatPseudo)}")
-
-  # xCovMatReal = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
-  # print(f"!!! \n{np.divide(xCovMatReal, xCovMat)}")
-  # print(f"!!! \n{np.divide(xCovMatHermit, realCovToComplexCov(xCovMatReal))}")
-  # print(f"!!! \n{np.divide(xCovMatPseudo, realCovToComplexCov(xCovMatReal, pseudoCovMat = True))}")
+  print(f"ratio = \n{yCovMatPseudoMc, xCovMatPseudo}")
+  # test conversion routines
+  xCovMatReal = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
+  print(f"complexCovToRealCov() ratio = \n{xCovMatReal, xCovMat}")
+  print(f"realCovToComplexCov(Hermitian) ratio = \n{xCovMatHermit / realCovToComplexCov(xCovMatReal)}")
+  print(f"realCovToComplexCov(Pseudo) ratio = \n{xCovMatPseudo, realCovToComplexCov(xCovMatReal, pseudoCovMat = True)}")
 
   # augmented vectors and matrices
-  yCovMatAugMc = np.block([
+  ySamplesAug = np.block([ySamples, np.conjugate(ySamples)])
+  yCovMatAugMc = np.cov(ySamplesAug, rowvar = False)
+  print(f"V_y_Aug = \n{yCovMatAugMc}")
+  print(f"""ratio = \n{np.real_if_close(yCovMatAugMc / np.block([
     [yCovMatHermitMc, yCovMatPseudoMc],
     [np.conjugate(yCovMatPseudoMc), np.conjugate(yCovMatHermitMc)],
+  ]), tol = 1000)}""")
+  xCovMatAug = np.block([
+    [xCovMatHermit, xCovMatPseudo],
+    [np.conjugate(xCovMatPseudo), np.conjugate(xCovMatHermit)],
   ])
-  ySamplesAug = np.block([ySamples, np.conjugate(ySamples)])
-  print(f"V_y_Aug / np.cov() = \n{np.real_if_close(np.divide(yCovMatAugMc, np.cov(ySamplesAug, rowvar = False)), tol = 100)}")
+
+  # perform analytic uncertainty propagation
+  yMeans = complexFunc(realVecToComplexVec(xMeans))
+  J, Jconj = complexFuncJacobian(realVecToComplexVec(xMeans))
+  Jaug = np.block([
+    [J, Jconj],
+    [np.conjugate(Jconj), np.conjugate(J)],
+  ])
+  print(f"!!! \n{Jaug}")
+  yCovMatAug = Jaug @ (xCovMatAug @ np.asmatrix(Jaug).H)  #!Note! @ is left-associative
+  print(f"analytic: mu = {yMeans}")
+  print(f"ratio = \n{yMeans / yMeansMc}")
+  print(f"V_y_Aug = \n{yCovMatAug}")
+  print(f"ratio = \n{yCovMatAug / yCovMatAugMc}")
