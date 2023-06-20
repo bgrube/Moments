@@ -170,13 +170,10 @@ def covariance(
 
 def autoCovMatrix(z: npt.NDArray) -> npt.NDArray:
   '''Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov()'''
-  n = z.shape[1]
-  cov = np.zeros((n, n), dtype = z.dtype)
-  zSums = np.sum(z, axis = 0)
-  for i in range(n):
-    for j in range(n):
-      cov[i, j] = covariance(z[:, i], z[:, j], zSums[i], zSums[j])
-  return cov
+  # columns of z represent variables; rows are observations
+  Z = z.T
+  deltaZ = Z - Z.mean(1, keepdims = True)
+  return (deltaZ @ np.asmatrix(deltaZ).H) / (Z.shape[1] - 1)
 
 
 def crossCovMatrix(
@@ -184,14 +181,12 @@ def crossCovMatrix(
   y: npt.NDArray,
 ) -> npt.NDArray:
   '''Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov()'''
-  n = x.shape[1]
-  cov = np.zeros((n, n), dtype = x.dtype)
-  xSums = np.sum(x, axis = 0)
-  ySums = np.sum(y, axis = 0)
-  for i in range(n):
-    for j in range(n):
-      cov[i, j] = covariance(x[:, i], y[:, j], xSums[i], ySums[j])
-  return cov
+  # columns of x and y represent variables; rows are observations
+  X = x.T
+  Y = y.T
+  deltaX = X - X.mean(1, keepdims = True)
+  deltaY = Y - Y.mean(1, keepdims = True)
+  return (deltaX @ np.asmatrix(deltaY).H) / (X.shape[1] - 1)
 
 
 Acomplex = A[0::2, 0::2] + 1j * A[1::2, 1::2]
@@ -262,7 +257,13 @@ if __name__ == "__main__":
   # yCovMatHermitMc   = crossCovMatrix(ySamples, ySamples)
   # yCovMatHermitMcNp = np.cov(ySamples, ySamples, rowvar = False)[:n, n:]
   yCovMatPseudoMc   = crossCovMatrix(ySamples, np.conjugate(ySamples))
-  yCovMatPseudoMcNp = np.cov(ySamples, np.conjugate(ySamples), rowvar = False)[:n, n:]  # unfortunately np.cov() stacks the two given vectors and also calculates the auto-covariance matrices
+  # surprisingly, instead of calculating the cross covariance V[x, y]
+  # np.cov(x, y) stacks x on top of y calculates the full covariance matrix
+  # with the block form:
+  # [[V[x],    V[x, y]]
+  #  [V[y, x], V[y]]]
+  # see https://github.com/numpy/numpy/issues/2623
+  yCovMatPseudoMcNp = np.cov(ySamples, np.conjugate(ySamples), rowvar = False)[:n, n:]
   xCovMatHermit     = realCovToComplexCov(xCovMat)
   xCovMatPseudo     = realCovToComplexCov(xCovMat, pseudoCovMat = True)
   print(f"MC: mu = {yMeansMc}")
