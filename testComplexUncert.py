@@ -158,60 +158,59 @@ def complexCovToRealCov2(
 def covariance(
   x:    npt.NDArray,
   y:    npt.NDArray,
-  xSum: float,
-  ySum: float,
+  xSum: complex,
+  ySum: complex,
 ) -> npt.NDArray:
   '''Computes covariance of data samples of random variables x and y'''
   N = x.shape[0]
-  # xySum = x.T @ y
-  # return (1 / (N - 1)) * (xySum - xSum * ySum / N)
-  return (1 / (N - 1)) * ((x - xSum / N).T @ (y - ySum / N))
+  xMean = xSum / N
+  yMean = ySum / N
+  return (1 / (N - 1)) * ((x - xMean) @ np.asmatrix(y - yMean).H)
 
 
-def covMatrixReal(x: npt.NDArray) -> npt.NDArray:
-  '''Computes covariance matrix for R^n vector x of random variables; identical to np.cov()'''
-  n = x.shape[1]
-  cov = np.zeros((n, n))
-  xSums = np.sum(x, axis = 0)
+def autoCovMatrix(z: npt.NDArray) -> npt.NDArray:
+  '''Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov()'''
+  n = z.shape[1]
+  cov = np.zeros((n, n), dtype = z.dtype)
+  zSums = np.sum(z, axis = 0)
   for i in range(n):
     for j in range(n):
-      cov[i, j] = covariance(x[:, i], x[:, j], xSums[i], xSums[j])
+      cov[i, j] = covariance(z[:, i], z[:, j], zSums[i], zSums[j])
   return cov
 
 
-#TODO unify real and complex case
-def covMatrixComplex(
-  z:            npt.NDArray[np.complex128],
-  pseudoCovMat: bool = False,
-) -> npt.NDArray[np.complex128]:
-  '''Computes Hermitian or pseudo-covariance matrix for C^n vector x of random variables'''
-  n = z.shape[1]
-  cov = np.zeros((n, n), dtype = np.complex128)
-  xSums = np.sum(z, axis = 0)
+def crossCovMatrix(
+  x: npt.NDArray,
+  y: npt.NDArray,
+) -> npt.NDArray:
+  '''Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov()'''
+  n = x.shape[1]
+  cov = np.zeros((n, n), dtype = x.dtype)
+  xSums = np.sum(x, axis = 0)
+  ySums = np.sum(y, axis = 0)
   for i in range(n):
     for j in range(n):
-      cov[i, j] = covariance(z[:, i], z[:, j], xSums[i], xSums[j]) if pseudoCovMat \
-                  else covariance(z[:, i], np.conjugate(z[:, j]), xSums[i], np.conjugate(xSums[j]))  # identical to np.cov(x, rowvar = False)
+      cov[i, j] = covariance(x[:, i], y[:, j], xSums[i], ySums[j])
   return cov
 
 
 Acomplex = A[0::2, 0::2] + 1j * A[1::2, 1::2]
 def complexFunc(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
   '''Function for which to perform uncertainty propagation'''
-  # return z
+  return z
   # return np.conjugate(z)
   # return 2 * z
   # return (2 + 2j) * z
   # return Acomplex @ z
   # return z * z
-  return z * np.conjugate(z)
+  # return z * np.conjugate(z)
 
 
 def complexFuncJacobian(z: npt.NDArray[np.complex128]) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
   '''Returns Jacobian matrix of function evaluated at given point'''
-  # # f(z) = z
-  # J     = np.identity(z.shape[0], dtype = np.complex128)
-  # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
+  # f(z) = z
+  J     = np.identity(z.shape[0], dtype = np.complex128)
+  Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
   # # f(z) = z^*
   # J     = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
   # Jconj = np.identity(z.shape[0], dtype = np.complex128)
@@ -227,9 +226,9 @@ def complexFuncJacobian(z: npt.NDArray[np.complex128]) -> tuple[npt.NDArray[np.c
   # # f(z) = z * z
   # J = 2 * z * np.identity(z.shape[0], dtype = np.complex128)
   # Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
-  # f(z) = z * np.conjugate(z)
-  J = np.conjugate(z) * np.identity(z.shape[0], dtype = np.complex128)
-  Jconj = z * np.identity(z.shape[0], dtype = np.complex128)
+  # # f(z) = z * np.conjugate(z)
+  # J = np.conjugate(z) * np.identity(z.shape[0], dtype = np.complex128)
+  # Jconj = z * np.identity(z.shape[0], dtype = np.complex128)
   return J, Jconj
 
 
@@ -254,23 +253,34 @@ if __name__ == "__main__":
   # Hermitian and pseudo-covariance matrices
   # calculate function values for each sample
   ySamples = np.array([complexFunc(realVecToComplexVec(x)) for x in samples])
+  n = ySamples.shape[1]
   print(ySamples.shape, ySamples[0])
   # calculate means and covariance matrices from function values
   yMeansMc = np.mean(ySamples, axis = 0)
-  yCovMatHermitMc = np.cov(ySamples, rowvar = False)
-  yCovMatPseudoMc = covMatrixComplex(ySamples, pseudoCovMat = True)
-  xCovMatHermit   = realCovToComplexCov(xCovMat)
-  xCovMatPseudo   = realCovToComplexCov(xCovMat, pseudoCovMat = True)
+  yCovMatHermitMc   = autoCovMatrix(ySamples)
+  yCovMatHermitMcNp = np.cov(ySamples, rowvar = False)
+  # yCovMatHermitMc   = crossCovMatrix(ySamples, ySamples)
+  # yCovMatHermitMcNp = np.cov(ySamples, ySamples, rowvar = False)[:n, n:]
+  yCovMatPseudoMc   = crossCovMatrix(ySamples, np.conjugate(ySamples))
+  yCovMatPseudoMcNp = np.cov(ySamples, np.conjugate(ySamples), rowvar = False)[:n, n:]  # unfortunately np.cov() stacks the two given vectors and also calculates the auto-covariance matrices
+  xCovMatHermit     = realCovToComplexCov(xCovMat)
+  xCovMatPseudo     = realCovToComplexCov(xCovMat, pseudoCovMat = True)
   print(f"MC: mu = {yMeansMc}")
   print(f"V_y_Hermit = \n{yCovMatHermitMc}")
-  print(f"ratio = \n{yCovMatHermitMc, xCovMatHermit}")
+  print(f"vs. \n{yCovMatHermitMcNp}")
+  print(f"ratio = \n{yCovMatHermitMc / yCovMatHermitMcNp}")
+  print(f"vs. \n{xCovMatHermit}")
+  print(f"ratio = \n{yCovMatHermitMc / xCovMatHermit}")
   print(f"V_y_pseudo = \n{yCovMatPseudoMc}")
-  print(f"ratio = \n{yCovMatPseudoMc, xCovMatPseudo}")
+  print(f"vs. \n{yCovMatPseudoMcNp}")
+  print(f"ratio = \n{yCovMatPseudoMc / yCovMatPseudoMcNp}")
+  print(f"vs. \n{xCovMatPseudo}")
+  print(f"ratio = \n{yCovMatPseudoMc / xCovMatPseudo}")
   # test conversion routines
   xCovMatReal = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
-  print(f"complexCovToRealCov() ratio = \n{xCovMatReal, xCovMat}")
+  print(f"complexCovToRealCov() ratio = \n{xCovMatReal / xCovMat}")
   print(f"realCovToComplexCov(Hermitian) ratio = \n{xCovMatHermit / realCovToComplexCov(xCovMatReal)}")
-  print(f"realCovToComplexCov(Pseudo) ratio = \n{xCovMatPseudo, realCovToComplexCov(xCovMatReal, pseudoCovMat = True)}")
+  print(f"realCovToComplexCov(Pseudo) ratio = \n{xCovMatPseudo / realCovToComplexCov(xCovMatReal, pseudoCovMat = True)}")
 
   # augmented vectors and matrices
   ySamplesAug = np.block([ySamples, np.conjugate(ySamples)])
