@@ -153,28 +153,61 @@ def calculateSphHarmMoments(
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       # unnormalized moments
-      dfMoment = dfMoment.Define(f"sphericalHarm_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
+      dfMoment = dfMoment.Define(f"ReY_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ReYlm({L}, {M}, Theta, Phi)")
+      dfMoment = dfMoment.Define(f"ImY_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ImYlm({L}, {M}, Theta, Phi)")
   # calculate moments
   nmbEvents = dataFrame.Count().GetValue()
-  H_meas = []
+  nmbMoments = (2 * maxL + 2) * (2 * maxL + 3) // 2
+  H_meas = np.zeros((nmbMoments), dtype = np.complex128)
+  V_meas_ReRe = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+  V_meas_ImIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+  V_meas_ReIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+  ReY = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
+  ImY = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      momentVal = dfMoment.Sum(f"sphericalHarm_{L}_{M}").GetValue()
-      momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev(f"sphericalHarm_{L}_{M}").GetValue()  # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
-      foo = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"sphericalHarm_{L}_{M}", f"sphericalHarm_{L}_{M}"]).GetValue()  # type: ignore
-      print(f"!!! {momentErr - math.sqrt(nmbEvents) * math.sqrt(foo)}")
-      # normalize moments with respect to H(0 0)
-      norm = 1 / nmbEvents
-      moment = norm * ufloat(momentVal, momentErr)  # type: ignore
-      print(f"H_meas(L = {L}, M = {M}) = {moment}")
-      # H_meas.append(moment)
-      H_meas.append(momentVal)
+      iMoment = L * (L + 1) // 2 + M
+      # calculate value
+      momentValRe = dfMoment.Sum(f"ReY_{L}_{M}").GetValue() / nmbEvents
+      momentValIm = dfMoment.Sum(f"ImY_{L}_{M}").GetValue() / nmbEvents
+      momentVal = momentValRe - 1j * momentValIm  # moment is defined by (Y_L^M)^*
+      print(f"H_meas(L = {L}, M = {M}) = {momentVal}")
+      H_meas[iMoment] = momentVal
+      # get values of spherical harmonics as Numpy arrays
+      ReY[iMoment, :] = dfMoment.AsNumpy(columns = [f"ReY_{L}_{M}"])[f"ReY_{L}_{M}"]
+      ImY[iMoment, :] = dfMoment.AsNumpy(columns = [f"ImY_{L}_{M}"])[f"ImY_{L}_{M}"]
+      # calculate value covariances
+      #TODO optimize by exploiting symmetry
+      for L_p in range(2 * maxL + 2):
+        for M_p in range(L_p + 1):
+          iMoment_p = L_p * (L_p + 1) // 2 + M_p
+          V_meas_ReRe[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"ReY_{L}_{M}", f"ReY_{L_p}_{M_p}"]).GetValue()  # type: ignore
+          V_meas_ImIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"ImY_{L}_{M}", f"ImY_{L_p}_{M_p}"]).GetValue()  # type: ignore
+          V_meas_ReIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"ReY_{L}_{M}", f"ImY_{L_p}_{M_p}"]).GetValue()  # type: ignore
+  V_meas_ReRe_np = np.cov(ReY)
+  print(f"V_meas_ReRe =\n{V_meas_ReRe}")
+  print(f"vs.\n{V_meas_ReRe_np}")
+  print(f"ratio\n{V_meas_ReRe / V_meas_ReRe_np}")
+  V_meas_ImIm_np = np.cov(ImY)
+  print(f"V_meas_ImIm =\n{V_meas_ImIm}")
+  print(f"vs.\n{V_meas_ImIm_np}")
+  print(f"ratio\n{V_meas_ImIm / V_meas_ImIm_np}")
+  V_meas_ReIm_np = np.cov(ReY, ImY)[:nmbMoments, nmbMoments:]  # !Note! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
+  print(f"V_meas_ReIm =\n{V_meas_ReIm}")
+  print(f"vs.\n{V_meas_ReIm_np}")
+  print(f"ratio\n{V_meas_ReIm / V_meas_ReIm_np}")
+  # raise ValueError
+  V_meas_Hermit = V_meas_ReRe + V_meas_ImIm + 1j * (V_meas_ReIm.T - V_meas_ReIm)  # Hermitian covariance matrix
+  V_meas_pseudo = V_meas_ReRe - V_meas_ImIm + 1j * (V_meas_ReIm.T + V_meas_ReIm)  # pseudo-covariance matrix
+  V_meas_aug = np.block([
+    [V_meas_Hermit,               V_meas_pseudo],
+    [np.conjugate(V_meas_pseudo), np.conjugate(V_meas_Hermit)],
+  ])  # augmented covariance matrix
   # correct for acceptance
   if integralMatrix is None:
-    H_true = H_meas / nmbEvents
+    H_true = H_meas
   else:
-    dim = (2 * maxL + 2) * (2 * maxL + 3) // 2
-    I = np.zeros((dim, dim), dtype = complex)
+    I = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
         for Lp in range(2 * maxL + 2):
@@ -197,7 +230,15 @@ def calculateSphHarmMoments(
     plt.savefig("Iinv_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
     plt.savefig("Iinv_arg.pdf")
-    H_true = Iinv @ H_meas / nmbEvents
+    H_true = Iinv @ H_meas
+    # linear uncertainty propagation
+    J = Iinv  # Jacobian of acceptance correction
+    J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian
+    J_aug = np.block([
+      [J,                    J_conj],
+      [np.conjugate(J_conj), np.conjugate(J)],
+    ])  # augmented Jacobian
+    V_true_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
   # reformat output
   momentsTrue: List[Tuple[Tuple[int, ...], UFloat]] = []
   index = 0
@@ -207,6 +248,7 @@ def calculateSphHarmMoments(
       momentsTrue.append(((L, M), H_true[index]))
       index += 1
   # print(momentsTrue)
+  #TODO encapsulate moment values and covariances in object that takes care of the index mapping
   return momentsTrue
 
 
@@ -297,7 +339,7 @@ def theta(m: int) -> float:
     return 0
 
 
-def calculateTruePwdMoment(
+def calculateInputPwdMoment(
   prodAmps: Dict[int, Tuple[complex, ...]],
   L: int,
   M: int,
@@ -323,15 +365,15 @@ def calculateTruePwdMoment(
   return sum
 
 
-def calculateTruePwdMoments(
+def calculateInputPwdMoments(
   prodAmps: Dict[int, Tuple[complex, ...]],
   maxL:     int,  # maximum spin of decaying object
 ) -> List[float]:
-  '''Calculates true moments for given production amplitudes'''
+  '''Calculates moments for given production amplitudes'''
   moments: List[float] = []
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      moment: complex = calculateTruePwdMoment(prodAmps, L, M)
+      moment: complex = calculateInputPwdMoment(prodAmps, L, M)
       if (abs(moment.imag) > 1e-15):
         print(f"Warning: non vanishing imaginary part for moment H({L} {M}) = {moment}")
       moments.append(moment.real)
@@ -340,7 +382,7 @@ def calculateTruePwdMoments(
   index = 0
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      print(f"H_true(L = {L}, M = {M}) = {moments[index]}")
+      print(f"H_input(L = {L}, M = {M}) = {moments[index]}")
       index += 1
   print(moments)
   return moments
@@ -427,17 +469,17 @@ def calcIntegralMatrix(
   # define spherical harmonics
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Y_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::exp(complexT(0.0, 1.0) * (double){M} * Phi)")  # complexT is a typedef for std::complex<double> in wignerD.C
-      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"reY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::cos({M} * Phi)")
-      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"imY_{L}_{M}", f"ROOT::Math::sph_legendre({L}, {M}, Theta) * std::sin({M} * Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(  f"Y_{L}_{M}",   f"Ylm({L}, {M}, Theta, Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"ReY_{L}_{M}", f"ReYlm({L}, {M}, Theta, Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"ImY_{L}_{M}", f"ImYlm({L}, {M}, Theta, Phi)")
   # define integral matrix
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
           # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * reY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * imY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * ReY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * ImY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
   I: Dict[Tuple[int, ...], complex] = {}
   for L in range(2 * maxL + 2):
@@ -446,7 +488,7 @@ def calcIntegralMatrix(
         for Mp in range(Lp + 1):
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
           # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
-  # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "reY_0_0", "reY_1_0", "Y_0_0", "Y_1_0"])
+  # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "ReY_0_0", "ReY_1_0", "Y_0_0", "Y_1_0"])
   # raise ValueError
   return I
 
@@ -477,9 +519,9 @@ if __name__ == "__main__":
 
   # get data
   nmbEvents = 1000
-  nmbMcEvents = 100000
-  # acceptanceFormula = "1"
-  acceptanceFormula = "1 - x * x"
+  nmbMcEvents = 10000
+  acceptanceFormula = "1"
+  # acceptanceFormula = "1 - x * x"
   # acceptanceFormula = "2 - x * x"
 
   # # Legendre polynomials
@@ -496,9 +538,9 @@ if __name__ == "__main__":
   # dataModel = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
 
   # normalize parameters 0th moment and pad with 0
-  # trueMoments = [par / parameters[0] for par in parameters]
-  # if len(trueMoments) < len(moments):
-  #   trueMoments += [0] * (len(moments) - len(trueMoments))
+  # inputMoments = [par / parameters[0] for par in parameters]
+  # if len(inputMoments) < len(moments):
+  #   inputMoments += [0] * (len(moments) - len(inputMoments))
 
   # partial-wave decomposition
   maxOrder = 2
@@ -517,7 +559,7 @@ if __name__ == "__main__":
       -0.1 + 0.3j,  # D_+
     ),
   }
-  trueMoments: List[float] = calculateTruePwdMoments(prodAmps, maxL = maxOrder)
+  inputMoments: List[float] = calculateInputPwdMoments(prodAmps, maxL = maxOrder)
   dataModel = generateDataPwd(nmbEvents, prodAmps, acceptanceFormula)
   # print("!!!", dataModel.AsNumpy())
 
@@ -558,14 +600,14 @@ if __name__ == "__main__":
   histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
   histMeas.SetMarkerSize(0.75)
   hStack.Add(histMeas, "PEX0")
-  # create histogram with true values
-  histTrue = ROOT.TH1D("True values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  for index, trueMoment in enumerate(trueMoments):
-    histTrue.SetBinContent(index + 1, trueMoment)
-    histTrue.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  histTrue.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histTrue.SetLineColor(ROOT.kBlue)  # type: ignore
-  hStack.Add(histTrue, "PE")
+  # create histogram with input values
+  histInput = ROOT.TH1D("Input values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, inputMoment in enumerate(inputMoments):
+    histInput.SetBinContent(index + 1, inputMoment)
+    histInput.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histInput.SetLineColor(ROOT.kBlue)  # type: ignore
+  hStack.Add(histInput, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
   hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
@@ -576,9 +618,9 @@ if __name__ == "__main__":
 
   # draw residuals
   #TODO calculate and print chi^2 / ndf
-  residuals = tuple(moment[1].real - trueMoments[index] for index, moment in enumerate(moments))
-  # residuals = tuple((moment[1].nominal_value - trueMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
-  histRes = ROOT.TH1D("hResiduals", ";;(measured - true) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
+  residuals = tuple(moment[1].real - inputMoments[index] for index, moment in enumerate(moments))
+  # residuals = tuple((moment[1].nominal_value - inputMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
+  histRes = ROOT.TH1D("hResiduals", ";;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
   chi2    = sum(tuple(residual**2 for residual in residuals))
   ndf     = len(residuals) - 1  # H(0, 0) has by definition a vanishing residual
   for index, residual in enumerate(residuals):
