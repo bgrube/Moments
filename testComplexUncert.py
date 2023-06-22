@@ -169,7 +169,7 @@ def covariance(
 
 
 def autoCovMatrix(z: npt.NDArray) -> npt.NDArray:
-  '''Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov()'''
+  '''Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov(z)'''
   # see https://github.com/numpy/numpy/blob/v1.25.0/numpy/lib/function_base.py#L2530-L2749
   # columns of z represent variables; rows are observations
   Z = z.T
@@ -181,7 +181,7 @@ def crossCovMatrix(
   x: npt.NDArray,
   y: npt.NDArray,
 ) -> npt.NDArray:
-  '''Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov()'''
+  '''Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov(x, y)[:n, n:]'''
   # columns of x and y represent variables; rows are observations
   X = x.T
   Y = y.T
