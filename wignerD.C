@@ -2,6 +2,7 @@
 #include <cmath>
 #include <complex>
 
+#include "Math/SpecFuncMathMore.h"
 #include "TMath.h"
 
 
@@ -104,6 +105,37 @@ wignerDReflConj(
 	}
 
 	return std::conj(DFuncVal);
+}
+
+
+std::complex<double>
+Ylm(
+	const int    l,
+	const int    m,
+	const double theta,  // [rad]
+	const double phi     // [rad]
+) {
+  return ROOT::Math::sph_legendre(l, m, theta) * std::exp(std::complex<double>(0.0, 1.0) * (double)m * phi);
+}
+
+double
+ReYlm(
+	const int    l,
+	const int    m,
+	const double theta,  // [rad]
+	const double phi     // [rad]
+) {
+  return ROOT::Math::sph_legendre(l, m, theta) * std::cos(m * phi);
+}
+
+double
+ImYlm(
+	const int    l,
+	const int    m,
+	const double theta,  // [rad]
+	const double phi     // [rad]
+) {
+  return ROOT::Math::sph_legendre(l, m, theta) * std::sin(m * phi);
 }
 
 
