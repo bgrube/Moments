@@ -170,6 +170,7 @@ def covariance(
 
 def autoCovMatrix(z: npt.NDArray) -> npt.NDArray:
   '''Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov()'''
+  # see https://github.com/numpy/numpy/blob/v1.25.0/numpy/lib/function_base.py#L2530-L2749
   # columns of z represent variables; rows are observations
   Z = z.T
   deltaZ = Z - Z.mean(1, keepdims = True)
@@ -269,32 +270,33 @@ if __name__ == "__main__":
   print(f"MC: mu = {yMeansMc}")
   print(f"V_y_Hermit = \n{yCovMatHermitMc}")
   print(f"vs. \n{yCovMatHermitMcNp}")
-  print(f"ratio = \n{yCovMatHermitMc / yCovMatHermitMcNp}")
+  print(f"ratio = \n{np.real_if_close(yCovMatHermitMc / yCovMatHermitMcNp)}")
   print(f"vs. \n{xCovMatHermit}")
   print(f"ratio = \n{yCovMatHermitMc / xCovMatHermit}")
   print(f"V_y_pseudo = \n{yCovMatPseudoMc}")
   print(f"vs. \n{yCovMatPseudoMcNp}")
-  print(f"ratio = \n{yCovMatPseudoMc / yCovMatPseudoMcNp}")
+  print(f"ratio = \n{np.real_if_close(yCovMatPseudoMc / yCovMatPseudoMcNp)}")
   print(f"vs. \n{xCovMatPseudo}")
   print(f"ratio = \n{yCovMatPseudoMc / xCovMatPseudo}")
   # test conversion routines
   xCovMatReal = complexCovToRealCov(xCovMatHermit, xCovMatPseudo)
-  print(f"complexCovToRealCov() ratio = \n{xCovMatReal / xCovMat}")
-  print(f"realCovToComplexCov(Hermitian) ratio = \n{xCovMatHermit / realCovToComplexCov(xCovMatReal)}")
-  print(f"realCovToComplexCov(Pseudo) ratio = \n{xCovMatPseudo / realCovToComplexCov(xCovMatReal, pseudoCovMat = True)}")
+  print(f"complexCovToRealCov() ratio = \n{np.real_if_close(xCovMatReal / xCovMat)}")
+  print(f"realCovToComplexCov(Hermitian) ratio = \n{np.real_if_close(xCovMatHermit / realCovToComplexCov(xCovMatReal))}")
+  print(f"realCovToComplexCov(Pseudo) ratio = \n{np.real_if_close(xCovMatPseudo / realCovToComplexCov(xCovMatReal, pseudoCovMat = True))}")
 
   # augmented vectors and matrices
-  ySamplesAug = np.block([ySamples, np.conjugate(ySamples)])
-  yCovMatAugMc = np.cov(ySamplesAug, rowvar = False)
-  print(f"V_y_Aug = \n{yCovMatAugMc}")
-  print(f"""ratio = \n{np.real_if_close(yCovMatAugMc / np.block([
+  ySamplesAug   = np.block([ySamples, np.conjugate(ySamples)])
+  yCovMatAugMc  = np.cov(ySamplesAug, rowvar = False)
+  yCovMatAugMc2 = np.cov(ySamples, np.conjugate(ySamples), rowvar = False)
+  yCovMatAugMc3 = np.block([
     [yCovMatHermitMc, yCovMatPseudoMc],
     [np.conjugate(yCovMatPseudoMc), np.conjugate(yCovMatHermitMc)],
-  ]), tol = 1000)}""")
-  xCovMatAug = np.block([
-    [xCovMatHermit, xCovMatPseudo],
-    [np.conjugate(xCovMatPseudo), np.conjugate(xCovMatHermit)],
   ])
+  print(f"V_y_Aug_MC = \n{yCovMatAugMc}")
+  print(f"vs. \n{yCovMatAugMc2}")
+  print(f"ratio = \n{np.real_if_close(yCovMatAugMc / yCovMatAugMc2)}")
+  print(f"vs. \n{yCovMatAugMc3}")
+  print(f"ratio = \n{np.real_if_close(yCovMatAugMc / yCovMatAugMc3)}")
 
   # perform analytic uncertainty propagation
   yMeans = complexFunc(realVecToComplexVec(xMeans))
@@ -303,9 +305,13 @@ if __name__ == "__main__":
     [J, Jconj],
     [np.conjugate(Jconj), np.conjugate(J)],
   ])
-  print(f"!!! \n{Jaug}")
+  xCovMatAug = np.block([
+    [xCovMatHermit, xCovMatPseudo],
+    [np.conjugate(xCovMatPseudo), np.conjugate(xCovMatHermit)],
+  ])
+  print(f"J_aug = \n{Jaug}")
   yCovMatAug = Jaug @ (xCovMatAug @ np.asmatrix(Jaug).H)  #!Note! @ is left-associative
   print(f"analytic: mu = {yMeans}")
   print(f"ratio = \n{yMeans / yMeansMc}")
-  print(f"V_y_Aug = \n{yCovMatAug}")
+  print(f"V_y_Aug_Prop = \n{yCovMatAug}")
   print(f"ratio = \n{yCovMatAug / yCovMatAugMc}")
