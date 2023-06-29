@@ -67,7 +67,7 @@ def calculateLegMoments(
 ) -> Dict[Tuple[int, ...], UFloat]:
   '''Calculates moments of Legendre polynomials'''
   nmbEvents = dataFrame.Count().GetValue()
-  moments: Dict[Tuple[int, ...], UFloat] = {}
+  moments: Dict[Tuple[int], UFloat] = {}
   for degree in range(maxDegree + 5):
     # unnormalized moments
     dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, CosTheta)")
@@ -146,15 +146,15 @@ def calculateSphHarmMoments(
   dataFrame:      Any,
   maxL:           int,  # maximum spin of decaying object
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
-) -> List[Tuple[Tuple[int, ...], UFloat]]:
+) -> Tuple[List[Tuple[Tuple[int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
   '''Calculates moments of spherical harmonics'''
   # define moments
   dfMoment = dataFrame
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       # unnormalized moments
-      dfMoment = dfMoment.Define(f"ReY_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ReYlm({L}, {M}, Theta, Phi)")
-      dfMoment = dfMoment.Define(f"ImY_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ImYlm({L}, {M}, Theta, Phi)")
+      dfMoment = dfMoment.Define(f"Re_f_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ReYlm({L}, {M}, Theta, Phi)")
+      dfMoment = dfMoment.Define(f"Im_f_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ImYlm({L}, {M}, Theta, Phi)")
   # calculate moments
   nmbEvents = dataFrame.Count().GetValue()
   nmbMoments = (2 * maxL + 2) * (2 * maxL + 3) // 2
@@ -162,40 +162,40 @@ def calculateSphHarmMoments(
   V_meas_ReRe = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
   V_meas_ImIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
   V_meas_ReIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
-  ReY = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
-  ImY = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
+  Re_f = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
+  Im_f = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
       # calculate value
-      momentValRe = dfMoment.Sum(f"ReY_{L}_{M}").GetValue() / nmbEvents
-      momentValIm = dfMoment.Sum(f"ImY_{L}_{M}").GetValue() / nmbEvents
+      momentValRe = dfMoment.Sum(f"Re_f_{L}_{M}").GetValue() / nmbEvents
+      momentValIm = dfMoment.Sum(f"Im_f_{L}_{M}").GetValue() / nmbEvents
       momentVal = momentValRe - 1j * momentValIm  # moment is defined by (Y_L^M)^*
       print(f"H_meas(L = {L}, M = {M}) = {momentVal}")
       H_meas[iMoment] = momentVal
       # get values of spherical harmonics as Numpy arrays
-      ReY[iMoment, :] = dfMoment.AsNumpy(columns = [f"ReY_{L}_{M}"])[f"ReY_{L}_{M}"]
-      ImY[iMoment, :] = dfMoment.AsNumpy(columns = [f"ImY_{L}_{M}"])[f"ImY_{L}_{M}"]
+      Re_f[iMoment, :] = dfMoment.AsNumpy(columns = [f"Re_f_{L}_{M}"])[f"Re_f_{L}_{M}"]
+      Im_f[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_{L}_{M}"])[f"Im_f_{L}_{M}"]
       # calculate value covariances
       #TODO optimize by exploiting symmetry
       for L_p in range(2 * maxL + 2):
         for M_p in range(L_p + 1):
           iMoment_p = L_p * (L_p + 1) // 2 + M_p
-          V_meas_ReRe[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"ReY_{L}_{M}", f"ReY_{L_p}_{M_p}"]).GetValue()  # type: ignore
-          V_meas_ImIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"ImY_{L}_{M}", f"ImY_{L_p}_{M_p}"]).GetValue()  # type: ignore
-          V_meas_ReIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"ReY_{L}_{M}", f"ImY_{L_p}_{M_p}"]).GetValue()  # type: ignore
-  V_meas_ReRe_np = np.cov(ReY)
+          V_meas_ReRe[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Re_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+          V_meas_ImIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Im_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+          V_meas_ReIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+  V_meas_ReRe_np = np.cov(Re_f)
   print(f"V_meas_ReRe =\n{V_meas_ReRe}")
   print(f"vs.\n{V_meas_ReRe_np}")
-  print(f"ratio\n{V_meas_ReRe / V_meas_ReRe_np}")
-  V_meas_ImIm_np = np.cov(ImY)
+  print(f"ratio\n{np.real_if_close(V_meas_ReRe / V_meas_ReRe_np)}")
+  V_meas_ImIm_np = np.cov(Im_f)
   print(f"V_meas_ImIm =\n{V_meas_ImIm}")
   print(f"vs.\n{V_meas_ImIm_np}")
-  print(f"ratio\n{V_meas_ImIm / V_meas_ImIm_np}")
-  V_meas_ReIm_np = np.cov(ReY, ImY)[:nmbMoments, nmbMoments:]  # !Note! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
+  print(f"ratio\n{np.real_if_close(V_meas_ImIm / V_meas_ImIm_np)}")
+  V_meas_ReIm_np = np.cov(Re_f, Im_f)[:nmbMoments, nmbMoments:]  # !Note! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
   print(f"V_meas_ReIm =\n{V_meas_ReIm}")
   print(f"vs.\n{V_meas_ReIm_np}")
-  print(f"ratio\n{V_meas_ReIm / V_meas_ReIm_np}")
+  print(f"ratio\n{np.real_if_close(V_meas_ReIm / V_meas_ReIm_np)}")
   # raise ValueError
   V_meas_Hermit = V_meas_ReRe + V_meas_ImIm + 1j * (V_meas_ReIm.T - V_meas_ReIm)  # Hermitian covariance matrix
   V_meas_pseudo = V_meas_ReRe - V_meas_ImIm + 1j * (V_meas_ReIm.T + V_meas_ReIm)  # pseudo-covariance matrix
@@ -203,9 +203,17 @@ def calculateSphHarmMoments(
     [V_meas_Hermit,               V_meas_pseudo],
     [np.conjugate(V_meas_pseudo), np.conjugate(V_meas_Hermit)],
   ])  # augmented covariance matrix
+  f = Re_f + 1j * Im_f
+  V_meas_aug_np = np.cov(f, np.conjugate(f))
+  print(f"V_meas_aug =\n{V_meas_aug}")
+  print(f"vs.\n{V_meas_aug_np}")
+  print(f"ratio\n{np.real_if_close(V_meas_aug / V_meas_aug_np)}")
   # correct for acceptance
+  H_true = np.zeros((nmbMoments), dtype = np.complex128)
+  V_true_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
   if integralMatrix is None:
-    H_true = H_meas
+    H_true     = H_meas
+    V_true_aug = V_meas_aug
   else:
     I = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
     for L in range(2 * maxL + 2):
@@ -239,17 +247,27 @@ def calculateSphHarmMoments(
       [np.conjugate(J_conj), np.conjugate(J)],
     ])  # augmented Jacobian
     V_true_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
+  V_true_Hermit = V_true_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix
+  V_true_pseudo = V_true_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix
+  # conariances of real and imaginary parts
+  V_true_ReRe = (np.real(V_true_Hermit) + np.real(V_true_pseudo)) / 2
+  V_true_ImIm = (np.real(V_true_Hermit) - np.real(V_true_pseudo)) / 2
+  V_true_ReIm = (np.imag(V_true_pseudo) - np.imag(V_true_Hermit)) / 2
   # reformat output
-  momentsTrue: List[Tuple[Tuple[int, ...], UFloat]] = []
-  index = 0
+  momentsTrue:    List[Tuple[Tuple[int, int], complex]]    = []
+  momentsTrueCov: Dict[Tuple[int, ...], Tuple[float, ...]] = {}  # cov[(L, M, L', M')] = (ReRe, ImIm, ReIm)
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      print(f"H_true(L = {L}, M = {M}) = {H_true[index]}")
-      momentsTrue.append(((L, M), H_true[index]))
-      index += 1
+      iMoment = L * (L + 1) // 2 + M
+      print(f"H_true(L = {L}, M = {M}) = {H_true[iMoment]}")
+      momentsTrue.append(((L, M), H_true[iMoment]))
+      for L_p in range(2 * maxL + 2):
+        for M_p in range(L_p + 1):
+          iMoment_p = L_p * (L_p + 1) // 2 + M_p
+          momentsTrueCov[(L, M, L_p, M_p)] = (V_true_ReRe[iMoment, iMoment_p], V_true_ImIm[iMoment, iMoment_p], V_true_ReIm[iMoment, iMoment_p])
   # print(momentsTrue)
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
-  return momentsTrue
+  return momentsTrue, momentsTrueCov
 
 
 # C++ implementation of (complex conjugated) Wigner D function
@@ -398,7 +416,7 @@ def calculateWignerDMoment(
   dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, theta)") \
                       .Define("WignerDRe", "real(WignerD)") \
                       .Define("WignerDIm", "imag(WignerD)")
-  momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()
+  momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()  # type: ignore
   # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
   momentErrRe = math.sqrt(nmbEvents) * dfMoment.StdDev("WignerDRe").GetValue()
   momentErrIm = math.sqrt(nmbEvents) * dfMoment.StdDev("WignerDIm").GetValue()
@@ -411,7 +429,7 @@ def calculateWignerDMoments(
 ) -> None:
   '''Calculates moments of Wigner-D function D^L_{M 0}'''
   nmbEvents = dataFrame.Count().GetValue()
-  # moments: List[Tuple[Tuple[int, ...], UFloat]] = []
+  # moments: List[Tuple[Tuple[int, int], UFloat]] = []
   for L in range(2 * maxL + 2):
     for M in range(-L, +L + 1):
       # unnormalized moments
@@ -469,17 +487,17 @@ def calcIntegralMatrix(
   # define spherical harmonics
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
-      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(  f"Y_{L}_{M}",   f"Ylm({L}, {M}, Theta, Phi)")
-      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"ReY_{L}_{M}", f"ReYlm({L}, {M}, Theta, Phi)")
-      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"ImY_{L}_{M}", f"ImYlm({L}, {M}, Theta, Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(   f"Y_{L}_{M}",   f"Ylm({L}, {M}, Theta, Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Re_Y_{L}_{M}", f"ReYlm({L}, {M}, Theta, Phi)")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Im_Y_{L}_{M}", f"ImYlm({L}, {M}, Theta, Phi)")
   # define integral matrix
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
           # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * ReY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
-          # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * ImY_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * Re_Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
+          # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * Im_Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
   I: Dict[Tuple[int, ...], complex] = {}
   for L in range(2 * maxL + 2):
@@ -488,7 +506,7 @@ def calcIntegralMatrix(
         for Mp in range(Lp + 1):
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
           # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
-  # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "ReY_0_0", "ReY_1_0", "Y_0_0", "Y_1_0"])
+  # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "Re_Y_0_0", "Re_Y_1_0", "Y_0_0", "Y_1_0"])
   # raise ValueError
   return I
 
@@ -582,24 +600,25 @@ if __name__ == "__main__":
   calculateSphHarmMoments(dataAcceptedPS, maxL = maxOrder, integralMatrix = integralMatrix)
   # calculateLegMoments(dataModel, maxDegree = maxOrder)
   print("Moments of data generated according to model")
-  moments: List[Tuple[Tuple[int, ...], UFloat]] = calculateSphHarmMoments(dataModel, maxL = maxOrder, integralMatrix = integralMatrix)
+  moments:    List[Tuple[Tuple[int, int], complex]]
+  momentsCov: Dict[Tuple[int, ...], Tuple[float, ...]]
+  moments, momentsCov = calculateSphHarmMoments(dataModel, maxL = maxOrder, integralMatrix = integralMatrix)
   # calculateWignerDMoments(dataModel, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
-  hStack = ROOT.THStack("hCompare", "")  # type: ignore
+  hStackRe = ROOT.THStack("hCompareRe", "")  # type: ignore
   nmbBins = len(moments)
   # create histogram with measured values
-  histMeas = ROOT.TH1D("Measured values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  histMeasRe = ROOT.TH1D("Measured Moments (Real Part)", ";;value", nmbBins, 0, nmbBins)  # type: ignore
   for index, moment in enumerate(moments):
-    histMeas.SetBinContent(index + 1, moment[1].real)
-    # histMeas.SetBinContent(index + 1, moment[1].nominal_value)
-    # histMeas.SetBinError  (index + 1, moment[1].std_dev)
-    histMeas.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
-  histMeas.SetLineColor(ROOT.kRed)  # type: ignore
-  histMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
-  histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
-  histMeas.SetMarkerSize(0.75)
-  hStack.Add(histMeas, "PEX0")
+    histMeasRe.SetBinContent(index + 1, moment[1].real)
+    histMeasRe.SetBinError  (index + 1, momentsCov[(*moment[0], *moment[0])][0])  # diagonal element for ReRe
+    histMeasRe.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
+  histMeasRe.SetLineColor(ROOT.kRed)  # type: ignore
+  histMeasRe.SetMarkerColor(ROOT.kRed)  # type: ignore
+  histMeasRe.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  histMeasRe.SetMarkerSize(0.75)
+  hStackRe.Add(histMeasRe, "PEX0")
   # create histogram with input values
   histInput = ROOT.TH1D("Input values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
   for index, inputMoment in enumerate(inputMoments):
@@ -607,14 +626,43 @@ if __name__ == "__main__":
     histInput.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
   histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
   histInput.SetLineColor(ROOT.kBlue)  # type: ignore
-  hStack.Add(histInput, "PE")
+  hStackRe.Add(histInput, "PE")
   canv = ROOT.TCanvas()  # type: ignore
-  hStack.Draw("NOSTACK")
-  hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
-  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
+  hStackRe.Draw("NOSTACK")
+  hStackRe.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
+  hStackRe.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-  canv.SaveAs(f"{hStack.GetName()}.pdf")
+  canv.SaveAs(f"{hStackRe.GetName()}.pdf")
+
+  hStackIm = ROOT.THStack("hCompareIm", "")  # type: ignore
+  nmbBins = len(moments)
+  # create histogram with measured values
+  histMeasIm = ROOT.TH1D("Measured Moments (Imaginary Part)", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, moment in enumerate(moments):
+    histMeasIm.SetBinContent(index + 1, moment[1].imag)
+    histMeasIm.SetBinError  (index + 1, momentsCov[(*moment[0], *moment[0])][1])  # diagonal element for ImIm
+    histMeasIm.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
+  histMeasIm.SetLineColor(ROOT.kRed)  # type: ignore
+  histMeasIm.SetMarkerColor(ROOT.kRed)  # type: ignore
+  histMeasIm.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  histMeasIm.SetMarkerSize(0.75)
+  hStackIm.Add(histMeasIm, "PEX0")
+  # create histogram with input values
+  histInput = ROOT.TH1D("Input values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, inputMoment in enumerate(inputMoments):
+    histInput.SetBinContent(index + 1, 0)
+    histInput.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histInput.SetLineColor(ROOT.kBlue)  # type: ignore
+  hStackIm.Add(histInput, "PE")
+  canv = ROOT.TCanvas()  # type: ignore
+  hStackIm.Draw("NOSTACK")
+  hStackIm.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
+  hStackIm.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
+  
+  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+  canv.SaveAs(f"{hStackIm.GetName()}.pdf")
 
   # draw residuals
   #TODO calculate and print chi^2 / ndf
@@ -626,7 +674,7 @@ if __name__ == "__main__":
   for index, residual in enumerate(residuals):
     histRes.SetBinContent(index + 1, residual)
     histRes.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-    histRes.GetXaxis().SetBinLabel(index + 1, histMeas.GetXaxis().GetBinLabel(index + 1))
+    histRes.GetXaxis().SetBinLabel(index + 1, histMeasRe.GetXaxis().GetBinLabel(index + 1))
   histRes.SetMarkerColor(ROOT.kBlue)  # type: ignore
   histRes.SetLineColor(ROOT.kBlue)  # type: ignore
   histRes.SetMinimum(-3)
