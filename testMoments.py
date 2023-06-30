@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+import functools
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +12,10 @@ import py3nj
 from uncertainties import UFloat, ufloat
 
 import ROOT
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
@@ -155,59 +160,73 @@ def calculateSphHarmMoments(
       # unnormalized moments
       dfMoment = dfMoment.Define(f"Re_f_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ReYlm({L}, {M}, Theta, Phi)")
       dfMoment = dfMoment.Define(f"Im_f_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ImYlm({L}, {M}, Theta, Phi)")
-  # calculate moments
+  # calculate moments and their covariance matrix
+  # since we have iid events, Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
+  # similarly for the covariances
   nmbEvents = dataFrame.Count().GetValue()
   nmbMoments = (2 * maxL + 2) * (2 * maxL + 3) // 2
   H_meas = np.zeros((nmbMoments), dtype = np.complex128)
-  V_meas_ReRe = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
-  V_meas_ImIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
-  V_meas_ReIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+  # V_meas_ReRe = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+  # V_meas_ImIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+  # V_meas_ReIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
   Re_f = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   Im_f = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
       # calculate value
-      momentValRe = dfMoment.Sum(f"Re_f_{L}_{M}").GetValue() / nmbEvents
-      momentValIm = dfMoment.Sum(f"Im_f_{L}_{M}").GetValue() / nmbEvents
+      momentValRe = dfMoment.Sum(f"Re_f_{L}_{M}").GetValue()
+      momentValIm = dfMoment.Sum(f"Im_f_{L}_{M}").GetValue()
       momentVal = momentValRe - 1j * momentValIm  # moment is defined by (Y_L^M)^*
-      print(f"H_meas(L = {L}, M = {M}) = {momentVal}")
       H_meas[iMoment] = momentVal
       # get values of spherical harmonics as Numpy arrays
       Re_f[iMoment, :] = dfMoment.AsNumpy(columns = [f"Re_f_{L}_{M}"])[f"Re_f_{L}_{M}"]
       Im_f[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_{L}_{M}"])[f"Im_f_{L}_{M}"]
-      # calculate value covariances
-      #TODO optimize by exploiting symmetry
-      for L_p in range(2 * maxL + 2):
-        for M_p in range(L_p + 1):
-          iMoment_p = L_p * (L_p + 1) // 2 + M_p
-          V_meas_ReRe[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Re_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
-          V_meas_ImIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Im_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
-          V_meas_ReIm[iMoment, iMoment_p] = dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
-  V_meas_ReRe_np = np.cov(Re_f)
-  print(f"V_meas_ReRe =\n{V_meas_ReRe}")
-  print(f"vs.\n{V_meas_ReRe_np}")
-  print(f"ratio\n{np.real_if_close(V_meas_ReRe / V_meas_ReRe_np)}")
-  V_meas_ImIm_np = np.cov(Im_f)
-  print(f"V_meas_ImIm =\n{V_meas_ImIm}")
-  print(f"vs.\n{V_meas_ImIm_np}")
-  print(f"ratio\n{np.real_if_close(V_meas_ImIm / V_meas_ImIm_np)}")
-  V_meas_ReIm_np = np.cov(Re_f, Im_f)[:nmbMoments, nmbMoments:]  # !Note! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
-  print(f"V_meas_ReIm =\n{V_meas_ReIm}")
-  print(f"vs.\n{V_meas_ReIm_np}")
-  print(f"ratio\n{np.real_if_close(V_meas_ReIm / V_meas_ReIm_np)}")
+      # # calculate value covariances
+      # #TODO optimize by exploiting symmetry
+      # for L_p in range(2 * maxL + 2):
+      #   for M_p in range(L_p + 1):
+      #     iMoment_p = L_p * (L_p + 1) // 2 + M_p
+      #     V_meas_ReRe[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Re_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+      #     V_meas_ImIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Im_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+      #     V_meas_ReIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+  # V_meas_ReRe_np = nmbEvents * np.cov(Re_f)
+  # for L in range(2 * maxL + 2):
+  #   for M in range(L + 1):
+  #     iMoment = L * (L + 1) // 2 + M
+  #     momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev(f"Re_f_{L}_{M}").GetValue()
+  #     print(f"!!! {momentErr} vs. {math.sqrt(V_meas_ReRe_np[iMoment, iMoment])}; Delta = {momentErr - math.sqrt(V_meas_ReRe_np[iMoment, iMoment])}")
+  # print(f"V_meas_ReRe =\n{V_meas_ReRe}")
+  # print(f"vs.\n{V_meas_ReRe_np}")
+  # print(f"ratio\n{np.real_if_close(V_meas_ReRe / V_meas_ReRe_np)}")
+  # V_meas_ImIm_np = nmbEvents * np.cov(Im_f)
+  # print(f"V_meas_ImIm =\n{V_meas_ImIm}")
+  # print(f"vs.\n{V_meas_ImIm_np}")
+  # print(f"ratio\n{np.real_if_close(V_meas_ImIm / V_meas_ImIm_np)}")
+  # V_meas_ReIm_np = nmbEvents * np.cov(Re_f, Im_f)[:nmbMoments, nmbMoments:]  # !Note! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
+  # print(f"V_meas_ReIm =\n{V_meas_ReIm}")
+  # print(f"vs.\n{V_meas_ReIm_np}")
+  # print(f"ratio\n{np.real_if_close(V_meas_ReIm / V_meas_ReIm_np)}")
   # raise ValueError
-  V_meas_Hermit = V_meas_ReRe + V_meas_ImIm + 1j * (V_meas_ReIm.T - V_meas_ReIm)  # Hermitian covariance matrix
-  V_meas_pseudo = V_meas_ReRe - V_meas_ImIm + 1j * (V_meas_ReIm.T + V_meas_ReIm)  # pseudo-covariance matrix
-  V_meas_aug = np.block([
-    [V_meas_Hermit,               V_meas_pseudo],
-    [np.conjugate(V_meas_pseudo), np.conjugate(V_meas_Hermit)],
-  ])  # augmented covariance matrix
+  # V_meas_Hermit = V_meas_ReRe + V_meas_ImIm + 1j * (V_meas_ReIm.T - V_meas_ReIm)  # Hermitian covariance matrix
+  # V_meas_pseudo = V_meas_ReRe - V_meas_ImIm + 1j * (V_meas_ReIm.T + V_meas_ReIm)  # pseudo-covariance matrix
+  # V_meas_aug = np.block([
+  #   [V_meas_Hermit,               V_meas_pseudo],
+  #   [np.conjugate(V_meas_pseudo), np.conjugate(V_meas_Hermit)],
+  # ])  # augmented covariance matrix
   f = Re_f + 1j * Im_f
-  V_meas_aug_np = np.cov(f, np.conjugate(f))
-  print(f"V_meas_aug =\n{V_meas_aug}")
-  print(f"vs.\n{V_meas_aug_np}")
-  print(f"ratio\n{np.real_if_close(V_meas_aug / V_meas_aug_np)}")
+  V_meas_aug = nmbEvents * np.cov(f, np.conjugate(f))
+  # V_meas_aug_np = nmbEvents * np.cov(f, np.conjugate(f))
+  # print(f"V_meas_aug =\n{V_meas_aug}")
+  # print(f"vs.\n{V_meas_aug_np}")
+  # print(f"ratio\n{np.real_if_close(V_meas_aug / V_meas_aug_np)}")
+  # normalize to H(0, 0)
+  H_meas /= nmbEvents
+  V_meas_aug /= nmbEvents**2
+  for L in range(2 * maxL + 2):
+    for M in range(L + 1):
+      iMoment = L * (L + 1) // 2 + M
+      print(f"H_meas(L = {L}, M = {M}) = {H_meas[iMoment]}")
   # correct for acceptance
   H_true = np.zeros((nmbMoments), dtype = np.complex128)
   V_true_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
@@ -249,7 +268,7 @@ def calculateSphHarmMoments(
     V_true_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
   V_true_Hermit = V_true_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix
   V_true_pseudo = V_true_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix
-  # conariances of real and imaginary parts
+  # covariances of real and imaginary parts
   V_true_ReRe = (np.real(V_true_Hermit) + np.real(V_true_pseudo)) / 2
   V_true_ImIm = (np.real(V_true_Hermit) - np.real(V_true_pseudo)) / 2
   V_true_ReIm = (np.imag(V_true_pseudo) - np.imag(V_true_Hermit)) / 2
@@ -534,6 +553,7 @@ if __name__ == "__main__":
   ROOT.gRandom.SetSeed(123456789)  # type: ignore
   # ROOT.EnableImplicitMT(10)  # type: ignore
   setupPlotStyle()
+  ROOT.gBenchmark.Start("Total execution time")  # type: ignore
 
   # get data
   nmbEvents = 1000
@@ -612,7 +632,7 @@ if __name__ == "__main__":
   histMeasRe = ROOT.TH1D("Measured Moments (Real Part)", ";;value", nmbBins, 0, nmbBins)  # type: ignore
   for index, moment in enumerate(moments):
     histMeasRe.SetBinContent(index + 1, moment[1].real)
-    histMeasRe.SetBinError  (index + 1, momentsCov[(*moment[0], *moment[0])][0])  # diagonal element for ReRe
+    histMeasRe.SetBinError  (index + 1, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]))  # diagonal element for ReRe
     histMeasRe.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
   histMeasRe.SetLineColor(ROOT.kRed)  # type: ignore
   histMeasRe.SetMarkerColor(ROOT.kRed)  # type: ignore
@@ -641,7 +661,7 @@ if __name__ == "__main__":
   histMeasIm = ROOT.TH1D("Measured Moments (Imaginary Part)", ";;value", nmbBins, 0, nmbBins)  # type: ignore
   for index, moment in enumerate(moments):
     histMeasIm.SetBinContent(index + 1, moment[1].imag)
-    histMeasIm.SetBinError  (index + 1, momentsCov[(*moment[0], *moment[0])][1])  # diagonal element for ImIm
+    histMeasIm.SetBinError  (index + 1, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]))  # diagonal element for ImIm
     histMeasIm.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
   histMeasIm.SetLineColor(ROOT.kRed)  # type: ignore
   histMeasIm.SetMarkerColor(ROOT.kRed)  # type: ignore
@@ -660,29 +680,28 @@ if __name__ == "__main__":
   hStackIm.Draw("NOSTACK")
   hStackIm.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
   hStackIm.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
-  
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStackIm.GetName()}.pdf")
 
   # draw residuals
   #TODO calculate and print chi^2 / ndf
-  residuals = tuple(moment[1].real - inputMoments[index] for index, moment in enumerate(moments))
-  # residuals = tuple((moment[1].nominal_value - inputMoments[index]) / moment[1].std_dev if moment[1].std_dev > 0 else 0 for index, moment in enumerate(moments))
-  histRes = ROOT.TH1D("hResiduals", ";;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
-  chi2    = sum(tuple(residual**2 for residual in residuals))
-  ndf     = len(residuals) - 1  # H(0, 0) has by definition a vanishing residual
-  for index, residual in enumerate(residuals):
-    histRes.SetBinContent(index + 1, residual)
-    histRes.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-    histRes.GetXaxis().SetBinLabel(index + 1, histMeasRe.GetXaxis().GetBinLabel(index + 1))
-  histRes.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histRes.SetLineColor(ROOT.kBlue)  # type: ignore
-  histRes.SetMinimum(-3)
-  histRes.SetMaximum(+3)
+  residualsRe = tuple(moment[1].real - inputMoments[index] / math.sqrt(momentsCov[(*moment[0], *moment[0])][0])
+    if momentsCov[(*moment[0], *moment[0])][0] > 0 else 0 for index, moment in enumerate(moments))
+  histResRe = ROOT.TH1D("hResidualsRe", "Real Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
+  chi2 = sum(tuple(residual**2 for residual in residualsRe))
+  ndf  = len(residualsRe)
+  for index, residual in enumerate(residualsRe):
+    histResRe.SetBinContent(index + 1, residual)
+    histResRe.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+    histResRe.GetXaxis().SetBinLabel(index + 1, histMeasRe.GetXaxis().GetBinLabel(index + 1))
+  histResRe.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histResRe.SetLineColor(ROOT.kBlue)  # type: ignore
+  histResRe.SetMinimum(-3)
+  histResRe.SetMaximum(+3)
   canv = ROOT.TCanvas()  # type: ignore
-  histRes.Draw("PE")
+  histResRe.Draw("PE")
   # draw zero line
-  xAxis = histRes.GetXaxis()
+  xAxis = histResRe.GetXaxis()
   line = ROOT.TLine()  # type: ignore
   line.SetLineStyle(ROOT.kDashed)  # type: ignore
   line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
@@ -695,4 +714,6 @@ if __name__ == "__main__":
   label.SetNDC()
   label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
   label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
-  canv.SaveAs(f"{histRes.GetName()}.pdf")
+  canv.SaveAs(f"{histResRe.GetName()}.pdf")
+
+  ROOT.gBenchmark.Show("Total execution time")  # type: ignore
