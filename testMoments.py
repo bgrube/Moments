@@ -562,8 +562,10 @@ if __name__ == "__main__":
   # acceptanceFormula = "1"  # acc_perfect
   # acceptanceFormula = "2 - x * x"  # acc_1
   # acceptanceFormula = "1 - x * x"  # acc_2
-  acceptanceFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # PiecewiseExpand[BernsteinBasis[4,3,x]]
-  acceptanceFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_3
+  # acceptanceFormula = "180 * 180 - y * y"  # acc_3
+  acceptanceFormula = "0.25 + (1 - x * x) * (180 * 180 - y * y) / (180 * 180)"  # acc_4
+  # acceptanceFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # PiecewiseExpand[BernsteinBasis[4,3,x]]
+  # acceptanceFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
 
   # # Legendre polynomials
   # chose parameters such that resulting linear combinations are positive definite
