@@ -432,7 +432,7 @@ def calculateWignerDMoment(
 ) -> Tuple[UFloat, UFloat]:  # real and imag part with uncertainty
   '''Calculates unnormalized moment of Wigner-D function D^L_{M 0}'''
   # unnormalized moment
-  dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, theta)") \
+  dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, Theta)") \
                       .Define("WignerDRe", "real(WignerD)") \
                       .Define("WignerDIm", "imag(WignerD)")
   momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()  # type: ignore
@@ -550,17 +550,17 @@ def setupPlotStyle():
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
-  ROOT.gRandom.SetSeed(123456789)  # type: ignore
+  ROOT.gRandom.SetSeed(1234567890)  # type: ignore
   # ROOT.EnableImplicitMT(10)  # type: ignore
   setupPlotStyle()
   ROOT.gBenchmark.Start("Total execution time")  # type: ignore
 
   # get data
   nmbEvents = 1000
-  nmbMcEvents = 10000
-  acceptanceFormula = "1"
-  # acceptanceFormula = "1 - x * x"
-  # acceptanceFormula = "2 - x * x"
+  nmbMcEvents = 1000000
+  acceptanceFormula = "1"  # acc_perfect
+  # acceptanceFormula = "2 - x * x"  # acc_1
+  # acceptanceFormula = "1 - x * x"  # acc_2
 
   # # Legendre polynomials
   # chose parameters such that resulting linear combinations are positive definite
@@ -686,8 +686,9 @@ if __name__ == "__main__":
   # draw residuals for real part
   residualsRe = tuple((moment[1].real - inputMoments[index]) / math.sqrt(momentsCov[(*moment[0], *moment[0])][0])
     if momentsCov[(*moment[0], *moment[0])][0] > 0 else 0 for index, moment in enumerate(moments))
+  print(f"!!! {residualsRe}")
   histResRe = ROOT.TH1D("hResidualsRe", "Real Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
-  chi2 = sum(tuple(residual**2 for residual in residualsRe))
+  chi2 = sum(tuple(residual**2 for residual in residualsRe[1:]))  # exclude H(0, 0) from chi^2
   ndf  = len(residualsRe)
   for index, residual in enumerate(residualsRe):
     histResRe.SetBinContent(index + 1, residual)
