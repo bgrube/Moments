@@ -228,11 +228,11 @@ def calculateSphHarmMoments(
       iMoment = L * (L + 1) // 2 + M
       print(f"H_meas(L = {L}, M = {M}) = {H_meas[iMoment]}")
   # correct for acceptance
-  H_true = np.zeros((nmbMoments), dtype = np.complex128)
-  V_true_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
+  H_phys = np.zeros((nmbMoments), dtype = np.complex128)
+  V_phys_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
   if integralMatrix is None:
-    H_true     = H_meas
-    V_true_aug = V_meas_aug
+    H_phys     = H_meas
+    V_phys_aug = V_meas_aug
   else:
     I = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
     for L in range(2 * maxL + 2):
@@ -257,7 +257,7 @@ def calculateSphHarmMoments(
     plt.savefig("Iinv_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
     plt.savefig("Iinv_arg.pdf")
-    H_true = Iinv @ H_meas
+    H_phys = Iinv @ H_meas
     # linear uncertainty propagation
     J = Iinv  # Jacobian of acceptance correction
     J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian
@@ -265,28 +265,28 @@ def calculateSphHarmMoments(
       [J,                    J_conj],
       [np.conjugate(J_conj), np.conjugate(J)],
     ])  # augmented Jacobian
-    V_true_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
-  V_true_Hermit = V_true_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix
-  V_true_pseudo = V_true_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix
+    V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
+  V_phys_Hermit = V_phys_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix
+  V_phys_pseudo = V_phys_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix
   # covariances of real and imaginary parts
-  V_true_ReRe = (np.real(V_true_Hermit) + np.real(V_true_pseudo)) / 2
-  V_true_ImIm = (np.real(V_true_Hermit) - np.real(V_true_pseudo)) / 2
-  V_true_ReIm = (np.imag(V_true_pseudo) - np.imag(V_true_Hermit)) / 2
+  V_phys_ReRe = (np.real(V_phys_Hermit) + np.real(V_phys_pseudo)) / 2
+  V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2
+  V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2
   # reformat output
-  momentsTrue:    List[Tuple[Tuple[int, int], complex]]    = []
-  momentsTrueCov: Dict[Tuple[int, ...], Tuple[float, ...]] = {}  # cov[(L, M, L', M')] = (ReRe, ImIm, ReIm)
+  momentsPhys:    List[Tuple[Tuple[int, int], complex]]    = []
+  momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]] = {}  # cov[(L, M, L', M')] = (ReRe, ImIm, ReIm)
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
-      print(f"H_true(L = {L}, M = {M}) = {H_true[iMoment]}")
-      momentsTrue.append(((L, M), H_true[iMoment]))
+      print(f"H_phys(L = {L}, M = {M}) = {H_phys[iMoment]}")
+      momentsPhys.append(((L, M), H_phys[iMoment]))
       for L_p in range(2 * maxL + 2):
         for M_p in range(L_p + 1):
           iMoment_p = L_p * (L_p + 1) // 2 + M_p
-          momentsTrueCov[(L, M, L_p, M_p)] = (V_true_ReRe[iMoment, iMoment_p], V_true_ImIm[iMoment, iMoment_p], V_true_ReIm[iMoment, iMoment_p])
-  # print(momentsTrue)
+          momentsPhysCov[(L, M, L_p, M_p)] = (V_phys_ReRe[iMoment, iMoment_p], V_phys_ImIm[iMoment, iMoment_p], V_phys_ReIm[iMoment, iMoment_p])
+  # print(momentsPhys)
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
-  return momentsTrue, momentsTrueCov
+  return momentsPhys, momentsPhysCov
 
 
 # C++ implementation of (complex conjugated) Wigner D function
@@ -683,9 +683,8 @@ if __name__ == "__main__":
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStackIm.GetName()}.pdf")
 
-  # draw residuals
-  #TODO calculate and print chi^2 / ndf
-  residualsRe = tuple(moment[1].real - inputMoments[index] / math.sqrt(momentsCov[(*moment[0], *moment[0])][0])
+  # draw residuals for real part
+  residualsRe = tuple((moment[1].real - inputMoments[index]) / math.sqrt(momentsCov[(*moment[0], *moment[0])][0])
     if momentsCov[(*moment[0], *moment[0])][0] > 0 else 0 for index, moment in enumerate(moments))
   histResRe = ROOT.TH1D("hResidualsRe", "Real Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
   chi2 = sum(tuple(residual**2 for residual in residualsRe))
@@ -715,5 +714,37 @@ if __name__ == "__main__":
   label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
   label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
   canv.SaveAs(f"{histResRe.GetName()}.pdf")
+
+  # draw residuals for imaginary part
+  residualsIm = tuple(moment[1].imag / math.sqrt(momentsCov[(*moment[0], *moment[0])][1])  # true value is 0
+    if momentsCov[(*moment[0], *moment[0])][1] > 0 else 0 for index, moment in enumerate(moments))
+  histResIm = ROOT.TH1D("hResidualsIm", "Imaginary Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
+  chi2 = sum(tuple(residual**2 for residual in residualsIm))
+  ndf  = len(residualsIm)
+  for index, residual in enumerate(residualsIm):
+    histResIm.SetBinContent(index + 1, residual)
+    histResIm.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+    histResIm.GetXaxis().SetBinLabel(index + 1, histMeasRe.GetXaxis().GetBinLabel(index + 1))
+  histResIm.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histResIm.SetLineColor(ROOT.kBlue)  # type: ignore
+  histResIm.SetMinimum(-3)
+  histResIm.SetMaximum(+3)
+  canv = ROOT.TCanvas()  # type: ignore
+  histResIm.Draw("PE")
+  # draw zero line
+  xAxis = histResIm.GetXaxis()
+  line = ROOT.TLine()  # type: ignore
+  line.SetLineStyle(ROOT.kDashed)  # type: ignore
+  line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+  # shade 1 sigma region
+  box = ROOT.TBox()  # type: ignore
+  box.SetFillColorAlpha(ROOT.kBlack, 0.15)  # type: ignore
+  box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
+  # draw chi^2 info
+  label = ROOT.TLatex()  # type: ignore
+  label.SetNDC()
+  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
+  label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
+  canv.SaveAs(f"{histResIm.GetName()}.pdf")
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
