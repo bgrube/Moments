@@ -1,13 +1,14 @@
+// functor for RDataFrame that calculates the cross-covariance of 2 scalar columns
+// from https://root-forum.cern.ch/t/help-to-extend-covariance-functor-for-rdataframe-functionality/45335
+// see also https://root.cern/doc/master/df018__customActions_8C.html
+
 #include <memory>
 
 #include "ROOT/RDataFrame.hxx"
 
 
-// from https://root-forum.cern.ch/t/help-to-extend-covariance-functor-for-rdataframe-functionality/45335
-// see also https://root.cern/doc/master/df018__customActions_8C.html
-//
-// T is the type of the Scalar Column used
-// Example of usage with RDataFrame
+// T is the type of the scalar column
+// Example usage with RDataFrame
 // Covariance<double> Cov();
 // auto covXY = df.Book<double,double>(std::move(Cov), {"xColumn", "yColumn"}))->GetValue();
 template< typename T>
