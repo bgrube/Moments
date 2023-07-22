@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <iostream>
 
 #include "Math/SpecFuncMathMore.h"
 #include "TMath.h"
@@ -108,6 +109,16 @@ wignerDReflConj(
 }
 
 
+double
+ylm(
+	const int    l,
+	const int    m,
+	const double theta  // [rad]
+) {
+	// !Note! ROOT::Math::sph_legendre works only for non-negative m values
+	return ROOT::Math::sph_legendre(l, std::abs(m), theta) * ((m >= 0) ? 1 : powMinusOne(std::abs(m)));
+}
+
 std::complex<double>
 Ylm(
 	const int    l,
@@ -115,7 +126,11 @@ Ylm(
 	const double theta,  // [rad]
 	const double phi     // [rad]
 ) {
-  return ROOT::Math::sph_legendre(l, m, theta) * std::exp(std::complex<double>(0.0, 1.0) * (double)m * phi);
+	// compare with Wigner D-function
+	// const complex<double> delta = ylm(l, m, theta) * std::exp(std::complex<double>(0.0, 1.0) * (m * phi)) - std::sqrt((2 * l + 1) / (4 * TMath::Pi())) * std::conj(wignerD(2 * l, 2 * m, 0, phi, theta));
+	// if (std::abs(delta) > 1e-15)
+	// 	cout << "!!! " << delta << std::endl;
+	return ylm(l, m, theta) * std::exp(std::complex<double>(0.0, 1.0) * (m * phi));
 }
 
 double
@@ -125,7 +140,7 @@ ReYlm(
 	const double theta,  // [rad]
 	const double phi     // [rad]
 ) {
-  return ROOT::Math::sph_legendre(l, m, theta) * std::cos(m * phi);
+  return ylm(l, m, theta) * std::cos(m * phi);
 }
 
 double
@@ -135,7 +150,7 @@ ImYlm(
 	const double theta,  // [rad]
 	const double phi     // [rad]
 ) {
-  return ROOT::Math::sph_legendre(l, m, theta) * std::sin(m * phi);
+  return ylm(l, m, theta) * std::sin(m * phi);
 }
 
 
