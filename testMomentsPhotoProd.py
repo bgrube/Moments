@@ -262,8 +262,18 @@ if __name__ == "__main__":
   # formulas for acceptance: x = cos(theta), y = phi in [-180, +180] deg
   acceptanceFormula = "1"  # acc_perfect
 
-  # partial-wave decomposition
+  # input from partial-wave amplitudes
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, acceptanceFormula)
+
+  # plot data
+  canv = ROOT.TCanvas()  # type: ignore
+  hist = dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, 0, 180), "cosTheta", "phiDeg", "PhiDeg")  # type: ignore
+  hist.SetMinimum(0)
+  hist.GetXaxis().SetTitleOffset(1.5)
+  hist.GetYaxis().SetTitleOffset(2)
+  hist.GetZaxis().SetTitleOffset(1.5)
+  hist.Draw("BOX2")
+  canv.SaveAs(f"{hist.GetName()}.pdf")
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
