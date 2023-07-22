@@ -19,17 +19,24 @@ import ROOT
 print = functools.partial(print, flush = True)
 
 
-# # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
-# def declareInCpp(**kwargs: Any) -> None:
-#   '''Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace'''
-#   for key, value in kwargs.items():
-#     ROOT.gInterpreter.Declare(  # type: ignore
-# f'''
-# namespace PyVars
-# {{
-#   auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)});
-# }}
-# ''')
+# # C++ implementation of RDataFrame custom action that calculates covariance between two columns
+# ROOT.gROOT.LoadMacro("./Covariance.C++")  # type: ignore
+# C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
+# also provides complexT typedef for std::complex<double>
+ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
+
+
+# see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
+def declareInCpp(**kwargs: Any) -> None:
+  '''Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace'''
+  for key, value in kwargs.items():
+    ROOT.gInterpreter.Declare(  # type: ignore
+f'''
+namespace PyVars
+{{
+  auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)});
+}}
+''')
 
 
 # set of all possible waves up to ell = 2
@@ -63,22 +70,22 @@ PROD_AMPS: Dict[int, Dict[Tuple[int, int,], complex]] = {
 }
 
 
-# # C++ implementation of RDataFrame custom action that calculates covariance between two columns
-# ROOT.gROOT.LoadMacro("./Covariance.C++")  # type: ignore
-# # C++ implementation of (complex conjugated) Wigner D function
-# # also provides complexT typedef for std::complex<double>
-# ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
-
-
-# def theta(m: int) -> float:
-#   '''Calculates normalization factor in reflectivity basis'''
-#   # see Eq. (19)
-#   if m > 0:
-#     return 1 / math.sqrt(2)
-#   elif m == 0:
-#     return 1 / 2
-#   else:
-#     return 0
+def calcSpinDensElemSetFromWaves(
+  refl:         int,
+  m1:           int,      # m
+  m2:           int,      # m'
+  prodAmp1:     complex,  # [ell]_m^refl
+  prodAmp1NegM: complex,  # [ell]_{-m}^refl
+  prodAmp2:     complex,  # [ell']_m'^refl
+  prodAmp2NegM: complex,  # [ell']_{-m'}^refl
+) -> Tuple[complex, complex, complex]:
+  '''Calculates element of spin-density matrix components from given partial-wave amplitudes assuming rank 1'''
+  # Eqs. (149) to (151)
+  rhos: List[complex] = 3 * [0 + 0j]
+  rhos[0] +=                    (           prodAmp1     * prodAmp2.conjugate() + (-1)**(m1 - m2) * prodAmp1NegM * prodAmp2NegM.conjugate())  # Eq. (149)
+  rhos[1] +=            -refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() + (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (150)
+  rhos[2] += -(0 + 1j) * refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() - (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (151)
+  return tuple(rhos)
 
 
 def calcMomentSetFromWaves(
@@ -86,8 +93,8 @@ def calcMomentSetFromWaves(
   L:        int,
   M:        int,
 ) -> Tuple[complex, complex, complex]:
-  '''Calculates values of (H_0, H_1, H_2) with L and M from given production amplitudes'''
-  # Eqs. (152) to (154) assuming that rank is 1
+  '''Calculates values of (H_0, H_1, H_2) with L and M from given production amplitudes assuming rank 1'''
+  # Eqs. (153) to (155) assuming that rank is 1
   moments: List[complex] = 3 * [0 + 0j]
   for refl in (-1, +1):
     for wave1 in prodAmps[refl]:
@@ -104,9 +111,12 @@ def calcMomentSetFromWaves(
             py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 0,      0,     0,      ignore_invalid = True)  # (ell_2 0,    L 0 | ell_1 0  )
           * py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (ell_2 m_2,  L M | ell_1 m_1)
         )
-        moments[0] +=            term * (prodAmp1 * prodAmp2.conjugate()                + (-1)**(m1 - m2) * prodAmp1NegM * prodAmp2NegM.conjugate())  # H_0; Eq. (152)
-        moments[1] +=            term * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() + (-1)**m2 * prodAmp1 * prodAmp2NegM.conjugate())             # H_1; Eq. (153)
-        moments[2] += (0 + 1j) * term * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() - (-1)**m2 * prodAmp1 * prodAmp2NegM.conjugate())             # H_2; Eq. (154)
+        if term == 0:  # invalid Clebsch-Gordan
+          continue
+        rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
+        moments[0] +=  term * rhos[0]  # H_0; Eq. (123)
+        moments[1] += -term * rhos[1]  # H_1; Eq. (124)
+        moments[2] += -term * rhos[2]  # H_2; Eq. (124)
   return tuple(moments)
 
 
@@ -121,7 +131,7 @@ def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
 
 
 def calcAllMomentsFromWaves(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> List[Tuple[complex, complex, complex]]:
-  '''Calculates moments for given production amplitudes'''
+  '''Calculates moments for given production amplitudes assuming rank 1'''
   moments: List[Tuple[complex, complex, complex]] = []
   maxSpin = getMaxSpin(prodAmps)
   norm = 1
@@ -150,6 +160,76 @@ def calcAllMomentsFromWaves(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]
   return moments
 
 
+def genDataFromWaves(
+  nmbEvents:         int,
+  polarization:      float,
+  prodAmps:          Dict[int, Dict[Tuple[int, int,], complex]],
+  acceptanceFormula: Optional[str] = None,
+) -> Any:
+  '''Generates data according to set of partial-wave amplitudes assuming rank 1'''
+  # construct TF3 for intensity distribution in Eq. (152)
+  #   x = cos(theta)
+  #   y = phi [deg]
+  #   z = Phi [deg]
+  intensityComponentTerms: List[Tuple[str, str, str]] = []  # terms in sum of each intensity component
+  for refl in (-1, +1):
+    for wave1 in prodAmps[refl]:
+      ell1:         int     = wave1[0]
+      m1:           int     = wave1[1]
+      prodAmp1:     complex = prodAmps[refl][wave1]
+      prodAmp1NegM: complex = prodAmps[refl][(ell1, -m1)]
+      decayAmp1 = f"Ylm({ell1}, {m1}, std::acos(x), TMath::DegToRad() * y)"
+      for wave2 in prodAmps[refl]:
+        ell2:         int     = wave2[0]
+        m2:           int     = wave2[1]
+        prodAmp2:     complex = prodAmps[refl][wave2]
+        prodAmp2NegM: complex = prodAmps[refl][(ell2, -m2)]
+        decayAmp2 = f"Ylm({ell2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
+        rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
+        terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (152)
+        intensityComponentTerms.append(terms)
+  # sum terms for each intensity component
+  intensityComponentsFormula = []
+  for iComponent in range(3):
+    intensityComponentsFormula.append(f"({' + '.join([term[iComponent] for term in intensityComponentTerms])})")
+  # sum intensity components
+  intensityFormula = (
+    f"std::real({intensityComponentsFormula[0]} "
+    f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(TMath::DegToRad() * z) "
+    f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(TMath::DegToRad() * z))"
+    + ("" if acceptanceFormula is None else f" * ({acceptanceFormula})"))  # Eq. (112)
+  print(f"intensity = {intensityFormula}")
+  intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
+  intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
+  intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
+  intensityFcn.SetNpy(100)
+  intensityFcn.SetNpz(100)
+  # intensityFcn.SetContour(100)
+  intensityFcn.SetMinimum(0)
+
+  # draw function; does not work
+  # canv = ROOT.TCanvas()  # type: ignore
+  # intensityFcn.Draw("BOX2")
+  # canv.SaveAs(f"{intensityFcn.GetName()}.pdf")
+
+  # generate random data that follow intensity given by partial-wave amplitudes
+  treeName = "data"
+  fileName = f"{intensityFcn.GetName()}.root"
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  declareInCpp(intensityFcn = intensityFcn)
+  df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
+    .Define("cosTheta", "point[0]") \
+    .Define("theta",    "std::acos(cosTheta)") \
+    .Define("phiDeg",   "point[1]") \
+    .Define("phi",      "TMath::DegToRad() * phiDeg") \
+    .Define("PhiDeg",   "point[2]") \
+    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+                                   # noop filter before snapshot logs when event loop is running
+  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+
+
 def setupPlotStyle():
   #TODO remove dependency from external file or add file to repo
   ROOT.gROOT.LoadMacro("~/rootlogon.C")  # type: ignore
@@ -176,12 +256,14 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")  # type: ignore
 
   # get data
-  nmbEvents = 1000
+  nmbEvents = 1000000
   nmbMcEvents = 100000
+  polarization = 1.0
   # formulas for acceptance: x = cos(theta), y = phi in [-180, +180] deg
   acceptanceFormula = "1"  # acc_perfect
 
   # partial-wave decomposition
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
+  dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, acceptanceFormula)
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
