@@ -207,10 +207,28 @@ def genDataFromWaves(
   # intensityFcn.SetContour(100)
   intensityFcn.SetMinimum(0)
 
-  # draw function; does not work
-  # canv = ROOT.TCanvas()  # type: ignore
-  # intensityFcn.Draw("BOX2")
-  # canv.SaveAs(f"{intensityFcn.GetName()}.pdf")
+  # draw function
+  canv = ROOT.TCanvas()  # type: ignore
+  # intensityFcn.Draw("BOX2")  # does not work
+  # draw function "by hand"
+  nmbBins = 25
+  fcnHist = ROOT.TH3F("hIntensity", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, 0, 180)  # type: ignore
+  xAxis = fcnHist.GetXaxis()
+  yAxis = fcnHist.GetYaxis()
+  zAxis = fcnHist.GetZaxis()
+  for xBin in range(1, nmbBins + 1):
+    for yBin in range(1, nmbBins + 1):
+      for zBin in range(1, nmbBins + 1):
+        x = xAxis.GetBinCenter(xBin)
+        y = yAxis.GetBinCenter(yBin)
+        z = zAxis.GetBinCenter(zBin)
+        fcnHist.SetBinContent(xBin, yBin, zBin, intensityFcn.Eval(x, y, z))
+  fcnHist.SetMinimum(0)
+  fcnHist.GetXaxis().SetTitleOffset(1.5)
+  fcnHist.GetYaxis().SetTitleOffset(2)
+  fcnHist.GetZaxis().SetTitleOffset(1.5)
+  fcnHist.Draw("BOX2")
+  canv.SaveAs(f"{fcnHist.GetName()}.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
@@ -268,7 +286,10 @@ if __name__ == "__main__":
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
-  hist = dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, 0, 180), "cosTheta", "phiDeg", "PhiDeg")  # type: ignore
+  nmbBins = 25
+  hist = dataPwaModel.Histo3D(
+    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, 0, 180),
+    "cosTheta", "phiDeg", "PhiDeg")
   hist.SetMinimum(0)
   hist.GetXaxis().SetTitleOffset(1.5)
   hist.GetYaxis().SetTitleOffset(2)
