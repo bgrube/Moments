@@ -191,7 +191,7 @@ def genDataFromWaves(
   polarization:      float,
   prodAmps:          Dict[int, Dict[Tuple[int, int,], complex]],
   acceptanceFormula: Optional[str] = None,
-) -> Any:
+) -> ROOT.RDataFrame:  # type: ignore
   '''Generates data according to set of partial-wave amplitudes assuming rank 1'''
   # construct TF3 for intensity distribution in Eq. (152)
   #   x = cos(theta)
@@ -232,7 +232,7 @@ def genDataFromWaves(
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
 
-  # draw function
+  # draw intensity function
   #   intensityFcn.Draw("BOX2") does not work
   #   draw function "by hand" instead
   drawIntensityTF3(intensityFcn, histName = "hIntensity")
@@ -249,7 +249,41 @@ def genDataFromWaves(
     .Define("phi",      "TMath::DegToRad() * phiDeg") \
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves" << endl; } return true;') \
+    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+                                   # noop filter before snapshot logs when event loop is running
+  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+
+
+def genAccepted2BodyPsPhotoProd(
+  nmbEvents:         int,  # number of events to generate
+  acceptanceFormula: Optional[str] = None,
+) -> ROOT.RDataFrame:  # type: ignore
+  '''Generates RDataFrame with two-body phase-space distribution weighted by given acceptance'''
+  # construct acceptance function
+  acceptanceFcn = ROOT.TF3("acceptance", "1" if acceptanceFormula is None else acceptanceFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
+  acceptanceFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
+  acceptanceFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
+  acceptanceFcn.SetNpy(100)
+  acceptanceFcn.SetNpz(100)
+  acceptanceFcn.SetMinimum(0)
+
+  # draw acceptance function
+  drawIntensityTF3(acceptanceFcn, histName = "hAcceptance")
+
+  # generate isotropic distributions in cos theta, phi, and Phi and weight with acceptance function
+  treeName = "data"
+  fileName = f"{acceptanceFcn.GetName()}.root"
+  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  declareInCpp(acceptanceFcn = acceptanceFcn)
+  df.Define("point", "double cosTheta, phiDeg, PhiDeg; PyVars::acceptanceFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
+    .Define("cosTheta", "point[0]") \
+    .Define("theta",    "std::acos(cosTheta)") \
+    .Define("phiDeg",   "point[1]") \
+    .Define("phi",      "TMath::DegToRad() * phiDeg") \
+    .Define("PhiDeg",   "point[2]") \
+    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
@@ -286,6 +320,7 @@ if __name__ == "__main__":
   polarization = 1.0
   # formulas for acceptance: x = cos(theta), y = phi in [-180, +180] deg
   acceptanceFormula = "1"  # acc_perfect
+  # acceptanceFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - (z - 90) * (z - 90) / (90 * 90))"  # acc_1
 
   # input from partial-wave amplitudes
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
@@ -303,5 +338,8 @@ if __name__ == "__main__":
   hist.GetZaxis().SetTitleOffset(1.5)
   hist.Draw("BOX2")
   canv.SaveAs(f"{hist.GetName()}.pdf")
+
+  # calculate moments
+  dataAcceptedPS = genAccepted2BodyPsPhotoProd(nmbMcEvents, acceptanceFormula)
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
