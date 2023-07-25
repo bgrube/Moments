@@ -97,7 +97,7 @@ def drawIntensityTF3(
 
 
 def calcSpinDensElemSetFromWaves(
-  refl:         int,
+  refl:         int,      # reflectivity
   m1:           int,      # m
   m2:           int,      # m'
   prodAmp1:     complex,  # [ell]_m^refl
@@ -187,10 +187,10 @@ def calcAllMomentsFromWaves(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]
 
 
 def genDataFromWaves(
-  nmbEvents:         int,
-  polarization:      float,
-  prodAmps:          Dict[int, Dict[Tuple[int, int,], complex]],
-  acceptanceFormula: Optional[str] = None,
+  nmbEvents:         int,                                         # number of events to generate
+  polarization:      float,                                       # photon-beam polarization
+  prodAmps:          Dict[int, Dict[Tuple[int, int,], complex]],  # partial-wave amplitudes
+  efficiencyFormula: Optional[str] = None,                        # detection efficiency
 ) -> ROOT.RDataFrame:  # type: ignore
   '''Generates data according to set of partial-wave amplitudes assuming rank 1'''
   # construct TF3 for intensity distribution in Eq. (152)
@@ -223,7 +223,7 @@ def genDataFromWaves(
     f"std::real({intensityComponentsFormula[0]} "
     f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(TMath::DegToRad() * z) "
     f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(TMath::DegToRad() * z))"
-    + ("" if acceptanceFormula is None else f" * ({acceptanceFormula})"))  # Eq. (112)
+    + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})"))  # Eq. (112)
   print(f"intensity = {intensityFormula}")
   intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
@@ -256,27 +256,27 @@ def genDataFromWaves(
 
 
 def genAccepted2BodyPsPhotoProd(
-  nmbEvents:         int,  # number of events to generate
-  acceptanceFormula: Optional[str] = None,
+  nmbEvents:         int,                   # number of events to generate
+  efficiencyFormula: Optional[str] = None,  # detection efficiency
 ) -> ROOT.RDataFrame:  # type: ignore
-  '''Generates RDataFrame with two-body phase-space distribution weighted by given acceptance'''
-  # construct acceptance function
-  acceptanceFcn = ROOT.TF3("acceptance", "1" if acceptanceFormula is None else acceptanceFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
-  acceptanceFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
-  acceptanceFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
-  acceptanceFcn.SetNpy(100)
-  acceptanceFcn.SetNpz(100)
-  acceptanceFcn.SetMinimum(0)
+  '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
+  # construct efficiency function
+  efficiencyFcn = ROOT.TF3("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
+  efficiencyFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
+  efficiencyFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
+  efficiencyFcn.SetNpy(100)
+  efficiencyFcn.SetNpz(100)
+  efficiencyFcn.SetMinimum(0)
 
-  # draw acceptance function
-  drawIntensityTF3(acceptanceFcn, histName = "hAcceptance")
+  # draw efficiency function
+  drawIntensityTF3(efficiencyFcn, histName = "hEfficiency")
 
-  # generate isotropic distributions in cos theta, phi, and Phi and weight with acceptance function
+  # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
-  fileName = f"{acceptanceFcn.GetName()}.root"
+  fileName = f"{efficiencyFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  declareInCpp(acceptanceFcn = acceptanceFcn)
-  df.Define("point", "double cosTheta, phiDeg, PhiDeg; PyVars::acceptanceFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
+  declareInCpp(efficiencyFcn = efficiencyFcn)
+  df.Define("point", "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
     .Define("cosTheta", "point[0]") \
     .Define("theta",    "std::acos(cosTheta)") \
     .Define("phiDeg",   "point[1]") \
@@ -287,6 +287,46 @@ def genAccepted2BodyPsPhotoProd(
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+
+
+def calcIntegralMatrix(
+  phaseSpaceDataFrame: ROOT.RDataFrame,  # (accepted) phase space data  # type: ignore
+  nmbEvents:           int,              # number of events in RDataFrame
+  polarization:        float,            # photon-beam polarization
+  maxL:                int,              # maximum orbital angular momentum
+) -> Dict[Tuple[int, ...], complex]:
+  '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
+  # define basis functions for physical moments; Eq. (174)
+  for L in range(2 * maxL + 2):
+    for M in range(L + 1):
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"fPhys_0_{L}_{M}", f"fPhys(0, {L}, {M}, theta, phi, Phi, {polarization})")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"fPhys_1_{L}_{M}", f"fPhys(1, {L}, {M}, theta, phi, Phi, {polarization})")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"fPhys_2_{L}_{M}", f"fPhys(2, {L}, {M}, theta, phi, Phi, {polarization})")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"fMeas_0_{L}_{M}", f"fMeas(0, {L}, {M}, theta, phi, Phi, {polarization})")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"fMeas_1_{L}_{M}", f"fMeas(1, {L}, {M}, theta, phi, Phi, {polarization})")
+      phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"fMeas_2_{L}_{M}", f"fMeas(2, {L}, {M}, theta, phi, Phi, {polarization})")
+  # define integral-matrix elements; Eq. (177)
+  for momentIndexMeas in range(3):
+    for Lmeas in range(2 * maxL + 2):
+      for Mmeas in range(Lmeas + 1):
+        for momentIndexPhys in range(3):
+          for Lphys in range(2 * maxL + 2):
+            for Mphys in range(Lphys + 1):
+              phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{momentIndexMeas}_{Lmeas}_{Mmeas}_{momentIndexPhys}_{Lphys}_{Mphys}",
+              f"(8 * TMath::Pi() * TMath::Pi() / {nmbEvents})"
+              f" * fMeas_{momentIndexMeas}_{Lmeas}_{Mmeas} * fPhys_{momentIndexPhys}_{Lphys}_{Mphys}")
+  # calculate integral matrix
+  Iacc: Dict[Tuple[int, ...], complex] = {}
+  for momentIndexMeas in range(3):
+    for Lmeas in range(2 * maxL + 2):
+      for Mmeas in range(Lmeas + 1):
+        for momentIndexPhys in range(3):
+          for Lphys in range(2 * maxL + 2):
+            for Mphys in range(Lphys + 1):
+              Iacc[(momentIndexMeas, Lmeas, Mmeas, momentIndexPhys, Lphys, Mphys)] = (
+                phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](
+                f"I_{momentIndexMeas}_{Lmeas}_{Mmeas}_{momentIndexPhys}_{Lphys}_{Mphys}").GetValue())
+  return Iacc
 
 
 def setupPlotStyle():
@@ -318,13 +358,13 @@ if __name__ == "__main__":
   nmbEvents = 1000000
   nmbMcEvents = 100000
   polarization = 1.0
-  # formulas for acceptance: x = cos(theta), y = phi in [-180, +180] deg
-  acceptanceFormula = "1"  # acc_perfect
-  # acceptanceFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - (z - 90) * (z - 90) / (90 * 90))"  # acc_1
+  # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
+  efficiencyFormula = "1"  # acc_perfect
+  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - (z - 90) * (z - 90) / (90 * 90))"  # acc_1
 
   # input from partial-wave amplitudes
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
-  dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, acceptanceFormula)
+  dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormula)
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
@@ -340,6 +380,7 @@ if __name__ == "__main__":
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # calculate moments
-  dataAcceptedPS = genAccepted2BodyPsPhotoProd(nmbMcEvents, acceptanceFormula)
+  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
+  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
