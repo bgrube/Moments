@@ -7,6 +7,9 @@
 #include "TMath.h"
 
 
+const std::complex<double> I = std::complex<double>(0, 1);
+
+
 // optimized function that calculates (-1)^n
 inline
 int
@@ -151,6 +154,56 @@ ImYlm(
 	const double phi     // [rad]
 ) {
   return ylm(l, m, theta) * std::sin(m * phi);
+}
+
+
+// basis functions for physical moments; Eq. (174)
+std::complex<double>
+fPhys(
+	const int    momentIndex,  // 0, 1, or 2
+	const int    L,
+	const int    M,
+	const double theta,  // [rad]
+	const double phi,    // [rad]
+	const double Phi,    // [rad]
+	const double polarization
+) {
+	const double norm = std::sqrt((2 * L + 1) / (4 * TMath::Pi())) * ((M == 0) ? 1 : 2) * ylm(L, M, theta);
+	switch (momentIndex) {
+	case 0:
+		return norm * std::cos(M * phi);
+	case 1:
+		return norm * polarization * std::cos(M * phi) * std::cos(2 * Phi);
+	case 2:
+		return norm * I * polarization * std::sin(M * phi) * std::sin(2 * Phi);
+	default:
+		throw std::domain_error("fPhys() unknown moment index.");
+	}
+}
+
+
+// basis functions for measured moments; Eq. (175)
+std::complex<double>
+fMeas(
+	const int    momentIndex,  // 0, 1, or 2
+	const int    L,
+	const int    M,
+	const double theta,  // [rad]
+	const double phi,    // [rad]
+	const double Phi,    // [rad]
+	const double polarization
+) {
+	const std::complex<double> norm = (1 / TMath::Pi()) * std::sqrt((4 * TMath::Pi()) / (2 * L + 1)) * std::conj(Ylm(L, M, theta, phi));
+	switch (momentIndex) {
+	case 0:
+		return norm / 2.0;
+	case 1:
+		return norm * std::cos(2 * Phi) / polarization;
+	case 2:
+		return norm * std::sin(2 * Phi) / polarization;
+	default:
+		throw std::domain_error("fMeas() unknown moment index.");
+	}
 }
 
 
