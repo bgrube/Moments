@@ -549,4 +549,40 @@ if __name__ == "__main__":
     print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
     print(f"Im[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].imag} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][1])}")  # diagonal element for ImIm
 
+  momentIndex = 0
+  measVals = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)  # Re[H_0]
+  inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments)
+
+  momentIndex = measVals[0][2][0]
+  fileNameSuffix = "Re"
+  legendEntrySuffix = "(Real Part)"
+  hStack = ROOT.THStack(f"hCompare_H{momentIndex}_{fileNameSuffix}", "")  # type: ignore
+  nmbBins = len(measVals)
+  # create histogram with measured values
+  histMeas = ROOT.TH1D(f"Measured Moments {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, measVal in enumerate(measVals):
+    histMeas.SetBinContent(index + 1, measVal[0])
+    histMeas.SetBinError  (index + 1, measVal[1])
+    histMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{measVal[2][0]}}}({measVal[2][1]}, {measVal[2][2]})")
+  histMeas.SetLineColor(ROOT.kRed)  # type: ignore
+  histMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
+  histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  histMeas.SetMarkerSize(0.75)
+  hStack.Add(histMeas, "PEX0")
+  # create histogram with input values
+  histInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  for index, inputVal in enumerate(inputVals):
+    histInput.SetBinContent(index + 1, inputVal)
+    histInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  histInput.SetLineColor(ROOT.kBlue)  # type: ignore
+  hStack.Add(histInput, "PE")
+  canv = ROOT.TCanvas()  # type: ignore
+  hStack.Draw("NOSTACK")
+  hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
+  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
+  # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
+  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+  canv.SaveAs(f"{hStack.GetName()}.pdf")
+
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
