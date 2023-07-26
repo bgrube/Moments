@@ -334,26 +334,35 @@ def calculatePhotoProdMoments(
   maxL:           int,                                              # maximum spin of decaying object
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
 ) -> Tuple[List[Tuple[Tuple[int, int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
-  '''Calculates photoproduction moments'''
+  '''Calculates photoproduction moments and their covariances'''
   # define measured moments; Eq. (178)
   dfMoment = inData
+  nmbMoments = 0
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
+        if momentIndex == 2 and M == 0:
+          continue  # H_2(L, 0) are always zero and would lead to singular acceptance integral matrix
         dfMoment = dfMoment.Define(f"Re_f_meas_{momentIndex}_{L}_{M}",
           f"std::real(f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization}))")
         dfMoment = dfMoment.Define(f"Im_f_meas_{momentIndex}_{L}_{M}",
           f"std::imag(f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization}))")
+        nmbMoments += 1
+        # print(f"!!! H_{momentIndex}({L}, {M})")
+  # print(f"!!! {nmbMoments}")
   # calculate moments and their covariance matrix; Eq. (179) and (180)
   nmbEvents = inData.Count().GetValue()
-  nmbMoments = 3 * (2 * maxL + 2) * (2 * maxL + 3) // 2
+  # nmbMoments = 3 * (2 * maxL + 2) * (2 * maxL + 3) // 2
   H_meas    = np.zeros((nmbMoments),            dtype = np.complex128)
   Re_f_meas = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   Im_f_meas = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
+  iMoment = 0
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
-        iMoment = momentIndex * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L * (L + 1) // 2 + M
+        if momentIndex == 2 and M == 0:
+          continue  # H_2(L, 0) are always zero
+        # iMoment = momentIndex * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L * (L + 1) // 2 + M
         # calculate value
         momentValRe = dfMoment.Sum(f"Re_f_meas_{momentIndex}_{L}_{M}").GetValue()
         momentValIm = dfMoment.Sum(f"Im_f_meas_{momentIndex}_{L}_{M}").GetValue()
@@ -362,33 +371,56 @@ def calculatePhotoProdMoments(
         # get values of basis functions as Numpy arrays
         Re_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Re_f_meas_{momentIndex}_{L}_{M}"])[f"Re_f_meas_{momentIndex}_{L}_{M}"]
         Im_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_meas_{momentIndex}_{L}_{M}"])[f"Im_f_meas_{momentIndex}_{L}_{M}"]
+        iMoment += 1
   f_meas = Re_f_meas + 1j * Im_f_meas
   V_meas_aug = nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
   # normalize to H_0(0, 0)
-  H_meas /= nmbEvents
-  V_meas_aug /= nmbEvents**2
+  norm = nmbEvents / (2 * math.pi)
+  H_meas /= norm
+  V_meas_aug /= norm**2
+  iMoment = 0
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
-        iMoment = momentIndex * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L * (L + 1) // 2 + M
+        if momentIndex == 2 and M == 0:
+          continue  # H_2(L, 0) are always zero
+        # iMoment = momentIndex * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L * (L + 1) // 2 + M
         print(f"H^meas_{momentIndex}(L = {L}, M = {M}) = {H_meas[iMoment]}")
-  # correct for detection efficiency
-  H_phys = np.zeros((nmbMoments), dtype = np.complex128)
+        iMoment += 1
+  H_phys     = np.zeros((nmbMoments), dtype = np.complex128)
   V_phys_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
   if integralMatrix is None:
+    # ideal detector
     H_phys     = H_meas
     V_phys_aug = V_meas_aug
   else:
+    # correct for detection efficiency
+    # get acceptance integral matrix
     I_acc = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
+    iMoment_meas = 0
     for momentIndex_meas in range(3):
       for L_meas in range(2 * maxL + 2):
         for M_meas in range(L_meas + 1):
-          iMoment_meas = momentIndex_meas * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_meas * (L_meas + 1) // 2 + M_meas
+          if momentIndex_meas == 2 and M_meas == 0:
+            continue  # H_2(L, 0) are always zero
+          # iMoment_meas = momentIndex_meas * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_meas * (L_meas + 1) // 2 + M_meas
+          # print(f"!!! H^meas_{momentIndex_meas}({L_meas}, {M_meas})")
+          iMoment_phys = 0
           for momentIndex_phys in range(3):
             for L_phys in range(2 * maxL + 2):
               for M_phys in range(L_phys + 1):
-                iMoment_phys = momentIndex_phys * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_phys * (L_phys + 1) // 2 + M_phys
+                if momentIndex_phys == 2 and M_phys == 0:
+                  continue  # H_2(L, 0) are always zero
+                # print(f"!!! H^phys_{momentIndex_phys}({L_phys}, {M_phys})")
+                # iMoment_phys = momentIndex_phys * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_phys * (L_phys + 1) // 2 + M_phys
                 I_acc[iMoment_meas, iMoment_phys] = integralMatrix[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)]
+                iMoment_phys += 1
+          iMoment_meas += 1
+    print(f"Acceptance integral matrix:\n{I_acc}")
+    foo = np.real_if_close(I_acc, tol = 1e-3)
+    print(np.abs(foo))
+    foo[np.abs(foo) < 1e-3] = 0
+    print(foo)
     # eigenVals, eigenVecs = np.linalg.eig(I_acc)
     # print(f"I eigenvalues = {eigenVals}")
     # # print(f"I eigenvectors = {eigenVecs}")
@@ -406,36 +438,47 @@ def calculatePhotoProdMoments(
     # plt.savefig("Iinv_abs.pdf")
     # plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
     # plt.savefig("Iinv_arg.pdf")
-    H_phys = I_inv @ H_meas
-    # linear uncertainty propagation
-    J = I_inv  # Jacobian of efficiency correction
-    J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian
+    # calculate physical moments
+    H_phys = I_inv @ H_meas  # Eq. (83)
+    # perform linear uncertainty propagation
+    J = I_inv  # Jacobian of efficiency correction; Eq. (101)
+    J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
     J_aug = np.block([
       [J,                    J_conj],
       [np.conjugate(J_conj), np.conjugate(J)],
-    ])  # augmented Jacobian
-    V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
-  V_phys_Hermit = V_phys_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix
-  V_phys_pseudo = V_phys_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix
+    ])  # augmented Jacobian; Eq. (98)
+    V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
+  V_phys_Hermit = V_phys_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
+  V_phys_pseudo = V_phys_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
   # covariances of real and imaginary parts
-  V_phys_ReRe = (np.real(V_phys_Hermit) + np.real(V_phys_pseudo)) / 2
-  V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2
-  V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2
+  V_phys_ReRe = (np.real(V_phys_Hermit) + np.real(V_phys_pseudo)) / 2  # Eq. (91)
+  V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2  # Eq. (92)
+  V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2  # Eq. (93)
   # reformat output
   momentsPhys:    List[Tuple[Tuple[int, int, int], complex]] = []
-  momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]]   = {}  # cov[(L, M, L', M')] = (ReRe, ImIm, ReIm)
+  momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]]   = {}  # cov[(i, L, M, j, L', M')] = (cov[ReRe], cov[ImIm], cov[ReIm])
+  iMoment_phys = 0
   for momentIndex_phys in range(3):
     for L_phys in range(2 * maxL + 2):
       for M_phys in range(L_phys + 1):
-        iMoment_phys = momentIndex_phys * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_phys * (L_phys + 1) // 2 + M_phys
-        print(f"H^meas_{momentIndex_phys}(L = {L_phys}, M = {M_phys}) = {H_phys[iMoment_phys]}")
+        if momentIndex_phys == 2 and M_phys == 0:
+          continue  # H_2(L, 0) are always zero
+        # iMoment_phys = momentIndex_phys * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_phys * (L_phys + 1) // 2 + M_phys
+        # print(f"H^phys_{momentIndex_phys}(L = {L_phys}, M = {M_phys}) = {H_phys[iMoment_phys]}")
         momentsPhys.append(((momentIndex_phys, L_phys, M_phys), H_phys[iMoment_phys]))
+        iMoment_meas = 0
         for momentIndex_meas in range(3):
           for L_meas in range(2 * maxL + 2):
             for M_meas in range(L_meas + 1):
-              iMoment_meas = momentIndex_meas * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_meas * (L_meas + 1) // 2 + M_meas
-              momentsPhysCov[(momentIndex_meas, L_meas, M_meas, L_phys, M_phys)] = (
-                (V_phys_ReRe[iMoment_meas, iMoment_phys], V_phys_ImIm[iMoment_meas, iMoment_phys], V_phys_ReIm[iMoment_meas, iMoment_phys]))
+              if momentIndex_meas == 2 and M_meas == 0:
+                continue  # H_2(L, 0) are always zero
+              # iMoment_meas = momentIndex_meas * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_meas * (L_meas + 1) // 2 + M_meas
+              momentsPhysCov[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
+                (V_phys_ReRe[iMoment_meas, iMoment_phys],
+                 V_phys_ImIm[iMoment_meas, iMoment_phys],
+                 V_phys_ReIm[iMoment_meas, iMoment_phys]))
+              iMoment_meas += 1
+        iMoment_phys += 1
   # print(momentsPhys)
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
   return momentsPhys, momentsPhysCov
@@ -468,7 +511,7 @@ if __name__ == "__main__":
 
   # get data
   nmbEvents = 1000000
-  nmbMcEvents = 100000
+  nmbMcEvents = 10000000
   polarization = 1.0
   # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
   efficiencyFormula = "1"  # acc_perfect
@@ -495,6 +538,10 @@ if __name__ == "__main__":
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   print("Moments of accepted phase-space data")
-  calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  # print moments of accepted phase-space data
+  for momentPs in momentsPs:
+    print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
+    print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
