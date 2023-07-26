@@ -7,6 +7,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+from scipy import stats
 from typing import Any, Dict, List, Optional, Tuple
 
 import py3nj
@@ -486,27 +487,29 @@ def plotComparison(
   legendEntrySuffix: str,
 ) -> None:
   momentIndex = measVals[0][2][0]
+
+  # overlay measured and input values
   hStack = ROOT.THStack(f"hCompare_H{momentIndex}_{fileNameSuffix}", "")  # type: ignore
   nmbBins = len(measVals)
   # create histogram with measured values
-  histMeas = ROOT.TH1D(f"Measured Moments {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  hMeas = ROOT.TH1D(f"Measured Moments {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
   for index, measVal in enumerate(measVals):
-    histMeas.SetBinContent(index + 1, measVal[0])
-    histMeas.SetBinError  (index + 1, measVal[1])
-    histMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{measVal[2][0]}}}({measVal[2][1]}, {measVal[2][2]})")
-  histMeas.SetLineColor(ROOT.kRed)  # type: ignore
-  histMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
-  histMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
-  histMeas.SetMarkerSize(0.75)
-  hStack.Add(histMeas, "PEX0")
+    hMeas.SetBinContent(index + 1, measVal[0])
+    hMeas.SetBinError  (index + 1, measVal[1])
+    hMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{measVal[2][0]}}}({measVal[2][1]}, {measVal[2][2]})")
+  hMeas.SetLineColor(ROOT.kRed)  # type: ignore
+  hMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
+  hMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  hMeas.SetMarkerSize(0.75)
+  hStack.Add(hMeas, "PEX0")
   # create histogram with input values
-  histInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  hInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
   for index, inputVal in enumerate(inputVals):
-    histInput.SetBinContent(index + 1, inputVal)
-    histInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histInput.SetLineColor(ROOT.kBlue)  # type: ignore
-  hStack.Add(histInput, "PE")
+    hInput.SetBinContent(index + 1, inputVal)
+    hInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+  hInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  hInput.SetLineColor(ROOT.kBlue)  # type: ignore
+  hStack.Add(hInput, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
   hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
@@ -514,6 +517,38 @@ def plotComparison(
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStack.GetName()}.pdf")
+
+  # plot residuals
+  residuals = tuple((measVal[0] - inputVals[index]) / math.sqrt(measVal[1]) if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
+  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}", f"{legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)  # type: ignore
+  # chi2 = sum(tuple(residual**2 for residual in residuals[1:]))  # exclude H(0, 0) from chi^2
+  chi2 = sum(tuple(residual**2 for residual in residuals))
+  ndf  = len(residuals)
+  for index, residual in enumerate(residuals):
+    hResidual.SetBinContent(index + 1, residual)
+    hResidual.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+    hResidual.GetXaxis().SetBinLabel(index + 1, hMeas.GetXaxis().GetBinLabel(index + 1))
+  hResidual.SetMarkerColor(ROOT.kBlue)  # type: ignore
+  hResidual.SetLineColor(ROOT.kBlue)  # type: ignore
+  hResidual.SetMinimum(-3)
+  hResidual.SetMaximum(+3)
+  canv = ROOT.TCanvas()  # type: ignore
+  hResidual.Draw("PE")
+  # draw zero line
+  xAxis = hResidual.GetXaxis()
+  line = ROOT.TLine()  # type: ignore
+  line.SetLineStyle(ROOT.kDashed)  # type: ignore
+  line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+  # shade 1 sigma region
+  box = ROOT.TBox()  # type: ignore
+  box.SetFillColorAlpha(ROOT.kBlack, 0.15)  # type: ignore
+  box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
+  # draw chi^2 info
+  label = ROOT.TLatex()  # type: ignore
+  label.SetNDC()
+  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
+  label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
+  canv.SaveAs(f"{hResidual.GetName()}.pdf")
 
 
 def setupPlotStyle() -> None:
