@@ -621,10 +621,15 @@ if __name__ == "__main__":
     print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
     print(f"Im[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].imag} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][1])}")  # diagonal element for ImIm
 
-  momentIndex = 0
-  measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)  # Re[H_0]
-  inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments)
-  plotComparison(measVals, inputVals, fileNameSuffix = "Re", legendEntrySuffix = "(Real Part)")
-
+  # compare with input values
+  for momentIndex in range(3):
+    # Re[H_i]
+    measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
+    inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments)
+    plotComparison(measVals, inputVals, fileNameSuffix = "Re", legendEntrySuffix = "Real Part")
+    # Im[H_i]
+    measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
+    inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments)
+    plotComparison(measVals, inputVals, fileNameSuffix = "Im", legendEntrySuffix = "Imag Part")
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
