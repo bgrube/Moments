@@ -348,8 +348,6 @@ def calculatePhotoProdMoments(
         dfMoment = dfMoment.Define(f"Im_f_meas_{momentIndex}_{L}_{M}",
           f"std::imag(f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization}))")
         nmbMoments += 1
-        # print(f"!!! H_{momentIndex}({L}, {M})")
-  # print(f"!!! {nmbMoments}")
   # calculate moments and their covariance matrix; Eq. (179) and (180)
   nmbEvents = inData.Count().GetValue()
   # nmbMoments = 3 * (2 * maxL + 2) * (2 * maxL + 3) // 2
@@ -362,29 +360,29 @@ def calculatePhotoProdMoments(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero
-        # iMoment = momentIndex * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L * (L + 1) // 2 + M
-        # calculate value
+        # calculate value of moment
         momentValRe = dfMoment.Sum(f"Re_f_meas_{momentIndex}_{L}_{M}").GetValue()
         momentValIm = dfMoment.Sum(f"Im_f_meas_{momentIndex}_{L}_{M}").GetValue()
         momentVal = momentValRe + 1j * momentValIm
         H_meas[iMoment] = momentVal
-        # get values of basis functions as Numpy arrays
+        # get values of basis functions
         Re_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Re_f_meas_{momentIndex}_{L}_{M}"])[f"Re_f_meas_{momentIndex}_{L}_{M}"]
         Im_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_meas_{momentIndex}_{L}_{M}"])[f"Im_f_meas_{momentIndex}_{L}_{M}"]
         iMoment += 1
+  # calculate covariances
   f_meas = Re_f_meas + 1j * Im_f_meas
   V_meas_aug = nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
-  # normalize to H_0(0, 0)
+  # normalize such that H_0(0, 0) = 1
   norm = nmbEvents / (2 * math.pi)
   H_meas /= norm
   V_meas_aug /= norm**2
+  # print measured moments
   iMoment = 0
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero
-        # iMoment = momentIndex * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L * (L + 1) // 2 + M
         print(f"H^meas_{momentIndex}(L = {L}, M = {M}) = {H_meas[iMoment]}")
         iMoment += 1
   H_phys     = np.zeros((nmbMoments), dtype = np.complex128)
@@ -403,41 +401,41 @@ def calculatePhotoProdMoments(
         for M_meas in range(L_meas + 1):
           if momentIndex_meas == 2 and M_meas == 0:
             continue  # H_2(L, 0) are always zero
-          # iMoment_meas = momentIndex_meas * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_meas * (L_meas + 1) // 2 + M_meas
-          # print(f"!!! H^meas_{momentIndex_meas}({L_meas}, {M_meas})")
           iMoment_phys = 0
           for momentIndex_phys in range(3):
             for L_phys in range(2 * maxL + 2):
               for M_phys in range(L_phys + 1):
                 if momentIndex_phys == 2 and M_phys == 0:
                   continue  # H_2(L, 0) are always zero
-                # print(f"!!! H^phys_{momentIndex_phys}({L_phys}, {M_phys})")
-                # iMoment_phys = momentIndex_phys * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_phys * (L_phys + 1) // 2 + M_phys
                 I_acc[iMoment_meas, iMoment_phys] = integralMatrix[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)]
                 iMoment_phys += 1
           iMoment_meas += 1
-    print(f"Acceptance integral matrix:\n{I_acc}")
-    foo = np.real_if_close(I_acc, tol = 1e-3)
-    print(np.abs(foo))
-    foo[np.abs(foo) < 1e-3] = 0
-    print(foo)
-    # eigenVals, eigenVecs = np.linalg.eig(I_acc)
-    # print(f"I eigenvalues = {eigenVals}")
-    # # print(f"I eigenvectors = {eigenVecs}")
-    # # print(f"I determinant = {np.linalg.det(I)}")
-    # print(f"I = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
+    print(f"Acceptance integral matrix = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
+    eigenVals, eigenVecs = np.linalg.eig(I_acc)
+    print(f"I_acc eigenvalues = {eigenVals}")
+    # print(f"I_acc eigenvectors = {eigenVecs}")
+    # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
+    # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
+    plt.figure().colorbar(plt.matshow(I_acc.real))
+    plt.savefig("I_acc_real.pdf")
+    plt.figure().colorbar(plt.matshow(I_acc.imag))
+    plt.savefig("I_acc_imag.pdf")
+    plt.figure().colorbar(plt.matshow(np.absolute(I_acc)))
+    plt.savefig("I_acc_abs.pdf")
+    plt.figure().colorbar(plt.matshow(np.angle(I_acc)))
+    plt.savefig("I_acc_arg.pdf")
     I_inv = np.linalg.inv(I_acc)
-    # # eigenVals, eigenVecs = np.linalg.eig(Iinv)
-    # # print(f"I^-1 eigenvalues = {eigenVals}")
-    # print(f"I^-1 = \n{np.array2string(Iinv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    # plt.figure().colorbar(plt.matshow(Iinv.real))
-    # plt.savefig("Iinv_real.pdf")
-    # plt.figure().colorbar(plt.matshow(Iinv.imag))
-    # plt.savefig("Iinv_imag.pdf")
-    # plt.figure().colorbar(plt.matshow(np.absolute(Iinv)))
-    # plt.savefig("Iinv_abs.pdf")
-    # plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
-    # plt.savefig("Iinv_arg.pdf")
+    # eigenVals, eigenVecs = np.linalg.eig(I_inv)
+    # print(f"I^-1 eigenvalues = {eigenVals}")
+    # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
+    plt.figure().colorbar(plt.matshow(I_inv.real))
+    plt.savefig("I_inv_real.pdf")
+    plt.figure().colorbar(plt.matshow(I_inv.imag))
+    plt.savefig("I_inv_imag.pdf")
+    plt.figure().colorbar(plt.matshow(np.absolute(I_inv)))
+    plt.savefig("I_inv_abs.pdf")
+    plt.figure().colorbar(plt.matshow(np.angle(I_inv)))
+    plt.savefig("I_inv_arg.pdf")
     # calculate physical moments
     H_phys = I_inv @ H_meas  # Eq. (83)
     # perform linear uncertainty propagation
@@ -463,8 +461,6 @@ def calculatePhotoProdMoments(
       for M_phys in range(L_phys + 1):
         if momentIndex_phys == 2 and M_phys == 0:
           continue  # H_2(L, 0) are always zero
-        # iMoment_phys = momentIndex_phys * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_phys * (L_phys + 1) // 2 + M_phys
-        # print(f"H^phys_{momentIndex_phys}(L = {L_phys}, M = {M_phys}) = {H_phys[iMoment_phys]}")
         momentsPhys.append(((momentIndex_phys, L_phys, M_phys), H_phys[iMoment_phys]))
         iMoment_meas = 0
         for momentIndex_meas in range(3):
@@ -472,14 +468,12 @@ def calculatePhotoProdMoments(
             for M_meas in range(L_meas + 1):
               if momentIndex_meas == 2 and M_meas == 0:
                 continue  # H_2(L, 0) are always zero
-              # iMoment_meas = momentIndex_meas * (2 * maxL + 2) * (2 * maxL + 3) // 2 + L_meas * (L_meas + 1) // 2 + M_meas
               momentsPhysCov[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
                 (V_phys_ReRe[iMoment_meas, iMoment_phys],
                  V_phys_ImIm[iMoment_meas, iMoment_phys],
                  V_phys_ReIm[iMoment_meas, iMoment_phys]))
               iMoment_meas += 1
         iMoment_phys += 1
-  # print(momentsPhys)
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
   return momentsPhys, momentsPhysCov
 
@@ -534,7 +528,7 @@ if __name__ == "__main__":
   hist.Draw("BOX2")
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
-  # calculate moments
+  # generate accepted phase space and calculate integral matrix
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   print("Moments of accepted phase-space data")
