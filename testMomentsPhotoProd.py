@@ -6,11 +6,10 @@ import functools
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import stats
-from typing import Any, Collection, Dict, List, Optional, Tuple
+import numpy.typing as npt
+from typing import Any, Dict, List, Optional, Tuple
 
 import py3nj
-from uncertainties import UFloat, ufloat
 
 import ROOT
 
@@ -94,6 +93,24 @@ def drawIntensityTF3(
   fcnHist.GetZaxis().SetTitleOffset(1.5)
   fcnHist.Draw("BOX2")
   canv.SaveAs(f"{fcnHist.GetName()}.pdf")
+
+
+def plotComplexMatrix(
+  matrix:         npt.NDArray[np.complex128],
+  fileNamePrefix: str,
+):
+  plt.figure().colorbar(plt.matshow(np.real(matrix)))
+  plt.savefig(f"{fileNamePrefix}_real.pdf")
+  plt.close()
+  plt.figure().colorbar(plt.matshow(np.imag(matrix)))
+  plt.savefig(f"{fileNamePrefix}_imag.pdf")
+  plt.close()
+  plt.figure().colorbar(plt.matshow(np.absolute(matrix)))
+  plt.savefig(f"{fileNamePrefix}_abs.pdf")
+  plt.close()
+  plt.figure().colorbar(plt.matshow(np.angle(matrix)))
+  plt.savefig(f"{fileNamePrefix}_arg.pdf")
+  plt.close()
 
 
 def calcSpinDensElemSetFromWaves(
@@ -416,26 +433,12 @@ def calculatePhotoProdMoments(
     # print(f"I_acc eigenvectors = {eigenVecs}")
     # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
     # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plt.figure().colorbar(plt.matshow(I_acc.real))
-    plt.savefig("I_acc_real.pdf")
-    plt.figure().colorbar(plt.matshow(I_acc.imag))
-    plt.savefig("I_acc_imag.pdf")
-    plt.figure().colorbar(plt.matshow(np.absolute(I_acc)))
-    plt.savefig("I_acc_abs.pdf")
-    plt.figure().colorbar(plt.matshow(np.angle(I_acc)))
-    plt.savefig("I_acc_arg.pdf")
+    plotComplexMatrix(I_acc, fileNamePrefix = "I_acc")
     I_inv = np.linalg.inv(I_acc)
     # eigenVals, eigenVecs = np.linalg.eig(I_inv)
     # print(f"I^-1 eigenvalues = {eigenVals}")
     # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plt.figure().colorbar(plt.matshow(I_inv.real))
-    plt.savefig("I_inv_real.pdf")
-    plt.figure().colorbar(plt.matshow(I_inv.imag))
-    plt.savefig("I_inv_imag.pdf")
-    plt.figure().colorbar(plt.matshow(np.absolute(I_inv)))
-    plt.savefig("I_inv_abs.pdf")
-    plt.figure().colorbar(plt.matshow(np.angle(I_inv)))
-    plt.savefig("I_inv_arg.pdf")
+    plotComplexMatrix(I_inv, fileNamePrefix = "I_inv")
     # calculate physical moments
     H_phys = I_inv @ H_meas  # Eq. (83)
     # perform linear uncertainty propagation
