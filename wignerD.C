@@ -159,7 +159,7 @@ ImYlm(
 
 // basis functions for physical moments; Eq. (174)
 std::complex<double>
-fPhys(
+f_phys(
 	const int    momentIndex,  // 0, 1, or 2
 	const int    L,
 	const int    M,
@@ -177,14 +177,14 @@ fPhys(
 	case 2:
 		return norm * I * polarization * std::sin(M * phi) * std::sin(2 * Phi);
 	default:
-		throw std::domain_error("fPhys() unknown moment index.");
+		throw std::domain_error("f_phys() unknown moment index.");
 	}
 }
 
 
 // basis functions for measured moments; Eq. (175)
 std::complex<double>
-fMeas(
+f_meas(
 	const int    momentIndex,  // 0, 1, or 2
 	const int    L,
 	const int    M,
@@ -202,7 +202,7 @@ fMeas(
 	case 2:
 		return norm * std::sin(2 * Phi) / polarization;
 	default:
-		throw std::domain_error("fMeas() unknown moment index.");
+		throw std::domain_error("f_meas() unknown moment index.");
 	}
 }
 
