@@ -76,7 +76,7 @@ def drawIntensityTF3(
 ) -> None:
   '''Draws given TF3 for intensity distribution'''
   canv = ROOT.TCanvas()  # type: ignore
-  fcnHist = ROOT.TH3F(histName, ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, 0, 180)  # type: ignore
+  fcnHist = ROOT.TH3F(histName, ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)  # type: ignore
   xAxis = fcnHist.GetXaxis()
   yAxis = fcnHist.GetYaxis()
   zAxis = fcnHist.GetZaxis()
@@ -211,9 +211,7 @@ def genDataFromWaves(
 ) -> ROOT.RDataFrame:  # type: ignore
   '''Generates data according to set of partial-wave amplitudes assuming rank 1'''
   # construct TF3 for intensity distribution in Eq. (152)
-  #   x = cos(theta)
-  #   y = phi [deg]
-  #   z = Phi [deg]
+  # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
   intensityComponentTerms: List[Tuple[str, str, str]] = []  # terms in sum of each intensity component
   for refl in (-1, +1):
     for wave1 in prodAmps[refl]:
@@ -238,11 +236,11 @@ def genDataFromWaves(
   # sum intensity components
   intensityFormula = (
     f"std::real({intensityComponentsFormula[0]} "
-    f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(TMath::DegToRad() * z) "
-    f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(TMath::DegToRad() * z))"
+    f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * TMath::DegToRad() * z) "
+    f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))"
     + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})"))  # Eq. (112)
   print(f"intensity = {intensityFormula}")
-  intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
+  intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)  # type: ignore
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
   intensityFcn.SetNpy(100)
@@ -278,7 +276,7 @@ def genAccepted2BodyPsPhotoProd(
 ) -> ROOT.RDataFrame:  # type: ignore
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
   # construct efficiency function
-  efficiencyFcn = ROOT.TF3("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180, 0, 180)  # type: ignore
+  efficiencyFcn = ROOT.TF3("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180, -180, +180)  # type: ignore
   efficiencyFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   efficiencyFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
   efficiencyFcn.SetNpy(100)
@@ -510,9 +508,10 @@ if __name__ == "__main__":
   nmbEvents = 1000000
   nmbMcEvents = 10000000
   polarization = 1.0
-  # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
+  # formulas for detection efficiency
+  # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
   efficiencyFormula = "1"  # acc_perfect
-  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - (z - 90) * (z - 90) / (90 * 90))"  # acc_1
+  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180))"  # acc_1
 
   # input from partial-wave amplitudes
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
@@ -522,7 +521,7 @@ if __name__ == "__main__":
   canv = ROOT.TCanvas()  # type: ignore
   nmbBins = 25
   hist = dataPwaModel.Histo3D(
-    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, 0, 180),
+    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
     "cosTheta", "phiDeg", "PhiDeg")
   hist.SetMinimum(0)
   hist.GetXaxis().SetTitleOffset(1.5)
@@ -531,14 +530,23 @@ if __name__ == "__main__":
   hist.Draw("BOX2")
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
-  # generate accepted phase space and calculate integral matrix
-  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
-  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
-  print("Moments of accepted phase-space data")
-  momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
-  # print moments of accepted phase-space data
-  for momentPs in momentsPs:
-    print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
-    print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
+  # # generate accepted phase space and calculate integral matrix
+  # dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
+  # integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  # print("Moments of accepted phase-space data")
+  # momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  # # print moments of accepted phase-space data
+  # for momentPs in momentsPs:
+  #   print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
+  #   print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
+
+  # calculate moments
+  print("Moments of data generated according to model")
+  # moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  # print moments
+  for moment in moments:
+    print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
+    print(f"Im[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].imag} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][1])}")  # diagonal element for ImIm
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
