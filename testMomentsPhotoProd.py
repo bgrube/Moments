@@ -114,6 +114,16 @@ def plotComplexMatrix(
   plt.close()
 
 
+def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
+  '''Gets maximum spin from set of production amplitudes'''
+  maxSpin = 0
+  for refl in (-1, +1):
+    for wave in prodAmps[refl]:
+      ell = wave[0]
+      maxSpin = ell if ell > maxSpin else maxSpin
+  return maxSpin
+
+
 def calcSpinDensElemSetFromWaves(
   refl:         int,      # reflectivity
   m1:           int,      # m
@@ -164,18 +174,8 @@ def calcMomentSetFromWaves(
   return tuple(moments)
 
 
-def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
-  '''Gets maximum spin from set of production amplitudes'''
-  maxSpin = 0
-  for refl in (-1, +1):
-    for wave in prodAmps[refl]:
-      ell = wave[0]
-      maxSpin = ell if ell > maxSpin else maxSpin
-  return maxSpin
-
-
 def calcAllMomentsFromWaves(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> List[Tuple[complex, complex, complex]]:
-  '''Calculates moments for given production amplitudes assuming rank 1'''
+  '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
   moments: List[Tuple[complex, complex, complex]] = []
   maxSpin = getMaxSpin(prodAmps)
   norm = 1
@@ -194,12 +194,12 @@ def calcAllMomentsFromWaves(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]
         print(f"Warning: expect H_2({L} {M}) = 0  found {momentSet[2].imag}")
       # normalize to H_0(0, 0)
       norm = momentSet[0] if index == 0 else norm
-      moments.append(tuple(moment / norm for moment in momentSet))
+      moments.append(tuple(moment / norm for moment in momentSet[:2 if M == 0 else 3]))
       index += 1
   index = 0
   for L in range(2 * maxSpin + 2):
     for M in range(L + 1):
-      print(f"(H_0({L} {M}), H_1({L} {M}), H_2({L} {M})) = {moments[index]}")
+      print(f"(H_0({L} {M}), H_1({L} {M})" + ("" if M == 0 else f", H_2({L} {M}))") + f" = {moments[index]}")
       index += 1
   return moments
 
@@ -502,7 +502,7 @@ def plotComparison(
   hStack = ROOT.THStack(f"hCompare_H{momentIndex}_{fileNameSuffix}", "")  # type: ignore
   nmbBins = len(measVals)
   # create histogram with measured values
-  hMeas = ROOT.TH1D(f"Measured Moments {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  hMeas = ROOT.TH1D(f"Measured #it{{H}}_{{{momentIndex}}} {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
   for index, measVal in enumerate(measVals):
     hMeas.SetBinContent(index + 1, measVal[0])
     hMeas.SetBinError  (index + 1, 1e-100 if measVal[1] < 1e-100 else measVal[1])  # ensure that also points with zero uncertainty are drawn
@@ -530,7 +530,8 @@ def plotComparison(
 
   # plot residuals
   residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
-  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}", f"{legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)  # type: ignore
+  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}",  # type: ignore
+    f"Residuals #it{{H}}_{{{momentIndex}}} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
   # chi2 = sum(tuple(residual**2 for residual in residuals[1:]))  # exclude H(0, 0) from chi^2
   chi2 = sum(tuple(residual**2 for residual in residuals))
   ndf  = len(residuals)
@@ -635,11 +636,11 @@ if __name__ == "__main__":
   for momentIndex in range(3):
     # Re[H_i]
     measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
-    inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments)
+    inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments if len(inputMoment) > momentIndex)
     plotComparison(measVals, inputVals, fileNameSuffix = "Re", legendEntrySuffix = "Real Part")
     # Im[H_i]
     measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
-    inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments)
+    inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
     plotComparison(measVals, inputVals, fileNameSuffix = "Im", legendEntrySuffix = "Imag Part")
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
