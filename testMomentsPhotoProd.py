@@ -316,6 +316,8 @@ def calcIntegralMatrix(
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
+        if momentIndex == 2 and M == 0:
+          continue  # H_2(L, 0) are always zero and would lead to singular acceptance integral matrix
         phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"f_meas_{momentIndex}_{L}_{M}",
           f"f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
         phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"f_phys_{momentIndex}_{L}_{M}",
@@ -324,9 +326,13 @@ def calcIntegralMatrix(
   for momentIndex_meas in range(3):
     for L_meas in range(2 * maxL + 2):
       for M_meas in range(L_meas + 1):
+        if momentIndex_meas == 2 and M_meas == 0:
+          continue  # H_2(L, 0) are always zero
         for momentIndex_phys in range(3):
           for L_phys in range(2 * maxL + 2):
             for M_phys in range(L_phys + 1):
+              if momentIndex_phys == 2 and M_phys == 0:
+                continue  # H_2(L, 0) are always zero
               phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}",
               f"(8 * TMath::Pi() * TMath::Pi() / {nmbEvents})"
               f" * f_meas_{momentIndex_meas}_{L_meas}_{M_meas} * f_phys_{momentIndex_phys}_{L_phys}_{M_phys}")
@@ -335,9 +341,13 @@ def calcIntegralMatrix(
   for momentIndex_meas in range(3):
     for L_meas in range(2 * maxL + 2):
       for M_meas in range(L_meas + 1):
+        if momentIndex_meas == 2 and M_meas == 0:
+          continue  # H_2(L, 0) are always zero
         for momentIndex_phys in range(3):
           for L_phys in range(2 * maxL + 2):
             for M_phys in range(L_phys + 1):
+              if momentIndex_phys == 2 and M_phys == 0:
+                continue  # H_2(L, 0) are always zero
               I_acc[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
                 phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](  # type: ignore
                 f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}").GetValue())
@@ -358,7 +368,7 @@ def calculatePhotoProdMoments(
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
-          continue  # H_2(L, 0) are always zero and would lead to singular acceptance integral matrix
+          continue  # H_2(L, 0) are always zero
         dfMoment = dfMoment.Define(f"Re_f_meas_{momentIndex}_{L}_{M}",
           f"std::real(f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization}))")
         dfMoment = dfMoment.Define(f"Im_f_meas_{momentIndex}_{L}_{M}",
