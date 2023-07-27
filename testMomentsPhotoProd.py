@@ -505,7 +505,7 @@ def plotComparison(
   hMeas = ROOT.TH1D(f"Measured Moments {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
   for index, measVal in enumerate(measVals):
     hMeas.SetBinContent(index + 1, measVal[0])
-    hMeas.SetBinError  (index + 1, measVal[1])
+    hMeas.SetBinError  (index + 1, 1e-100 if measVal[1] < 1e-100 else measVal[1])  # ensure that also points with zero uncertainty are drawn
     hMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{measVal[2][0]}}}({measVal[2][1]}, {measVal[2][2]})")
   hMeas.SetLineColor(ROOT.kRed)  # type: ignore
   hMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
