@@ -519,7 +519,7 @@ def plotComparison(
   canv.SaveAs(f"{hStack.GetName()}.pdf")
 
   # plot residuals
-  residuals = tuple((measVal[0] - inputVals[index]) / math.sqrt(measVal[1]) if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
+  residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
   hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}", f"{legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)  # type: ignore
   # chi2 = sum(tuple(residual**2 for residual in residuals[1:]))  # exclude H(0, 0) from chi^2
   chi2 = sum(tuple(residual**2 for residual in residuals))
