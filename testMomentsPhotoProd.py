@@ -19,8 +19,6 @@ import ROOT
 print = functools.partial(print, flush = True)
 
 
-# # C++ implementation of RDataFrame custom action that calculates covariance between two columns
-# ROOT.gROOT.LoadMacro("./Covariance.C++")  # type: ignore
 # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
 # also provides complexT typedef for std::complex<double>
 ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
@@ -361,7 +359,7 @@ def calculatePhotoProdMoments(
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
 ) -> Tuple[List[Tuple[Tuple[int, int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
   '''Calculates photoproduction moments and their covariances'''
-  # define measured moments; Eq. (178)
+  # define basis functions
   dfMoment = inData
   nmbMoments = 0
   for momentIndex in range(3):
@@ -374,9 +372,8 @@ def calculatePhotoProdMoments(
         dfMoment = dfMoment.Define(f"Im_f_meas_{momentIndex}_{L}_{M}",
           f"std::imag(f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization}))")
         nmbMoments += 1
-  # calculate moments and their covariance matrix; Eq. (179) and (180)
+  # calculate moments and their covariance matrix
   nmbEvents = inData.Count().GetValue()
-  # nmbMoments = 3 * (2 * maxL + 2) * (2 * maxL + 3) // 2
   H_meas    = np.zeros((nmbMoments),            dtype = np.complex128)
   Re_f_meas = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   Im_f_meas = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
@@ -386,22 +383,21 @@ def calculatePhotoProdMoments(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero
-        # calculate value of moment
-        momentValRe = dfMoment.Sum(f"Re_f_meas_{momentIndex}_{L}_{M}").GetValue()
-        momentValIm = dfMoment.Sum(f"Im_f_meas_{momentIndex}_{L}_{M}").GetValue()
+        # calculate value of moment; Eq. (178)
+        momentValRe = 2 * math.pi * dfMoment.Sum(f"Re_f_meas_{momentIndex}_{L}_{M}").GetValue()
+        momentValIm = 2 * math.pi * dfMoment.Sum(f"Im_f_meas_{momentIndex}_{L}_{M}").GetValue()
         momentVal = momentValRe + 1j * momentValIm
         H_meas[iMoment] = momentVal
         # get values of basis functions
         Re_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Re_f_meas_{momentIndex}_{L}_{M}"])[f"Re_f_meas_{momentIndex}_{L}_{M}"]
         Im_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_meas_{momentIndex}_{L}_{M}"])[f"Im_f_meas_{momentIndex}_{L}_{M}"]
         iMoment += 1
-  # calculate covariances
+  # calculate covariances; Eqs. (88), (180), and (181)
   f_meas = Re_f_meas + 1j * Im_f_meas
-  V_meas_aug = nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
+  V_meas_aug = (2 * math.pi)**2 * nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
   # normalize such that H_0(0, 0) = 1
-  norm = nmbEvents / (2 * math.pi)
-  H_meas /= norm
-  V_meas_aug /= norm**2
+  H_meas /= nmbEvents
+  V_meas_aug /= nmbEvents**2
   # print measured moments
   iMoment = 0
   for momentIndex in range(3):
