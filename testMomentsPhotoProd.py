@@ -519,6 +519,7 @@ def plotComparison(
     hInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
   hInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
   hInput.SetLineColor(ROOT.kBlue)  # type: ignore
+  hInput.SetLineWidth(2)
   hStack.Add(hInput, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
@@ -532,8 +533,7 @@ def plotComparison(
   residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
   hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}",  # type: ignore
     f"Residuals #it{{H}}_{{{momentIndex}}} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
-  # chi2 = sum(tuple(residual**2 for residual in residuals[1:]))  # exclude H(0, 0) from chi^2
-  chi2 = sum(tuple(residual**2 for residual in residuals))
+  chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude H_0(0, 0) from chi^2
   ndf  = len(residuals)
   for index, residual in enumerate(residuals):
     hResidual.SetBinContent(index + 1, residual)
@@ -541,6 +541,7 @@ def plotComparison(
     hResidual.GetXaxis().SetBinLabel(index + 1, hMeas.GetXaxis().GetBinLabel(index + 1))
   hResidual.SetMarkerColor(ROOT.kBlue)  # type: ignore
   hResidual.SetLineColor(ROOT.kBlue)  # type: ignore
+  hResidual.SetLineWidth(2)
   hResidual.SetMinimum(-3)
   hResidual.SetMaximum(+3)
   canv = ROOT.TCanvas()  # type: ignore
@@ -613,9 +614,9 @@ if __name__ == "__main__":
   hist.Draw("BOX2")
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
-  # # generate accepted phase space and calculate integral matrix
-  # dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
-  # integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  # generate accepted phase space and calculate integral matrix
+  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
+  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   # print("Moments of accepted phase-space data")
   # momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   # # print moments of accepted phase-space data
@@ -625,8 +626,7 @@ if __name__ == "__main__":
 
   # calculate moments
   print("Moments of data generated according to model")
-  # moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
-  moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   # print moments
   for moment in moments:
     print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
