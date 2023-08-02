@@ -264,8 +264,9 @@ def genDataFromWaves(
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves" << endl; } return true;') \
-    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                   # noop filter before snapshot logs when event loop is running
+    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # type: ignore
+    # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
 
@@ -290,7 +291,7 @@ def genAccepted2BodyPsPhotoProd(
   fileName = f"{efficiencyFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
   declareInCpp(efficiencyFcn = efficiencyFcn)
-  df.Define("point", "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
+  df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
     .Define("cosTheta", "point[0]") \
     .Define("theta",    "std::acos(cosTheta)") \
     .Define("phiDeg",   "point[1]") \
@@ -298,16 +299,17 @@ def genAccepted2BodyPsPhotoProd(
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd" << endl; } return true;') \
-    .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                   # noop filter before snapshot logs when event loop is running
+    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))  # type: ignore
+    # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
 
 
 def calcIntegralMatrix(
-  phaseSpaceDataFrame: ROOT.RDataFrame,  # (accepted) phase space data  # type: ignore
-  nmbEvents:           int,              # number of events in RDataFrame
-  polarization:        float,            # photon-beam polarization
-  maxL:                int,              # maximum orbital angular momentum
+  phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data  # type: ignore
+  nmbGenEvents:   int,              # number of generated events
+  polarization:   float,            # photon-beam polarization
+  maxL:           int,              # maximum orbital angular momentum
 ) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
   # define basis functions for physical moments; Eq. (174)
@@ -316,9 +318,9 @@ def calcIntegralMatrix(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to singular acceptance integral matrix
-        phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"f_meas_{momentIndex}_{L}_{M}",
+        phaseSpaceData = phaseSpaceData.Define(f"f_meas_{momentIndex}_{L}_{M}",
           f"f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
-        phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"f_phys_{momentIndex}_{L}_{M}",
+        phaseSpaceData = phaseSpaceData.Define(f"f_phys_{momentIndex}_{L}_{M}",
           f"f_phys({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
   # define integral-matrix elements; Eq. (177)
   for momentIndex_meas in range(3):
@@ -331,8 +333,8 @@ def calcIntegralMatrix(
             for M_phys in range(L_phys + 1):
               if momentIndex_phys == 2 and M_phys == 0:
                 continue  # H_2(L, 0) are always zero
-              phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}",
-              f"(8 * TMath::Pi() * TMath::Pi() / {nmbEvents})"
+              phaseSpaceData = phaseSpaceData.Define(f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}",
+              f"(8 * TMath::Pi() * TMath::Pi() / {nmbGenEvents})"
               f" * f_meas_{momentIndex_meas}_{L_meas}_{M_meas} * f_phys_{momentIndex_phys}_{L_phys}_{M_phys}")
   # calculate integral matrix
   I_acc: Dict[Tuple[int, ...], complex] = {}
@@ -347,7 +349,7 @@ def calcIntegralMatrix(
               if momentIndex_phys == 2 and M_phys == 0:
                 continue  # H_2(L, 0) are always zero
               I_acc[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
-                phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](  # type: ignore
+                phaseSpaceData.Sum[ROOT.std.complex["double"]](  # type: ignore
                 f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}").GetValue())
   return I_acc
 
@@ -395,9 +397,9 @@ def calculatePhotoProdMoments(
   # calculate covariances; Eqs. (88), (180), and (181)
   f_meas = Re_f_meas + 1j * Im_f_meas
   V_meas_aug = (2 * math.pi)**2 * nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
-  # normalize such that H_0(0, 0) = 1
-  H_meas /= nmbEvents
-  V_meas_aug /= nmbEvents**2
+  # # normalize such that H_0(0, 0) = 1
+  # H_meas /= nmbEvents
+  # V_meas_aug /= nmbEvents**2
   # print measured moments
   iMoment = 0
   for momentIndex in range(3):
@@ -454,9 +456,13 @@ def calculatePhotoProdMoments(
       [np.conjugate(J_conj), np.conjugate(J)],
     ])  # augmented Jacobian; Eq. (98)
     V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
+  # normalize such that H_0(0, 0) = 1
+  norm = H_phys[0]
+  H_phys /= norm
+  V_phys_aug /= norm**2
+  # calculate covariances of real and imaginary parts
   V_phys_Hermit = V_phys_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
   V_phys_pseudo = V_phys_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
-  # covariances of real and imaginary parts
   V_phys_ReRe = (np.real(V_phys_Hermit) + np.real(V_phys_pseudo)) / 2  # Eq. (91)
   V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2  # Eq. (92)
   V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2  # Eq. (93)
@@ -612,7 +618,7 @@ if __name__ == "__main__":
 
   # generate accepted phase space and calculate integral matrix
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
-  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   # print("Moments of accepted phase-space data")
   # momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   # # print moments of accepted phase-space data
@@ -640,3 +646,5 @@ if __name__ == "__main__":
     plotComparison(measVals, inputVals, fileNameSuffix = "Im", legendEntrySuffix = "Imag Part")
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
+
+  #TODO adjust equation numbers to new version of note
