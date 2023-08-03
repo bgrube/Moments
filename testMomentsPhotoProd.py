@@ -525,8 +525,15 @@ def plotComparison(
   hStack.Add(hInput, "PE")
   canv = ROOT.TCanvas()  # type: ignore
   hStack.Draw("NOSTACK")
-  hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
-  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
+  # adjust y-range
+  ROOT.gPad.Update()  # type: ignore
+  actualYRange = ROOT.gPad.GetUymax() - ROOT.gPad.GetUymin()  # type: ignore
+  yRangeFraction = 0.1 * actualYRange
+  hStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)
+  hStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)
+  # adjust style of automatic zero line
+  hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore
+  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStack.GetName()}.pdf")
