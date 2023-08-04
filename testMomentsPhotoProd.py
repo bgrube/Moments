@@ -491,9 +491,10 @@ def calculatePhotoProdMoments(
 
 
 def plotComparison(
-  measVals:  Tuple[Tuple[float, float, Tuple[int, int, int]], ...],
-  inputVals: Tuple[float, ...],
-  realPart:  bool,
+  measVals:           Tuple[Tuple[float, float, Tuple[int, int, int]], ...],
+  inputVals:          Tuple[float, ...],
+  realPart:           bool,
+  useMomentSubscript: bool,
 ) -> None:
   momentIndex = measVals[0][2][0]
   if realPart:
@@ -504,14 +505,15 @@ def plotComparison(
     legendEntrySuffix = "Imag Part"
 
   # overlay measured and input values
-  hStack = ROOT.THStack(f"hCompare_H{momentIndex}_{fileNameSuffix}", "")  # type: ignore
+  hStack = ROOT.THStack(f"hCompare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")  # type: ignore
   nmbBins = len(measVals)
   # create histogram with measured values
-  hMeas = ROOT.TH1D(f"Measured #it{{H}}_{{{momentIndex}}} {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  labelSubscript = f"_{{{momentIndex}}}" if useMomentSubscript else ""
+  hMeas = ROOT.TH1D(f"Measured #it{{H}}{labelSubscript} {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
   for index, measVal in enumerate(measVals):
     hMeas.SetBinContent(index + 1, measVal[0])
     hMeas.SetBinError  (index + 1, 1e-100 if measVal[1] < 1e-100 else measVal[1])  # ensure that also points with zero uncertainty are drawn
-    hMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{measVal[2][0]}}}({measVal[2][1]}, {measVal[2][2]})")
+    hMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}{labelSubscript}({measVal[2][1]}, {measVal[2][2]})")
   hMeas.SetLineColor(ROOT.kRed)  # type: ignore
   hMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
   hMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
@@ -543,8 +545,8 @@ def plotComparison(
 
   # plot residuals
   residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
-  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}",  # type: ignore
-    f"Residuals #it{{H}}_{{{momentIndex}}} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
+  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",  # type: ignore
+    f"Residuals #it{{H}}{labelSubscript} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
   chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
   ndf  = len(residuals)
   for index, residual in enumerate(residuals):
@@ -649,11 +651,11 @@ if __name__ == "__main__":
     # Re[H_i]
     measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
     inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments if len(inputMoment) > momentIndex)
-    plotComparison(measVals, inputVals, realPart = True)
+    plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = True)
     # Im[H_i]
     measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
     inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
-    plotComparison(measVals, inputVals, realPart = False)
+    plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = True)
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
 
