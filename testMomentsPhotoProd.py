@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=2
+# equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
 import functools
 import math
@@ -132,11 +132,10 @@ def calcSpinDensElemSetFromWaves(
   prodAmp2NegM: complex,  # [ell']_{-m'}^refl
 ) -> Tuple[complex, complex, complex]:
   '''Calculates element of spin-density matrix components from given partial-wave amplitudes assuming rank 1'''
-  # Eqs. (149) to (151)
   rhos: List[complex] = 3 * [0 + 0j]
-  rhos[0] +=                    (           prodAmp1     * prodAmp2.conjugate() + (-1)**(m1 - m2) * prodAmp1NegM * prodAmp2NegM.conjugate())  # Eq. (149)
-  rhos[1] +=            -refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() + (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (150)
-  rhos[2] += -(0 + 1j) * refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() - (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (151)
+  rhos[0] +=                    (           prodAmp1     * prodAmp2.conjugate() + (-1)**(m1 - m2) * prodAmp1NegM * prodAmp2NegM.conjugate())  # Eq. (150)
+  rhos[1] +=            -refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() + (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (151)
+  rhos[2] += -(0 + 1j) * refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() - (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (152)
   return tuple(rhos)
 
 
@@ -146,7 +145,7 @@ def calcMomentSetFromWaves(
   M:        int,
 ) -> Tuple[complex, complex, complex]:
   '''Calculates values of (H_0, H_1, H_2) with L and M from given production amplitudes assuming rank 1'''
-  # Eqs. (153) to (155) assuming that rank is 1
+  # Eqs. (154) to (156) assuming that rank is 1
   moments: List[complex] = 3 * [0 + 0j]
   for refl in (-1, +1):
     for wave1 in prodAmps[refl]:
@@ -166,9 +165,9 @@ def calcMomentSetFromWaves(
         if term == 0:  # invalid Clebsch-Gordan
           continue
         rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
-        moments[0] +=  term * rhos[0]  # H_0; Eq. (123)
-        moments[1] += -term * rhos[1]  # H_1; Eq. (124)
-        moments[2] += -term * rhos[2]  # H_2; Eq. (124)
+        moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
+        moments[1] += -term * rhos[1]  # H_1; Eq. (125)
+        moments[2] += -term * rhos[2]  # H_2; Eq. (125)
   return tuple(moments)
 
 
@@ -209,7 +208,7 @@ def genDataFromWaves(
   efficiencyFormula: Optional[str] = None,                        # detection efficiency
 ) -> ROOT.RDataFrame:  # type: ignore
   '''Generates data according to set of partial-wave amplitudes assuming rank 1'''
-  # construct TF3 for intensity distribution in Eq. (152)
+  # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
   intensityComponentTerms: List[Tuple[str, str, str]] = []  # terms in sum of each intensity component
   for refl in (-1, +1):
@@ -226,7 +225,7 @@ def genDataFromWaves(
         prodAmp2NegM: complex = prodAmps[refl][(ell2, -m2)]
         decayAmp2 = f"Ylm({ell2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
         rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
-        terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (152)
+        terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (153)
         intensityComponentTerms.append(terms)
   # sum terms for each intensity component
   intensityComponentsFormula = []
@@ -237,7 +236,7 @@ def genDataFromWaves(
     f"std::real({intensityComponentsFormula[0]} "
     f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * TMath::DegToRad() * z) "
     f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))"
-    + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})"))  # Eq. (112)
+    + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})"))  # Eq. (163)
   print(f"intensity = {intensityFormula}")
   intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)  # type: ignore
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
@@ -313,7 +312,7 @@ def calcIntegralMatrix(
 ) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
   #TODO this takes a lot of time and needs further optimization; reimplement in NumPy?
-  # define basis functions for physical moments; Eq. (174)
+  # define basis functions for physical and measured moments; Eqs. (175) and (176)
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
@@ -323,7 +322,7 @@ def calcIntegralMatrix(
           f"f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
         phaseSpaceData = phaseSpaceData.Define(f"f_phys_{momentIndex}_{L}_{M}",
           f"f_phys({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
-  # define integral-matrix elements; Eq. (177)
+  # define integral-matrix elements; Eq. (178)
   for momentIndex_meas in range(3):
     for L_meas in range(2 * maxL + 2):
       for M_meas in range(L_meas + 1):
@@ -386,7 +385,7 @@ def calculatePhotoProdMoments(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero
-        # calculate value of moment; Eq. (178)
+        # calculate value of moment; Eq. (179)
         momentValRe = 2 * math.pi * dfMoment.Sum(f"Re_f_meas_{momentIndex}_{L}_{M}").GetValue()
         momentValIm = 2 * math.pi * dfMoment.Sum(f"Im_f_meas_{momentIndex}_{L}_{M}").GetValue()
         momentVal = momentValRe + 1j * momentValIm

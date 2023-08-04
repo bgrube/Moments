@@ -157,7 +157,7 @@ ImYlm(
 }
 
 
-// basis functions for physical moments; Eq. (174)
+// basis functions for physical moments; Eq. (175)
 std::complex<double>
 f_phys(
 	const int    momentIndex,  // 0, 1, or 2
@@ -182,7 +182,7 @@ f_phys(
 }
 
 
-// basis functions for measured moments; Eq. (175)
+// basis functions for measured moments; Eq. (176)
 std::complex<double>
 f_meas(
 	const int    momentIndex,  // 0, 1, or 2
