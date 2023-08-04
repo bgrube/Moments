@@ -13,6 +13,8 @@ from uncertainties import UFloat, ufloat
 
 import ROOT
 
+from testMomentsPhotoProd import plotComparison
+
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
@@ -296,10 +298,6 @@ def calculateSphHarmMoments(
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
   return momentsPhys, momentsPhysCov
 
-
-# C++ implementation of (complex conjugated) Wigner D function
-# also provides complexT typedef for std::complex<double>
-ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
 
 WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
   # negative-reflectivity waves
@@ -698,7 +696,6 @@ if __name__ == "__main__":
   # draw residuals for real part
   residualsRe = tuple((moment[1].real - inputMoments[index]) / math.sqrt(momentsCov[(*moment[0], *moment[0])][0])
     if momentsCov[(*moment[0], *moment[0])][0] > 0 else 0 for index, moment in enumerate(moments))
-  print(f"!!! {residualsRe}")
   histResRe = ROOT.TH1D("hResidualsRe", "Real Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
   chi2 = sum(tuple(residual**2 for residual in residualsRe[1:]))  # exclude H(0, 0) from chi^2
   ndf  = len(residualsRe)
