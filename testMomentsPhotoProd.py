@@ -312,6 +312,7 @@ def calcIntegralMatrix(
   maxL:           int,              # maximum orbital angular momentum
 ) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
+  #TODO this takes a lot of time and needs further optimization; reimplement in NumPy?
   # define basis functions for physical moments; Eq. (174)
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
@@ -397,9 +398,6 @@ def calculatePhotoProdMoments(
   # calculate covariances; Eqs. (88), (180), and (181)
   f_meas = Re_f_meas + 1j * Im_f_meas
   V_meas_aug = (2 * math.pi)**2 * nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
-  # # normalize such that H_0(0, 0) = 1
-  # H_meas /= nmbEvents
-  # V_meas_aug /= nmbEvents**2
   # print measured moments
   iMoment = 0
   for momentIndex in range(3):
@@ -547,7 +545,7 @@ def plotComparison(
   residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
   hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}",  # type: ignore
     f"Residuals #it{{H}}_{{{momentIndex}}} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
-  chi2 = sum(tuple(residual**2 for residual in residuals[1 if (momentIndex == 0 and realPart) else 0:]))  # exclude Re[H_0(0, 0)] from chi^2
+  chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
   ndf  = len(residuals)
   for index, residual in enumerate(residuals):
     hResidual.SetBinContent(index + 1, residual)
