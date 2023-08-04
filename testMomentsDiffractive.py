@@ -62,7 +62,7 @@ def generateDataLegPolLC(
   declareInCpp(legendrePolLC = legendrePolLC)
   df.Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Define("Theta",    "std::acos(CosTheta)") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataLegPolLC()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `CosTheta` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
@@ -140,7 +140,7 @@ def generateDataSphHarmLC(
     .Define("Theta",    "std::acos(CosTheta)") \
     .Define("PhiDeg",   "point[1]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataSphHarmLC()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
@@ -222,9 +222,6 @@ def calculateSphHarmMoments(
   # print(f"V_meas_aug =\n{V_meas_aug}")
   # print(f"vs.\n{V_meas_aug_np}")
   # print(f"ratio\n{np.real_if_close(V_meas_aug / V_meas_aug_np)}")
-  # normalize to H(0, 0)
-  H_meas /= nmbEvents
-  V_meas_aug /= nmbEvents**2
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
@@ -276,9 +273,13 @@ def calculateSphHarmMoments(
       [np.conjugate(J_conj), np.conjugate(J)],
     ])  # augmented Jacobian
     V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
+  # normalize such that H_0(0, 0) = 1
+  norm = H_phys[0]
+  H_phys /= norm
+  V_phys_aug /= norm**2
+  # calculate covariances of real and imaginary parts
   V_phys_Hermit = V_phys_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix
   V_phys_pseudo = V_phys_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix
-  # covariances of real and imaginary parts
   V_phys_ReRe = (np.real(V_phys_Hermit) + np.real(V_phys_pseudo)) / 2
   V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2
   V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2
@@ -365,7 +366,7 @@ def generateDataPwd(
     .Define("Theta",    "std::acos(CosTheta)") \
     .Define("PhiDeg",   "point[1]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataPwd()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
@@ -496,7 +497,7 @@ def generateData2BodyPS(
     .Define("Theta",    "std::acos(CosTheta)") \
     .Define("PhiDeg",   "point[1]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateData2BodyPS()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
   return ROOT.RDataFrame(treeName, fileName)  # type: ignore
@@ -639,10 +640,10 @@ if __name__ == "__main__":
   # Re[H_i]
   measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), (0, *moment[0])) for moment in moments)
   inputVals = tuple(inputMoment.real for inputMoment in inputMoments)
-  plotComparison(measVals, inputVals, realPart = True)
+  plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = False)
   # Im[H_i]
   measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), (0, *moment[0])) for moment in moments)
   inputVals = tuple(inputMoment.imag for inputMoment in inputMoments)
-  plotComparison(measVals, inputVals, realPart = False)
+  plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = False)
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
