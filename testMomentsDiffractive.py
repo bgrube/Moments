@@ -51,7 +51,7 @@ def generateDataLegPolLC(
   # draw function
   canv = ROOT.TCanvas()  # type: ignore
   legendrePolLC.Draw()
-  canv.SaveAs(f"{legendrePolLC.GetName()}.pdf")
+  canv.SaveAs("hLegendrePolLC.pdf")
 
   # generate random data that follow linear combination of legendre polynomials
   treeName = "data"
@@ -126,7 +126,7 @@ def generateDataSphHarmLC(
   # draw function
   canv = ROOT.TCanvas()  # type: ignore
   sphericalHarmLC.Draw("COLZ")
-  canv.SaveAs(f"{sphericalHarmLC.GetName()}.pdf")
+  canv.SaveAs("hSphericalHarmlLC.pdf")
 
   # generate random data that follow linear combination of of spherical harmonics
   treeName = "data"
@@ -227,39 +227,47 @@ def calculateSphHarmMoments(
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
       print(f"H_meas(L = {L}, M = {M}) = {H_meas[iMoment]}")
-  # correct for acceptance
+  # correct for detection efficiency
   H_phys = np.zeros((nmbMoments), dtype = np.complex128)
   V_phys_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
   if integralMatrix is None:
     H_phys     = H_meas
     V_phys_aug = V_meas_aug
   else:
-    I = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
+    I_acc = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
         for Lp in range(2 * maxL + 2):
           for Mp in range(Lp + 1):
-            I[L * (L + 1) // 2 + M][Lp * (Lp + 1) // 2 + Mp] = integralMatrix[(L, M, Lp, Mp)]
-    eigenVals, eigenVecs = np.linalg.eig(I)
-    print(f"I eigenvalues = {eigenVals}")
-    # print(f"I eigenvectors = {eigenVecs}")
-    # print(f"I determinant = {np.linalg.det(I)}")
-    print(f"I = \n{np.array2string(I, precision = 3, suppress_small = True, max_line_width = 150)}")
-    Iinv = np.linalg.inv(I)
-    # eigenVals, eigenVecs = np.linalg.eig(Iinv)
+            I_acc[L * (L + 1) // 2 + M, Lp * (Lp + 1) // 2 + Mp] = integralMatrix[(L, M, Lp, Mp)]
+    print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
+    eigenVals, eigenVecs = np.linalg.eig(I_acc)
+    print(f"I_acc eigenvalues = {eigenVals}")
+    # print(f"I_acc eigenvectors = {eigenVecs}")
+    # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
+    plt.figure().colorbar(plt.matshow(I_acc.real))
+    plt.savefig("I_acc_real.pdf")
+    plt.figure().colorbar(plt.matshow(I_acc.imag))
+    plt.savefig("I_acc_imag.pdf")
+    plt.figure().colorbar(plt.matshow(np.absolute(I_acc)))
+    plt.savefig("I_acc_abs.pdf")
+    plt.figure().colorbar(plt.matshow(np.angle(I_acc)))
+    plt.savefig("I_acc_arg.pdf")
+    I_inv = np.linalg.inv(I_acc)
+    # eigenVals, eigenVecs = np.linalg.eig(I_inv)
     # print(f"I^-1 eigenvalues = {eigenVals}")
-    print(f"I^-1 = \n{np.array2string(Iinv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plt.figure().colorbar(plt.matshow(Iinv.real))
-    plt.savefig("Iinv_real.pdf")
-    plt.figure().colorbar(plt.matshow(Iinv.imag))
-    plt.savefig("Iinv_imag.pdf")
-    plt.figure().colorbar(plt.matshow(np.absolute(Iinv)))
-    plt.savefig("Iinv_abs.pdf")
-    plt.figure().colorbar(plt.matshow(np.angle(Iinv)))
-    plt.savefig("Iinv_arg.pdf")
-    H_phys = Iinv @ H_meas
+    print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
+    plt.figure().colorbar(plt.matshow(I_inv.real))
+    plt.savefig("I_inv_real.pdf")
+    plt.figure().colorbar(plt.matshow(I_inv.imag))
+    plt.savefig("I_inv_imag.pdf")
+    plt.figure().colorbar(plt.matshow(np.absolute(I_inv)))
+    plt.savefig("I_inv_abs.pdf")
+    plt.figure().colorbar(plt.matshow(np.angle(I_inv)))
+    plt.savefig("I_inv_arg.pdf")
+    H_phys = I_inv @ H_meas
     # linear uncertainty propagation
-    J = Iinv  # Jacobian of acceptance correction
+    J = I_inv  # Jacobian of efficiency correction
     J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian
     J_aug = np.block([
       [J,                    J_conj],
@@ -317,10 +325,10 @@ WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
 def generateDataPwd(
   nmbEvents:         int,
   prodAmps:          Dict[int, Tuple[complex, ...]],
-  acceptanceFormula: Optional[str] = None,
+  efficiencyFormula: Optional[str] = None,
 ) -> Any:
   '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
-  # generate data according to Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
+  # construct TF2 for intensity in Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
   assert len(prodAmps) == len(WAVE_SET), f"Need {len(WAVE_SET)} parameters; only {len(prodAmps)} were given: {prodAmps}"
   incoherentTerms = []
   for refl in (-1, +1):
@@ -335,7 +343,7 @@ def generateDataPwd(
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
   # see Eq. (28) for rank = 1
-  intensityFormula = f"({' + '.join(incoherentTerms)})" + ("" if acceptanceFormula is None else f" * ({acceptanceFormula})")
+  intensityFormula = f"({' + '.join(incoherentTerms)})" + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})")
   print(f"intensity = {intensityFormula}")
   intensityFcn = ROOT.TF2("intensity", intensityFormula, -1, +1, -180, +180)  # type: ignore
   intensityFcn.SetTitle(";cos#theta;#phi [deg]")
@@ -347,7 +355,7 @@ def generateDataPwd(
   # draw function
   canv = ROOT.TCanvas()  # type: ignore
   intensityFcn.Draw("COLZ")
-  canv.SaveAs(f"{intensityFcn.GetName()}.pdf")
+  canv.SaveAs("hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
@@ -421,7 +429,7 @@ def calculateInputPwdMoments(
     for M in range(L + 1):
       print(f"H_input(L = {L}, M = {M}) = {moments[index]}")
       index += 1
-  print(moments)
+  # print(moments)
   return moments
 
 
@@ -464,29 +472,28 @@ def calculateWignerDMoments(
 
 def generateData2BodyPS(
   nmbEvents:         int,  # number of events to generate
-  acceptanceFormula: Optional[str] = None,
+  efficiencyFormula: Optional[str] = None,
 ) -> Any:
-  '''Generates RDataFrame with two-body phase-space distribution weighted by given acceptance'''
-  # construct acceptance function
-  acceptanceFcn = ROOT.TF2("acceptance", "1" if acceptanceFormula is None else acceptanceFormula, -1, +1, -180, +180)  # type: ignore
-  acceptanceFcn.SetTitle(";cos#theta;#phi [deg]")
-  acceptanceFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
-  acceptanceFcn.SetNpy(500)
-  acceptanceFcn.SetContour(100)
-  acceptanceFcn.SetMinimum(0)
+  '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
+  # construct efficiency function
+  efficiencyFcn = ROOT.TF2("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180)  # type: ignore
+  efficiencyFcn.SetTitle(";cos#theta;#phi [deg]")
+  efficiencyFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
+  efficiencyFcn.SetNpy(500)
+  efficiencyFcn.SetContour(100)
+  efficiencyFcn.SetMinimum(0)
 
   # draw function
   canv = ROOT.TCanvas()  # type: ignore
-  acceptanceFcn.Draw("COLZ")
-  canv.SaveAs(f"{acceptanceFcn.GetName()}.pdf")
+  efficiencyFcn.Draw("COLZ")
+  canv.SaveAs("hEfficiency.pdf")
 
-  # generate isotropic distributions in cos theta and phi and weight with acceptance function
-  # generate random data that follow intensity given by partial-wave amplitudes
+  # generate isotropic distributions in cos theta and phi and weight with efficiency function
   treeName = "data"
-  fileName = "phaseSpace.root"
+  fileName = f"{efficiencyFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)  # type: ignore
-  declareInCpp(acceptanceFcn = acceptanceFcn)
-  df.Define("point", "double CosTheta, PhiDeg; PyVars::acceptanceFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
+  declareInCpp(efficiencyFcn = efficiencyFcn)
+  df.Define("point", "double CosTheta, PhiDeg; PyVars::efficiencyFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
     .Define("Theta",    "std::acos(CosTheta)") \
     .Define("PhiDeg",   "point[1]") \
@@ -558,14 +565,14 @@ if __name__ == "__main__":
   # get data
   nmbEvents = 1000
   nmbMcEvents = 1000000
-  # formulas for acceptance: x = cos(theta), y = phi in [-180, +180] deg
-  # acceptanceFormula = "1"  # acc_perfect
-  # acceptanceFormula = "2 - x * x"  # acc_1
-  # acceptanceFormula = "1 - x * x"  # acc_2
-  # acceptanceFormula = "180 * 180 - y * y"  # acc_3
-  acceptanceFormula = "0.25 + (1 - x * x) * (180 * 180 - y * y) / (180 * 180)"  # acc_4
-  # acceptanceFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # PiecewiseExpand[BernsteinBasis[4,3,x]]
-  # acceptanceFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
+  # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
+  efficiencyFormula = "1"  # acc_perfect
+  # efficiencyFormula = "2 - x * x"  # acc_1
+  # efficiencyFormula = "1 - x * x"  # acc_2
+  # efficiencyFormula = "180 * 180 - y * y"  # acc_3
+  # efficiencyFormula = "0.25 + (1 - x * x) * (180 * 180 - y * y) / (180 * 180)"  # acc_4
+  # efficiencyFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # Mathematica: PiecewiseExpand[BernsteinBasis[4,3,x]]
+  # efficiencyFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
 
   # # Legendre polynomials
   # chose parameters such that resulting linear combinations are positive definite
@@ -603,23 +610,23 @@ if __name__ == "__main__":
     ),
   }
   inputMoments: List[float] = calculateInputPwdMoments(prodAmps, maxL = maxOrder)
-  dataModel = generateDataPwd(nmbEvents, prodAmps, acceptanceFormula)
+  dataPwaModel = generateDataPwd(nmbEvents, prodAmps, efficiencyFormula)
   # print("!!!", dataModel.AsNumpy())
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
-  if "Phi" in dataModel.GetColumnNames():
-    hist = dataModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")  # type: ignore
+  if "Phi" in dataPwaModel.GetColumnNames():
+    hist = dataPwaModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
-    hist = dataModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")  # type: ignore
+    hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")  # type: ignore
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # calculate moments
-  dataAcceptedPS = generateData2BodyPS(nmbMcEvents, acceptanceFormula)
+  dataAcceptedPS = generateData2BodyPS(nmbMcEvents, efficiencyFormula)
   integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxL = maxOrder, nmbEvents = nmbMcEvents)
   print("Moments of accepted phase-space data")
   calculateSphHarmMoments(dataAcceptedPS, maxL = maxOrder, integralMatrix = integralMatrix)
@@ -627,7 +634,7 @@ if __name__ == "__main__":
   print("Moments of data generated according to model")
   moments:    List[Tuple[Tuple[int, int], complex]]
   momentsCov: Dict[Tuple[int, ...], Tuple[float, ...]]
-  moments, momentsCov = calculateSphHarmMoments(dataModel, maxL = maxOrder, integralMatrix = integralMatrix)
+  moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxL = maxOrder, integralMatrix = integralMatrix)
   # calculateWignerDMoments(dataModel, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
