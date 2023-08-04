@@ -636,125 +636,13 @@ if __name__ == "__main__":
   # calculateWignerDMoments(dataModel, maxL = maxOrder)
   #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
-  hStackRe = ROOT.THStack("hCompareRe", "")  # type: ignore
-  nmbBins = len(moments)
-  # create histogram with measured values
-  histMeasRe = ROOT.TH1D("Measured Moments (Real Part)", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  for index, moment in enumerate(moments):
-    histMeasRe.SetBinContent(index + 1, moment[1].real)
-    histMeasRe.SetBinError  (index + 1, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]))  # diagonal element for ReRe
-    histMeasRe.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
-  histMeasRe.SetLineColor(ROOT.kRed)  # type: ignore
-  histMeasRe.SetMarkerColor(ROOT.kRed)  # type: ignore
-  histMeasRe.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
-  histMeasRe.SetMarkerSize(0.75)
-  hStackRe.Add(histMeasRe, "PEX0")
-  # create histogram with input values
-  histInput = ROOT.TH1D("Input values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  for index, inputMoment in enumerate(inputMoments):
-    histInput.SetBinContent(index + 1, inputMoment)
-    histInput.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histInput.SetLineColor(ROOT.kBlue)  # type: ignore
-  hStackRe.Add(histInput, "PE")
-  canv = ROOT.TCanvas()  # type: ignore
-  hStackRe.Draw("NOSTACK")
-  hStackRe.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
-  hStackRe.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
-  # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
-  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-  canv.SaveAs(f"{hStackRe.GetName()}.pdf")
-
-  hStackIm = ROOT.THStack("hCompareIm", "")  # type: ignore
-  nmbBins = len(moments)
-  # create histogram with measured values
-  histMeasIm = ROOT.TH1D("Measured Moments (Imaginary Part)", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  for index, moment in enumerate(moments):
-    histMeasIm.SetBinContent(index + 1, moment[1].imag)
-    histMeasIm.SetBinError  (index + 1, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]))  # diagonal element for ImIm
-    histMeasIm.GetXaxis().SetBinLabel(index + 1, f"H({' '.join(tuple(str(n) for n in moment[0]))})")
-  histMeasIm.SetLineColor(ROOT.kRed)  # type: ignore
-  histMeasIm.SetMarkerColor(ROOT.kRed)  # type: ignore
-  histMeasIm.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
-  histMeasIm.SetMarkerSize(0.75)
-  hStackIm.Add(histMeasIm, "PEX0")
-  # create histogram with input values
-  histInput = ROOT.TH1D("Input values", ";;value", nmbBins, 0, nmbBins)  # type: ignore
-  for index, inputMoment in enumerate(inputMoments):
-    histInput.SetBinContent(index + 1, 0)
-    histInput.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  histInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histInput.SetLineColor(ROOT.kBlue)  # type: ignore
-  hStackIm.Add(histInput, "PE")
-  canv = ROOT.TCanvas()  # type: ignore
-  hStackIm.Draw("NOSTACK")
-  hStackIm.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore  # make automatic zero line dashed
-  hStackIm.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore  # make automatic zero line dashed
-  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-  canv.SaveAs(f"{hStackIm.GetName()}.pdf")
-
-  # draw residuals for real part
-  residualsRe = tuple((moment[1].real - inputMoments[index]) / math.sqrt(momentsCov[(*moment[0], *moment[0])][0])
-    if momentsCov[(*moment[0], *moment[0])][0] > 0 else 0 for index, moment in enumerate(moments))
-  histResRe = ROOT.TH1D("hResidualsRe", "Real Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
-  chi2 = sum(tuple(residual**2 for residual in residualsRe[1:]))  # exclude H(0, 0) from chi^2
-  ndf  = len(residualsRe)
-  for index, residual in enumerate(residualsRe):
-    histResRe.SetBinContent(index + 1, residual)
-    histResRe.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-    histResRe.GetXaxis().SetBinLabel(index + 1, histMeasRe.GetXaxis().GetBinLabel(index + 1))
-  histResRe.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histResRe.SetLineColor(ROOT.kBlue)  # type: ignore
-  histResRe.SetMinimum(-3)
-  histResRe.SetMaximum(+3)
-  canv = ROOT.TCanvas()  # type: ignore
-  histResRe.Draw("PE")
-  # draw zero line
-  xAxis = histResRe.GetXaxis()
-  line = ROOT.TLine()  # type: ignore
-  line.SetLineStyle(ROOT.kDashed)  # type: ignore
-  line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-  # shade 1 sigma region
-  box = ROOT.TBox()  # type: ignore
-  box.SetFillColorAlpha(ROOT.kBlack, 0.15)  # type: ignore
-  box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
-  # draw chi^2 info
-  label = ROOT.TLatex()  # type: ignore
-  label.SetNDC()
-  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
-  label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
-  canv.SaveAs(f"{histResRe.GetName()}.pdf")
-
-  # draw residuals for imaginary part
-  residualsIm = tuple(moment[1].imag / math.sqrt(momentsCov[(*moment[0], *moment[0])][1])  # true value is 0
-    if momentsCov[(*moment[0], *moment[0])][1] > 0 else 0 for index, moment in enumerate(moments))
-  histResIm = ROOT.TH1D("hResidualsIm", "Imaginary Part;;(measured - input) / #sigma_{measured}", nmbBins, 0, nmbBins)  # type: ignore
-  chi2 = sum(tuple(residual**2 for residual in residualsIm))
-  ndf  = len(residualsIm)
-  for index, residual in enumerate(residualsIm):
-    histResIm.SetBinContent(index + 1, residual)
-    histResIm.SetBinError  (index + 1, 1e-16)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-    histResIm.GetXaxis().SetBinLabel(index + 1, histMeasRe.GetXaxis().GetBinLabel(index + 1))
-  histResIm.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  histResIm.SetLineColor(ROOT.kBlue)  # type: ignore
-  histResIm.SetMinimum(-3)
-  histResIm.SetMaximum(+3)
-  canv = ROOT.TCanvas()  # type: ignore
-  histResIm.Draw("PE")
-  # draw zero line
-  xAxis = histResIm.GetXaxis()
-  line = ROOT.TLine()  # type: ignore
-  line.SetLineStyle(ROOT.kDashed)  # type: ignore
-  line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-  # shade 1 sigma region
-  box = ROOT.TBox()  # type: ignore
-  box.SetFillColorAlpha(ROOT.kBlack, 0.15)  # type: ignore
-  box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
-  # draw chi^2 info
-  label = ROOT.TLatex()  # type: ignore
-  label.SetNDC()
-  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
-  label.DrawLatex(0.12, 0.9075, f"#chi^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
-  canv.SaveAs(f"{histResIm.GetName()}.pdf")
+  # Re[H_i]
+  measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), (0, *moment[0])) for moment in moments)
+  inputVals = tuple(inputMoment.real for inputMoment in inputMoments)
+  plotComparison(measVals, inputVals, realPart = True)
+  # Im[H_i]
+  measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), (0, *moment[0])) for moment in moments)
+  inputVals = tuple(inputMoment.imag for inputMoment in inputMoments)
+  plotComparison(measVals, inputVals, realPart = False)
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
