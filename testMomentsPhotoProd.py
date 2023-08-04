@@ -493,12 +493,17 @@ def calculatePhotoProdMoments(
 
 
 def plotComparison(
-  measVals:          Tuple[Tuple[float, float, Tuple[int, int, int]], ...],
-  inputVals:         Tuple[float, ...],
-  fileNameSuffix:    str,
-  legendEntrySuffix: str,
+  measVals:  Tuple[Tuple[float, float, Tuple[int, int, int]], ...],
+  inputVals: Tuple[float, ...],
+  realPart:  bool,
 ) -> None:
   momentIndex = measVals[0][2][0]
+  if realPart:
+    fileNameSuffix    = "Re"
+    legendEntrySuffix = "Real Part"
+  else:
+    fileNameSuffix    = "Im"
+    legendEntrySuffix = "Imag Part"
 
   # overlay measured and input values
   hStack = ROOT.THStack(f"hCompare_H{momentIndex}_{fileNameSuffix}", "")  # type: ignore
@@ -529,8 +534,8 @@ def plotComparison(
   ROOT.gPad.Update()  # type: ignore
   actualYRange = ROOT.gPad.GetUymax() - ROOT.gPad.GetUymin()  # type: ignore
   yRangeFraction = 0.1 * actualYRange
-  hStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)
-  hStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)
+  hStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)  # type: ignore
+  hStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)  # type: ignore
   # adjust style of automatic zero line
   hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore
   hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore
@@ -542,7 +547,7 @@ def plotComparison(
   residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
   hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex}_{fileNameSuffix}",  # type: ignore
     f"Residuals #it{{H}}_{{{momentIndex}}} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
-  chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude H_0(0, 0) from chi^2
+  chi2 = sum(tuple(residual**2 for residual in residuals[1 if (momentIndex == 0 and realPart) else 0:]))  # exclude Re[H_0(0, 0)] from chi^2
   ndf  = len(residuals)
   for index, residual in enumerate(residuals):
     hResidual.SetBinContent(index + 1, residual)
@@ -646,11 +651,11 @@ if __name__ == "__main__":
     # Re[H_i]
     measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
     inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments if len(inputMoment) > momentIndex)
-    plotComparison(measVals, inputVals, fileNameSuffix = "Re", legendEntrySuffix = "Real Part")
+    plotComparison(measVals, inputVals, realPart = True)
     # Im[H_i]
     measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
     inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
-    plotComparison(measVals, inputVals, fileNameSuffix = "Im", legendEntrySuffix = "Imag Part")
+    plotComparison(measVals, inputVals, realPart = False)
 
   ROOT.gBenchmark.Show("Total execution time")  # type: ignore
 
