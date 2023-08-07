@@ -547,7 +547,7 @@ def plotComparison(
   hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",  # type: ignore
     f"Residuals #it{{H}}{labelSubscript} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
   chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
-  ndf  = len(residuals)
+  ndf  = len(residuals[1 if momentIndex == 0 else 0:])
   for index, residual in enumerate(residuals):
     hResidual.SetBinContent(index + 1, residual)
     hResidual.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
