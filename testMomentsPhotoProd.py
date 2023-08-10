@@ -312,8 +312,9 @@ def calcIntegralMatrix(
   maxL:           int,              # maximum orbital angular momentum
 ) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
-  #TODO this takes a lot of time and needs further optimization; reimplement in NumPy?
+  #TODO this takes a lot of time (200 sec for 10^5 events) and needs further optimization; reimplement in NumPy?
   # define basis functions for physical and measured moments; Eqs. (175) and (176)
+  ROOT.gBenchmark.Start("!!! integrals calculated using RDataFrame")  # type: ignore
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
@@ -352,6 +353,32 @@ def calcIntegralMatrix(
               I_acc[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
                 phaseSpaceData.Sum[ROOT.std.complex["double"]](  # type: ignore
                 f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}").GetValue())
+  ROOT.gBenchmark.Stop("!!! integrals calculated using RDataFrame")  # type: ignore
+  # calculate basis functions for physical and measured moments; Eqs. (175) and (176)
+  ROOT.gBenchmark.Start("!!! integrals calculated using NumPy")  # type: ignore
+  # get phase-space dataPdata
+  # Im_f_meas = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
+  # Im_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_meas_{momentIndex}_{L}_{M}"])[f"Im_f_meas_{momentIndex}_{L}_{M}"]
+  thetaValues = phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
+  phiValues   = phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
+  PhiValues   = phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
+  phaseSpaceData = np.stack([thetaValues, phiValues, PhiValues], 1)
+  fMeasValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
+  fPhysValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
+  for momentIndex in range(3):
+    for L in range(2 * maxL + 2):
+      for M in range(L + 1):
+        if momentIndex == 2 and M == 0:
+          continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
+        fMeasValues[(momentIndex, L, M)] =  np.array(
+          [ROOT.f_meas(momentIndex, L, M, angles[0], angles[1], angles[2], polarization) for angles in phaseSpaceData[:]], dtype = np.complex128)  # type: ignore
+        fPhysValues[(momentIndex, L, M)] =  np.array(
+          [ROOT.f_phys(momentIndex, L, M, angles[0], angles[1], angles[2], polarization) for angles in phaseSpaceData[:]], dtype = np.complex128)  # type: ignore
+  I_acc2: Dict[Tuple[int, ...], complex] = {}
+  for indices_meas, f_meas in fMeasValues.items():
+    for indices_phys, f_phys in fPhysValues.items():
+      I_acc2[indices_meas + indices_phys] = 8 * math.pi**2 / nmbGenEvents * np.dot(f_meas, f_phys)
+  ROOT.gBenchmark.Stop("!!! integrals calculated using NumPy")  # type: ignore
   return I_acc
 
 
@@ -603,32 +630,32 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")  # type: ignore
 
   # get data
-  nmbEvents = 1000000
-  nmbMcEvents = 10000000
+  nmbEvents = 1000
+  nmbMcEvents = 100000
   polarization = 1.0
   # formulas for detection efficiency
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
   efficiencyFormula = "1"  # acc_perfect
   # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180))"  # acc_1
 
-  # input from partial-wave amplitudes
-  ROOT.gBenchmark.Start("Time to generate MC data from partial waves")  # type: ignore
-  inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
-  dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormula)
-  ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")  # type: ignore
+  # # input from partial-wave amplitudes
+  # ROOT.gBenchmark.Start("Time to generate MC data from partial waves")  # type: ignore
+  # inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
+  # dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormula)
+  # ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")  # type: ignore
 
-  # plot data
-  canv = ROOT.TCanvas()  # type: ignore
-  nmbBins = 25
-  hist = dataPwaModel.Histo3D(
-    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),  # type: ignore
-    "cosTheta", "phiDeg", "PhiDeg")
-  hist.SetMinimum(0)
-  hist.GetXaxis().SetTitleOffset(1.5)
-  hist.GetYaxis().SetTitleOffset(2)
-  hist.GetZaxis().SetTitleOffset(1.5)
-  hist.Draw("BOX2")
-  canv.SaveAs(f"{hist.GetName()}.pdf")
+  # # plot data
+  # canv = ROOT.TCanvas()  # type: ignore
+  # nmbBins = 25
+  # hist = dataPwaModel.Histo3D(
+  #   ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),  # type: ignore
+  #   "cosTheta", "phiDeg", "PhiDeg")
+  # hist.SetMinimum(0)
+  # hist.GetXaxis().SetTitleOffset(1.5)
+  # hist.GetYaxis().SetTitleOffset(2)
+  # hist.GetZaxis().SetTitleOffset(1.5)
+  # hist.Draw("BOX2")
+  # canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # generate accepted phase space and calculate integral matrix
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")  # type: ignore
@@ -637,6 +664,9 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Time to calculate integral matrix")  # type: ignore
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   ROOT.gBenchmark.Stop("Time to calculate integral matrix")  # type: ignore
+  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
+  ROOT.gBenchmark.Summary(_, _)  # type: ignore
+  raise ValueError
   # print("Moments of accepted phase-space data")
   # momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   # # print moments of accepted phase-space data
