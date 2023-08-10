@@ -2,6 +2,7 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
+import ctypes
 import functools
 import math
 import matplotlib.pyplot as plt
@@ -97,7 +98,7 @@ def drawIntensityTF3(
 def plotComplexMatrix(
   matrix:         npt.NDArray[np.complex128],
   fileNamePrefix: str,
-):
+) -> None:
   plt.figure().colorbar(plt.matshow(np.real(matrix)))
   plt.savefig(f"{fileNamePrefix}_real.pdf")
   plt.close()
@@ -262,7 +263,7 @@ def genDataFromWaves(
     .Define("phi",      "TMath::DegToRad() * phiDeg") \
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
     .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # type: ignore
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
@@ -297,7 +298,7 @@ def genAccepted2BodyPsPhotoProd(
     .Define("phi",      "TMath::DegToRad() * phiDeg") \
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd()" << endl; } return true;') \
     .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))  # type: ignore
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
@@ -611,14 +612,16 @@ if __name__ == "__main__":
   # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180))"  # acc_1
 
   # input from partial-wave amplitudes
+  ROOT.gBenchmark.Start("Time to generate MC data from partial waves")  # type: ignore
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormula)
+  ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")  # type: ignore
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   nmbBins = 25
   hist = dataPwaModel.Histo3D(
-    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),  # type: ignore
     "cosTheta", "phiDeg", "PhiDeg")
   hist.SetMinimum(0)
   hist.GetXaxis().SetTitleOffset(1.5)
@@ -628,8 +631,12 @@ if __name__ == "__main__":
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # generate accepted phase space and calculate integral matrix
+  ROOT.gBenchmark.Start("Time to generate phase-space MC data")  # type: ignore
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
+  ROOT.gBenchmark.Stop("Time to generate phase-space MC data")  # type: ignore
+  ROOT.gBenchmark.Start("Time to calculate integral matrix")  # type: ignore
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  ROOT.gBenchmark.Stop("Time to calculate integral matrix")  # type: ignore
   # print("Moments of accepted phase-space data")
   # momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   # # print moments of accepted phase-space data
@@ -639,7 +646,9 @@ if __name__ == "__main__":
 
   # calculate moments
   print("Moments of data generated according to model")
+  ROOT.gBenchmark.Start("Time to calculate moments")  # type: ignore
   moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  ROOT.gBenchmark.Stop("Time to calculate moments")  # type: ignore
   # print moments
   for moment in moments:
     print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
@@ -656,6 +665,7 @@ if __name__ == "__main__":
     inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
     plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = True)
 
-  ROOT.gBenchmark.Show("Total execution time")  # type: ignore
-
-  #TODO adjust equation numbers to new version of note
+  ROOT.gBenchmark.Stop("Total execution time")  # type: ignore
+  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
+  ROOT.gBenchmark.Summary(_, _)  # type: ignore
+  print("'TOTAL' time is wrong; ignore")
