@@ -379,6 +379,11 @@ def calcIntegralMatrix(
     for indices_phys, f_phys in fPhysValues.items():
       I_acc2[indices_meas + indices_phys] = 8 * math.pi**2 / nmbGenEvents * np.dot(f_meas, f_phys)
   ROOT.gBenchmark.Stop("!!! integrals calculated using NumPy")  # type: ignore
+  # check result
+  for indices, trueVal in I_acc.items():
+    diff = trueVal - I_acc2[indices]
+    if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-14) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-14):
+      print(f"!!! {indices}: {diff} = {trueVal} - {I_acc2[indices]}")
   return I_acc
 
 
@@ -664,6 +669,7 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Time to calculate integral matrix")  # type: ignore
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   ROOT.gBenchmark.Stop("Time to calculate integral matrix")  # type: ignore
+  ROOT.gBenchmark.Stop("Total execution time")  # type: ignore
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
   ROOT.gBenchmark.Summary(_, _)  # type: ignore
   raise ValueError
