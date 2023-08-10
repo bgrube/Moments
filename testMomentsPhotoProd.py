@@ -314,7 +314,6 @@ def calcIntegralMatrix(
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
   #TODO this takes a lot of time (200 sec for 10^5 events) and needs further optimization; reimplement in NumPy?
   # define basis functions for physical and measured moments; Eqs. (175) and (176)
-  ROOT.gBenchmark.Start("!!! integrals calculated using RDataFrame")  # type: ignore
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
@@ -353,18 +352,24 @@ def calcIntegralMatrix(
               I_acc[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
                 phaseSpaceData.Sum[ROOT.std.complex["double"]](  # type: ignore
                 f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}").GetValue())
-  ROOT.gBenchmark.Stop("!!! integrals calculated using RDataFrame")  # type: ignore
-  # calculate basis functions for physical and measured moments; Eqs. (175) and (176)
-  ROOT.gBenchmark.Start("!!! integrals calculated using NumPy")  # type: ignore
+  return I_acc
+
+
+def calcIntegralMatrix2(
+  phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data  # type: ignore
+  nmbGenEvents:   int,              # number of generated events
+  polarization:   float,            # photon-beam polarization
+  maxL:           int,              # maximum orbital angular momentum
+) -> Dict[Tuple[int, ...], complex]:
+  '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
   # get phase-space dataPdata
-  # Im_f_meas = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
-  # Im_f_meas[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_meas_{momentIndex}_{L}_{M}"])[f"Im_f_meas_{momentIndex}_{L}_{M}"]
   thetaValues = phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
   phiValues   = phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
   PhiValues   = phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
   phaseSpaceData = np.stack([thetaValues, phiValues, PhiValues], 1)
   fMeasValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
   fPhysValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
+  # calculate basis functions for physical and measured moments; Eqs. (175) and (176)
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
@@ -374,16 +379,11 @@ def calcIntegralMatrix(
           [ROOT.f_meas(momentIndex, L, M, angles[0], angles[1], angles[2], polarization) for angles in phaseSpaceData[:]], dtype = np.complex128)  # type: ignore
         fPhysValues[(momentIndex, L, M)] =  np.array(
           [ROOT.f_phys(momentIndex, L, M, angles[0], angles[1], angles[2], polarization) for angles in phaseSpaceData[:]], dtype = np.complex128)  # type: ignore
-  I_acc2: Dict[Tuple[int, ...], complex] = {}
+  # calculate integral-matrix elements; Eq. (178)
+  I_acc: Dict[Tuple[int, ...], complex] = {}
   for indices_meas, f_meas in fMeasValues.items():
     for indices_phys, f_phys in fPhysValues.items():
-      I_acc2[indices_meas + indices_phys] = 8 * math.pi**2 / nmbGenEvents * np.dot(f_meas, f_phys)
-  ROOT.gBenchmark.Stop("!!! integrals calculated using NumPy")  # type: ignore
-  # check result
-  for indices, trueVal in I_acc.items():
-    diff = trueVal - I_acc2[indices]
-    if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-14) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-14):
-      print(f"!!! {indices}: {diff} = {trueVal} - {I_acc2[indices]}")
+      I_acc[indices_meas + indices_phys] = 8 * math.pi**2 / nmbGenEvents * np.dot(f_meas, f_phys)
   return I_acc
 
 
@@ -666,9 +666,17 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")  # type: ignore
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")  # type: ignore
-  ROOT.gBenchmark.Start("Time to calculate integral matrix")  # type: ignore
+  ROOT.gBenchmark.Start("Time to calculate integral matrix (RDataFrame)")  # type: ignore
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
-  ROOT.gBenchmark.Stop("Time to calculate integral matrix")  # type: ignore
+  ROOT.gBenchmark.Stop("Time to calculate integral matrix (RDataFrame)")  # type: ignore
+  ROOT.gBenchmark.Start("Time to calculate integral matrix (NumPy)")  # type: ignore
+  integralMatrix2 = calcIntegralMatrix2(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  ROOT.gBenchmark.Stop("Time to calculate integral matrix (NumPy)")  # type: ignore
+  # check integral matrix
+  for indices, trueVal in integralMatrix.items():
+    diff = trueVal - integralMatrix2[indices]
+    if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-14) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-14):
+      print(f"!!! {indices}: {diff} = {trueVal} - {integralMatrix2[indices]}")
   ROOT.gBenchmark.Stop("Total execution time")  # type: ignore
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
   ROOT.gBenchmark.Summary(_, _)  # type: ignore
