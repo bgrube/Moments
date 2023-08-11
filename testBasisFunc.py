@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 
 import os
+OMP_NUM_THREADS_save = None
+if "OMP_NUM_THREADS" in os.environ:
+  OMP_NUM_THREADS_save = os.environ["OMP_NUM_THREADS"]
 os.environ["OMP_NUM_THREADS"] = "5"  # limit number of OpenMP threads; see also threadpoolctl
 
 import functools
 import numpy as np
 import subprocess
+import timeit
 
 import ROOT
 
@@ -88,10 +92,23 @@ if __name__ == "__main__":
   # cppyy does not work see https://github.com/root-project/root/issues/12635
   # https://cppyy.readthedocs.io/en/latest/numba.html
   # https://cppyy.readthedocs.io/en/latest/lowlevel.html#numpy-casts
-  vals = np.random.rand(10)
+  vals  = np.random.rand(100000000)
   theta = ROOT.std.vector["double"](vals)  # type: ignore
   phi   = ROOT.std.vector["double"](vals)  # type: ignore
   Phi   = ROOT.std.vector["double"](vals)  # type: ignore
-  fcnResults = ROOT.f_meas(1, 3, 2, theta, phi, Phi, 1.0)  # type: ignore
-  arr = np.asarray(fcnResults)
-  print(f"{type(arr)} {arr.dtype} {arr}")
+  start = timeit.default_timer()
+  fcnResults1 = np.asarray(ROOT.f_phys(1, 3, 2, theta, phi, Phi, 1.0))  # type: ignore
+  stop = timeit.default_timer()
+  time1 = stop -start
+  print(f"1 thread: {str(time1)} sec")
+  start = timeit.default_timer()
+  fcnResults2 = np.asarray(ROOT.f_phys_omp(1, 3, 2, theta, phi, Phi, 1.0))  # type: ignore
+  stop = timeit.default_timer()
+  time2 = stop -start
+  print(f"{ROOT.getNmbOpenMpThreads()} threads: {str(time2)} sec; speedup = {time1 / time2}; efficiency = {(time1 / time2) / ROOT.getNmbOpenMpThreads()}") # type: ignore
+  print(f"maximum difference: {max(fcnResults1 - fcnResults2):.16e}")
+  # unset OpenMP variable
+  if OMP_NUM_THREADS_save:
+    os.environ["OMP_NUM_THREADS"] = OMP_NUM_THREADS_save
+  else:
+    del os.environ["OMP_NUM_THREADS"]
