@@ -182,6 +182,27 @@ f_phys(
 }
 
 
+// vector version that calculates function value for each entry in the input vectors
+std::vector<std::complex<double>>
+f_phys(
+	const int                  momentIndex,  // 0, 1, or 2
+	const int                  L,
+	const int                  M,
+	const std::vector<double>& theta,  // [rad]
+	const std::vector<double>& phi,    // [rad]
+	const std::vector<double>& Phi,    // [rad]
+	const double               polarization
+) {
+	// assume that theta, phi, and Phi have the same length
+	const size_t nmbEvents = theta.size();
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	for (size_t i = 0; i < theta.size(); ++i) {
+		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+	}
+	return fcnValues;
+}
+
+
 // basis functions for measured moments; Eq. (176)
 std::complex<double>
 f_meas(
@@ -204,6 +225,27 @@ f_meas(
 	default:
 		throw std::domain_error("f_meas() unknown moment index.");
 	}
+}
+
+
+// vector version that calculates function value for each entry in the input vectors
+std::vector<std::complex<double>>
+f_meas(
+	const int                  momentIndex,  // 0, 1, or 2
+	const int                  L,
+	const int                  M,
+	const std::vector<double>& theta,  // [rad]
+	const std::vector<double>& phi,    // [rad]
+	const std::vector<double>& Phi,    // [rad]
+	const double               polarization
+) {
+	// assume that theta, phi, and Phi have the same length
+	const size_t nmbEvents = theta.size();
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	for (size_t i = 0; i < theta.size(); ++i) {
+		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+	}
+	return fcnValues;
 }
 
 
