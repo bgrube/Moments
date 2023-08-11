@@ -33,11 +33,18 @@ def printRootACLiCSettings():
 
 def enableRootACLiCOpenMp():
   '''Enables openMP support for ROOT macros compiled via ACLiC'''
-  # !Note! MacOS (requires libomp to be installed via MacPorts or Homebrew see testOpenMp.c)
-  ROOT.gSystem.SetFlagsOpt("-Xpreprocessor -fopenmp")  # compiler flags for optimized mode  # type: ignore
-  ROOT.gSystem.AddIncludePath("-I/opt/local/include/libomp")  # type: ignore
-  ROOT.gSystem.AddDynamicPath("/opt/local/lib/libomp")  # type: ignore
-  ROOT.gSystem.AddLinkedLibs("-L/opt/local/lib/libomp -lomp")  # type: ignore
+  arch = ROOT.gSystem.GetBuildArch()  # type: ignore
+  if "macos" in arch.lower():
+    # !Note! MacOS (Apple does not ship libomp; needs to be installed via MacPorts or Homebrew see testOpenMp.c)
+    print(f"Enabling ACLiC compilation with OpenMP for MacOS")
+    ROOT.gSystem.SetFlagsOpt("-Xpreprocessor -fopenmp")  # compiler flags for optimized mode  # type: ignore
+    ROOT.gSystem.AddIncludePath("-I/opt/local/include/libomp")  # type: ignore
+    ROOT.gSystem.AddDynamicPath("/opt/local/lib/libomp")  # type: ignore
+    ROOT.gSystem.AddLinkedLibs("-L/opt/local/lib/libomp -lomp")  # type: ignore
+  elif "linux" in arch.lower():
+    print(f"Enabling ACLiC compilation with OpenMP for Linux")
+    ROOT.gSystem.SetFlagsOpt("-fopenmp")  # compiler flags for optimized mode  # type: ignore
+    ROOT.gSystem.AddLinkedLibs("-lomp")  # type: ignore
 enableRootACLiCOpenMp()
 
 
@@ -51,7 +58,6 @@ if __name__ == "__main__":
 
   printRootACLiCSettings()
   ROOT.testOpenMp()  # type: ignore
-  raise ValueError
 
   # see https://root.cern/doc/master/pyroot001__arrayInterface_8py.html
   # and https://root-forum.cern.ch/t/stl-vector-and-numpy-types-in-pyroot/54073/6
