@@ -2,6 +2,7 @@
 #include <cmath>
 #include <complex>
 #include <iostream>
+#include <omp.h>
 
 #include "Math/SpecFuncMathMore.h"
 #include "TMath.h"
@@ -252,3 +253,24 @@ f_meas(
 // need typedef because templates are not allowed in TFormula expressions
 // see https://root-forum.cern.ch/t/trying-to-define-imaginary-error-function/50032/10
 typedef std::complex<double> complexT;
+
+
+// test OpenMP compilation and thread spawning
+void
+testOpenMp()
+{
+	// Fork a team of threads giving them their own copies of variables
+	int nmbThreads, threadId;
+	#pragma omp parallel private(nmbThreads, threadId)
+	{
+		// Obtain thread number
+		threadId = omp_get_thread_num();
+		std::cout << "Hello World from thread = " <<  threadId << std::endl;
+		// Only master thread does this
+		if (threadId == 0) {
+			nmbThreads = omp_get_num_threads();
+			std::cout << "Number of threads = " <<  nmbThreads << std::endl;
+		}
+	}
+	// All threads join master thread and disband
+}
