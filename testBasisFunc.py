@@ -72,18 +72,18 @@ def enableRootACLiCOpenMp():
     # The only way to make it work is to copy/link `omp.h`` from the
     # gcc include dir here and turn the system include statement in
     # `wigner.C`` into the quoted form.
-enableRootACLiCOpenMp()
-
-
-# C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
-# also provides complexT typedef for std::complex<double>
-ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
 
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)  # type: ignore
 
+  enableRootACLiCOpenMp()
   printRootACLiCSettings()
+  # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
+  # also provides complexT typedef for std::complex<double>
+  ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
+  print(f"Using {ROOT.getNmbOpenMpThreads()} OpenMP threads")  # type: ignore
+
   ROOT.testOpenMp()  # type: ignore
 
   # see https://root.cern/doc/master/pyroot001__arrayInterface_8py.html
@@ -105,7 +105,7 @@ if __name__ == "__main__":
   fcnResults2 = np.asarray(ROOT.f_phys_omp(1, 3, 2, theta, phi, Phi, 1.0))  # type: ignore
   stop = timeit.default_timer()
   time2 = stop -start
-  print(f"{ROOT.getNmbOpenMpThreads()} threads: {str(time2)} sec; speedup = {time1 / time2}; efficiency = {(time1 / time2) / ROOT.getNmbOpenMpThreads()}") # type: ignore
+  print(f"{ROOT.getNmbOpenMpThreads()} threads: {str(time2)} sec; speedup = {time1 / time2}; efficiency = {(time1 / time2) / ROOT.getNmbOpenMpThreads()}")  # type: ignore
   print(f"maximum difference: {max(fcnResults1 - fcnResults2):.16e}")
   # unset OpenMP variable
   if OMP_NUM_THREADS_save:
