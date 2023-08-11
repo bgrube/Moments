@@ -8,6 +8,11 @@
 #include "TMath.h"
 
 
+// need typedef because templates are not allowed in TFormula expressions
+// see https://root-forum.cern.ch/t/trying-to-define-imaginary-error-function/50032/10
+typedef std::complex<double> complexT;
+
+
 const std::complex<double> I = std::complex<double>(0, 1);
 
 
@@ -204,6 +209,28 @@ f_phys(
 }
 
 
+// vector version that calculates function value for each entry in the input vectors; OpenMP version
+std::vector<std::complex<double>>
+f_phys_omp(
+	const int                  momentIndex,  // 0, 1, or 2
+	const int                  L,
+	const int                  M,
+	const std::vector<double>& theta,  // [rad]
+	const std::vector<double>& phi,    // [rad]
+	const std::vector<double>& Phi,    // [rad]
+	const double               polarization
+) {
+	// assume that theta, phi, and Phi have the same length
+	const size_t nmbEvents = theta.size();
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	#pragma omp parallel for
+	for (size_t i = 0; i < theta.size(); ++i) {
+		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+	}
+	return fcnValues;
+}
+
+
 // basis functions for measured moments; Eq. (176)
 std::complex<double>
 f_meas(
@@ -250,9 +277,26 @@ f_meas(
 }
 
 
-// need typedef because templates are not allowed in TFormula expressions
-// see https://root-forum.cern.ch/t/trying-to-define-imaginary-error-function/50032/10
-typedef std::complex<double> complexT;
+// vector version that calculates function value for each entry in the input vectors; OpenMP version
+std::vector<std::complex<double>>
+f_meas_omp(
+	const int                  momentIndex,  // 0, 1, or 2
+	const int                  L,
+	const int                  M,
+	const std::vector<double>& theta,  // [rad]
+	const std::vector<double>& phi,    // [rad]
+	const std::vector<double>& Phi,    // [rad]
+	const double               polarization
+) {
+	// assume that theta, phi, and Phi have the same length
+	const size_t nmbEvents = theta.size();
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	#pragma omp parallel for
+	for (size_t i = 0; i < theta.size(); ++i) {
+		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+	}
+	return fcnValues;
+}
 
 
 // test OpenMP compilation and thread spawning
@@ -265,12 +309,27 @@ testOpenMp()
 	{
 		// Obtain thread number
 		threadId = omp_get_thread_num();
+		#pragma omp critical
 		std::cout << "Hello World from thread = " <<  threadId << std::endl;
 		// Only master thread does this
 		if (threadId == 0) {
 			nmbThreads = omp_get_num_threads();
+			#pragma omp critical
 			std::cout << "Number of threads = " <<  nmbThreads << std::endl;
 		}
 	}
 	// All threads join master thread and disband
+}
+
+
+int
+getNmbOpenMpThreads()
+{
+	int nmbThreads = 1;
+	#pragma omp parallel
+	{
+		#pragma omp single
+		nmbThreads = omp_get_num_threads();
+	}
+	return nmbThreads;
 }
