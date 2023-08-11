@@ -15,6 +15,9 @@ import py3nj
 
 import ROOT
 
+from testBasisFunc import enableRootACLiCOpenMp
+enableRootACLiCOpenMp()
+
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
@@ -389,7 +392,7 @@ def calcIntegralMatrixNumPy(
 
 
 # approximately 10 times faster than calcIntegralMatrixNumPy()
-def calcIntegralMatrixNativeLoop(
+def calcIntegralMatrixOpenMp(
   phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data  # type: ignore
   nmbGenEvents:   int,              # number of generated events
   polarization:   float,            # photon-beam polarization
@@ -409,8 +412,8 @@ def calcIntegralMatrixNativeLoop(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
-        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas_omp(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys_omp(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
   # calculate integral-matrix elements; Eq. (178)
   I_acc: Dict[Tuple[int, ...], complex] = {}
   for indices_meas, f_meas in fMeasValues.items():
@@ -709,10 +712,10 @@ if __name__ == "__main__":
     diff = trueVal - integralMatrixNumPy[indices]
     if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-14) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-14):
       print(f"    {indices}: {diff} = {trueVal} - {integralMatrixNumPy[indices]}")
-  ROOT.gBenchmark.Start("Time to calculate integral matrix (native loop)")  # type: ignore
-  integralMatrixNativeLoop = calcIntegralMatrixNativeLoop(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
-  ROOT.gBenchmark.Stop("Time to calculate integral matrix (native loop)")  # type: ignore
-  print("Check integral matrix: NumPy - native loop")
+  ROOT.gBenchmark.Start("Time to calculate integral matrix (OpenMP)")  # type: ignore
+  integralMatrixNativeLoop = calcIntegralMatrixOpenMp(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  ROOT.gBenchmark.Stop("Time to calculate integral matrix (OpenMP)")  # type: ignore
+  print("Check integral matrix: NumPy - OpenMP")
   for indices, trueVal in integralMatrixNumPy.items():
     diff = trueVal - integralMatrixNativeLoop[indices]
     if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-18) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-18):
