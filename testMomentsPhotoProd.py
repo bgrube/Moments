@@ -712,6 +712,7 @@ if __name__ == "__main__":
     diff = trueVal - integralMatrixNumPy[indices]
     if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-14) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-14):
       print(f"    {indices}: {diff} = {trueVal} - {integralMatrixNumPy[indices]}")
+  print(f"Using OpenMP with {ROOT.getNmbOpenMpThreads()} threads")  # type: ignore
   ROOT.gBenchmark.Start("Time to calculate integral matrix (OpenMP)")  # type: ignore
   integralMatrixNativeLoop = calcIntegralMatrixOpenMp(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
   ROOT.gBenchmark.Stop("Time to calculate integral matrix (OpenMP)")  # type: ignore
