@@ -483,7 +483,7 @@ def calculatePhotoProdMomentsFast(
   polarization:   float,                                            # photon-beam polarization
   maxL:           int,                                              # maximum spin of decaying object
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
-) -> Tuple[List[Tuple[Tuple[int, int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
+) -> Tuple[List[Tuple[Tuple[int, int, int], complex]], Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]]]:  # moment values and covariances
   '''Calculates photoproduction moments and their covariances'''
   ROOT.gBenchmark.Start("!!! OpenMP")  # type: ignore
   # get data as NumPy arrays
@@ -771,6 +771,10 @@ if __name__ == "__main__":
     diff = trueVal[1] - momentsPs2[index][1]
     if not math.isclose(diff.real, 0, rel_tol = 0, abs_tol = 1e-18) or not math.isclose(diff.imag, 0, rel_tol = 0, abs_tol = 1e-18):
       print(f"!!! Delta H^phys_{trueVal[0][0]}(L = {trueVal[0][1]}, M = {trueVal[0][2]}) = {diff}")
+  for key, trueVal in momentsPsCov.items():
+    diff = np.subtract(trueVal, momentsPsCov2[key])
+    if not np.allclose(trueVal, momentsPsCov2[key], rtol = 0, atol = 1e-21):
+      print(f"!!! Delta V_{key} = {diff}")
   ROOT.gBenchmark.Stop("Total execution time")  # type: ignore
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
   ROOT.gBenchmark.Summary(_, _)  # type: ignore
