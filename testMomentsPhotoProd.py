@@ -327,8 +327,8 @@ def calcIntegralMatrix(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas_omp(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
-        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys_omp(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
   # calculate integral-matrix elements; Eq. (178)
   I_acc: Dict[Tuple[int, ...], complex] = {}
   for indices_meas, f_meas in fMeasValues.items():

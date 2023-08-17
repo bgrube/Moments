@@ -16,7 +16,45 @@ typedef std::complex<double> complexT;
 const std::complex<double> I = std::complex<double>(0, 1);
 
 
-// optimized function that calculates (-1)^n
+// test OpenMP compilation and thread spawning
+void
+testOpenMp()
+{
+	// Fork a team of threads giving them their own copies of variables
+	int nmbThreads, threadId;
+	#pragma omp parallel private(nmbThreads, threadId)
+	{
+		// Obtain thread number
+		threadId = omp_get_thread_num();
+		#pragma omp critical
+		std::cout << "Hello World from thread = " <<  threadId << std::endl;
+		// Only master thread does this
+		if (threadId == 0) {
+			nmbThreads = omp_get_num_threads();
+			#pragma omp critical
+			std::cout << "Number of threads = " <<  nmbThreads << std::endl;
+		}
+	}
+	// All threads join master thread and disband
+}
+
+
+// returns number of threads used by OpenMP
+// number of threads can be controlled by setting the environment variable OMP_NUM_THREADS
+int
+getNmbOpenMpThreads()
+{
+	int nmbThreads = 1;
+	#pragma omp parallel
+	{
+		#pragma omp single
+		nmbThreads = omp_get_num_threads();
+	}
+	return nmbThreads;
+}
+
+
+// function that calculates (-1)^n
 inline
 int
 powMinusOne(const int exponent)
@@ -28,7 +66,6 @@ powMinusOne(const int exponent)
 }
 
 
-// complex conjugated Wigner d-function refl^D^J_{M1 M2}^*(phi, theta, 0) in reflectivity basis
 // Wigner D-function D^J_{M1 M2}^*(phi, theta, 0) in canonical basis
 // !NOTE! quantum numbers J, M1, and M2 are given in units of hbar/2
 std::complex<double>
@@ -118,6 +155,8 @@ wignerDReflConj(
 }
 
 
+// spherical harmonics; theta-dependent part
+// corresponds to Wigner d-function d^l_{m 0}(theta) (see Eq. (12) in https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3)
 double
 ylm(
 	const int    l,
@@ -128,6 +167,7 @@ ylm(
 	return ROOT::Math::sph_legendre(l, std::abs(m), theta) * ((m >= 0) ? 1 : powMinusOne(std::abs(m)));
 }
 
+// spherical harmonics
 std::complex<double>
 Ylm(
 	const int    l,
@@ -142,6 +182,7 @@ Ylm(
 	return ylm(l, m, theta) * std::exp(std::complex<double>(0.0, 1.0) * (m * phi));
 }
 
+// real part of spherical harmonics
 double
 ReYlm(
 	const int    l,
@@ -152,6 +193,7 @@ ReYlm(
   return ylm(l, m, theta) * std::cos(m * phi);
 }
 
+// imaginary part of spherical harmonics
 double
 ImYlm(
 	const int    l,
@@ -162,6 +204,9 @@ ImYlm(
   return ylm(l, m, theta) * std::sin(m * phi);
 }
 
+
+// basis functions for (polarized) photoproduction moments
+// equation numbers below refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
 // basis functions for physical moments; Eq. (175)
 std::complex<double>
@@ -187,8 +232,8 @@ f_phys(
 	}
 }
 
-
 // vector version that calculates function value for each entry in the input vectors
+// loop over events is multi-threaded using OpenMP
 std::vector<std::complex<double>>
 f_phys(
 	const int                  momentIndex,  // 0, 1, or 2
@@ -202,29 +247,8 @@ f_phys(
 	// assume that theta, phi, and Phi have the same length
 	const size_t nmbEvents = theta.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
-	for (size_t i = 0; i < theta.size(); ++i) {
-		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
-	}
-	return fcnValues;
-}
-
-
-// vector version that calculates function value for each entry in the input vectors; OpenMP version
-std::vector<std::complex<double>>
-f_phys_omp(
-	const int                  momentIndex,  // 0, 1, or 2
-	const int                  L,
-	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
-	const double               polarization
-) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
-	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	#pragma omp parallel for
-	for (size_t i = 0; i < theta.size(); ++i) {
+	for (size_t i = 0; i < nmbEvents; ++i) {
 		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
 	}
 	return fcnValues;
@@ -255,8 +279,8 @@ f_meas(
 	}
 }
 
-
-// vector version that calculates function value for each entry in the input vectors
+// vector version that calculates function value for each entry in the input vectors; OpenMP version
+// loop over events is multi-threaded using OpenMP
 std::vector<std::complex<double>>
 f_meas(
 	const int                  momentIndex,  // 0, 1, or 2
@@ -270,66 +294,9 @@ f_meas(
 	// assume that theta, phi, and Phi have the same length
 	const size_t nmbEvents = theta.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
-	for (size_t i = 0; i < theta.size(); ++i) {
-		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
-	}
-	return fcnValues;
-}
-
-
-// vector version that calculates function value for each entry in the input vectors; OpenMP version
-std::vector<std::complex<double>>
-f_meas_omp(
-	const int                  momentIndex,  // 0, 1, or 2
-	const int                  L,
-	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
-	const double               polarization
-) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
-	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	#pragma omp parallel for
-	for (size_t i = 0; i < theta.size(); ++i) {
+	for (size_t i = 0; i < nmbEvents; ++i) {
 		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
 	}
 	return fcnValues;
-}
-
-
-// test OpenMP compilation and thread spawning
-void
-testOpenMp()
-{
-	// Fork a team of threads giving them their own copies of variables
-	int nmbThreads, threadId;
-	#pragma omp parallel private(nmbThreads, threadId)
-	{
-		// Obtain thread number
-		threadId = omp_get_thread_num();
-		#pragma omp critical
-		std::cout << "Hello World from thread = " <<  threadId << std::endl;
-		// Only master thread does this
-		if (threadId == 0) {
-			nmbThreads = omp_get_num_threads();
-			#pragma omp critical
-			std::cout << "Number of threads = " <<  nmbThreads << std::endl;
-		}
-	}
-	// All threads join master thread and disband
-}
-
-
-int
-getNmbOpenMpThreads()
-{
-	int nmbThreads = 1;
-	#pragma omp parallel
-	{
-		#pragma omp single
-		nmbThreads = omp_get_num_threads();
-	}
-	return nmbThreads;
 }
