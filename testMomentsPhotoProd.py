@@ -585,8 +585,8 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")  # type: ignore
 
   # get data
-  nmbEvents = 1000
-  nmbMcEvents = 100000
+  nmbEvents = 1000000
+  nmbMcEvents = 10000000
   polarization = 1.0
   # formulas for detection efficiency
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
