@@ -2,6 +2,7 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
+import ctypes
 import functools
 import math
 import matplotlib.pyplot as plt
@@ -13,6 +14,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import py3nj
 
 import ROOT
+
+from testBasisFunc import enableRootACLiCOpenMp
+enableRootACLiCOpenMp()
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -97,7 +101,7 @@ def drawIntensityTF3(
 def plotComplexMatrix(
   matrix:         npt.NDArray[np.complex128],
   fileNamePrefix: str,
-):
+) -> None:
   plt.figure().colorbar(plt.matshow(np.real(matrix)))
   plt.savefig(f"{fileNamePrefix}_real.pdf")
   plt.close()
@@ -262,7 +266,7 @@ def genDataFromWaves(
     .Define("phi",      "TMath::DegToRad() * phiDeg") \
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
     .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # type: ignore
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
@@ -297,7 +301,7 @@ def genAccepted2BodyPsPhotoProd(
     .Define("phi",      "TMath::DegToRad() * phiDeg") \
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd" << endl; } return true;') \
+    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd()" << endl; } return true;') \
     .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))  # type: ignore
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
@@ -311,46 +315,25 @@ def calcIntegralMatrix(
   maxL:           int,              # maximum orbital angular momentum
 ) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
-  #TODO this takes a lot of time and needs further optimization; reimplement in NumPy?
-  # define basis functions for physical and measured moments; Eqs. (175) and (176)
+  # get phase-space data data
+  thetaValues = phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
+  phiValues   = phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
+  PhiValues   = phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
+  # calculate basis-function values for physical and measured moments; Eqs. (175) and (176)
+  fMeasValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
+  fPhysValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
   for momentIndex in range(3):
     for L in range(2 * maxL + 2):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
-          continue  # H_2(L, 0) are always zero and would lead to singular acceptance integral matrix
-        phaseSpaceData = phaseSpaceData.Define(f"f_meas_{momentIndex}_{L}_{M}",
-          f"f_meas({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
-        phaseSpaceData = phaseSpaceData.Define(f"f_phys_{momentIndex}_{L}_{M}",
-          f"f_phys({momentIndex}, {L}, {M}, theta, phi, Phi, {polarization})")
-  # define integral-matrix elements; Eq. (178)
-  for momentIndex_meas in range(3):
-    for L_meas in range(2 * maxL + 2):
-      for M_meas in range(L_meas + 1):
-        if momentIndex_meas == 2 and M_meas == 0:
-          continue  # H_2(L, 0) are always zero
-        for momentIndex_phys in range(3):
-          for L_phys in range(2 * maxL + 2):
-            for M_phys in range(L_phys + 1):
-              if momentIndex_phys == 2 and M_phys == 0:
-                continue  # H_2(L, 0) are always zero
-              phaseSpaceData = phaseSpaceData.Define(f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}",
-              f"(8 * TMath::Pi() * TMath::Pi() / {nmbGenEvents})"
-              f" * f_meas_{momentIndex_meas}_{L_meas}_{M_meas} * f_phys_{momentIndex_phys}_{L_phys}_{M_phys}")
-  # calculate integral matrix
+          continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
+        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+  # calculate integral-matrix elements; Eq. (178)
   I_acc: Dict[Tuple[int, ...], complex] = {}
-  for momentIndex_meas in range(3):
-    for L_meas in range(2 * maxL + 2):
-      for M_meas in range(L_meas + 1):
-        if momentIndex_meas == 2 and M_meas == 0:
-          continue  # H_2(L, 0) are always zero
-        for momentIndex_phys in range(3):
-          for L_phys in range(2 * maxL + 2):
-            for M_phys in range(L_phys + 1):
-              if momentIndex_phys == 2 and M_phys == 0:
-                continue  # H_2(L, 0) are always zero
-              I_acc[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
-                phaseSpaceData.Sum[ROOT.std.complex["double"]](  # type: ignore
-                f"I_{momentIndex_meas}_{L_meas}_{M_meas}_{momentIndex_phys}_{L_phys}_{M_phys}").GetValue())
+  for indices_meas, f_meas in fMeasValues.items():
+    for indices_phys, f_phys in fPhysValues.items():
+      I_acc[indices_meas + indices_phys] = 8 * math.pi**2 / nmbGenEvents * np.dot(f_meas, f_phys)
   return I_acc
 
 
@@ -611,14 +594,16 @@ if __name__ == "__main__":
   # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180))"  # acc_1
 
   # input from partial-wave amplitudes
+  ROOT.gBenchmark.Start("Time to generate MC data from partial waves")  # type: ignore
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormula)
+  ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")  # type: ignore
 
   # plot data
   canv = ROOT.TCanvas()  # type: ignore
   nmbBins = 25
   hist = dataPwaModel.Histo3D(
-    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),  # type: ignore
     "cosTheta", "phiDeg", "PhiDeg")
   hist.SetMinimum(0)
   hist.GetXaxis().SetTitleOffset(1.5)
@@ -627,19 +612,29 @@ if __name__ == "__main__":
   hist.Draw("BOX2")
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
-  # generate accepted phase space and calculate integral matrix
+  # generate accepted phase-space data
+  ROOT.gBenchmark.Start("Time to generate phase-space MC data")  # type: ignore
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
+  ROOT.gBenchmark.Stop("Time to generate phase-space MC data")  # type: ignore
+  # calculate integral matrix
+  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()  # type: ignore
+  ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
-  # print("Moments of accepted phase-space data")
-  # momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
-  # # print moments of accepted phase-space data
-  # for momentPs in momentsPs:
-  #   print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
-  #   print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
+  ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  # calculate and print moments of accepted phase-space data
+  print("Moments of accepted phase-space data")
+  ROOT.gBenchmark.Start("Time to calculate moments of phase-space MC data")  # type: ignore
+  momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  ROOT.gBenchmark.Stop("Time to calculate moments of phase-space MC data")  # type: ignore
+  for momentPs in momentsPs:
+    print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
+    print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
 
   # calculate moments
-  print("Moments of data generated according to model")
+  print("Moments of data generated according to PWA model")
+  ROOT.gBenchmark.Start("Time to calculate moments")  # type: ignore
   moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  ROOT.gBenchmark.Stop("Time to calculate moments")  # type: ignore
   # print moments
   for moment in moments:
     print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
@@ -656,6 +651,7 @@ if __name__ == "__main__":
     inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
     plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = True)
 
-  ROOT.gBenchmark.Show("Total execution time")  # type: ignore
-
-  #TODO adjust equation numbers to new version of note
+  ROOT.gBenchmark.Stop("Total execution time")  # type: ignore
+  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
+  ROOT.gBenchmark.Summary(_, _)  # type: ignore
+  print("!Note! the 'TOTAL' time above is wrong; ignore")
