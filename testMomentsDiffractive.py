@@ -24,7 +24,7 @@ print = functools.partial(print, flush = True)
 def declareInCpp(**kwargs: Any) -> None:
   '''Creates C++ variables (names defined by keys) for PyROOT objects (given by values) in PyVars:: namespace'''
   for key, value in kwargs.items():
-    ROOT.gInterpreter.Declare(  # type: ignore
+    ROOT.gInterpreter.Declare(
 f'''
 namespace PyVars
 {{
@@ -44,28 +44,28 @@ def generateDataLegPolLC(
   # linear combination of legendre polynomials up to given degree
   terms = tuple(f"[{degree}] * ROOT::Math::legendre({degree}, x)" for degree in range(maxDegree + 1))
   print("linear combination =", " + ".join(terms))
-  legendrePolLC = ROOT.TF1("legendrePolLC", " + ".join(terms), -1, +1)  # type: ignore
+  legendrePolLC = ROOT.TF1("legendrePolLC", " + ".join(terms), -1, +1)
   legendrePolLC.SetNpx(1000)  # used in numeric integration performed by GetRandom()
   for index, parameter in enumerate(parameters):
     legendrePolLC.SetParameter(index, parameter)
   legendrePolLC.SetMinimum(0)
 
   # draw function
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   legendrePolLC.Draw()
   canv.SaveAs("hLegendrePolLC.pdf")
 
   # generate random data that follow linear combination of legendre polynomials
   treeName = "data"
   fileName = f"{legendrePolLC.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(legendrePolLC = legendrePolLC)
   df.Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Define("Theta",    "std::acos(CosTheta)") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataLegPolLC()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `CosTheta` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
-  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  return ROOT.RDataFrame(treeName, fileName)
 
 
 def calculateLegMoments(
@@ -83,7 +83,7 @@ def calculateLegMoments(
     # normalize moments with respect to H(0)
     legendrePolIntegral = 1 / (2 * degree + 1)  # = 1/2 * int_-1^+1; factor 1/2 takes into account integral for H(0)
     norm = 1 / (nmbEvents * legendrePolIntegral)
-    moment = norm * ufloat(momentVal, momentErr)  # type: ignore
+    moment = norm * ufloat(momentVal, momentErr)
     print(f"H(L = {degree}) = {moment}")
     moments[(degree, )] = moment
   print(moments)
@@ -117,7 +117,7 @@ def generateDataSphHarmLC(
       termIndex += 1
     terms.append(f"std::sqrt((2 * {L} + 1 ) / (4 * TMath::Pi())) * ({' + '.join(termsM)})")
   print("linear combination =", " + ".join(terms))
-  sphericalHarmLC = ROOT.TF2("sphericalHarmlLC", " + ".join(terms), -1, +1, -180, +180)  # type: ignore
+  sphericalHarmLC = ROOT.TF2("sphericalHarmlLC", " + ".join(terms), -1, +1, -180, +180)
   sphericalHarmLC.SetNpx(500)  # used in numeric integration performed by GetRandom()
   sphericalHarmLC.SetNpy(500)
   sphericalHarmLC.SetContour(100)
@@ -126,14 +126,14 @@ def generateDataSphHarmLC(
   sphericalHarmLC.SetMinimum(0)
 
   # draw function
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   sphericalHarmLC.Draw("COLZ")
   canv.SaveAs("hSphericalHarmlLC.pdf")
 
   # generate random data that follow linear combination of of spherical harmonics
   treeName = "data"
   fileName = f"{sphericalHarmLC.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(sphericalHarmLC = sphericalHarmLC)
   df.Define("point",    "double CosTheta, PhiDeg; PyVars::sphericalHarmLC.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
@@ -143,11 +143,11 @@ def generateDataSphHarmLC(
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataSphHarmLC()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
-  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  return ROOT.RDataFrame(treeName, fileName)
 
 
 # C++ implementation of RDataFrame custom action that calculates covariance between two columns
-ROOT.gROOT.LoadMacro("./Covariance.C++")  # type: ignore
+ROOT.gROOT.LoadMacro("./Covariance.C++")
 
 def calculateSphHarmMoments(
   dataFrame:      Any,
@@ -189,9 +189,9 @@ def calculateSphHarmMoments(
       # for L_p in range(2 * maxL + 2):
       #   for M_p in range(L_p + 1):
       #     iMoment_p = L_p * (L_p + 1) // 2 + M_p
-      #     V_meas_ReRe[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Re_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
-      #     V_meas_ImIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Im_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
-      #     V_meas_ReIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()  # type: ignore
+      #     V_meas_ReRe[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Re_f_{L_p}_{M_p}"]).GetValue()
+      #     V_meas_ImIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Im_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()
+      #     V_meas_ReIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()
   # V_meas_ReRe_np = nmbEvents * np.cov(Re_f)
   # for L in range(2 * maxL + 2):
   #   for M in range(L + 1):
@@ -326,7 +326,7 @@ def generateDataPwd(
   prodAmps:          Dict[int, Tuple[complex, ...]],
   efficiencyFormula: Optional[str] = None,
 ) -> Any:
-  '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \ell = 2 and |m| = 1'''
+  '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \\ell = 2 and |m| = 1'''
   # construct TF2 for intensity in Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
   assert len(prodAmps) == len(WAVE_SET), f"Need {len(WAVE_SET)} parameters; only {len(prodAmps)} were given: {prodAmps}"
   incoherentTerms = []
@@ -344,7 +344,7 @@ def generateDataPwd(
   # see Eq. (28) for rank = 1
   intensityFormula = f"({' + '.join(incoherentTerms)})" + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})")
   print(f"intensity = {intensityFormula}")
-  intensityFcn = ROOT.TF2("intensity", intensityFormula, -1, +1, -180, +180)  # type: ignore
+  intensityFcn = ROOT.TF2("intensity", intensityFormula, -1, +1, -180, +180)
   intensityFcn.SetTitle(";cos#theta;#phi [deg]")
   intensityFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
   intensityFcn.SetNpy(500)
@@ -352,14 +352,14 @@ def generateDataPwd(
   intensityFcn.SetMinimum(0)
 
   # draw function
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   intensityFcn.Draw("COLZ")
   canv.SaveAs("hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
   fileName = f"{intensityFcn.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(intensityFcn = intensityFcn)
   df.Define("point",    "double CosTheta, PhiDeg; PyVars::intensityFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
@@ -369,7 +369,7 @@ def generateDataPwd(
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataPwd()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
-  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  return ROOT.RDataFrame(treeName, fileName)
 
 
 def theta(m: int) -> float:
@@ -442,7 +442,7 @@ def calculateWignerDMoment(
   dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, Theta)") \
                       .Define("WignerDRe", "real(WignerD)") \
                       .Define("WignerDIm", "imag(WignerD)")
-  momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()  # type: ignore
+  momentVal   = dfMoment.Sum[ROOT.std.complex["double"]]("WignerD").GetValue()
   # iid events: Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
   momentErrRe = math.sqrt(nmbEvents) * dfMoment.StdDev("WignerDRe").GetValue()
   momentErrIm = math.sqrt(nmbEvents) * dfMoment.StdDev("WignerDIm").GetValue()
@@ -475,7 +475,7 @@ def generateData2BodyPS(
 ) -> Any:
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
   # construct efficiency function
-  efficiencyFcn = ROOT.TF2("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180)  # type: ignore
+  efficiencyFcn = ROOT.TF2("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180)
   efficiencyFcn.SetTitle(";cos#theta;#phi [deg]")
   efficiencyFcn.SetNpx(500)  # used in numeric integration performed by GetRandom()
   efficiencyFcn.SetNpy(500)
@@ -483,14 +483,14 @@ def generateData2BodyPS(
   efficiencyFcn.SetMinimum(0)
 
   # draw function
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   efficiencyFcn.Draw("COLZ")
   canv.SaveAs("hEfficiency.pdf")
 
   # generate isotropic distributions in cos theta and phi and weight with efficiency function
   treeName = "data"
   fileName = f"{efficiencyFcn.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(efficiencyFcn = efficiencyFcn)
   df.Define("point", "double CosTheta, PhiDeg; PyVars::efficiencyFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
@@ -500,7 +500,7 @@ def generateData2BodyPS(
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateData2BodyPS()" << endl; } return true;') \
     .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
                                    # noop filter before snapshot logs when event loop is running
-  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  return ROOT.RDataFrame(treeName, fileName)
 
 
 def calcIntegralMatrix(
@@ -529,7 +529,7 @@ def calcIntegralMatrix(
     for M in range(L + 1):
       for Lp in range(2 * maxL + 2):
         for Mp in range(Lp + 1):
-          I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()  # type: ignore
+          I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()
           # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
   # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "Re_Y_0_0", "Re_Y_1_0", "Y_0_0", "Y_1_0"])
   # raise ValueError
@@ -538,28 +538,28 @@ def calcIntegralMatrix(
 
 def setupPlotStyle():
   #TODO remove dependency from external file or add file to repo
-  ROOT.gROOT.LoadMacro("~/rootlogon.C")  # type: ignore
-  ROOT.gROOT.ForceStyle()  # type: ignore
-  ROOT.gStyle.SetCanvasDefW(600)  # type: ignore
-  ROOT.gStyle.SetCanvasDefH(600)  # type: ignore
-  ROOT.gStyle.SetPalette(ROOT.kBird)  # type: ignore
-  # ROOT.gStyle.SetPalette(ROOT.kViridis)  # type: ignore
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)  # type: ignore
-  ROOT.gStyle.SetLegendBorderSize(1)  # type: ignore
-  # ROOT.gStyle.SetOptStat("ni")  # type: ignore  # show only name and integral
-  # ROOT.gStyle.SetOptStat("i")  # type: ignore  # show only integral
-  ROOT.gStyle.SetOptStat("")  # type: ignore
-  ROOT.gStyle.SetStatFormat("8.8g")  # type: ignore
-  ROOT.gStyle.SetTitleColor(1, "X")  # type: ignore  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
-  ROOT.gStyle.SetTitleOffset(1.35, "Y")  # type: ignore
+  ROOT.gROOT.LoadMacro("~/rootlogon.C")
+  ROOT.gROOT.ForceStyle()
+  ROOT.gStyle.SetCanvasDefW(600)
+  ROOT.gStyle.SetCanvasDefH(600)
+  ROOT.gStyle.SetPalette(ROOT.kBird)
+  # ROOT.gStyle.SetPalette(ROOT.kViridis)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
+  ROOT.gStyle.SetLegendBorderSize(1)
+  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
+  # ROOT.gStyle.SetOptStat("i")  # show only integral
+  ROOT.gStyle.SetOptStat("")
+  ROOT.gStyle.SetStatFormat("8.8g")
+  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
+  ROOT.gStyle.SetTitleOffset(1.35, "Y")
 
 
 if __name__ == "__main__":
-  ROOT.gROOT.SetBatch(True)  # type: ignore
-  ROOT.gRandom.SetSeed(1234567890)  # type: ignore
-  # ROOT.EnableImplicitMT(10)  # type: ignore
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gRandom.SetSeed(1234567890)
+  # ROOT.EnableImplicitMT(10)
   setupPlotStyle()
-  ROOT.gBenchmark.Start("Total execution time")  # type: ignore
+  ROOT.gBenchmark.Start("Total execution time")
 
   # get data
   nmbEvents = 1000
@@ -613,13 +613,13 @@ if __name__ == "__main__":
   # print("!!!", dataModel.AsNumpy())
 
   # plot data
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   if "Phi" in dataPwaModel.GetColumnNames():
-    hist = dataPwaModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")  # type: ignore
+    hist = dataPwaModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")
     hist.SetMinimum(0)
     hist.Draw("COLZ")
   else:
-    hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")  # type: ignore
+    hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")
     hist.SetMinimum(0)
     hist.Draw()
   canv.SaveAs(f"{hist.GetName()}.pdf")
@@ -646,4 +646,4 @@ if __name__ == "__main__":
   inputVals = tuple(inputMoment.imag for inputMoment in inputMoments)
   plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = False)
 
-  ROOT.gBenchmark.Show("Total execution time")  # type: ignore
+  ROOT.gBenchmark.Show("Total execution time")
