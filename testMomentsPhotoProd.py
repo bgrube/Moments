@@ -25,14 +25,14 @@ print = functools.partial(print, flush = True)
 
 # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
 # also provides complexT typedef for std::complex<double>
-ROOT.gROOT.LoadMacro("./wignerD.C++")  # type: ignore
+ROOT.gROOT.LoadMacro("./wignerD.C++")
 
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
 def declareInCpp(**kwargs: Any) -> None:
   '''Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace'''
   for key, value in kwargs.items():
-    ROOT.gInterpreter.Declare(  # type: ignore
+    ROOT.gInterpreter.Declare(
 f'''
 namespace PyVars
 {{
@@ -73,13 +73,13 @@ PROD_AMPS: Dict[int, Dict[Tuple[int, int,], complex]] = {
 
 
 def drawIntensityTF3(
-  fcn:      ROOT.TF3,  # type: ignore
+  fcn:      ROOT.TF3,
   histName: str,
   nmbBins:  int = 25,
 ) -> None:
   '''Draws given TF3 for intensity distribution'''
-  canv = ROOT.TCanvas()  # type: ignore
-  fcnHist = ROOT.TH3F(histName, ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)  # type: ignore
+  canv = ROOT.TCanvas()
+  fcnHist = ROOT.TH3F(histName, ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
   xAxis = fcnHist.GetXaxis()
   yAxis = fcnHist.GetYaxis()
   zAxis = fcnHist.GetZaxis()
@@ -210,7 +210,7 @@ def genDataFromWaves(
   polarization:      float,                                       # photon-beam polarization
   prodAmps:          Dict[int, Dict[Tuple[int, int,], complex]],  # partial-wave amplitudes
   efficiencyFormula: Optional[str] = None,                        # detection efficiency
-) -> ROOT.RDataFrame:  # type: ignore
+) -> ROOT.RDataFrame:
   '''Generates data according to set of partial-wave amplitudes assuming rank 1'''
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -242,7 +242,7 @@ def genDataFromWaves(
     f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))"
     + ("" if efficiencyFormula is None else f" * ({efficiencyFormula})"))  # Eq. (163)
   print(f"intensity = {intensityFormula}")
-  intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)  # type: ignore
+  intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
   intensityFcn.SetNpy(100)
@@ -257,7 +257,7 @@ def genDataFromWaves(
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
   fileName = f"{intensityFcn.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
     .Define("cosTheta", "point[0]") \
@@ -267,20 +267,20 @@ def genDataFromWaves(
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
-    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # type: ignore
+    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
     # !Note! for some reason, this is very slow
-  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  return ROOT.RDataFrame(treeName, fileName)
 
 
 def genAccepted2BodyPsPhotoProd(
   nmbEvents:         int,                   # number of events to generate
   efficiencyFormula: Optional[str] = None,  # detection efficiency
-) -> ROOT.RDataFrame:  # type: ignore
+) -> ROOT.RDataFrame:
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
   # construct efficiency function
-  efficiencyFcn = ROOT.TF3("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180, -180, +180)  # type: ignore
+  efficiencyFcn = ROOT.TF3("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180, -180, +180)
   efficiencyFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   efficiencyFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
   efficiencyFcn.SetNpy(100)
@@ -293,7 +293,7 @@ def genAccepted2BodyPsPhotoProd(
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
   fileName = f"{efficiencyFcn.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)  # type: ignore
+  df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(efficiencyFcn = efficiencyFcn)
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
     .Define("cosTheta", "point[0]") \
@@ -303,14 +303,14 @@ def genAccepted2BodyPsPhotoProd(
     .Define("PhiDeg",   "point[2]") \
     .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd()" << endl; } return true;') \
-    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))  # type: ignore
+    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
-  return ROOT.RDataFrame(treeName, fileName)  # type: ignore
+  return ROOT.RDataFrame(treeName, fileName)
 
 
 def calcIntegralMatrix(
-  phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data  # type: ignore
+  phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data
   nmbGenEvents:   int,              # number of generated events
   polarization:   float,            # photon-beam polarization
   maxL:           int,              # maximum orbital angular momentum
@@ -331,8 +331,8 @@ def calcIntegralMatrix(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
-        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # type: ignore
+        fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))
+        fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))
   # calculate integral-matrix elements; Eq. (178)
   I_acc: Dict[Tuple[int, ...], complex] = {}
   for indices_meas, f_meas in fMeasValues.items():
@@ -342,7 +342,7 @@ def calcIntegralMatrix(
 
 
 def calculatePhotoProdMoments(
-  inData:         ROOT.RDataFrame,                                  # input data with angular distribution  # type: ignore
+  inData:         ROOT.RDataFrame,                                  # input data with angular distribution
   polarization:   float,                                            # photon-beam polarization
   maxL:           int,                                              # maximum spin of decaying object
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
@@ -485,47 +485,47 @@ def plotComparison(
     legendEntrySuffix = "Imag Part"
 
   # overlay measured and input values
-  hStack = ROOT.THStack(f"hCompare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")  # type: ignore
+  hStack = ROOT.THStack(f"hCompare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")
   nmbBins = len(measVals)
   # create histogram with measured values
   labelSubscript = f"_{{{momentIndex}}}" if useMomentSubscript else ""
-  hMeas = ROOT.TH1D(f"Measured #it{{H}}{labelSubscript} {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  hMeas = ROOT.TH1D(f"Measured #it{{H}}{labelSubscript} {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)
   for index, measVal in enumerate(measVals):
     hMeas.SetBinContent(index + 1, measVal[0])
     hMeas.SetBinError  (index + 1, 1e-100 if measVal[1] < 1e-100 else measVal[1])  # ensure that also points with zero uncertainty are drawn
     hMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}{labelSubscript}({measVal[2][1]}, {measVal[2][2]})")
-  hMeas.SetLineColor(ROOT.kRed)  # type: ignore
-  hMeas.SetMarkerColor(ROOT.kRed)  # type: ignore
-  hMeas.SetMarkerStyle(ROOT.kFullCircle)  # type: ignore
+  hMeas.SetLineColor(ROOT.kRed)
+  hMeas.SetMarkerColor(ROOT.kRed)
+  hMeas.SetMarkerStyle(ROOT.kFullCircle)
   hMeas.SetMarkerSize(0.75)
   hStack.Add(hMeas, "PEX0")
   # create histogram with input values
-  hInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)  # type: ignore
+  hInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)
   for index, inputVal in enumerate(inputVals):
     hInput.SetBinContent(index + 1, inputVal)
     hInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  hInput.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  hInput.SetLineColor(ROOT.kBlue)  # type: ignore
+  hInput.SetMarkerColor(ROOT.kBlue)
+  hInput.SetLineColor(ROOT.kBlue)
   hInput.SetLineWidth(2)
   hStack.Add(hInput, "PE")
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   hStack.Draw("NOSTACK")
   # adjust y-range
-  ROOT.gPad.Update()  # type: ignore
-  actualYRange = ROOT.gPad.GetUymax() - ROOT.gPad.GetUymin()  # type: ignore
+  ROOT.gPad.Update()
+  actualYRange = ROOT.gPad.GetUymax() - ROOT.gPad.GetUymin()
   yRangeFraction = 0.1 * actualYRange
-  hStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)  # type: ignore
-  hStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)  # type: ignore
+  hStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)
+  hStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)
   # adjust style of automatic zero line
-  hStack.GetHistogram().SetLineColor(ROOT.kBlack)  # type: ignore
-  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)  # type: ignore
+  hStack.GetHistogram().SetLineColor(ROOT.kBlack)
+  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{hStack.GetName()}.pdf")
 
   # plot residuals
   residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
-  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",  # type: ignore
+  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",
     f"Residuals #it{{H}}{labelSubscript} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
   chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
   ndf  = len(residuals[1 if momentIndex == 0 else 0:])
@@ -533,54 +533,54 @@ def plotComparison(
     hResidual.SetBinContent(index + 1, residual)
     hResidual.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
     hResidual.GetXaxis().SetBinLabel(index + 1, hMeas.GetXaxis().GetBinLabel(index + 1))
-  hResidual.SetMarkerColor(ROOT.kBlue)  # type: ignore
-  hResidual.SetLineColor(ROOT.kBlue)  # type: ignore
+  hResidual.SetMarkerColor(ROOT.kBlue)
+  hResidual.SetLineColor(ROOT.kBlue)
   hResidual.SetLineWidth(2)
   hResidual.SetMinimum(-3)
   hResidual.SetMaximum(+3)
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   hResidual.Draw("PE")
   # draw zero line
   xAxis = hResidual.GetXaxis()
-  line = ROOT.TLine()  # type: ignore
-  line.SetLineStyle(ROOT.kDashed)  # type: ignore
+  line = ROOT.TLine()
+  line.SetLineStyle(ROOT.kDashed)
   line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
   # shade 1 sigma region
-  box = ROOT.TBox()  # type: ignore
-  box.SetFillColorAlpha(ROOT.kBlack, 0.15)  # type: ignore
+  box = ROOT.TBox()
+  box.SetFillColorAlpha(ROOT.kBlack, 0.15)
   box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
   # draw chi^2 info
-  label = ROOT.TLatex()  # type: ignore
+  label = ROOT.TLatex()
   label.SetNDC()
-  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)  # type: ignore
+  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
   label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
   canv.SaveAs(f"{hResidual.GetName()}.pdf")
 
 
 def setupPlotStyle() -> None:
   #TODO remove dependency from external file or add file to repo
-  ROOT.gROOT.LoadMacro("~/rootlogon.C")  # type: ignore
-  ROOT.gROOT.ForceStyle()  # type: ignore
-  ROOT.gStyle.SetCanvasDefW(600)  # type: ignore
-  ROOT.gStyle.SetCanvasDefH(600)  # type: ignore
-  ROOT.gStyle.SetPalette(ROOT.kBird)  # type: ignore
-  # ROOT.gStyle.SetPalette(ROOT.kViridis)  # type: ignore
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)  # type: ignore
-  ROOT.gStyle.SetLegendBorderSize(1)  # type: ignore
-  # ROOT.gStyle.SetOptStat("ni")  # type: ignore  # show only name and integral
-  # ROOT.gStyle.SetOptStat("i")  # type: ignore  # show only integral
-  ROOT.gStyle.SetOptStat("")  # type: ignore
-  ROOT.gStyle.SetStatFormat("8.8g")  # type: ignore
-  ROOT.gStyle.SetTitleColor(1, "X")  # type: ignore  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
-  ROOT.gStyle.SetTitleOffset(1.35, "Y")  # type: ignore
+  ROOT.gROOT.LoadMacro("~/rootlogon.C")
+  ROOT.gROOT.ForceStyle()
+  ROOT.gStyle.SetCanvasDefW(600)
+  ROOT.gStyle.SetCanvasDefH(600)
+  ROOT.gStyle.SetPalette(ROOT.kBird)
+  # ROOT.gStyle.SetPalette(ROOT.kViridis)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
+  ROOT.gStyle.SetLegendBorderSize(1)
+  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
+  # ROOT.gStyle.SetOptStat("i")  # show only integral
+  ROOT.gStyle.SetOptStat("")
+  ROOT.gStyle.SetStatFormat("8.8g")
+  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
+  ROOT.gStyle.SetTitleOffset(1.35, "Y")
 
 
 if __name__ == "__main__":
-  ROOT.gROOT.SetBatch(True)  # type: ignore
-  ROOT.gRandom.SetSeed(1234567890)  # type: ignore
-  # ROOT.EnableImplicitMT(10)  # type: ignore
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gRandom.SetSeed(1234567890)
+  # ROOT.EnableImplicitMT(10)
   setupPlotStyle()
-  ROOT.gBenchmark.Start("Total execution time")  # type: ignore
+  ROOT.gBenchmark.Start("Total execution time")
 
   # get data
   nmbEvents = 1000000
@@ -592,16 +592,16 @@ if __name__ == "__main__":
   # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180))"  # acc_1
 
   # input from partial-wave amplitudes
-  ROOT.gBenchmark.Start("Time to generate MC data from partial waves")  # type: ignore
+  ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
   inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormula)
-  ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")  # type: ignore
+  ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
   # plot data
-  canv = ROOT.TCanvas()  # type: ignore
+  canv = ROOT.TCanvas()
   nmbBins = 25
   hist = dataPwaModel.Histo3D(
-    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),  # type: ignore
+    ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
     "cosTheta", "phiDeg", "PhiDeg")
   hist.SetMinimum(0)
   hist.GetXaxis().SetTitleOffset(1.5)
@@ -611,28 +611,28 @@ if __name__ == "__main__":
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # generate accepted phase-space data
-  ROOT.gBenchmark.Start("Time to generate phase-space MC data")  # type: ignore
+  ROOT.gBenchmark.Start("Time to generate phase-space MC data")
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormula)
-  ROOT.gBenchmark.Stop("Time to generate phase-space MC data")  # type: ignore
+  ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
   # calculate integral matrix
-  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()  # type: ignore
-  ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
+  ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
-  ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   # calculate and print moments of accepted phase-space data
   print("Moments of accepted phase-space data")
-  ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
   momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
-  ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
   for momentPs in momentsPs:
     print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
     print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
 
   # calculate moments
   print("Moments of data generated according to PWA model")
-  ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
-  ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")  # type: ignore
+  ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   # print moments
   for moment in moments:
     print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
@@ -649,7 +649,7 @@ if __name__ == "__main__":
     inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
     plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = True)
 
-  ROOT.gBenchmark.Stop("Total execution time")  # type: ignore
+  ROOT.gBenchmark.Stop("Total execution time")
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
-  ROOT.gBenchmark.Summary(_, _)  # type: ignore
+  ROOT.gBenchmark.Summary(_, _)
   print("!Note! the 'TOTAL' time above is wrong; ignore")
