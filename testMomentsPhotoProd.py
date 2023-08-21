@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from scipy import stats
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import py3nj
 
@@ -76,7 +76,7 @@ def drawIntensityTF3(
   fcn:      ROOT.TF3,
   histName: str,
   nmbBins:  int = 25,
-  maxVal:   Union[None, float] = None,
+  maxVal:   Optional[float] = None,
 ) -> None:
   '''Draws given TF3 for intensity distribution'''
   canv = ROOT.TCanvas()
@@ -193,34 +193,37 @@ def calcMomentSetFromWaves(
   return tuple(moments)
 
 
-def calcAllMomentsFromWaves(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> List[Tuple[complex, complex, complex]]:
+def calcAllMomentsFromWaves(
+  prodAmps: Dict[int, Dict[Tuple[int, int,], complex]],  # Dict[reflectivity, Dict[(L, M), value]
+) -> List[Tuple[Tuple[int, int, int], complex]]:
   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
-  moments: List[Tuple[complex, complex, complex]] = []
+  result: List[Tuple[Tuple[int, int, int], complex]] = []
   maxSpin = getMaxSpin(prodAmps)
   norm = 1
-  index = 0
   for L in range(2 * maxSpin + 2):  # calculate moments 2 units above maximum L (should be zero)
     for M in range(L + 1):          # calculate moments 1 unit above maximum M (should be zero)
-      momentSet: List[complex] = list(calcMomentSetFromWaves(prodAmps, L, M))
-      if ((abs(momentSet[0].imag) > 1e-15) or (abs(momentSet[1].imag) > 1e-15) or (abs(momentSet[2].real) > 1e-15)):
-        print(f"Warning: expect (Im[H_0({L} {M})], Im[H_1({L} {M})], Re[H_2({L} {M})]) = (0, 0, 0)  found ({momentSet[0].imag}, {momentSet[1].imag}, {momentSet[2].imag})")
-      else:
-        # set respective real and imaginary parts exactly to zero.
-        momentSet[0] = momentSet[0].real + 0j
-        momentSet[1] = momentSet[1].real + 0j
-        momentSet[2] = 0 + momentSet[2].imag * 1j
-      if (M == 0 and momentSet[2] != 0):
-        print(f"Warning: expect H_2({L} {M}) = 0  found {momentSet[2].imag}")
+      # get all moments for given (L, M)
+      moments: List[complex] = list(calcMomentSetFromWaves(prodAmps, L, M))
+      tolerance = 1e-15
+      assert (abs(moments[0].imag) < tolerance) and (abs(moments[1].imag) < tolerance) and (abs(moments[2].real) < tolerance), (
+        f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
+      # set respective real and imaginary parts exactly to zero.
+      moments[0] = moments[0].real + 0j
+      moments[1] = moments[1].real + 0j
+      moments[2] = 0 + moments[2].imag * 1j
+      assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2].imag}"
       # normalize to H_0(0, 0)
-      norm = momentSet[0] if index == 0 else norm
-      moments.append(tuple(moment / norm for moment in momentSet[:2 if M == 0 else 3]))
-      index += 1
+      norm = moments[0] if L == M == 0 else norm
+      result += [((momentIndex, L, M), moment / norm) for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3])]
   index = 0
   for L in range(2 * maxSpin + 2):
     for M in range(L + 1):
-      print(f"(H_0({L} {M}), H_1({L} {M})" + ("" if M == 0 else f", H_2({L} {M}))") + f" = {moments[index]}")
-      index += 1
-  return moments
+      moments = []
+      for _ in range(2 if M == 0 else 3):
+        moments.append(result[index][1])
+        index += 1
+      print(f"[H_0({L} {M}), H_1({L} {M})" + ("]" if M == 0 else f", H_2({L} {M})]") + f" = {moments}")
+  return result
 
 
 def genDataFromWaves(
@@ -493,10 +496,11 @@ def calculatePhotoProdMoments(
 
 
 def plotComparison(
-  measVals:           Tuple[Tuple[float, float, Tuple[int, int, int]], ...],
-  inputVals:          Tuple[float, ...],
+  measVals:           Tuple[Tuple[float, float, Tuple[int, int, int]], ...],  # Tuple[Tuple[value, uncertainty, indices], ...]
+  trueVals:           Tuple[float, ...],
   realPart:           bool,
   useMomentSubscript: bool,
+  dataLabel:          str = "",
 ) -> None:
   momentIndex = measVals[0][2][0]
   if realPart:
@@ -507,7 +511,7 @@ def plotComparison(
     legendEntrySuffix = "Imag Part"
 
   # overlay measured and input values
-  hStack = ROOT.THStack(f"hCompare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")
+  hStack = ROOT.THStack(f"h{dataLabel}_Compare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")
   nmbBins = len(measVals)
   # create histogram with measured values
   labelSubscript = f"_{{{momentIndex}}}" if useMomentSubscript else ""
@@ -523,8 +527,8 @@ def plotComparison(
   hStack.Add(hMeas, "PEX0")
   # create histogram with input values
   hInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)
-  for index, inputVal in enumerate(inputVals):
-    hInput.SetBinContent(index + 1, inputVal)
+  for index, trueVal in enumerate(trueVals):
+    hInput.SetBinContent(index + 1, trueVal)
     hInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
   hInput.SetMarkerColor(ROOT.kBlue)
   hInput.SetLineColor(ROOT.kBlue)
@@ -546,8 +550,8 @@ def plotComparison(
   canv.SaveAs(f"{hStack.GetName()}.pdf")
 
   # plot residuals
-  residuals = tuple((measVal[0] - inputVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
-  hResidual = ROOT.TH1D(f"hResiduals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",
+  residuals = tuple((measVal[0] - trueVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
+  hResidual = ROOT.TH1D(f"h{dataLabel}_Residuals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",
     f"Residuals #it{{H}}{labelSubscript} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
   chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
   ndf  = len(residuals[1 if momentIndex == 0 else 0:])
@@ -579,6 +583,34 @@ def plotComparison(
   canv.SaveAs(f"{hResidual.GetName()}.pdf")
 
 
+def printAndPlotMoments(
+  physMoments:    List[Tuple[Tuple[int, int, int], complex]],  # List[Tuple[indices, value]]
+  physMomentsCov: Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]],  # Dict[Tuple[(indicesA, indicesB), (cov[ReRe], cov[ImIm], cov[ReIm])]]
+  trueMoments:    Optional[List[Tuple[Tuple[int, int, int], complex]]],  # List[Tuple[indices, value]]; if None true values are 1 for H_0(0, 0) and 0 for all other moments
+  dataLabel:      str = "",
+) -> None:
+  # print moments
+  for physMoment in physMoments:
+    print(f"Re[H^phys_{physMoment[0][0]}(L = {physMoment[0][1]}, M = {physMoment[0][2]})] = {physMoment[1].real} +- {math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][0])}")  # diagonal element for ReRe
+    print(f"Im[H^phys_{physMoment[0][0]}(L = {physMoment[0][1]}, M = {physMoment[0][2]})] = {physMoment[1].imag} +- {math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][1])}")  # diagonal element for ImIm
+  # compare with true values
+  for momentIndex in range(3):
+    # Re[H_i]
+    measVals = tuple((physMoment[1].real, math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][0]), physMoment[0]) for physMoment in physMoments if physMoment[0][0] == momentIndex)
+    if trueMoments:
+      trueVals = tuple(trueMoment[1].real for trueMoment in trueMoments if trueMoment[0][0] == momentIndex)
+    else:
+      trueVals = tuple(1 if physMoment[0] == (0, 0, 0) else 0 for physMoment in physMoments if physMoment[0][0] == momentIndex)
+    plotComparison(measVals, trueVals, realPart = True, useMomentSubscript = True, dataLabel = dataLabel)
+    # Im[H_i]
+    measVals = tuple((physMoment[1].imag, math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][1]), physMoment[0]) for physMoment in physMoments if physMoment[0][0] == momentIndex)
+    if trueMoments:
+      trueVals = tuple(trueMoment[1].imag for trueMoment in trueMoments if trueMoment[0][0] == momentIndex)
+    else:
+      trueVals = tuple(0 for physMoment in physMoments if physMoment[0][0] == momentIndex)
+    plotComparison(measVals, trueVals, realPart = False, useMomentSubscript = True, dataLabel = dataLabel)
+
+
 def setupPlotStyle() -> None:
   #TODO remove dependency from external file or add file to repo
   ROOT.gROOT.LoadMacro("~/rootlogon.C")
@@ -605,7 +637,7 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")
 
   # get data
-  nmbEvents = 1000000
+  nmbEvents = 100000
   nmbMcEvents = 10000000
   polarization = 1.0
   # formulas for detection efficiency
@@ -629,7 +661,7 @@ if __name__ == "__main__":
 
   # input from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
-  inputMoments: List[Tuple[complex, complex, complex]] = calcAllMomentsFromWaves(PROD_AMPS)
+  trueMoments: List[Tuple[Tuple[int, int, int], complex]] = calcAllMomentsFromWaves(PROD_AMPS)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormulaGen)
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
@@ -658,32 +690,18 @@ if __name__ == "__main__":
   # calculate and print moments of accepted phase-space data
   print("Moments of accepted phase-space data")
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  momentsPs, momentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  # physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  # calculate moments of acceptance function
+  physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = None)
   ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  for momentPs in momentsPs:
-    print(f"Re[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].real} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][0])}")  # diagonal element for ReRe
-    print(f"Im[H^phys_{momentPs[0][0]}(L = {momentPs[0][1]}, M = {momentPs[0][2]})] = {momentPs[1].imag} +- {math.sqrt(momentsPsCov[(*momentPs[0], *momentPs[0])][1])}")  # diagonal element for ImIm
+  printAndPlotMoments(physMomentsPs, physMomentsPsCov, trueMoments = None, dataLabel = "Ps")
 
   # calculate moments
   print("Moments of data generated according to PWA model")
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  moments, momentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  physMoments, physMomentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  # print moments
-  for moment in moments:
-    print(f"Re[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].real} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][0])}")  # diagonal element for ReRe
-    print(f"Im[H^phys_{moment[0][0]}(L = {moment[0][1]}, M = {moment[0][2]})] = {moment[1].imag} +- {math.sqrt(momentsCov[(*moment[0], *moment[0])][1])}")  # diagonal element for ImIm
-
-  # compare with input values
-  for momentIndex in range(3):
-    # Re[H_i]
-    measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
-    inputVals = tuple(inputMoment[momentIndex].real for inputMoment in inputMoments if len(inputMoment) > momentIndex)
-    plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = True)
-    # Im[H_i]
-    measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), moment[0]) for moment in moments if moment[0][0] == momentIndex)
-    inputVals = tuple(inputMoment[momentIndex].imag for inputMoment in inputMoments if len(inputMoment) > momentIndex)
-    plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = True)
+  printAndPlotMoments(physMoments, physMomentsCov, trueMoments)
 
   ROOT.gBenchmark.Stop("Total execution time")
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
