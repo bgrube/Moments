@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from scipy import stats
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import py3nj
 
@@ -76,6 +76,7 @@ def drawIntensityTF3(
   fcn:      ROOT.TF3,
   histName: str,
   nmbBins:  int = 25,
+  maxVal:   Union[None, float] = None,
 ) -> None:
   '''Draws given TF3 for intensity distribution'''
   canv = ROOT.TCanvas()
@@ -91,6 +92,8 @@ def drawIntensityTF3(
         z = zAxis.GetBinCenter(zBin)
         fcnHist.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
   fcnHist.SetMinimum(0)
+  if maxVal:
+    fcnHist.SetMaximum(maxVal)
   fcnHist.GetXaxis().SetTitleOffset(1.5)
   fcnHist.GetYaxis().SetTitleOffset(2)
   fcnHist.GetZaxis().SetTitleOffset(1.5)
@@ -98,21 +101,36 @@ def drawIntensityTF3(
   canv.SaveAs(f"{fcnHist.GetName()}.pdf")
 
 
+def drawEfficiencyTF3(
+  fcn:       ROOT.TF3,
+  histName:  str,
+  nmbPoints: int = 100,
+  nmbBins:   int = 25,
+) -> None:
+  '''Draws given TF3 for efficiency function'''
+  # fcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
+  fcn.SetNpx(nmbPoints)  # used in numeric integration performed by GetRandom()
+  fcn.SetNpy(nmbPoints)
+  fcn.SetNpz(nmbPoints)
+  # draw efficiency function
+  drawIntensityTF3(fcn, histName, nmbBins, maxVal = 1.0)
+
+
 def plotComplexMatrix(
   matrix:         npt.NDArray[np.complex128],
   fileNamePrefix: str,
 ) -> None:
   plt.figure().colorbar(plt.matshow(np.real(matrix)))
-  plt.savefig(f"{fileNamePrefix}_real.pdf")
+  plt.savefig(f"{fileNamePrefix}_real.pdf", transparent = True)
   plt.close()
   plt.figure().colorbar(plt.matshow(np.imag(matrix)))
-  plt.savefig(f"{fileNamePrefix}_imag.pdf")
+  plt.savefig(f"{fileNamePrefix}_imag.pdf", transparent = True)
   plt.close()
   plt.figure().colorbar(plt.matshow(np.absolute(matrix)))
-  plt.savefig(f"{fileNamePrefix}_abs.pdf")
+  plt.savefig(f"{fileNamePrefix}_abs.pdf", transparent = True)
   plt.close()
   plt.figure().colorbar(plt.matshow(np.angle(matrix)))
-  plt.savefig(f"{fileNamePrefix}_arg.pdf")
+  plt.savefig(f"{fileNamePrefix}_arg.pdf", transparent = True)
   plt.close()
 
 
@@ -212,15 +230,9 @@ def genDataFromWaves(
   efficiencyFormula: Optional[str] = None,                        # detection efficiency used to generate data
 ) -> ROOT.RDataFrame:
   '''Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency'''
-  # construct efficiency function
+  # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  efficiencyFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
-  efficiencyFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
-  efficiencyFcn.SetNpy(100)
-  efficiencyFcn.SetNpz(100)
-  efficiencyFcn.SetMinimum(0)
-  # draw efficiency function
-  drawIntensityTF3(efficiencyFcn, histName = "hEfficiencyGen")
+  drawEfficiencyTF3(efficiencyFcn, histName = "hEfficiencyGen")
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -289,15 +301,9 @@ def genAccepted2BodyPsPhotoProd(
   efficiencyFormula: Optional[str] = None,  # detection efficiency used for acceptance correction
 ) -> ROOT.RDataFrame:
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
-  # construct efficiency function
+  # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  efficiencyFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
-  efficiencyFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
-  efficiencyFcn.SetNpy(100)
-  efficiencyFcn.SetNpz(100)
-  efficiencyFcn.SetMinimum(0)
-  # draw efficiency function
-  drawIntensityTF3(efficiencyFcn, histName = "hEfficiencyReco")
+  drawEfficiencyTF3(efficiencyFcn, histName = "hEfficiencyReco")
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -388,6 +394,11 @@ def calculatePhotoProdMoments(
         iMoment += 1
   # calculate covariances; Eqs. (88), (180), and (181)
   V_meas_aug = (2 * math.pi)**2 * nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
+  # calculate covariances of real and imaginary parts
+  V_meas_Hermit = V_meas_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
+  V_meas_pseudo = V_meas_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
+  V_meas_ReRe = (np.real(V_meas_Hermit) + np.real(V_meas_pseudo)) / 2  # Eq. (91)
+  V_meas_ImIm = (np.real(V_meas_Hermit) - np.real(V_meas_pseudo)) / 2  # Eq. (92)
   # print measured moments
   iMoment = 0
   for momentIndex in range(3):
@@ -395,7 +406,8 @@ def calculatePhotoProdMoments(
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero
-        print(f"H^meas_{momentIndex}(L = {L}, M = {M}) = {H_meas[iMoment]}")
+        print(f"Re[H^meas_{momentIndex}(L = {L}, M = {M})] = {H_meas[iMoment].real} +- {math.sqrt(V_meas_ReRe[iMoment, iMoment])}")  # diagonal element for ReRe
+        print(f"Im[H^meas_{momentIndex}(L = {L}, M = {M})] = {H_meas[iMoment].imag} +- {math.sqrt(V_meas_ImIm[iMoment, iMoment])}")  # diagonal element for ImIm
         iMoment += 1
   H_phys     = np.zeros((nmbMoments), dtype = np.complex128)
   V_phys_aug = np.zeros((2 * nmbMoments, 2 * nmbMoments), dtype = np.complex128)
@@ -457,6 +469,7 @@ def calculatePhotoProdMoments(
   momentsPhys:    List[Tuple[Tuple[int, int, int], complex]] = []
   momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]]   = {}  # cov[(i, L, M, j, L', M')] = (cov[ReRe], cov[ImIm], cov[ReIm])
   iMoment_phys = 0
+  #TODO are the indices "phys" and "meas" here?
   for momentIndex_phys in range(3):
     for L_phys in range(2 * maxL + 2):
       for M_phys in range(L_phys + 1):
@@ -602,9 +615,17 @@ if __name__ == "__main__":
   # efficiencyFormulaGen = "(0.75 + 0.25 * x) * (0.75 - 0.25 * (y / 180)) * (0.75 + 0.25 * (z / 180))"  # acc_2; odd in all variables
   efficiencyFormulaGen = "(0.6 + 0.4 * x) * (0.6 - 0.4 * (y / 180)) * (0.6 + 0.4 * (z / 180))"  # acc_3; odd in all variables
   # detune efficiency used to correct acceptance w.r.t. the one used to generate the data
-  # efficiencyFormulaReco = efficiencyFormulaGen
-  # efficiencyFormulaReco = efficiencyFormulaGen + " - (0.35 + 0.15 * x) * (0.35 - 0.15 * (y / 180)) * (0.35 + 0.15 * (z / 180))"  # detune_odd; detune by odd terms
-  efficiencyFormulaReco = efficiencyFormulaGen + " - 0.15 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms
+  efficiencyFormulaDetune = ""
+  # efficiencyFormulaDetune = "(0.35 + 0.15 * x) * (0.35 - 0.15 * (y / 180)) * (0.35 + 0.15 * (z / 180))"  # detune_odd; detune by odd terms
+  # efficiencyFormulaDetune = "0.1 * (1.5 - y * y / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
+  # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - z * z / (180 * 180)) / (1.5**2)"  # detune_even; detune by even terms in cos(theta) and Phi
+  # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
+  if efficiencyFormulaDetune:
+    efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
+    drawEfficiencyTF3(efficiencyFcnDetune, histName = "hEfficiencyDetune")
+    efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
+  else:
+    efficiencyFormulaReco = efficiencyFormulaGen
 
   # input from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
