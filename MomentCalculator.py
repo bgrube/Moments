@@ -12,7 +12,8 @@ class MomentIndex:
   '''Provides mapping between moment index schemes and iterators for moment indices'''
   def __init__(
     self,
-    maxL: int,  # maximum L quantum number of moments
+    maxL:      int,          # maximum L quantum number of moments
+    photoProd: bool = True,  # switches between diffraction and photoproduction mode
   ) -> None:
     self.maxL = maxL
     # create new bidict subclass
@@ -20,7 +21,7 @@ class MomentIndex:
     # instantiate bidict subclass
     self.QnIndexByFlatIndex: bd.BidictBase[int, Tuple[int, int, int]] = QnIndexByFlatIndexBidict()
     flatIndex = 0
-    for momentIndex in range(3):
+    for momentIndex in range(3 if photoProd else 1):
       for L in range(maxL + 1):
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
