@@ -18,6 +18,8 @@ import ROOT
 from testBasisFunc import enableRootACLiCOpenMp
 enableRootACLiCOpenMp()
 
+import MomentCalculator
+
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
@@ -95,6 +97,7 @@ def drawIntensityTF3(
         y = yAxis.GetBinCenter(yBin)
         z = zAxis.GetBinCenter(zBin)
         fcnHist.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
+  print(f"Drawing histogram '{histName}' for function '{fcn.GetName()}': minimum value = {fcnHist.GetMinimum()}, maximum value = {fcnHist.GetMaximum()}")
   fcnHist.SetMinimum(0)
   if maxVal:
     fcnHist.SetMaximum(maxVal)
@@ -640,15 +643,15 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")
 
   # get data
-  nmbEvents = 100000
-  nmbMcEvents = 10000000
+  nmbEvents = 1000
+  nmbMcEvents = 1000000
   polarization = 1.0
   # formulas for detection efficiency
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
   # efficiencyFormulaGen = "1"  # acc_perfect
   # efficiencyFormulaGen = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
-  # efficiencyFormulaGen = "(0.75 + 0.25 * x) * (0.75 - 0.25 * (y / 180)) * (0.75 + 0.25 * (z / 180))"  # acc_2; odd in all variables
-  efficiencyFormulaGen = "(0.6 + 0.4 * x) * (0.6 - 0.4 * (y / 180)) * (0.6 + 0.4 * (z / 180))"  # acc_3; odd in all variables
+  # efficiencyFormulaGen = "(0.75 + 0.25 * x) * (0.75 + 0.25 * (y / 180)) * (0.75 + 0.25 * (z / 180))"  # acc_2; odd in all variables
+  efficiencyFormulaGen = "(0.6 + 0.4 * x) * (0.6 + 0.4 * (y / 180)) * (0.6 + 0.4 * (z / 180))"  # acc_3; odd in all variables
   # detune efficiency used to correct acceptance w.r.t. the one used to generate the data
   efficiencyFormulaDetune = ""
   # efficiencyFormulaDetune = "(0.35 + 0.15 * x) * (0.35 - 0.15 * (y / 180)) * (0.35 + 0.15 * (z / 180))"  # detune_odd; detune by odd terms
@@ -690,6 +693,32 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = MAX_L)
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
+
+  ROOT.gBenchmark.Start(f"!!! Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
+  momentIndex     = MomentCalculator.MomentIndex(maxL = 5, photoProd = True)
+  dataSet         = MomentCalculator.DataSet(polarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents)
+  integralMatrix2 = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
+  integralMatrix2.calculateMatrix()
+  ROOT.gBenchmark.Stop(f"!!! Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
+  print(f"!!! {integralMatrix2.IQnIndex == integralMatrix}")
+  for momentIndex_1 in range(3):
+    for L_1 in range(MAX_L + 1):
+      for M_1 in range(L_1 + 1):
+        if momentIndex_1 == 2 and M_1 == 0:
+          continue  # H_2(L, 0) are always zero
+        for momentIndex_2 in range(3):
+          for L_2 in range(MAX_L + 1):
+            for M_2 in range(L_2 + 1):
+              if momentIndex_2 == 2 and M_2 == 0:
+                continue  # H_2(L, 0) are always zero
+              diff = integralMatrix2.IQnIndex[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2] - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
+              if diff != 0:
+                print(f"!!! {momentIndex_1}, {L_1}, {M_1}, {momentIndex_2}, {L_2}, {M_2} = {diff}")
+
+  ROOT.gBenchmark.Stop("Total execution time")
+  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
+  ROOT.gBenchmark.Summary(_, _)
+  raise ValueError
   # calculate and print moments of accepted phase-space data
   print("Moments of accepted phase-space data")
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
