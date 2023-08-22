@@ -72,6 +72,10 @@ PROD_AMPS: Dict[int, Dict[Tuple[int, int,], complex]] = {
 }
 
 
+# define maximum L quantum number of moments
+MAX_L = 5
+
+
 def drawIntensityTF3(
   fcn:      ROOT.TF3,
   histName: str,
@@ -194,14 +198,14 @@ def calcMomentSetFromWaves(
 
 
 def calcAllMomentsFromWaves(
-  prodAmps: Dict[int, Dict[Tuple[int, int,], complex]],  # Dict[reflectivity, Dict[(L, M), value]
+  prodAmps: Dict[int, Dict[Tuple[int, int], complex]],  # Dict[reflectivity, Dict[(L, M), value]]
+  maxL:     int,  # maximum L quantum number of moments
 ) -> List[Tuple[Tuple[int, int, int], complex]]:
   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
   result: List[Tuple[Tuple[int, int, int], complex]] = []
-  maxSpin = getMaxSpin(prodAmps)
   norm = 1
-  for L in range(2 * maxSpin + 2):  # calculate moments 2 units above maximum L (should be zero)
-    for M in range(L + 1):          # calculate moments 1 unit above maximum M (should be zero)
+  for L in range(maxL + 1):
+    for M in range(L + 1):
       # get all moments for given (L, M)
       moments: List[complex] = list(calcMomentSetFromWaves(prodAmps, L, M))
       tolerance = 1e-15
@@ -216,7 +220,7 @@ def calcAllMomentsFromWaves(
       norm = moments[0] if L == M == 0 else norm
       result += [((momentIndex, L, M), moment / norm) for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3])]
   index = 0
-  for L in range(2 * maxSpin + 2):
+  for L in range(maxL + 1):
     for M in range(L + 1):
       moments = []
       for _ in range(2 if M == 0 else 3):
@@ -331,7 +335,7 @@ def calcIntegralMatrix(
   phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data
   nmbGenEvents:   int,              # number of generated events
   polarization:   float,            # photon-beam polarization
-  maxL:           int,              # maximum orbital angular momentum
+  maxL:           int,              # maximum L quantum number of moments
 ) -> Dict[Tuple[int, ...], complex]:
   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
   # get phase-space data data as NumPy arrays
@@ -345,7 +349,7 @@ def calcIntegralMatrix(
   fMeasValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
   fPhysValues: Dict[Tuple[int, int, int], npt.NDArray[np.complex128]] = {}
   for momentIndex in range(3):
-    for L in range(2 * maxL + 2):
+    for L in range(maxL + 1):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
@@ -362,7 +366,7 @@ def calcIntegralMatrix(
 def calculatePhotoProdMoments(
   inData:         ROOT.RDataFrame,                                  # input data with angular distribution
   polarization:   float,                                            # photon-beam polarization
-  maxL:           int,                                              # maximum spin of decaying object
+  maxL:           int,                                              # maximum L quantum number of moments
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
 ) -> Tuple[List[Tuple[Tuple[int, int, int], complex]], Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]]]:  # moment values and covariances
   '''Calculates photoproduction moments and their covariances'''
@@ -377,7 +381,7 @@ def calculatePhotoProdMoments(
   # get number of moments (the poor-man's way)
   nmbMoments = 0
   for momentIndex in range(3):
-    for L in range(2 * maxL + 2):
+    for L in range(maxL + 1):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
@@ -387,7 +391,7 @@ def calculatePhotoProdMoments(
   H_meas = np.zeros((nmbMoments),            dtype = np.complex128)
   iMoment = 0
   for momentIndex in range(3):
-    for L in range(2 * maxL + 2):
+    for L in range(maxL + 1):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
@@ -405,7 +409,7 @@ def calculatePhotoProdMoments(
   # print measured moments
   iMoment = 0
   for momentIndex in range(3):
-    for L in range(2 * maxL + 2):
+    for L in range(maxL + 1):
       for M in range(L + 1):
         if momentIndex == 2 and M == 0:
           continue  # H_2(L, 0) are always zero
@@ -423,13 +427,13 @@ def calculatePhotoProdMoments(
     I_acc = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
     iMoment_meas = 0
     for momentIndex_meas in range(3):
-      for L_meas in range(2 * maxL + 2):
+      for L_meas in range(maxL + 1):
         for M_meas in range(L_meas + 1):
           if momentIndex_meas == 2 and M_meas == 0:
             continue  # H_2(L, 0) are always zero
           iMoment_phys = 0
           for momentIndex_phys in range(3):
-            for L_phys in range(2 * maxL + 2):
+            for L_phys in range(maxL + 1):
               for M_phys in range(L_phys + 1):
                 if momentIndex_phys == 2 and M_phys == 0:
                   continue  # H_2(L, 0) are always zero
@@ -471,26 +475,25 @@ def calculatePhotoProdMoments(
   # reformat output
   momentsPhys:    List[Tuple[Tuple[int, int, int], complex]] = []
   momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]]   = {}  # cov[(i, L, M, j, L', M')] = (cov[ReRe], cov[ImIm], cov[ReIm])
-  iMoment_phys = 0
-  #TODO are the indices "phys" and "meas" here?
-  for momentIndex_phys in range(3):
-    for L_phys in range(2 * maxL + 2):
-      for M_phys in range(L_phys + 1):
-        if momentIndex_phys == 2 and M_phys == 0:
+  iMoment_1 = 0
+  for momentIndex_1 in range(3):
+    for L_1 in range(maxL + 1):
+      for M_1 in range(L_1 + 1):
+        if momentIndex_1 == 2 and M_1 == 0:
           continue  # H_2(L, 0) are always zero
-        momentsPhys.append(((momentIndex_phys, L_phys, M_phys), H_phys[iMoment_phys]))
-        iMoment_meas = 0
-        for momentIndex_meas in range(3):
-          for L_meas in range(2 * maxL + 2):
-            for M_meas in range(L_meas + 1):
-              if momentIndex_meas == 2 and M_meas == 0:
+        momentsPhys.append(((momentIndex_1, L_1, M_1), H_phys[iMoment_1]))
+        iMoment_2 = 0
+        for momentIndex_2 in range(3):
+          for L_2 in range(maxL + 1):
+            for M_2 in range(L_2 + 1):
+              if momentIndex_2 == 2 and M_2 == 0:
                 continue  # H_2(L, 0) are always zero
-              momentsPhysCov[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)] = (
-                (V_phys_ReRe[iMoment_meas, iMoment_phys],
-                 V_phys_ImIm[iMoment_meas, iMoment_phys],
-                 V_phys_ReIm[iMoment_meas, iMoment_phys]))
-              iMoment_meas += 1
-        iMoment_phys += 1
+              momentsPhysCov[(momentIndex_2, L_2, M_2, momentIndex_1, L_1, M_1)] = (
+                (V_phys_ReRe[iMoment_2, iMoment_1],
+                 V_phys_ImIm[iMoment_2, iMoment_1],
+                 V_phys_ReIm[iMoment_2, iMoment_1]))
+              iMoment_2 += 1
+        iMoment_1 += 1
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
   return momentsPhys, momentsPhysCov
 
@@ -661,7 +664,7 @@ if __name__ == "__main__":
 
   # input from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
-  trueMoments: List[Tuple[Tuple[int, int, int], complex]] = calcAllMomentsFromWaves(PROD_AMPS)
+  trueMoments: List[Tuple[Tuple[int, int, int], complex]] = calcAllMomentsFromWaves(PROD_AMPS, maxL = MAX_L)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormulaGen)
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
@@ -685,21 +688,21 @@ if __name__ == "__main__":
   # calculate integral matrix
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = getMaxSpin(PROD_AMPS))
+  integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = MAX_L)
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   # calculate and print moments of accepted phase-space data
   print("Moments of accepted phase-space data")
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
   # physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
   # calculate moments of acceptance function
-  physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = None)
+  physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = MAX_L, integralMatrix = None)
   ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
   printAndPlotMoments(physMomentsPs, physMomentsPsCov, trueMoments = None, dataLabel = "Ps")
 
   # calculate moments
   print("Moments of data generated according to PWA model")
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  physMoments, physMomentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
+  physMoments, physMomentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = MAX_L, integralMatrix = integralMatrix)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   printAndPlotMoments(physMoments, physMomentsCov, trueMoments)
 
