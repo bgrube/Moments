@@ -3,7 +3,10 @@
 
 import bidict as bd
 from dataclasses import dataclass
-from typing import Generator, Tuple
+import math
+import numpy as np
+import numpy.typing as npt
+from typing import Dict, Generator, Optional, Tuple
 
 import ROOT
 
@@ -39,3 +42,12 @@ class MomentIndex:
     '''Generates quantum number indices of the form (moment index, L, M)'''
     for flatIndex in range(len(self.QnIndexByFlatIndex)):
       yield self.QnIndexByFlatIndex.QnIndex_for[flatIndex]
+
+
+@dataclass
+class DataSet:
+  '''Stores information about a single dataset'''
+  polarization:   float            # photon-beam polarization
+  data:           ROOT.RDataFrame  # data from which to calculate moments
+  phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data
+  nmbGenEvents:   int              # number of generated events
