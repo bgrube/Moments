@@ -109,19 +109,36 @@ class AcceptanceIntegralMatrix:
       for flatIndexPhys in self.index.flatIndices():
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = 8 * math.pi**2 / self.dataSet.nmbGenEvents * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
 
+  def isValid(self) -> bool:
+    return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (self.index.nmbMoments, self.index.nmbMoments)
+
   def saveMatrix(
     self,
-    fileName: str = "integralMatrix.npy",
+    fileName: str = "./integralMatrix.npy",
   ) -> None:
+    '''Saves NumPy array that holds the integral matrix to file with given name'''
     if self._IFlatIndex is not None:
       print(f"Saving integral matrix to file '{fileName}'.")
       np.save(fileName, self._IFlatIndex)
 
   def loadMatrix(
     self,
-    fileName: str = "integralMatrix.npy",
+    fileName: str = "./integralMatrix.npy",
   ) -> None:
+    '''Loads NumPy array that holds the integral matrix from file with given name'''
     print(f"Loading integral matrix from file '{fileName}'.")
-    self._IFlatIndex = np.load(fileName)
-    if self._IFlatIndex.shape != (self.index.nmbMoments, self.index.nmbMoments):
-      raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(self.index.nmbMoments, self.index.nmbMoments)}, got {self._IFlatIndex.shape}.")
+    array = np.load(fileName)
+    if not self.isValid():
+      raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(self.index.nmbMoments, self.index.nmbMoments)}, got {array.shape}.")
+    self._IFlatIndex = array
+
+  def loadOrCalculateMatrix(
+    self,
+    fileName: str = "./integralMatrix.npy",
+  ) -> None:
+    '''Loads NumPy array that holds the integral matrix from file with given name; and calculates the integral matrix if loading failed'''
+    try:
+      self.loadMatrix(fileName)
+    except:
+      print(f"Could not load integral matrix from file '{fileName}'; calculating matrix instead.")
+      self.calculateMatrix()
