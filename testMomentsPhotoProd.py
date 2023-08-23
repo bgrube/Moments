@@ -700,7 +700,24 @@ if __name__ == "__main__":
   integralMatrix2 = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
   integralMatrix2.calculateMatrix()
   ROOT.gBenchmark.Stop(f"!!! Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  print(f"!!! {integralMatrix2.IQnIndex == integralMatrix}")
+  nmbMoments = momentIndex.nmbMoments
+  I_acc = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
+  iMoment_meas = 0
+  for momentIndex_meas in range(3):
+    for L_meas in range(MAX_L + 1):
+      for M_meas in range(L_meas + 1):
+        if momentIndex_meas == 2 and M_meas == 0:
+          continue  # H_2(L, 0) are always zero
+        iMoment_phys = 0
+        for momentIndex_phys in range(3):
+          for L_phys in range(MAX_L + 1):
+            for M_phys in range(L_phys + 1):
+              if momentIndex_phys == 2 and M_phys == 0:
+                continue  # H_2(L, 0) are always zero
+              I_acc[iMoment_meas, iMoment_phys] = integralMatrix[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)]
+              iMoment_phys += 1
+        iMoment_meas += 1
+  print(f"!!! {np.array_equal(integralMatrix2.IFlatIndex, I_acc)}")
   for momentIndex_1 in range(3):
     for L_1 in range(MAX_L + 1):
       for M_1 in range(L_1 + 1):
@@ -711,10 +728,9 @@ if __name__ == "__main__":
             for M_2 in range(L_2 + 1):
               if momentIndex_2 == 2 and M_2 == 0:
                 continue  # H_2(L, 0) are always zero
-              diff = integralMatrix2.IQnIndex[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2] - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
+              diff = integralMatrix2.IQnIndex((momentIndex_1, L_1, M_1), (momentIndex_2, L_2, M_2)) - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
               if diff != 0:
                 print(f"!!! {momentIndex_1}, {L_1}, {M_1}, {momentIndex_2}, {L_2}, {M_2} = {diff}")
-
   ROOT.gBenchmark.Stop("Total execution time")
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
   ROOT.gBenchmark.Summary(_, _)
