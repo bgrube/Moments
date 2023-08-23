@@ -113,12 +113,15 @@ class AcceptanceIntegralMatrix:
     self,
     fileName: str = "integralMatrix.npy",
   ) -> None:
-    np.save(fileName, self._IFlatIndex)
+    if self._IFlatIndex is not None:
+      print(f"Saving integral matrix to file '{fileName}'.")
+      np.save(fileName, self._IFlatIndex)
 
   def loadMatrix(
     self,
     fileName: str = "integralMatrix.npy",
   ) -> None:
+    print(f"Loading integral matrix from file '{fileName}'.")
     self._IFlatIndex = np.load(fileName)
     if self._IFlatIndex.shape != (self.index.nmbMoments, self.index.nmbMoments):
       raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(self.index.nmbMoments, self.index.nmbMoments)}, got {self._IFlatIndex.shape}.")
