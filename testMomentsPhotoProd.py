@@ -289,20 +289,20 @@ def genDataFromWaves(
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
   fileName = f"{intensityFcn.GetName()}.root"
-  df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
-  df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
-    .Define("cosTheta", "point[0]") \
-    .Define("theta",    "std::acos(cosTheta)") \
-    .Define("phiDeg",   "point[1]") \
-    .Define("phi",      "TMath::DegToRad() * phiDeg") \
-    .Define("PhiDeg",   "point[2]") \
-    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
-    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
-    # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-    # noop filter before snapshot logs when event loop is running
-    # !Note! for some reason, this is very slow
+  # df = ROOT.RDataFrame(nmbEvents)
+  # declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
+  # df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
+  #   .Define("cosTheta", "point[0]") \
+  #   .Define("theta",    "std::acos(cosTheta)") \
+  #   .Define("phiDeg",   "point[1]") \
+  #   .Define("phi",      "TMath::DegToRad() * phiDeg") \
+  #   .Define("PhiDeg",   "point[2]") \
+  #   .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
+  #   .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
+  #   .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
+  #   # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  #   # noop filter before snapshot logs when event loop is running
+  #   # !Note! for some reason, this is very slow
   return ROOT.RDataFrame(treeName, fileName)
 
 
@@ -728,7 +728,7 @@ if __name__ == "__main__":
             for M_2 in range(L_2 + 1):
               if momentIndex_2 == 2 and M_2 == 0:
                 continue  # H_2(L, 0) are always zero
-              diff = integralMatrix2.IQnIndex((momentIndex_1, L_1, M_1), (momentIndex_2, L_2, M_2)) - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
+              diff = integralMatrix2.IQnIndex(MomentCalculator.QnIndex(momentIndex_1, L_1, M_1), MomentCalculator.QnIndex(momentIndex_2, L_2, M_2)) - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
               if diff != 0:
                 print(f"!!! {momentIndex_1}, {L_1}, {M_1}, {momentIndex_2}, {L_2}, {M_2} = {diff}")
   ROOT.gBenchmark.Stop("Total execution time")

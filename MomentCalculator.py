@@ -11,7 +11,12 @@ from typing import Dict, Generator, Optional, Tuple
 import ROOT
 
 
-#TODO add dataclass for Qn Index
+@dataclass(frozen = True)  # immutable
+class QnIndex:
+  '''Stores information about quantum number indices of moments'''
+  momentIndex: int  # subscript of photoproduction moments
+  L:           int  # angular momentum
+  M:           int  # projection quantum number of L
 
 
 class MomentIndex:
@@ -25,31 +30,30 @@ class MomentIndex:
     # create new bidict subclass
     QnIndexByFlatIndexBidict = bd.namedbidict(typename = 'QnIndexByFlatIndexBidict', keyname = 'flatIndex', valname = 'QnIndex')
     # instantiate bidict subclass
-    self.QnIndexByFlatIndex: bd.BidictBase[int, Tuple[int, int, int]] = QnIndexByFlatIndexBidict()
+    self.indexMap: bd.BidictBase[int, QnIndex] = QnIndexByFlatIndexBidict()
     flatIndex = 0
     for momentIndex in range(3 if photoProd else 1):
       for L in range(maxL + 1):
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
             continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-          QnIndex = (momentIndex, L, M)
-          self.QnIndexByFlatIndex.QnIndex_for[flatIndex] = QnIndex
+          self.indexMap.QnIndex_for[flatIndex] = QnIndex(momentIndex, L, M)
           flatIndex += 1
 
   @property
   def nmbMoments(self) -> int:
     '''Returns total number of moments'''
-    return len(self.QnIndexByFlatIndex)
+    return len(self.indexMap)
 
   def flatIndices(self) -> Generator[int, None, None]:
     '''Generates flat indices'''
     for flatIndex in range(self.nmbMoments):
       yield flatIndex
 
-  def QnIndices(self) -> Generator[Tuple[int, int, int], None, None]:
+  def QnIndices(self) -> Generator[QnIndex, None, None]:
     '''Generates quantum number indices of the form (moment index, L, M)'''
     for flatIndex in range(self.nmbMoments):
-      yield self.QnIndexByFlatIndex.QnIndex_for[flatIndex]
+      yield self.indexMap.QnIndex_for[flatIndex]
 
 
 @dataclass
@@ -84,9 +88,9 @@ class AcceptanceIntegralMatrix:
     fMeas: npt.NDArray[np.complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     fPhys: npt.NDArray[np.complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.index.flatIndices():
-      momentIndex, L, M = self.index.QnIndexByFlatIndex.QnIndex_for[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetas, phis, Phis, self.dataSet.polarization))
-      fPhys[flatIndex] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetas, phis, Phis, self.dataSet.polarization))
+      qnIndex = self.index.indexMap.QnIndex_for[flatIndex]
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
+      fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
     # calculate integral-matrix elements; Eq. (178)
     self.IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.index.flatIndices():
@@ -95,13 +99,13 @@ class AcceptanceIntegralMatrix:
 
   def IQnIndex(
     self,
-    QnIndexMeas: Tuple[int, int, int],
-    QnIndexPhys: Tuple[int, int, int],
+    qnIndexMeas: QnIndex,
+    qnIndexPhys: QnIndex,
   ) -> Optional[complex]:
     '''Returns integral matrix elements for quantum-number indices'''
     if self.IFlatIndex is None:
       return None
     else:
-      flatIndexMeas: int = self.index.QnIndexByFlatIndex.flatIndex_for[QnIndexMeas]
-      flatIndexPhys: int = self.index.QnIndexByFlatIndex.flatIndex_for[QnIndexPhys]
+      flatIndexMeas: int = self.index.indexMap.flatIndex_for[qnIndexMeas]
+      flatIndexPhys: int = self.index.indexMap.flatIndex_for[qnIndexPhys]
       return self.IFlatIndex[flatIndexMeas, flatIndexPhys]
