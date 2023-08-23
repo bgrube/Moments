@@ -93,10 +93,10 @@ class AcceptanceIntegralMatrix:
     phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
     Phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
     nmbAccEvents = len(thetas)
-    nmbMoments   = self.index.nmbMoments
     assert thetas.shape == (nmbAccEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have shape ({nmbAccEvents},): theta: {thetas.shape} vs. phi: {phis.shape} vs. Phi: {Phis.shape}")
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `wignerD.C`
+    nmbMoments = self.index.nmbMoments
     fMeas: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     fPhys: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.index.flatIndices():
@@ -107,7 +107,7 @@ class AcceptanceIntegralMatrix:
     self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.index.flatIndices():
       for flatIndexPhys in self.index.flatIndices():
-        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = 8 * math.pi**2 / self.dataSet.nmbGenEvents * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
+        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * math.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
 
   def isValid(self) -> bool:
     return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (self.index.nmbMoments, self.index.nmbMoments)
