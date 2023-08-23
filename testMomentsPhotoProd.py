@@ -15,10 +15,8 @@ import py3nj
 
 import ROOT
 
-from testBasisFunc import enableRootACLiCOpenMp
-enableRootACLiCOpenMp()
-
 import MomentCalculator
+import OpenMp
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -27,6 +25,8 @@ print = functools.partial(print, flush = True)
 
 # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
 # also provides complexT typedef for std::complex<double>
+OpenMp.enableRootACLiCOpenMp()
+# OpenMp.printRootACLiCSettings()
 ROOT.gROOT.LoadMacro("./wignerD.C++")
 
 
@@ -636,6 +636,7 @@ def setupPlotStyle() -> None:
 
 
 if __name__ == "__main__":
+  OpenMp.setNmbOpenMpThreads(5)
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)
