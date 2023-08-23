@@ -1,6 +1,8 @@
 *.txt
 *.bak
 *.log
+*.npy
+*.npz
 *.old
 *.orig
 *.pdf
