@@ -4,16 +4,17 @@
 import bidict as bd
 from dataclasses import dataclass
 import math
+import numbers
 import numpy as np
-import numpy.typing as npt
-from typing import Dict, Generator, Optional, Tuple
+import nptyping as npt
+from typing import Dict, Generator, Optional, Tuple, Union
 
 import ROOT
 
 
 @dataclass(frozen = True)  # immutable
 class QnIndex:
-  '''Stores information about quantum number indices of moments'''
+  '''Stores information about quantum-number indices of moments'''
   momentIndex: int  # subscript of photoproduction moments
   L:           int  # angular momentum
   M:           int  # projection quantum number of L
@@ -51,7 +52,7 @@ class MomentIndex:
       yield flatIndex
 
   def QnIndices(self) -> Generator[QnIndex, None, None]:
-    '''Generates quantum number indices of the form (moment index, L, M)'''
+    '''Generates quantum-number indices of the form QnIndex(moment index, L, M)'''
     for flatIndex in range(self.nmbMoments):
       yield self.indexMap.QnIndex_for[flatIndex]
 
@@ -70,9 +71,21 @@ class AcceptanceIntegralMatrix:
   '''Calculates and provides access to acceptance integral matrix'''
   index:      MomentIndex  # index mapping and iterators
   dataSet:    DataSet      # access to data samples
-  IFlatIndex: Optional[npt.NDArray[np.complex128]] = None  # integral matrix with flat indices
+  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
   #TODO add possibility to write to/load from file
-  #TODO add [] accessor for flat and Qn indices
+
+  def __getitem__(
+    self,
+    indices: Tuple[Union[numbers.Integral, QnIndex, slice], Union[numbers.Integral, QnIndex, slice]],
+  ) -> Optional[Union[complex, npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["*, *"], npt.Complex128]]]:
+    '''Returns integral matrix elements for any combination of flat and quantum-number indices'''
+    if self._IFlatIndex is None:
+      return None
+    else:
+      # turn quantum-number indices to flat indices
+      flatIndexMeas: Union[numbers.Integral, slice] = self.index.indexMap.flatIndex_for[indices[0]] if isinstance(indices[0], QnIndex) else indices[0]
+      flatIndexPhys: Union[numbers.Integral, slice] = self.index.indexMap.flatIndex_for[indices[1]] if isinstance(indices[1], QnIndex) else indices[1]
+      return self._IFlatIndex[flatIndexMeas, flatIndexPhys]
 
   def calculateMatrix(self) -> None:
     '''Calculates integral matrix of basis functions from (accepted) phase-space data'''
@@ -85,27 +98,14 @@ class AcceptanceIntegralMatrix:
     assert thetas.shape == (nmbAccEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have shape ({nmbAccEvents},): theta: {thetas.shape} vs. phi: {phis.shape} vs. Phi: {Phis.shape}")
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `wignerD.C`
-    fMeas: npt.NDArray[np.complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
-    fPhys: npt.NDArray[np.complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
+    fMeas: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
+    fPhys: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.index.flatIndices():
       qnIndex = self.index.indexMap.QnIndex_for[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
       fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
     # calculate integral-matrix elements; Eq. (178)
-    self.IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
+    self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.index.flatIndices():
       for flatIndexPhys in self.index.flatIndices():
-        self.IFlatIndex[flatIndexMeas, flatIndexPhys] = 8 * math.pi**2 / self.dataSet.nmbGenEvents * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
-
-  def IQnIndex(
-    self,
-    qnIndexMeas: QnIndex,
-    qnIndexPhys: QnIndex,
-  ) -> Optional[complex]:
-    '''Returns integral matrix elements for quantum-number indices'''
-    if self.IFlatIndex is None:
-      return None
-    else:
-      flatIndexMeas: int = self.index.indexMap.flatIndex_for[qnIndexMeas]
-      flatIndexPhys: int = self.index.indexMap.flatIndex_for[qnIndexPhys]
-      return self.IFlatIndex[flatIndexMeas, flatIndexPhys]
+        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = 8 * math.pi**2 / self.dataSet.nmbGenEvents * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])

@@ -717,7 +717,7 @@ if __name__ == "__main__":
               I_acc[iMoment_meas, iMoment_phys] = integralMatrix[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)]
               iMoment_phys += 1
         iMoment_meas += 1
-  print(f"!!! {np.array_equal(integralMatrix2.IFlatIndex, I_acc)}")
+  print(f"!!! {np.array_equal(integralMatrix2._IFlatIndex, I_acc)}")
   for momentIndex_1 in range(3):
     for L_1 in range(MAX_L + 1):
       for M_1 in range(L_1 + 1):
@@ -728,9 +728,14 @@ if __name__ == "__main__":
             for M_2 in range(L_2 + 1):
               if momentIndex_2 == 2 and M_2 == 0:
                 continue  # H_2(L, 0) are always zero
-              diff = integralMatrix2.IQnIndex(MomentCalculator.QnIndex(momentIndex_1, L_1, M_1), MomentCalculator.QnIndex(momentIndex_2, L_2, M_2)) - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
+              diff = integralMatrix2[MomentCalculator.QnIndex(momentIndex_1, L_1, M_1), MomentCalculator.QnIndex(momentIndex_2, L_2, M_2)] - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
               if diff != 0:
                 print(f"!!! {momentIndex_1}, {L_1}, {M_1}, {momentIndex_2}, {L_2}, {M_2} = {diff}")
+  print(f"!!! {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), MomentCalculator.QnIndex(2, 1, 1)]} vs. "
+            f"{integralMatrix2[26, 42]} vs. {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), 42]}")
+  print(f"!!! {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), 1:6:2]} vs. "
+            f"{integralMatrix2[26, 1:6:2]}")
+  print(f"!!! {integralMatrix2[1:6:2, 1:6:2]}")
   ROOT.gBenchmark.Stop("Total execution time")
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
   ROOT.gBenchmark.Summary(_, _)
