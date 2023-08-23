@@ -334,38 +334,6 @@ def genAccepted2BodyPsPhotoProd(
   return ROOT.RDataFrame(treeName, fileName)
 
 
-# def calcIntegralMatrix(
-#   phaseSpaceData: ROOT.RDataFrame,  # (accepted) phase space data
-#   nmbGenEvents:   int,              # number of generated events
-#   polarization:   float,            # photon-beam polarization
-#   maxL:           int,              # maximum L quantum number of moments
-# ) -> Dict[Tuple[int, ...], complex]:
-#   '''Calculates integral matrix of spherical harmonics for from provided phase-space data'''
-#   # get phase-space data data as NumPy arrays
-#   thetaValues = phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
-#   phiValues   = phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
-#   PhiValues   = phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
-#   nmbEvents = len(thetaValues)
-#   assert thetaValues.shape == (nmbEvents,) and thetaValues.shape == phiValues.shape == PhiValues.shape, (
-#     f"Not all NumPy arrays with input data have shape ({nmbEvents},): thetaValues: {thetaValues.shape} vs. phiValues: {phiValues.shape} vs. phiValues: {PhiValues.shape}")
-#   # calculate basis-function values for physical and measured moments; Eqs. (175) and (176)
-#   fMeasValues: Dict[Tuple[int, int, int], npt.NDArray[npt.Complex128]] = {}
-#   fPhysValues: Dict[Tuple[int, int, int], npt.NDArray[npt.Complex128]] = {}
-#   for momentIndex in range(3):
-#     for L in range(maxL + 1):
-#       for M in range(L + 1):
-#         if momentIndex == 2 and M == 0:
-#           continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-#         fMeasValues[(momentIndex, L, M)] = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))
-#         fPhysValues[(momentIndex, L, M)] = np.asarray(ROOT.f_phys(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))
-#   # calculate integral-matrix elements; Eq. (178)
-#   I_acc: Dict[Tuple[int, ...], complex] = {}
-#   for indices_meas, f_meas in fMeasValues.items():
-#     for indices_phys, f_phys in fPhysValues.items():
-#       I_acc[indices_meas + indices_phys] = 8 * math.pi**2 / nmbGenEvents * np.dot(f_meas, f_phys)
-#   return I_acc
-
-
 def calculatePhotoProdMoments(
   inData:         ROOT.RDataFrame,  # input data with angular distribution
   polarization:   float,            # photon-beam polarization
@@ -687,60 +655,6 @@ if __name__ == "__main__":
   integralMatrix.saveMatrix()
   # integralMatrix.loadOrCalculateMatrix()
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-
-  # ROOT.gBenchmark.Start(f"!!! Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  # integralMatrix2 = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
-  # integralMatrix2.calculateMatrix()
-  # ROOT.gBenchmark.Stop(f"!!! Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  # nmbMoments = momentIndex.nmbMoments
-  # I_acc = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)
-  # iMoment_meas = 0
-  # for momentIndex_meas in range(3):
-  #   for L_meas in range(MAX_L + 1):
-  #     for M_meas in range(L_meas + 1):
-  #       if momentIndex_meas == 2 and M_meas == 0:
-  #         continue  # H_2(L, 0) are always zero
-  #       iMoment_phys = 0
-  #       for momentIndex_phys in range(3):
-  #         for L_phys in range(MAX_L + 1):
-  #           for M_phys in range(L_phys + 1):
-  #             if momentIndex_phys == 2 and M_phys == 0:
-  #               continue  # H_2(L, 0) are always zero
-  #             I_acc[iMoment_meas, iMoment_phys] = integralMatrix[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)]
-  #             iMoment_phys += 1
-  #       iMoment_meas += 1
-  # print(f"!!! equal = {np.array_equal(integralMatrix2._IFlatIndex, I_acc)}")
-  # for momentIndex_1 in range(3):
-  #   for L_1 in range(MAX_L + 1):
-  #     for M_1 in range(L_1 + 1):
-  #       if momentIndex_1 == 2 and M_1 == 0:
-  #         continue  # H_2(L, 0) are always zero
-  #       for momentIndex_2 in range(3):
-  #         for L_2 in range(MAX_L + 1):
-  #           for M_2 in range(L_2 + 1):
-  #             if momentIndex_2 == 2 and M_2 == 0:
-  #               continue  # H_2(L, 0) are always zero
-  #             diff = integralMatrix2[MomentCalculator.QnIndex(momentIndex_1, L_1, M_1), MomentCalculator.QnIndex(momentIndex_2, L_2, M_2)] - integralMatrix[momentIndex_1, L_1, M_1, momentIndex_2, L_2, M_2]
-  #             if diff != 0:
-  #               print(f"!!! {momentIndex_1}, {L_1}, {M_1}, {momentIndex_2}, {L_2}, {M_2} = {diff}")
-  # print(f"!!! {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), MomentCalculator.QnIndex(2, 1, 1)]} vs. "
-  #           f"{integralMatrix2[26, 42]} vs. {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), 42]}")
-  # print(f"!!! {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), 1:6:2]} vs. "
-  #           f"{integralMatrix2[26, 1:6:2]}")
-  # print(f"!!! {integralMatrix2[1:6:2, 1:6:2]}")
-  # integralMatrix2.saveMatrix()
-  # integralMatrix3 = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
-  # integralMatrix3.loadMatrix()
-  # print(f"!!! equal = {np.array_equal(integralMatrix2._IFlatIndex, integralMatrix3._IFlatIndex)}")
-  # integralMatrix4 = MomentCalculator.AcceptanceIntegralMatrix(MomentCalculator.MomentIndex(maxL = 4), dataSet)
-  # try:
-  #   integralMatrix4.loadMatrix()
-  # except IndexError as e:
-  #   print(e)
-  # ROOT.gBenchmark.Stop("Total execution time")
-  # _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
-  # ROOT.gBenchmark.Summary(_, _)
-  # raise ValueError
 
   # calculate and print moments of accepted phase-space data
   print("Moments of accepted phase-space data")
