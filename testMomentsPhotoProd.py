@@ -717,7 +717,7 @@ if __name__ == "__main__":
               I_acc[iMoment_meas, iMoment_phys] = integralMatrix[(momentIndex_meas, L_meas, M_meas, momentIndex_phys, L_phys, M_phys)]
               iMoment_phys += 1
         iMoment_meas += 1
-  print(f"!!! {np.array_equal(integralMatrix2._IFlatIndex, I_acc)}")
+  print(f"!!! equal = {np.array_equal(integralMatrix2._IFlatIndex, I_acc)}")
   for momentIndex_1 in range(3):
     for L_1 in range(MAX_L + 1):
       for M_1 in range(L_1 + 1):
@@ -736,6 +736,15 @@ if __name__ == "__main__":
   print(f"!!! {integralMatrix2[MomentCalculator.QnIndex(1, 2, 2), 1:6:2]} vs. "
             f"{integralMatrix2[26, 1:6:2]}")
   print(f"!!! {integralMatrix2[1:6:2, 1:6:2]}")
+  integralMatrix2.saveMatrix()
+  integralMatrix3 = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
+  integralMatrix3.loadMatrix()
+  print(f"!!! equal = {np.array_equal(integralMatrix2._IFlatIndex, integralMatrix3._IFlatIndex)}")
+  integralMatrix4 = MomentCalculator.AcceptanceIntegralMatrix(MomentCalculator.MomentIndex(maxL = 4), dataSet)
+  try:
+    integralMatrix4.loadMatrix()
+  except IndexError as e:
+    print(e)
   ROOT.gBenchmark.Stop("Total execution time")
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
   ROOT.gBenchmark.Summary(_, _)

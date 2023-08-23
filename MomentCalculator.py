@@ -72,7 +72,6 @@ class AcceptanceIntegralMatrix:
   index:      MomentIndex  # index mapping and iterators
   dataSet:    DataSet      # access to data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
-  #TODO add possibility to write to/load from file
 
   def __getitem__(
     self,
@@ -109,3 +108,17 @@ class AcceptanceIntegralMatrix:
     for flatIndexMeas in self.index.flatIndices():
       for flatIndexPhys in self.index.flatIndices():
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = 8 * math.pi**2 / self.dataSet.nmbGenEvents * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
+
+  def saveMatrix(
+    self,
+    fileName: str = "integralMatrix.npy",
+  ) -> None:
+    np.save(fileName, self._IFlatIndex)
+
+  def loadMatrix(
+    self,
+    fileName: str = "integralMatrix.npy",
+  ) -> None:
+    self._IFlatIndex = np.load(fileName)
+    if self._IFlatIndex.shape != (self.index.nmbMoments, self.index.nmbMoments):
+      raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(self.index.nmbMoments, self.index.nmbMoments)}, got {self._IFlatIndex.shape}.")
