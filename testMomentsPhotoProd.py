@@ -16,7 +16,7 @@ import ROOT
 
 import MomentCalculator
 import OpenMp
-import RootPlottingUtilities
+import PlottingUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -81,9 +81,9 @@ MAX_L = 5
 # default TH3 plotting options
 TH3_NMB_BINS = 25
 TH3_BINNINGS = (
-  RootPlottingUtilities.HistAxisBinning(TH3_NMB_BINS,   -1,   +1),
-  RootPlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
-  RootPlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
+  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS,   -1,   +1),
+  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
+  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
 )
 TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
 TH3_PLOT_KWARGS = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
@@ -208,7 +208,7 @@ def genDataFromWaves(
   '''Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency'''
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  RootPlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -250,7 +250,7 @@ def genDataFromWaves(
   # draw intensity function
   #   intensityFcn.Draw("BOX2") does not work
   #   draw function "by hand" instead
-  RootPlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hIntensity.pdf")
+  PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
@@ -280,7 +280,7 @@ def genAccepted2BodyPsPhotoProd(
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  RootPlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -586,7 +586,7 @@ if __name__ == "__main__":
   # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
   if efficiencyFormulaDetune:
     efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-    RootPlottingUtilities.drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
+    PlottingUtilities.drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
     efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
   else:
     efficiencyFormulaReco = efficiencyFormulaGen
