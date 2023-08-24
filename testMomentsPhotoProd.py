@@ -525,30 +525,12 @@ def printAndPlotMoments(
     plotComparison(measVals, trueVals, realPart = False, useMomentSubscript = True, dataLabel = dataLabel)
 
 
-def setupPlotStyle() -> None:
-  #TODO remove dependency from external file or add file to repo
-  ROOT.gROOT.LoadMacro("~/rootlogon.C")
-  ROOT.gROOT.ForceStyle()
-  ROOT.gStyle.SetCanvasDefW(600)
-  ROOT.gStyle.SetCanvasDefH(600)
-  ROOT.gStyle.SetPalette(ROOT.kBird)
-  # ROOT.gStyle.SetPalette(ROOT.kViridis)
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
-  ROOT.gStyle.SetLegendBorderSize(1)
-  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
-  # ROOT.gStyle.SetOptStat("i")  # show only integral
-  ROOT.gStyle.SetOptStat("")
-  ROOT.gStyle.SetStatFormat("8.8g")
-  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
-  ROOT.gStyle.SetTitleOffset(1.35, "Y")
-
-
 if __name__ == "__main__":
   OpenMp.setNmbOpenMpThreads(5)
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)
-  setupPlotStyle()
+  PlottingUtilities.setupPlotStyle()
   ROOT.gBenchmark.Start("Total execution time")
 
   # get data

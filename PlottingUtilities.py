@@ -18,6 +18,24 @@ class HistAxisBinning:
   maxVal:    float
 
 
+def setupPlotStyle() -> None:
+  '''Defines ROOT plotting style'''
+  ROOT.gROOT.LoadMacro("./rootlogon.C")
+  ROOT.gROOT.ForceStyle()
+  ROOT.gStyle.SetCanvasDefW(600)
+  ROOT.gStyle.SetCanvasDefH(600)
+  ROOT.gStyle.SetPalette(ROOT.kBird)
+  # ROOT.gStyle.SetPalette(ROOT.kViridis)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
+  ROOT.gStyle.SetLegendBorderSize(1)
+  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
+  # ROOT.gStyle.SetOptStat("i")  # show only integral
+  ROOT.gStyle.SetOptStat("")
+  ROOT.gStyle.SetStatFormat("8.8g")
+  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
+  ROOT.gStyle.SetTitleOffset(1.35, "Y")
+
+
 def plotComplexMatrix(
   matrix:        npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
   pdfNamePrefix: str,  # name prefix for output files
@@ -33,19 +51,6 @@ def plotComplexMatrix(
     plt.figure().colorbar(plt.matshow(data))
     plt.savefig(f"{pdfNamePrefix}_{plotLabel}.pdf", transparent = True)
     plt.close()
-  # plt.figure().colorbar(plt.matshow(np.real(matrix)))
-  # plt.savefig(f"{pdfNamePrefix}_real.pdf", transparent = True)
-  # plt.close()
-  # plt.figure().colorbar(plt.matshow(np.imag(matrix)))
-  # plt.savefig(f"{pdfNamePrefix}_imag.pdf", transparent = True)
-  # plt.close()
-  # plt.figure().colorbar(plt.matshow(np.absolute(matrix)))
-  # plt.savefig(f"{pdfNamePrefix}_abs.pdf", transparent = True)
-  # plt.close()
-  # plt.figure().colorbar(plt.matshow(np.angle(matrix)))
-  # plt.savefig(f"{pdfNamePrefix}_arg.pdf", transparent = True)
-  # plt.close()
-
 
 
 def drawTF3(
