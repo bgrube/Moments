@@ -36,23 +36,29 @@ class MomentIndex:
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
             continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-          self.indexMap.QnIndex_for[flatIndex] = QnIndex(momentIndex, L, M)
+          self.indexMap[flatIndex] = QnIndex(momentIndex, L, M)
           flatIndex += 1
 
-  @property
-  def nmbMoments(self) -> int:
+  def __len__(self) -> int:
     '''Returns total number of moments'''
     return len(self.indexMap)
 
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> QnIndex:
+    '''Returns QnIndex that correspond to given flat index'''
+    return self.indexMap[subscript]
+
   def flatIndices(self) -> Generator[int, None, None]:
     '''Generates flat indices'''
-    for flatIndex in range(self.nmbMoments):
+    for flatIndex in range(len(self)):
       yield flatIndex
 
   def QnIndices(self) -> Generator[QnIndex, None, None]:
     '''Generates quantum-number indices of the form QnIndex(moment index, L, M)'''
-    for flatIndex in range(self.nmbMoments):
-      yield self.indexMap.QnIndex_for[flatIndex]
+    for flatIndex in range(len(self)):
+      yield self[flatIndex]
 
 
 @dataclass
@@ -71,24 +77,24 @@ class AcceptanceIntegralMatrix:
   dataSet:    DataSet      # info on data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
 
-  def __str__(self) -> str:
-    if self._IFlatIndex is None:
-      return "None"
-    else:
-      return np.array2string(self._IFlatIndex, precision = 3, suppress_small = True, max_line_width = 150)
-
   def __getitem__(
     self,
-    indices: Tuple[Union[int, QnIndex, slice], Union[int, QnIndex, slice]],
+    subscript: Tuple[Union[int, QnIndex, slice], Union[int, QnIndex, slice]],
   ) -> Optional[Union[complex, npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["*, *"], npt.Complex128]]]:
     '''Returns integral matrix elements for any combination of flat and quantum-number indices'''
     if self._IFlatIndex is None:
       return None
     else:
       # turn quantum-number indices to flat indices
-      flatIndexMeas: Union[int, slice] = self.index.indexMap.flatIndex_for[indices[0]] if isinstance(indices[0], QnIndex) else indices[0]
-      flatIndexPhys: Union[int, slice] = self.index.indexMap.flatIndex_for[indices[1]] if isinstance(indices[1], QnIndex) else indices[1]
+      flatIndexMeas: Union[int, slice] = self.index.indexMap.flatIndex_for[subscript[0]] if isinstance(subscript[0], QnIndex) else subscript[0]
+      flatIndexPhys: Union[int, slice] = self.index.indexMap.flatIndex_for[subscript[1]] if isinstance(subscript[1], QnIndex) else subscript[1]
       return self._IFlatIndex[flatIndexMeas, flatIndexPhys]
+
+  def __str__(self) -> str:
+    if self._IFlatIndex is None:
+      return "None"
+    else:
+      return np.array2string(self._IFlatIndex, precision = 3, suppress_small = True, max_line_width = 150)
 
   def calculate(self) -> None:
     '''Calculates integral matrix of basis functions from (accepted) phase-space data'''
@@ -101,11 +107,11 @@ class AcceptanceIntegralMatrix:
     assert thetas.shape == (nmbAccEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbAccEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `wignerD.C`
-    nmbMoments = self.index.nmbMoments
+    nmbMoments = len(self.index)
     fMeas: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     fPhys: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.index.flatIndices():
-      qnIndex = self.index.indexMap.QnIndex_for[flatIndex]
+      qnIndex = self.index[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
       fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
     # calculate integral-matrix elements; Eq. (178)
@@ -115,7 +121,7 @@ class AcceptanceIntegralMatrix:
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
 
   def isValid(self) -> bool:
-    return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (self.index.nmbMoments, self.index.nmbMoments)
+    return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.index), len(self.index))
 
   def save(
     self,
@@ -133,8 +139,8 @@ class AcceptanceIntegralMatrix:
     '''Loads NumPy array that holds the integral matrix from file with given name'''
     print(f"Loading integral matrix from file '{fileName}'.")
     array = np.load(fileName)
-    if not array.shape == (self.index.nmbMoments, self.index.nmbMoments):
-      raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(self.index.nmbMoments, self.index.nmbMoments)} but got {array.shape}.")
+    if not array.shape == (len(self.index), len(self.index)):
+      raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(len(self.index), len(self.index))} but got {array.shape}.")
     self._IFlatIndex = array
 
   def loadOrCalculate(
@@ -150,50 +156,62 @@ class AcceptanceIntegralMatrix:
 
 
 @dataclass
-class MomentResult:
-  '''Stores and provides access to moment values'''
-  index:       MomentIndex  # index mapping and iterators
-  label:       str = ""     # label used for printing
-  _HFlatIndex: npt.RecArray[npt.Shape["*"], npt.Structure["val: Complex, uncertRe: Float, uncertIm: Float, covReIm: Float"]] = field(init = False)
-  # flat array with moment values, uncertainties for real and imaginary parts and covariance between the two
-
-  def __post_init__(self) -> None:
-    self._HFlatIndex = np.recarray((self.index.nmbMoments, ), dtype = [("val", npt.Complex128), ("uncertRe", float), ("uncertIm", float), ("covReIm", float)])
+class MomentValue:
+  '''Stores and provides access to single moment value'''
+  qn:       QnIndex   # quantum numbers
+  val:      complex   # moment value
+  uncertRe: float     # uncertainty of real part
+  uncertIm: float     # uncertainty of imaginary part
+  label:    str = ""  # label used for printing
 
   def __str__(self) -> str:
     result = ""
-    for flatIndex in self.index.flatIndices():
-      qnIndex = self.index.indexMap.QnIndex_for[flatIndex]
-      momentSymbol = f"H{'^' + self.label if self.label else ''}_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M})"
-      result += (f"Re[{momentSymbol}] = {self._HFlatIndex[flatIndex].val.real} +- {self._HFlatIndex[flatIndex].uncertRe}\n"
-                 f"Im[{momentSymbol}] = {self._HFlatIndex[flatIndex].val.imag} +- {self._HFlatIndex[flatIndex].uncertIm}\n")
+    momentSymbol = f"H{'^' + self.label if self.label else ''}_{self.qn.momentIndex}(L = {self.qn.L}, M = {self.qn.M})"
+    result += (f"Re[{momentSymbol}] = {self.val.real} +- {self.uncertRe}\n"
+               f"Im[{momentSymbol}] = {self.val.imag} +- {self.uncertIm}")
     return result
+
+
+@dataclass
+class MomentResult:
+  '''Stores and provides access to moment values'''
+  index:             MomentIndex  # index mapping and iterators
+  label:             str = ""     # label used for printing
+  _valsFlatIndex:    npt.NDArray[npt.Shape["*"], npt.Complex128]     = field(init = False)  # flat array with moment values
+  _covReReFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64] = field(init = False)  # covariance matrix of real parts of moment values with flat indices
+  _covImImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64] = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
+  _covReImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64] = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
+
+  def __post_init__(self) -> None:
+    nmbMoments = len(self.index)
+    self._valsFlatIndex    = np.zeros((nmbMoments, ), dtype = npt.Complex128)
+    self._covReReFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+    self._covImImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+    self._covReImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
 
   def __getitem__(
     self,
-    index: Union[int, QnIndex, slice],
-  ):  #TODO add type hint
+    subscript: Union[int, QnIndex, slice],
+  ) -> MomentValue:
     '''Returns moment value and corresponding uncertainties at the given flat or quantum-number index'''
     # turn quantum-number index to flat index
-    flatIndex: Union[int, slice] = self.index.indexMap.flatIndex_for[index] if isinstance(index, QnIndex) else index
-    return self._HFlatIndex[flatIndex]
+    flatIndex: Union[int, slice] = self.index.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnIndex) else subscript
+    if isinstance(flatIndex, slice):
+      assert False, "Not implemented yet."
+    elif isinstance(flatIndex, int):
+      return MomentValue(
+        self.index[flatIndex],
+        self._valsFlatIndex[flatIndex],
+        np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
+        np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
+        self.label,
+      )
+    else:
+      raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
 
-  @property
-  def values(self) -> npt.NDArray[npt.Shape["*"], npt.Complex128]:
-    return self._HFlatIndex.val
-  #TODO add setters
-
-  @property
-  def uncertaintiesReal(self) -> npt.NDArray[npt.Shape["*"], npt.Float64]:
-    return self._HFlatIndex.uncertRe
-
-  @property
-  def uncertaintiesImag(self) -> npt.NDArray[npt.Shape["*"], npt.Float64]:
-    return self._HFlatIndex.uncertIm
-
-  @property
-  def covariancesRealImag(self) -> npt.NDArray[npt.Shape["*"], npt.Float64]:
-    return self._HFlatIndex.covReIm
+  def __str__(self) -> str:
+    result = (str(self[flatIndex]) for flatIndex in self.index.flatIndices())
+    return "\n".join(result)
 
 
 @dataclass
@@ -210,7 +228,7 @@ class MomentCalculator:
     V_aug: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128],  # augmentented covariance matrix
   ) -> Tuple[npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]]:
     '''Calculates covariance matrices for real parts, for imaginary parts, and for real and imaginary parts from augmented covariance matrix'''
-    nmbMoments = self.index.nmbMoments
+    nmbMoments = len(self.index)
     V_Hermit = V_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
     V_pseudo = V_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
     V_ReRe = (np.real(V_Hermit) + np.real(V_pseudo)) / 2  # Eq. (91)
@@ -229,25 +247,20 @@ class MomentCalculator:
     assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
     # get number of moments (the poor-man's way)
-    nmbMoments = self.index.nmbMoments
+    nmbMoments = len(self.index)
     # calculate basis-function values and values of measured moments
     fMeas  = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+    self.HMeas = MomentResult(self.index, "meas")
     for flatIndex in self.index.flatIndices():
-      qnIndex = self.index.indexMap.QnIndex_for[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))  # Eq. (176)  # type: ignore
+      qnIndex = self.index[flatIndex]
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))  # Eq. (176)
+      self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
     # calculate covariances; Eqs. (88), (180), and (181)
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
-    V_meas_ReRe, V_meas_ImIm, V_meas_ReIm = self._calcReImCovMatrices(V_meas_aug)
-    self.HMeas = MomentResult(self.index, "meas")
-    # calculate values and uncertainties of measured moments
-    for flatIndex in self.index.flatIndices():
-      self.HMeas[flatIndex].val      = 2 * np.pi * np.sum(fMeas[flatIndex])        # Eq. (179)
-      self.HMeas[flatIndex].uncertRe = np.sqrt(V_meas_ReRe[flatIndex, flatIndex])  # uncertainty of real part
-      self.HMeas[flatIndex].uncertIm = np.sqrt(V_meas_ImIm[flatIndex, flatIndex])  # uncertainty of imaginary part
-      self.HMeas[flatIndex].covReIm  = V_meas_ReIm[flatIndex, flatIndex]             # covariance of real and imaginary part
+    self.HMeas._covReReFlatIndex, self.HMeas._covImImFlatIndex, self.HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
     print(self.HMeas)
-    # self.HPhys = MomentResult(self.index, "phys")
-    # V_phys_aug = np.empty((2 * nmbMoments, 2 * nmbMoments), dtype = npt.Complex128)
+    self.HPhys = MomentResult(self.index, "phys")
+    V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
     # if self.integralMatrix is None:
     #   # ideal detector
     #   self.HPhys = self.HMeas

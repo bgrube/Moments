@@ -379,6 +379,7 @@ def calculatePhotoProdMoments(
   V_meas_pseudo = V_meas_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
   V_meas_ReRe = (np.real(V_meas_Hermit) + np.real(V_meas_pseudo)) / 2  # Eq. (91)
   V_meas_ImIm = (np.real(V_meas_Hermit) - np.real(V_meas_pseudo)) / 2  # Eq. (92)
+  V_meas_ReIm = (np.imag(V_meas_pseudo) - np.imag(V_meas_Hermit)) / 2  # Eq. (93)
   # print measured moments
   iMoment = 0
   for momentIndex in range(3):
@@ -454,7 +455,7 @@ def calculatePhotoProdMoments(
               iMoment_2 += 1
         iMoment_1 += 1
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
-  return momentsPhys, momentsPhysCov, H_meas, V_meas_ReRe, V_meas_ImIm
+  return momentsPhys, momentsPhysCov, H_meas, V_meas_ReRe, V_meas_ImIm, V_meas_ReIm
 
 
 def plotComparison(
@@ -670,21 +671,23 @@ if __name__ == "__main__":
   # calculate moments
   print("Moments of data generated according to PWA model")
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  physMoments, physMomentsCov, H_meas, V_meas_ReRe, V_meas_ImIm = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = MAX_L, integralMatrix = integralMatrix)
+  physMoments, physMomentsCov, H_meas, V_meas_ReRe, V_meas_ImIm, V_meas_ReIm = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = MAX_L, integralMatrix = integralMatrix)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   printAndPlotMoments(physMoments, physMomentsCov, trueMoments)
   ROOT.gBenchmark.Start(f"!!! Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments = MomentCalculator.MomentCalculator(momentIndex, dataSet, integralMatrix)
   moments.calculate()
   assert moments.HMeas is not None, "moments.HMeas is None"
-  print(f"!!! values {np.array_equal(H_meas, moments.HMeas.values)}")
-  print(f"!!! uncertRe {np.array_equal(np.sqrt(V_meas_ReRe.diagonal()), moments.HMeas.uncertaintiesReal)}")
-  print(f"!!! uncertIm {np.array_equal(np.sqrt(V_meas_ImIm.diagonal()), moments.HMeas.uncertaintiesImag)}")
+  print(f"!!! values {np.array_equal(H_meas, moments.HMeas._valsFlatIndex)}")
+  print(f"!!! covReRe {np.array_equal(V_meas_ReRe, moments.HMeas._covReReFlatIndex)}")
+  print(f"!!! covImIm {np.array_equal(V_meas_ImIm, moments.HMeas._covImImFlatIndex)}")
+  print(f"!!! covReIm {np.array_equal(V_meas_ReIm, moments.HMeas._covReImFlatIndex)}")
   for flatIndex in momentIndex.flatIndices():
-    diffVal      = H_meas[flatIndex] - moments.HMeas.values[flatIndex]
-    diffUncertRe = np.sqrt(V_meas_ReRe[flatIndex, flatIndex]) - moments.HMeas.uncertaintiesReal[flatIndex]
-    diffUncertIm = np.sqrt(V_meas_ImIm[flatIndex, flatIndex]) - moments.HMeas.uncertaintiesImag[flatIndex]
-    qnIndex = momentIndex.indexMap.QnIndex_for[flatIndex]
+    diffVal      = H_meas[flatIndex] - moments.HMeas[flatIndex].val
+    diffUncertRe = np.sqrt(V_meas_ReRe[flatIndex, flatIndex]) - moments.HMeas[flatIndex].uncertRe
+    diffUncertIm = np.sqrt(V_meas_ImIm[flatIndex, flatIndex]) - moments.HMeas[flatIndex].uncertIm
+    qnIndex = momentIndex.indexMap[flatIndex]
+    assert qnIndex == moments.HMeas[flatIndex].qn, f"Quantum numbers differ: {qnIndex} vs. {moments.HMeas[flatIndex].qn}"
     if diffVal != 0:
       print(f"Delta H^meas_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffVal}")
     if diffUncertRe != 0:
