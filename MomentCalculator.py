@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-
 import bidict as bd
 from dataclasses import dataclass, field
 import numpy as np

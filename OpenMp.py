@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-
 # set number of OpenMP threads
 # make sure this is executed before loading NumPy and user code
 # !NOTE! a more elaborate way to control OpenMP threads is provided by the `threadpoolctl` package
