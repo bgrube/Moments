@@ -16,6 +16,7 @@ import ROOT
 
 import MomentCalculator
 import OpenMp
+import RootPlottingUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -77,49 +78,15 @@ PROD_AMPS: Dict[int, Dict[Tuple[int, int,], complex]] = {
 MAX_L = 5
 
 
-def drawIntensityTF3(
-  fcn:      ROOT.TF3,
-  histName: str,
-  nmbBins:  int = 25,
-  maxVal:   Optional[float] = None,
-) -> None:
-  '''Draws given TF3 for intensity distribution'''
-  canv = ROOT.TCanvas()
-  fcnHist = ROOT.TH3F(histName, ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
-  xAxis = fcnHist.GetXaxis()
-  yAxis = fcnHist.GetYaxis()
-  zAxis = fcnHist.GetZaxis()
-  for xBin in range(1, nmbBins + 1):
-    for yBin in range(1, nmbBins + 1):
-      for zBin in range(1, nmbBins + 1):
-        x = xAxis.GetBinCenter(xBin)
-        y = yAxis.GetBinCenter(yBin)
-        z = zAxis.GetBinCenter(zBin)
-        fcnHist.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
-  print(f"Drawing histogram '{histName}' for function '{fcn.GetName()}': minimum value = {fcnHist.GetMinimum()}, maximum value = {fcnHist.GetMaximum()}")
-  fcnHist.SetMinimum(0)
-  if maxVal:
-    fcnHist.SetMaximum(maxVal)
-  fcnHist.GetXaxis().SetTitleOffset(1.5)
-  fcnHist.GetYaxis().SetTitleOffset(2)
-  fcnHist.GetZaxis().SetTitleOffset(1.5)
-  fcnHist.Draw("BOX2")
-  canv.SaveAs(f"{fcnHist.GetName()}.pdf")
-
-
-def drawEfficiencyTF3(
-  fcn:       ROOT.TF3,
-  histName:  str,
-  nmbPoints: int = 100,
-  nmbBins:   int = 25,
-) -> None:
-  '''Draws given TF3 for efficiency function'''
-  # fcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
-  fcn.SetNpx(nmbPoints)  # used in numeric integration performed by GetRandom()
-  fcn.SetNpy(nmbPoints)
-  fcn.SetNpz(nmbPoints)
-  # draw efficiency function
-  drawIntensityTF3(fcn, histName, nmbBins, maxVal = 1.0)
+# default TH3 plotting options
+TH3_NMB_BINS = 25
+TH3_BINNINGS = (
+  RootPlottingUtilities.HistAxisBinning(TH3_NMB_BINS,   -1,   +1),
+  RootPlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
+  RootPlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
+)
+TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
+TH3_PLOT_KWARGS = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
 
 
 def plotComplexMatrix(
@@ -205,7 +172,7 @@ def calcAllMomentsFromWaves(
 ) -> List[Tuple[Tuple[int, int, int], complex]]:
   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
   result: List[Tuple[Tuple[int, int, int], complex]] = []
-  norm = 1
+  norm = 1.0
   for L in range(maxL + 1):
     for M in range(L + 1):
       # get all moments for given (L, M)
@@ -241,7 +208,7 @@ def genDataFromWaves(
   '''Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency'''
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawEfficiencyTF3(efficiencyFcn, histName = "hEfficiencyGen")
+  RootPlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -283,7 +250,7 @@ def genDataFromWaves(
   # draw intensity function
   #   intensityFcn.Draw("BOX2") does not work
   #   draw function "by hand" instead
-  drawIntensityTF3(intensityFcn, histName = "hIntensity")
+  RootPlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
@@ -313,7 +280,7 @@ def genAccepted2BodyPsPhotoProd(
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawEfficiencyTF3(efficiencyFcn, histName = "hEfficiencyReco")
+  RootPlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -619,7 +586,7 @@ if __name__ == "__main__":
   # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
   if efficiencyFormulaDetune:
     efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-    drawEfficiencyTF3(efficiencyFcnDetune, histName = "hEfficiencyDetune")
+    RootPlottingUtilities.drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
     efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
   else:
     efficiencyFormulaReco = efficiencyFormulaGen
