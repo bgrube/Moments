@@ -455,7 +455,7 @@ def calculatePhotoProdMoments(
               iMoment_2 += 1
         iMoment_1 += 1
   #TODO encapsulate moment values and covariances in object that takes care of the index mapping
-  return momentsPhys, momentsPhysCov, H_meas, V_meas_ReRe, V_meas_ImIm, V_meas_ReIm
+  return momentsPhys, momentsPhysCov, H_meas, V_meas_ReRe, V_meas_ImIm, V_meas_ReIm, H_phys, V_phys_ReRe, V_phys_ImIm, V_phys_ReIm
 
 
 def plotComparison(
@@ -671,14 +671,14 @@ if __name__ == "__main__":
   # calculate moments
   print("Moments of data generated according to PWA model")
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  physMoments, physMomentsCov, H_meas, V_meas_ReRe, V_meas_ImIm, V_meas_ReIm = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = MAX_L, integralMatrix = integralMatrix)
+  physMoments, physMomentsCov, H_meas, V_meas_ReRe, V_meas_ImIm, V_meas_ReIm, H_phys, V_phys_ReRe, V_phys_ImIm, V_phys_ReIm = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = MAX_L, integralMatrix = integralMatrix)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   printAndPlotMoments(physMoments, physMomentsCov, trueMoments)
   ROOT.gBenchmark.Start(f"!!! Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments = MomentCalculator.MomentCalculator(momentIndex, dataSet, integralMatrix)
   moments.calculate()
   assert moments.HMeas is not None, "moments.HMeas is None"
-  print(f"!!! values {np.array_equal(H_meas, moments.HMeas._valsFlatIndex)}")
+  print(f"!!! values  {np.array_equal(H_meas,      moments.HMeas._valsFlatIndex)}")
   print(f"!!! covReRe {np.array_equal(V_meas_ReRe, moments.HMeas._covReReFlatIndex)}")
   print(f"!!! covImIm {np.array_equal(V_meas_ImIm, moments.HMeas._covImImFlatIndex)}")
   print(f"!!! covReIm {np.array_equal(V_meas_ReIm, moments.HMeas._covReImFlatIndex)}")
@@ -694,6 +694,23 @@ if __name__ == "__main__":
       print(f"Delta sigmaRe H^meas_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffUncertRe}")
     if diffUncertIm != 0:
       print(f"Delta sigmaIm H^meas_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffUncertIm}")
+  print(moments.HMeas[-3:])
+  assert moments.HPhys is not None, "moments.HPhys is None"
+  print(f"!!! values  {np.array_equal(H_phys,      moments.HPhys._valsFlatIndex)}")
+  print(f"!!! covReRe {np.array_equal(V_phys_ReRe, moments.HPhys._covReReFlatIndex)}")
+  print(f"!!! covImIm {np.array_equal(V_phys_ImIm, moments.HPhys._covImImFlatIndex)}")
+  print(f"!!! covReIm {np.array_equal(V_phys_ReIm, moments.HPhys._covReImFlatIndex)}")
+  for physMoment in physMoments:
+    qnIndex = MomentCalculator.QnIndex(physMoment[0][0], physMoment[0][1], physMoment[0][2])
+    diffVal      = physMoment[1] - moments.HPhys[qnIndex].val
+    diffUncertRe = np.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][0]) - moments.HPhys[qnIndex].uncertRe
+    diffUncertIm = np.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][1]) - moments.HPhys[qnIndex].uncertIm
+    if diffVal != 0:
+      print(f"Delta H^phys_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffVal}")
+    if diffUncertRe != 0:
+      print(f"Delta sigmaRe H^phys_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffUncertRe}")
+    if diffUncertIm != 0:
+      print(f"Delta sigmaIm H^phys_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffUncertIm}")
   ROOT.gBenchmark.Stop(f"!!! Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   ROOT.gBenchmark.Stop("Total execution time")

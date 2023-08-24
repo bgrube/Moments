@@ -5,7 +5,7 @@ import bidict as bd
 from dataclasses import dataclass, field
 import numpy as np
 import nptyping as npt
-from typing import Generator, Optional, Tuple, Union
+from typing import Generator, List, Optional, Tuple, Union
 
 import ROOT
 
@@ -192,19 +192,27 @@ class MomentResult:
   def __getitem__(
     self,
     subscript: Union[int, QnIndex, slice],
-  ) -> MomentValue:
+  ) -> Union[MomentValue, List[MomentValue]]:
     '''Returns moment value and corresponding uncertainties at the given flat or quantum-number index'''
     # turn quantum-number index to flat index
     flatIndex: Union[int, slice] = self.index.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnIndex) else subscript
     if isinstance(flatIndex, slice):
-      assert False, "Not implemented yet."
+      return [
+        MomentValue(
+          qn       = self.index[i],
+          val      = self._valsFlatIndex[i],
+          uncertRe = np.sqrt(self._covReReFlatIndex[i, i]),
+          uncertIm = np.sqrt(self._covImImFlatIndex[i, i]),
+          label    = self.label,
+        ) for i in range(*flatIndex.indices(len(self.index)))
+      ]
     elif isinstance(flatIndex, int):
       return MomentValue(
-        self.index[flatIndex],
-        self._valsFlatIndex[flatIndex],
-        np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
-        np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
-        self.label,
+        qn       = self.index[flatIndex],
+        val      = self._valsFlatIndex[flatIndex],
+        uncertRe = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
+        uncertIm = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
+        label    = self.label,
       )
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
@@ -212,6 +220,17 @@ class MomentResult:
   def __str__(self) -> str:
     result = (str(self[flatIndex]) for flatIndex in self.index.flatIndices())
     return "\n".join(result)
+
+  def copyFrom(
+    self,
+    other: "MomentResult",  # instance to copy data from  #TODO use from __future__ import annotations
+  ) -> None:
+    '''Copies all values from given MomentResult instance but leaves `label` untouched'''
+    self.index             = other.index
+    self._valsFlatIndex    = other._valsFlatIndex
+    self._covReReFlatIndex = other._covReReFlatIndex
+    self._covImImFlatIndex = other._covImImFlatIndex
+    self._covReImFlatIndex = other._covReImFlatIndex
 
 
 @dataclass
@@ -261,62 +280,40 @@ class MomentCalculator:
     print(self.HMeas)
     self.HPhys = MomentResult(self.index, "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
-    # if self.integralMatrix is None:
-    #   # ideal detector
-    #   self.HPhys = self.HMeas
-    #   V_phys_aug = V_meas_aug
-    # else:
-    #   # get acceptance integral matrix
-    #   assert self.integralMatrix._IFlatIndex is not None, "Integral matrix is None."
-    #   print(f"Acceptance integral matrix = \n{self.integralMatrix}")
-    #   I_acc: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] = self.integralMatrix._IFlatIndex
-    #   eigenVals, eigenVecs = np.linalg.eig(I_acc)
-    #   print(f"I_acc eigenvalues = {eigenVals}")
-    #   # print(f"I_acc eigenvectors = {eigenVecs}")
-    #   # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
-    #   # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
-    #   #TODO move to utilities module
-    #   # plotComplexMatrix(I_acc, fileNamePrefix = "I_acc")
-    #   I_inv = np.linalg.inv(I_acc)
-    #   # eigenVals, eigenVecs = np.linalg.eig(I_inv)
-    #   # print(f"I^-1 eigenvalues = {eigenVals}")
-    #   # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    #   # plotComplexMatrix(I_inv, fileNamePrefix = "I_inv")
-    #   # calculate physical moments, i.e. correct for detection efficiency
-    #   H_phys = I_inv @ self.HMeas.values  # Eq. (83)
-    #   # perform linear uncertainty propagation
-    #   J = I_inv  # Jacobian of efficiency correction; Eq. (101)
-    #   J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
-    #   J_aug = np.block([
-    #     [J,                    J_conj],
-    #     [np.conjugate(J_conj), np.conjugate(J)],
-    #   ])  # augmented Jacobian; Eq. (98)
-    #   V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
-    # # normalize such that H_0(0, 0) = 1
-    # norm = H_phys[0]
-    # H_phys /= norm
-    # V_phys_aug /= norm**2
-    # V_phys_ReRe, V_phys_ImIm, V_phys_ReIm = MomentCalculator._calcReImCovMatrices(V_phys_aug)
-    # # # reformat output
-    # # momentsPhys:    List[Tuple[Tuple[int, int, int], complex]] = []
-    # # momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]]   = {}  # cov[(i, L, M, j, L', M')] = (cov[ReRe], cov[ImIm], cov[ReIm])
-    # # iMoment_1 = 0
-    # # for momentIndex_1 in range(3):
-    # #   for L_1 in range(maxL + 1):
-    # #     for M_1 in range(L_1 + 1):
-    # #       if momentIndex_1 == 2 and M_1 == 0:
-    # #         continue  # H_2(L, 0) are always zero
-    # #       momentsPhys.append(((momentIndex_1, L_1, M_1), H_phys[iMoment_1]))
-    # #       iMoment_2 = 0
-    # #       for momentIndex_2 in range(3):
-    # #         for L_2 in range(maxL + 1):
-    # #           for M_2 in range(L_2 + 1):
-    # #             if momentIndex_2 == 2 and M_2 == 0:
-    # #               continue  # H_2(L, 0) are always zero
-    # #             momentsPhysCov[(momentIndex_2, L_2, M_2, momentIndex_1, L_1, M_1)] = (
-    # #               (V_phys_ReRe[iMoment_2, iMoment_1],
-    # #                V_phys_ImIm[iMoment_2, iMoment_1],
-    # #                V_phys_ReIm[iMoment_2, iMoment_1]))
-    # #             iMoment_2 += 1
-    # #       iMoment_1 += 1
-    # # return momentsPhys, momentsPhysCov
+    if self.integralMatrix is None:
+      # ideal detector: physical moments are identical to measured moments
+      self.HPhys._valsFlatIndex = self.HMeas._valsFlatIndex
+      V_phys_aug = V_meas_aug
+    else:
+      # get acceptance integral matrix
+      assert self.integralMatrix._IFlatIndex is not None, "Integral matrix is None."
+      #TODO move to user code
+      print(f"Acceptance integral matrix = \n{self.integralMatrix}")
+      I_acc: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] = self.integralMatrix._IFlatIndex
+      eigenVals, eigenVecs = np.linalg.eig(I_acc)
+      print(f"I_acc eigenvalues = {eigenVals}")
+      # print(f"I_acc eigenvectors = {eigenVecs}")
+      # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
+      # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
+      #TODO move to utilities module
+      # plotComplexMatrix(I_acc, fileNamePrefix = "I_acc")
+      I_inv = np.linalg.inv(I_acc)
+      # eigenVals, eigenVecs = np.linalg.eig(I_inv)
+      # print(f"I^-1 eigenvalues = {eigenVals}")
+      # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
+      # plotComplexMatrix(I_inv, fileNamePrefix = "I_inv")
+      # calculate physical moments, i.e. correct for detection efficiency
+      self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
+      # perform linear uncertainty propagation
+      J = I_inv  # Jacobian of efficiency correction; Eq. (101)
+      J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
+      J_aug = np.block([
+        [J,                    J_conj],
+        [np.conjugate(J_conj), np.conjugate(J)],
+      ])  # augmented Jacobian; Eq. (98)
+      V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
+    # normalize moments such that H_0(0, 0) = 1
+    norm = self.HPhys[0].val
+    self.HPhys._valsFlatIndex /= norm
+    V_phys_aug /= norm**2
+    self.HPhys._covReReFlatIndex, self.HPhys._covImImFlatIndex, self.HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
