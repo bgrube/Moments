@@ -4,11 +4,10 @@
 
 import ctypes
 import functools
-import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
 from scipy import stats
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
 import py3nj
 
@@ -86,25 +85,10 @@ TH3_BINNINGS = (
   PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
 )
 TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
-TH3_PLOT_KWARGS = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
-
-
-def plotComplexMatrix(
-  matrix:         npt.NDArray[npt.Shape["*, *"], npt.Complex128],
-  fileNamePrefix: str,
-) -> None:
-  plt.figure().colorbar(plt.matshow(np.real(matrix)))
-  plt.savefig(f"{fileNamePrefix}_real.pdf", transparent = True)
-  plt.close()
-  plt.figure().colorbar(plt.matshow(np.imag(matrix)))
-  plt.savefig(f"{fileNamePrefix}_imag.pdf", transparent = True)
-  plt.close()
-  plt.figure().colorbar(plt.matshow(np.absolute(matrix)))
-  plt.savefig(f"{fileNamePrefix}_abs.pdf", transparent = True)
-  plt.close()
-  plt.figure().colorbar(plt.matshow(np.angle(matrix)))
-  plt.savefig(f"{fileNamePrefix}_arg.pdf", transparent = True)
-  plt.close()
+class Th3PlotKwargsType(TypedDict):
+  binnings:  Tuple[PlottingUtilities.HistAxisBinning, PlottingUtilities.HistAxisBinning, PlottingUtilities.HistAxisBinning]
+  histTitle: str
+TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
 
 
 def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
@@ -172,7 +156,7 @@ def calcAllMomentsFromWaves(
 ) -> List[Tuple[Tuple[int, int, int], complex]]:
   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
   result: List[Tuple[Tuple[int, int, int], complex]] = []
-  norm = 1.0
+  norm = 1.0 + 0j
   for L in range(maxL + 1):
     for M in range(L + 1):
       # get all moments for given (L, M)
@@ -373,12 +357,12 @@ def calculatePhotoProdMoments(
     # print(f"I_acc eigenvectors = {eigenVecs}")
     # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
     # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plotComplexMatrix(I_acc, fileNamePrefix = "I_acc")
+    PlottingUtilities.plotComplexMatrix(I_acc, pdfNamePrefix = "I_acc")
     I_inv = np.linalg.inv(I_acc)
     # eigenVals, eigenVecs = np.linalg.eig(I_inv)
     # print(f"I^-1 eigenvalues = {eigenVals}")
     # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plotComplexMatrix(I_inv, fileNamePrefix = "I_inv")
+    PlottingUtilities.plotComplexMatrix(I_inv, pdfNamePrefix = "I_inv")
     # calculate physical moments, i.e. correct for detection efficiency
     H_phys = I_inv @ H_meas  # Eq. (83)
     # perform linear uncertainty propagation

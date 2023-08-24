@@ -1,4 +1,7 @@
 from dataclasses import dataclass, astuple
+import matplotlib.pyplot as plt
+import numpy as np
+import nptyping as npt
 import os
 from typing import Optional, Tuple
 
@@ -13,6 +16,36 @@ class HistAxisBinning:
   nmbBins:   int
   minVal:    float
   maxVal:    float
+
+
+def plotComplexMatrix(
+  matrix:        npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
+  pdfNamePrefix: str,  # name prefix for output files
+) -> None:
+  '''Draws real and imaginary parts of given 2D array'''
+  dataToPlot = {
+    "real" : np.real(matrix),      # real part
+    "imag" : np.imag(matrix),      # imaginary part
+    "abs"  : np.absolute(matrix),  # absolute value
+    "arg"  : np.angle(matrix),     # phase
+  }
+  for plotLabel, data in dataToPlot.items():
+    plt.figure().colorbar(plt.matshow(data))
+    plt.savefig(f"{pdfNamePrefix}_{plotLabel}.pdf", transparent = True)
+    plt.close()
+  # plt.figure().colorbar(plt.matshow(np.real(matrix)))
+  # plt.savefig(f"{pdfNamePrefix}_real.pdf", transparent = True)
+  # plt.close()
+  # plt.figure().colorbar(plt.matshow(np.imag(matrix)))
+  # plt.savefig(f"{pdfNamePrefix}_imag.pdf", transparent = True)
+  # plt.close()
+  # plt.figure().colorbar(plt.matshow(np.absolute(matrix)))
+  # plt.savefig(f"{pdfNamePrefix}_abs.pdf", transparent = True)
+  # plt.close()
+  # plt.figure().colorbar(plt.matshow(np.angle(matrix)))
+  # plt.savefig(f"{pdfNamePrefix}_arg.pdf", transparent = True)
+  # plt.close()
+
 
 
 def drawTF3(
