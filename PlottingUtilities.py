@@ -114,8 +114,7 @@ def plotMoments(
     hData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", nmbMoments, 0, nmbMoments)
     for index, HDataVal in enumerate(HData):
       #TODO add member fcn
-      y    = HDataVal.val.real if momentPart == "Re" else HDataVal.val.imag
-      yErr = HDataVal.uncertRe if momentPart == "Re" else HDataVal.uncertIm
+      y, yErr = HDataVal.realOrImag(realPart = momentPart == "Re")
       binIndex = index + 1
       hData.SetBinContent(binIndex, y)
       hData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
@@ -154,19 +153,15 @@ def plotMoments(
 
     # (ii) plot residuals
     if HTrue:
-      if momentPart == "Re":
-        residualsIt = ((HDataVal.val.real - HTrue[index].val.real) / HDataVal.uncertRe if HDataVal.uncertRe > 0 else 0 for index, HDataVal in enumerate(HData))
-      else:
-        residualsIt = ((HDataVal.val.imag - HTrue[index].val.imag) / HDataVal.uncertIm if HDataVal.uncertIm > 0 else 0 for index, HDataVal in enumerate(HData))
-      residuals = np.fromiter(residualsIt, dtype = npt.Float64, count = len(HData))
+      residuals = np.empty(len(HData))
+      for index, HDataVal in enumerate(HData):
+        dataVal, dataValErr = HDataVal.realOrImag(realPart = momentPart == "Re")
+        trueVal, _          = HTrue[index].realOrImag(realPart = momentPart == "Re")
+        residuals[index] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
       # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition
-      print(f"!!! {residuals}")
       residualsMasked = residuals.view(np.ma.MaskedArray)
-      print(f"!!! {residualsMasked}")
       indexH000 = tuple(index for index, HDataVal in enumerate(HData) if HDataVal.qn == MomentCalculator.QnIndex(momentIndex = 0, L = 0, M = 0))
-      print(f"!!! {indexH000}")
       for i in indexH000:
-        print(f"!!! mask {i}")
         residualsMasked[i] = np.ma.masked
       chi2     = np.sum(residualsMasked**2)
       ndf      = residualsMasked.count()
