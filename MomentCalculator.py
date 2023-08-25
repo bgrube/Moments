@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import bidict as bd
 from dataclasses import dataclass, field
 import numpy as np
@@ -70,8 +72,8 @@ class DataSet:
 @dataclass
 class AcceptanceIntegralMatrix:
   '''Calculates and provides access to acceptance integral matrix'''
-  index:      MomentIndex  # index mapping and iterators
-  dataSet:    DataSet      # info on data samples
+  index:       MomentIndex  # index mapping and iterators
+  dataSet:     DataSet      # info on data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
 
   def __getitem__(
@@ -220,7 +222,7 @@ class MomentResult:
 
   def copyFrom(
     self,
-    other: "MomentResult",  # instance to copy data from  #TODO use from __future__ import annotations
+    other: MomentResult,  # instance from which data are copied
   ) -> None:
     '''Copies all values from given MomentResult instance but leaves `label` untouched'''
     self.index             = other.index
