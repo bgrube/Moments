@@ -109,7 +109,7 @@ def plotMoments(
     for index, HDataVal in enumerate(HData):
       #TODO add member fcn
       y    = HDataVal.val.real if momentPart == "Re" else HDataVal.val.imag
-      yErr = HDataVal.uncertRe if momentPart == "Im" else HDataVal.uncertIm
+      yErr = HDataVal.uncertRe if momentPart == "Re" else HDataVal.uncertIm
       hData.SetBinContent(index + 1, y)
       hData.SetBinError  (index + 1, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
       hData.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{HDataVal.qn.momentIndex}}}({HDataVal.qn.L}, {HDataVal.qn.M})")  # categorical x axis with moment labels
