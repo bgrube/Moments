@@ -4,7 +4,7 @@ import bidict as bd
 from dataclasses import dataclass, field
 import numpy as np
 import nptyping as npt
-from typing import Generator, List, Optional, Tuple, Union
+from typing import overload, Any, Generator, List, Optional, Tuple, Union
 
 import ROOT
 
@@ -75,6 +75,30 @@ class AcceptanceIntegralMatrix:
   index:       MomentIndex  # index mapping and iterators
   dataSet:     DataSet      # info on data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: Tuple[Union[int, QnIndex], Union[int, QnIndex]],
+  ) -> Optional[complex]: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: Tuple[slice, Union[int, QnIndex]],
+  ) -> Optional[npt.NDArray[npt.Shape["*"], npt.Complex128]]: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: Tuple[Union[int, QnIndex], slice],
+  ) -> Optional[npt.NDArray[npt.Shape["*"], npt.Complex128]]: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: Tuple[slice, slice],
+  ) -> Optional[npt.NDArray[npt.Shape["*, *"], npt.Complex128]]: ...
 
   def __getitem__(
     self,
@@ -187,6 +211,18 @@ class MomentResult:
     self._covReReFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
     self._covImImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
     self._covReImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: Union[int, QnIndex],
+  ) -> MomentValue: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: slice,
+  ) -> List[MomentValue]: ...
 
   def __getitem__(
     self,
