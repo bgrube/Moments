@@ -3,7 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
 import os
-from typing import Optional, Sequence, Tuple
+from typing import (
+  Optional,
+  Sequence,
+  Tuple,
+)
 
 import ROOT
 
@@ -185,12 +189,12 @@ def plotMomentsInBin(
   momentLabel:       str = "H",  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
-  assert not HTrue or HData.index == HTrue.index, f"Moment sets don't match. Data moments: {HData.index} vs. true moments: {HTrue.index}."
+  assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for momentIndex in range(3):
-    HDataVals = tuple(HData[qnIndex] for qnIndex in HData.index.QnIndices() if qnIndex.momentIndex == momentIndex)
+    HDataVals = tuple(HData[qnIndex] for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)
     if HTrue:
-      HTrueVals = tuple(HTrue[qnIndex] for qnIndex in HData.index.QnIndices() if qnIndex.momentIndex == momentIndex)
+      HTrueVals = tuple(HTrue[qnIndex] for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)
     else:
       HTrueVals = None
     plotMoments(HDataVals, HTrueVals, momentLabel = f"{momentLabel}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)

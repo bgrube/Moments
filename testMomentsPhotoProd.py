@@ -6,8 +6,14 @@ import ctypes
 import functools
 import numpy as np
 import nptyping as npt
-from scipy import stats
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import (
+  Any,
+  Dict,
+  List,
+  Optional,
+  Tuple,
+  TypedDict,
+)
 
 import py3nj
 
@@ -153,10 +159,11 @@ def calcMomentSetFromWaves(
 def calcAllMomentsFromWaves(
   prodAmps: Dict[int, Dict[Tuple[int, int], complex]],  # Dict[reflectivity, Dict[(L, M), value]]
   maxL:     int,  # maximum L quantum number of moments
-) -> List[Tuple[Tuple[int, int, int], complex]]:
+) -> MomentCalculator.MomentResult:
   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
-  result: List[Tuple[Tuple[int, int, int], complex]] = []
-  norm = 1.0 + 0j
+  momentIndices = MomentCalculator.MomentIndices(maxL)
+  momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
+  norm = 1.0
   for L in range(maxL + 1):
     for M in range(L + 1):
       # get all moments for given (L, M)
@@ -170,17 +177,16 @@ def calcAllMomentsFromWaves(
       moments[2] = 0 + moments[2].imag * 1j
       assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2].imag}"
       # normalize to H_0(0, 0)
-      norm = moments[0] if L == M == 0 else norm
-      result += [((momentIndex, L, M), moment / norm) for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3])]
-  index = 0
-  for L in range(maxL + 1):
-    for M in range(L + 1):
-      moments = []
-      for _ in range(2 if M == 0 else 3):
-        moments.append(result[index][1])
-        index += 1
-      print(f"[H_0({L} {M}), H_1({L} {M})" + ("]" if M == 0 else f", H_2({L} {M})]") + f" = {moments}")
-  return result
+      if L == M == 0:
+        assert moments[0].imag == 0, f"Expect H_0(0, 0) to be real-valued but got Im[H_0(0, 0)] = {moments[0].imag}."
+        norm = moments[0].real  # H_0(0, 0)
+      for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
+        qnIndex   = MomentCalculator.QnIndex(momentIndex, L, M)
+        flatIndex = momentIndices.indexMap.flatIndex_for[qnIndex]
+        momentsFlatIndex[flatIndex] = moment / norm
+  HTrue = MomentCalculator.MomentResult(momentIndices, label = "true")
+  HTrue._valsFlatIndex = momentsFlatIndex
+  return HTrue
 
 
 def genDataFromWaves(
@@ -443,7 +449,7 @@ if __name__ == "__main__":
 
   # input from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
-  trueMoments: List[Tuple[Tuple[int, int, int], complex]] = calcAllMomentsFromWaves(PROD_AMPS, maxL = MAX_L)
+  HTrue: MomentCalculator.MomentResult = calcAllMomentsFromWaves(PROD_AMPS, maxL = MAX_L)
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormulaGen)
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
@@ -466,11 +472,11 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
   # calculate integral matrix
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
-  momentIndex      = MomentCalculator.MomentIndex(maxL = 5, photoProd = True)
+  momentIndices    = MomentCalculator.MomentIndices(MAX_L)
   dataSet          = MomentCalculator.DataSet(polarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents)
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   # integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = MAX_L)
-  integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
+  integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
   # integralMatrix.calculate()
   integralMatrix.loadOrCalculate()
   integralMatrix.save()
@@ -492,21 +498,22 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   # printAndPlotMoments(physMoments, physMomentsCov, trueMoments)
   ROOT.gBenchmark.Start(f"!!! Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  moments = MomentCalculator.MomentCalculator(momentIndex, dataSet, integralMatrix)
+  moments = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
   moments.calculate()
   assert moments.HPhys is not None, "moments.HPhys is None"
   print(moments.HPhys)
-  PlottingUtilities.plotMomentsInBin(HData = moments.HPhys, HTrue = None, pdfFileNamePrefix = "hFoo_")
+  # HTrueZero = MomentCalculator.MomentResult(momentIndices, label = "true")
+  PlottingUtilities.plotMomentsInBin(HData = moments.HPhys, HTrue = HTrue, pdfFileNamePrefix = "hFoo_")
   assert moments.HMeas is not None, "moments.HMeas is None"
   print(f"!!! values  {np.array_equal(H_meas,      moments.HMeas._valsFlatIndex)}")
   print(f"!!! covReRe {np.array_equal(V_meas_ReRe, moments.HMeas._covReReFlatIndex)}")
   print(f"!!! covImIm {np.array_equal(V_meas_ImIm, moments.HMeas._covImImFlatIndex)}")
   print(f"!!! covReIm {np.array_equal(V_meas_ReIm, moments.HMeas._covReImFlatIndex)}")
-  for flatIndex in momentIndex.flatIndices():
+  for flatIndex in momentIndices.flatIndices():
     diffVal      = H_meas[flatIndex] - moments.HMeas[flatIndex].val
     diffUncertRe = np.sqrt(V_meas_ReRe[flatIndex, flatIndex]) - moments.HMeas[flatIndex].uncertRe
     diffUncertIm = np.sqrt(V_meas_ImIm[flatIndex, flatIndex]) - moments.HMeas[flatIndex].uncertIm
-    qnIndex = momentIndex.indexMap[flatIndex]
+    qnIndex = momentIndices.indexMap[flatIndex]
     assert qnIndex == moments.HMeas[flatIndex].qn, f"Quantum numbers differ: {qnIndex} vs. {moments.HMeas[flatIndex].qn}"
     if diffVal != 0:
       print(f"Delta H^meas_{qnIndex.momentIndex}(L = {qnIndex.L}, M = {qnIndex.M}) = {diffVal}")

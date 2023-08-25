@@ -6,7 +6,14 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import (
+  Any,
+  Collection,
+  Dict,
+  List,
+  Optional,
+  Tuple,
+)
 
 import py3nj
 from uncertainties import UFloat, ufloat
