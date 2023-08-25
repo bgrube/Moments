@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
 import os
+from scipy import stats
 from typing import (
   Optional,
   Sequence,
@@ -101,22 +102,24 @@ def plotMoments(
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
   '''Plots given moments extracted from data and overlays the corresponding true values if given'''
-  for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):
-    # (i) overlay moments from data and true values (if given)
+  nmbMoments = len(HData)
+  if HTrue:
+    assert len(HTrue) == nmbMoments, f"Number of true moments ({len(HTrue)}) does not match match number of moments from data ({nmbMoments})"
+
+  # (i) plot moments from data and overlay with true values (if given)
+  for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     hStack = ROOT.THStack(f"{pdfFileNamePrefix}Compare_{momentLabel}_{momentPart}", ";;Normalized Moment Value")
-    nmbMoments = len(HData)
-    if HTrue:
-      assert len(HTrue) == nmbMoments, f"Number of true moments ({len(HTrue)}) does not match match number of moments from data ({nmbMoments})"
-    #TODO check that HTrue has same QN indices; or use extended dataclass for plotting
+    #TODO use extended dataclass for plotting
     # create histogram with moments from data
     hData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", nmbMoments, 0, nmbMoments)
     for index, HDataVal in enumerate(HData):
       #TODO add member fcn
       y    = HDataVal.val.real if momentPart == "Re" else HDataVal.val.imag
       yErr = HDataVal.uncertRe if momentPart == "Re" else HDataVal.uncertIm
-      hData.SetBinContent(index + 1, y)
-      hData.SetBinError  (index + 1, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
-      hData.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}_{{{HDataVal.qn.momentIndex}}}({HDataVal.qn.L}, {HDataVal.qn.M})")  # categorical x axis with moment labels
+      binIndex = index + 1
+      hData.SetBinContent(binIndex, y)
+      hData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
+      hData.GetXaxis().SetBinLabel(binIndex, f"#it{{H}}_{{{HDataVal.qn.momentIndex}}}({HDataVal.qn.L}, {HDataVal.qn.M})")  # categorical x axis with moment labels
     hData.SetLineColor(ROOT.kRed)
     hData.SetMarkerColor(ROOT.kRed)
     hData.SetMarkerStyle(ROOT.kFullCircle)
@@ -127,8 +130,9 @@ def plotMoments(
       hTrue = ROOT.TH1D("True values", "", nmbMoments, 0, nmbMoments)
       for index, HTrueVal in enumerate(HTrue):  #TODO assumes that order is the same as in HData; better use extended data class
         y = HTrueVal.val.real if momentPart == "Re" else HTrueVal.val.imag
-        hTrue.SetBinContent(index + 1, y)
-        hTrue.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+        binIndex = index + 1
+        hTrue.SetBinContent(binIndex, y)
+        hTrue.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
       hTrue.SetMarkerColor(ROOT.kBlue)
       hTrue.SetLineColor(ROOT.kBlue)
       hTrue.SetLineWidth(2)
@@ -148,39 +152,55 @@ def plotMoments(
     canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     canv.SaveAs(f"{hStack.GetName()}.pdf")
 
-    # # (ii) plot residuals
-    # if HTrue:
-    #   residuals = tuple((measVal[0] - HTrue[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(HData))
-    #   hResidual = ROOT.TH1D(f"{pdfFileNamePrefix}Residuals_H{momentIndex if useMomentSubscript else ''}_{momentPart}",
-    #     f"Residuals #it{{H}}{labelSubscript} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbMoments, 0, nmbMoments)
-    #   chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
-    #   ndf  = len(residuals[1 if momentIndex == 0 else 0:])
-    #   for index, residual in enumerate(residuals):
-    #     hResidual.SetBinContent(index + 1, residual)
-    #     hResidual.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-    #     hResidual.GetXaxis().SetBinLabel(index + 1, hData.GetXaxis().GetBinLabel(index + 1))
-    #   hResidual.SetMarkerColor(ROOT.kBlue)
-    #   hResidual.SetLineColor(ROOT.kBlue)
-    #   hResidual.SetLineWidth(2)
-    #   hResidual.SetMinimum(-3)
-    #   hResidual.SetMaximum(+3)
-    #   canv = ROOT.TCanvas()
-    #   hResidual.Draw("PE")
-    #   # draw zero line
-    #   xAxis = hResidual.GetXaxis()
-    #   line = ROOT.TLine()
-    #   line.SetLineStyle(ROOT.kDashed)
-    #   line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-    #   # shade 1 sigma region
-    #   box = ROOT.TBox()
-    #   box.SetFillColorAlpha(ROOT.kBlack, 0.15)
-    #   box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
-    #   # draw chi^2 info
-    #   label = ROOT.TLatex()
-    #   label.SetNDC()
-    #   label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
-    #   label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
-    #   canv.SaveAs(f"{hResidual.GetName()}.pdf")
+    # (ii) plot residuals
+    if HTrue:
+      if momentPart == "Re":
+        residualsIt = ((HDataVal.val.real - HTrue[index].val.real) / HDataVal.uncertRe if HDataVal.uncertRe > 0 else 0 for index, HDataVal in enumerate(HData))
+      else:
+        residualsIt = ((HDataVal.val.imag - HTrue[index].val.imag) / HDataVal.uncertIm if HDataVal.uncertIm > 0 else 0 for index, HDataVal in enumerate(HData))
+      residuals = np.fromiter(residualsIt, dtype = npt.Float64, count = len(HData))
+      # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition
+      print(f"!!! {residuals}")
+      residualsMasked = residuals.view(np.ma.MaskedArray)
+      print(f"!!! {residualsMasked}")
+      indexH000 = tuple(index for index, HDataVal in enumerate(HData) if HDataVal.qn == MomentCalculator.QnIndex(momentIndex = 0, L = 0, M = 0))
+      print(f"!!! {indexH000}")
+      for i in indexH000:
+        print(f"!!! mask {i}")
+        residualsMasked[i] = np.ma.masked
+      chi2     = np.sum(residualsMasked**2)
+      ndf      = residualsMasked.count()
+      chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
+      # create histogram with residuals
+      hResidual = ROOT.TH1D(f"{pdfFileNamePrefix}Residuals_{momentLabel}_{momentPart}",
+        f"Residuals {legendEntrySuffix};;(Data - True) / #it{{#sigma}}_{{Data}}", nmbMoments, 0, nmbMoments)
+      for index, residual in enumerate(residuals):
+        binIndex = index + 1
+        hResidual.SetBinContent(binIndex, residual)
+        hResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+        hResidual.GetXaxis().SetBinLabel(binIndex, hData.GetXaxis().GetBinLabel(binIndex))
+      hResidual.SetMarkerColor(ROOT.kBlue)
+      hResidual.SetLineColor(ROOT.kBlue)
+      hResidual.SetLineWidth(2)
+      hResidual.SetMinimum(-3)
+      hResidual.SetMaximum(+3)
+      canv = ROOT.TCanvas()
+      hResidual.Draw("PE")
+      # draw zero line
+      xAxis = hResidual.GetXaxis()
+      line = ROOT.TLine()
+      line.SetLineStyle(ROOT.kDashed)
+      line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+      # shade 1 sigma region
+      box = ROOT.TBox()
+      box.SetFillColorAlpha(ROOT.kBlack, 0.15)
+      box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
+      # draw chi^2 info
+      label = ROOT.TLatex()
+      label.SetNDC()
+      label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
+      label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {chi2Prob * 100:.0f}%")
+      canv.SaveAs(f"{hResidual.GetName()}.pdf")
 
 
 def plotMomentsInBin(
