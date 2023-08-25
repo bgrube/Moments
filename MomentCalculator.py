@@ -203,6 +203,26 @@ class MomentValue:
                f"Im[{momentSymbol}] = {self.val.imag} +- {self.uncertIm}")
     return result
 
+  @property
+  def real(self) -> Tuple[float, float]:
+    '''Returns real part with uncertainty'''
+    return (self.val.real, self.uncertRe)
+
+  @property
+  def imag(self) -> Tuple[float, float]:
+    '''Returns imaginary part with uncertainty'''
+    return (self.val.imag, self.uncertIm)
+
+  def realOrImag(
+    self,
+    realPart: bool,  # switched between real part (True) and imaginary part (False)
+  ) -> Tuple[float, float]:
+    '''Returns real or imaginary part with corresponding uncertainty according to given flag'''
+    if realPart:
+      return self.real
+    else:
+      return self.imag
+
 
 @dataclass
 class MomentResult:
