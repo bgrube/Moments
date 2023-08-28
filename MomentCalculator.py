@@ -267,7 +267,7 @@ class MomentResult:
     self,
     subscript: Union[int, QnIndex, slice],
   ) -> Union[MomentValue, List[MomentValue]]:
-    '''Returns moment value and corresponding uncertainties at the given flat or quantum-number index'''
+    '''Returns moment value and corresponding uncertainties at the given flat or quantum-number index/indices'''
     # turn quantum-number index to flat index
     flatIndex: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnIndex) else subscript
     if isinstance(flatIndex, slice):
