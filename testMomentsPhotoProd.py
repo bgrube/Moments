@@ -2,14 +2,22 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
-import ctypes
+# always flush print() to reduce garbling of log files due to buffering
 import functools
-import math
-import matplotlib.pyplot as plt
+print = functools.partial(print, flush = True)
+
+
+import ctypes
 import numpy as np
 import nptyping as npt
-from scipy import stats
-from typing import Any, Dict, List, Optional, Tuple
+from typing import (
+  Any,
+  Dict,
+  List,
+  Optional,
+  Tuple,
+  TypedDict,
+)
 
 import py3nj
 
@@ -17,12 +25,10 @@ import ROOT
 
 import MomentCalculator
 import OpenMp
+import PlottingUtilities
 
 
-# always flush print() to reduce garbling of log files due to buffering
-print = functools.partial(print, flush = True)
-
-
+#TODO move to RootUtilities.py
 # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
 # also provides complexT typedef for std::complex<double>
 OpenMp.enableRootACLiCOpenMp()
@@ -43,6 +49,7 @@ namespace PyVars
 ''')
 
 
+#TODO make wave-set object
 # set of all possible waves up to ell = 2
 PROD_AMPS: Dict[int, Dict[Tuple[int, int,], complex]] = {
   # negative-reflectivity waves
@@ -78,69 +85,21 @@ PROD_AMPS: Dict[int, Dict[Tuple[int, int,], complex]] = {
 MAX_L = 5
 
 
-def drawIntensityTF3(
-  fcn:      ROOT.TF3,
-  histName: str,
-  nmbBins:  int = 25,
-  maxVal:   Optional[float] = None,
-) -> None:
-  '''Draws given TF3 for intensity distribution'''
-  canv = ROOT.TCanvas()
-  fcnHist = ROOT.TH3F(histName, ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
-  xAxis = fcnHist.GetXaxis()
-  yAxis = fcnHist.GetYaxis()
-  zAxis = fcnHist.GetZaxis()
-  for xBin in range(1, nmbBins + 1):
-    for yBin in range(1, nmbBins + 1):
-      for zBin in range(1, nmbBins + 1):
-        x = xAxis.GetBinCenter(xBin)
-        y = yAxis.GetBinCenter(yBin)
-        z = zAxis.GetBinCenter(zBin)
-        fcnHist.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
-  print(f"Drawing histogram '{histName}' for function '{fcn.GetName()}': minimum value = {fcnHist.GetMinimum()}, maximum value = {fcnHist.GetMaximum()}")
-  fcnHist.SetMinimum(0)
-  if maxVal:
-    fcnHist.SetMaximum(maxVal)
-  fcnHist.GetXaxis().SetTitleOffset(1.5)
-  fcnHist.GetYaxis().SetTitleOffset(2)
-  fcnHist.GetZaxis().SetTitleOffset(1.5)
-  fcnHist.Draw("BOX2")
-  canv.SaveAs(f"{fcnHist.GetName()}.pdf")
+# default TH3 plotting options
+TH3_NMB_BINS = 25
+TH3_BINNINGS = (
+  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS,   -1,   +1),
+  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
+  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
+)
+TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
+class Th3PlotKwargsType(TypedDict):
+  binnings:  Tuple[PlottingUtilities.HistAxisBinning, PlottingUtilities.HistAxisBinning, PlottingUtilities.HistAxisBinning]
+  histTitle: str
+TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
 
 
-def drawEfficiencyTF3(
-  fcn:       ROOT.TF3,
-  histName:  str,
-  nmbPoints: int = 100,
-  nmbBins:   int = 25,
-) -> None:
-  '''Draws given TF3 for efficiency function'''
-  # fcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
-  fcn.SetNpx(nmbPoints)  # used in numeric integration performed by GetRandom()
-  fcn.SetNpy(nmbPoints)
-  fcn.SetNpz(nmbPoints)
-  # draw efficiency function
-  drawIntensityTF3(fcn, histName, nmbBins, maxVal = 1.0)
-
-
-def plotComplexMatrix(
-  matrix:         npt.NDArray[npt.Shape["*, *"], npt.Complex128],
-  fileNamePrefix: str,
-) -> None:
-  plt.figure().colorbar(plt.matshow(np.real(matrix)))
-  plt.savefig(f"{fileNamePrefix}_real.pdf", transparent = True)
-  plt.close()
-  plt.figure().colorbar(plt.matshow(np.imag(matrix)))
-  plt.savefig(f"{fileNamePrefix}_imag.pdf", transparent = True)
-  plt.close()
-  plt.figure().colorbar(plt.matshow(np.absolute(matrix)))
-  plt.savefig(f"{fileNamePrefix}_abs.pdf", transparent = True)
-  plt.close()
-  plt.figure().colorbar(plt.matshow(np.angle(matrix)))
-  plt.savefig(f"{fileNamePrefix}_arg.pdf", transparent = True)
-  plt.close()
-
-
+#TODO move into wave-set object
 def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
   '''Gets maximum spin from set of production amplitudes'''
   maxSpin = 0
@@ -151,6 +110,7 @@ def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
   return maxSpin
 
 
+#TODO move into wave-set object
 def calcSpinDensElemSetFromWaves(
   refl:         int,      # reflectivity
   m1:           int,      # m
@@ -165,9 +125,10 @@ def calcSpinDensElemSetFromWaves(
   rhos[0] +=                    (           prodAmp1     * prodAmp2.conjugate() + (-1)**(m1 - m2) * prodAmp1NegM * prodAmp2NegM.conjugate())  # Eq. (150)
   rhos[1] +=            -refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() + (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (151)
   rhos[2] += -(0 + 1j) * refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() - (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (152)
-  return tuple(rhos)
+  return (rhos[0], rhos[1], rhos[2])
 
 
+#TODO move into wave-set object
 def calcMomentSetFromWaves(
   prodAmps: Dict[int, Dict[Tuple[int, int,], complex]],
   L:        int,
@@ -187,7 +148,7 @@ def calcMomentSetFromWaves(
         m2:           int     = wave2[1]
         prodAmp2:     complex = prodAmps[refl][wave2]
         prodAmp2NegM: complex = prodAmps[refl][(ell2, -m2)]
-        term = math.sqrt((2 * ell2 + 1) / (2 * ell1 + 1)) * (
+        term = np.sqrt((2 * ell2 + 1) / (2 * ell1 + 1)) * (
             py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 0,      0,     0,      ignore_invalid = True)  # (ell_2 0,    L 0 | ell_1 0  )
           * py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (ell_2 m_2,  L M | ell_1 m_1)
         )
@@ -197,16 +158,17 @@ def calcMomentSetFromWaves(
         moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
         moments[1] += -term * rhos[1]  # H_1; Eq. (125)
         moments[2] += -term * rhos[2]  # H_2; Eq. (125)
-  return tuple(moments)
+  return (moments[0], moments[1], moments[2])
 
 
 def calcAllMomentsFromWaves(
   prodAmps: Dict[int, Dict[Tuple[int, int], complex]],  # Dict[reflectivity, Dict[(L, M), value]]
   maxL:     int,  # maximum L quantum number of moments
-) -> List[Tuple[Tuple[int, int, int], complex]]:
+) -> MomentCalculator.MomentResult:
   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
-  result: List[Tuple[Tuple[int, int, int], complex]] = []
-  norm = 1
+  momentIndices = MomentCalculator.MomentIndices(maxL)
+  momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
+  norm = 1.0
   for L in range(maxL + 1):
     for M in range(L + 1):
       # get all moments for given (L, M)
@@ -220,17 +182,16 @@ def calcAllMomentsFromWaves(
       moments[2] = 0 + moments[2].imag * 1j
       assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2].imag}"
       # normalize to H_0(0, 0)
-      norm = moments[0] if L == M == 0 else norm
-      result += [((momentIndex, L, M), moment / norm) for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3])]
-  index = 0
-  for L in range(maxL + 1):
-    for M in range(L + 1):
-      moments = []
-      for _ in range(2 if M == 0 else 3):
-        moments.append(result[index][1])
-        index += 1
-      print(f"[H_0({L} {M}), H_1({L} {M})" + ("]" if M == 0 else f", H_2({L} {M})]") + f" = {moments}")
-  return result
+      if L == M == 0:
+        assert moments[0].imag == 0, f"Expect H_0(0, 0) to be real-valued but got Im[H_0(0, 0)] = {moments[0].imag}."
+        norm = moments[0].real  # H_0(0, 0)
+      for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
+        qnIndex   = MomentCalculator.QnIndex(momentIndex, L, M)
+        flatIndex = momentIndices.indexMap.flatIndex_for[qnIndex]
+        momentsFlatIndex[flatIndex] = moment / norm
+  HTrue = MomentCalculator.MomentResult(momentIndices, label = "true")
+  HTrue._valsFlatIndex = momentsFlatIndex
+  return HTrue
 
 
 def genDataFromWaves(
@@ -242,7 +203,7 @@ def genDataFromWaves(
   '''Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency'''
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawEfficiencyTF3(efficiencyFcn, histName = "hEfficiencyGen")
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -262,7 +223,7 @@ def genDataFromWaves(
         decayAmp2 = f"Ylm({ell2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
         rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
         terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (153)
-        intensityComponentTerms.append(terms)
+        intensityComponentTerms.append((terms[0], terms[1], terms[2]))
   # sum terms for each intensity component
   intensityComponentsFormula = []
   for iComponent in range(3):
@@ -280,15 +241,12 @@ def genDataFromWaves(
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-
-  # draw intensity function
-  #   intensityFcn.Draw("BOX2") does not work
-  #   draw function "by hand" instead
-  drawIntensityTF3(intensityFcn, histName = "hIntensity")
+  PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{intensityFcn.GetName()}.root"
+  fileName = f"{intensityFcn.GetName()}.photoProd.root"
+  #TODO switch that allows loading from file
   df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
@@ -313,11 +271,12 @@ def genAccepted2BodyPsPhotoProd(
   '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawEfficiencyTF3(efficiencyFcn, histName = "hEfficiencyReco")
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
-  fileName = f"{efficiencyFcn.GetName()}.root"
+  fileName = f"{efficiencyFcn.GetName()}.photoProd.root"
+  #TODO switch that allows loading from file
   df = ROOT.RDataFrame(nmbEvents)
   declareInCpp(efficiencyFcn = efficiencyFcn)
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
@@ -334,267 +293,12 @@ def genAccepted2BodyPsPhotoProd(
   return ROOT.RDataFrame(treeName, fileName)
 
 
-def calculatePhotoProdMoments(
-  inData:         ROOT.RDataFrame,  # input data with angular distribution
-  polarization:   float,            # photon-beam polarization
-  maxL:           int,              # maximum L quantum number of moments
-  integralMatrix: Optional[MomentCalculator.AcceptanceIntegralMatrix] = None,  # acceptance integral matrix
-) -> Tuple[List[Tuple[Tuple[int, int, int], complex]], Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]]]:  # moment values and covariances
-  '''Calculates photoproduction moments and their covariances'''
-  # get data as NumPy arrays
-  thetaValues = inData.AsNumpy(columns = ["theta"])["theta"]
-  phiValues   = inData.AsNumpy(columns = ["phi"]  )["phi"]
-  PhiValues   = inData.AsNumpy(columns = ["Phi"]  )["Phi"]
-  print(f"Input data column: {type(thetaValues)}; {thetaValues.shape}; {thetaValues.dtype}; {thetaValues.dtype.type}")
-  nmbEvents = len(thetaValues)
-  assert thetaValues.shape == (nmbEvents,) and thetaValues.shape == phiValues.shape == PhiValues.shape, (
-    f"Not all NumPy arrays with input data have shape ({nmbEvents},): thetaValues: {thetaValues.shape} vs. phiValues: {phiValues.shape} vs. phiValues: {PhiValues.shape}")
-  # get number of moments (the poor-man's way)
-  nmbMoments = 0
-  for momentIndex in range(3):
-    for L in range(maxL + 1):
-      for M in range(L + 1):
-        if momentIndex == 2 and M == 0:
-          continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-        nmbMoments += 1
-  # calculate basis-function values and values of measured moments
-  f_meas = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
-  H_meas = np.empty((nmbMoments, ),          dtype = npt.Complex128)
-  iMoment = 0
-  for momentIndex in range(3):
-    for L in range(maxL + 1):
-      for M in range(L + 1):
-        if momentIndex == 2 and M == 0:
-          continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-        fcnVals = np.asarray(ROOT.f_meas(momentIndex, L, M, thetaValues, phiValues, PhiValues, polarization))  # Eq. (176)  # type: ignore
-        f_meas[iMoment, :] = fcnVals
-        H_meas[iMoment] = 2 * math.pi * np.sum(fcnVals)  # Eq. (179)  # type: ignore[operator] # see https://stackoverflow.com/a/74634650
-        iMoment += 1
-  # calculate covariances; Eqs. (88), (180), and (181)
-  V_meas_aug = (2 * math.pi)**2 * nmbEvents * np.cov(f_meas, np.conjugate(f_meas))  # augmented covariance matrix
-  # calculate covariances of real and imaginary parts
-  V_meas_Hermit = V_meas_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
-  V_meas_pseudo = V_meas_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
-  V_meas_ReRe = (np.real(V_meas_Hermit) + np.real(V_meas_pseudo)) / 2  # Eq. (91)
-  V_meas_ImIm = (np.real(V_meas_Hermit) - np.real(V_meas_pseudo)) / 2  # Eq. (92)
-  # print measured moments
-  iMoment = 0
-  for momentIndex in range(3):
-    for L in range(maxL + 1):
-      for M in range(L + 1):
-        if momentIndex == 2 and M == 0:
-          continue  # H_2(L, 0) are always zero
-        print(f"Re[H^meas_{momentIndex}(L = {L}, M = {M})] = {H_meas[iMoment].real} +- {math.sqrt(V_meas_ReRe[iMoment, iMoment])}")  # diagonal element for ReRe
-        print(f"Im[H^meas_{momentIndex}(L = {L}, M = {M})] = {H_meas[iMoment].imag} +- {math.sqrt(V_meas_ImIm[iMoment, iMoment])}")  # diagonal element for ImIm
-        iMoment += 1
-  H_phys     = np.empty((nmbMoments, ),                   dtype = npt.Complex128)
-  V_phys_aug = np.empty((2 * nmbMoments, 2 * nmbMoments), dtype = npt.Complex128)
-  if integralMatrix is None:
-    # ideal detector
-    H_phys     = H_meas
-    V_phys_aug = V_meas_aug
-  else:
-    # get acceptance integral matrix
-    assert integralMatrix._IFlatIndex is not None, "Integral matrix is None"
-    I_acc: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] = integralMatrix._IFlatIndex
-    print(f"Acceptance integral matrix = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
-    eigenVals, eigenVecs = np.linalg.eig(I_acc)
-    print(f"I_acc eigenvalues = {eigenVals}")
-    # print(f"I_acc eigenvectors = {eigenVecs}")
-    # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
-    # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plotComplexMatrix(I_acc, fileNamePrefix = "I_acc")
-    I_inv = np.linalg.inv(I_acc)
-    # eigenVals, eigenVecs = np.linalg.eig(I_inv)
-    # print(f"I^-1 eigenvalues = {eigenVals}")
-    # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plotComplexMatrix(I_inv, fileNamePrefix = "I_inv")
-    # calculate physical moments, i.e. correct for detection efficiency
-    H_phys = I_inv @ H_meas  # Eq. (83)
-    # perform linear uncertainty propagation
-    J = I_inv  # Jacobian of efficiency correction; Eq. (101)
-    J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
-    J_aug = np.block([
-      [J,                    J_conj],
-      [np.conjugate(J_conj), np.conjugate(J)],
-    ])  # augmented Jacobian; Eq. (98)
-    V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
-  # normalize such that H_0(0, 0) = 1
-  norm = H_phys[0]
-  H_phys /= norm
-  V_phys_aug /= norm**2
-  # calculate covariances of real and imaginary parts
-  V_phys_Hermit = V_phys_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
-  V_phys_pseudo = V_phys_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
-  V_phys_ReRe = (np.real(V_phys_Hermit) + np.real(V_phys_pseudo)) / 2  # Eq. (91)
-  V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2  # Eq. (92)
-  V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2  # Eq. (93)
-  # reformat output
-  momentsPhys:    List[Tuple[Tuple[int, int, int], complex]] = []
-  momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]]   = {}  # cov[(i, L, M, j, L', M')] = (cov[ReRe], cov[ImIm], cov[ReIm])
-  iMoment_1 = 0
-  for momentIndex_1 in range(3):
-    for L_1 in range(maxL + 1):
-      for M_1 in range(L_1 + 1):
-        if momentIndex_1 == 2 and M_1 == 0:
-          continue  # H_2(L, 0) are always zero
-        momentsPhys.append(((momentIndex_1, L_1, M_1), H_phys[iMoment_1]))
-        iMoment_2 = 0
-        for momentIndex_2 in range(3):
-          for L_2 in range(maxL + 1):
-            for M_2 in range(L_2 + 1):
-              if momentIndex_2 == 2 and M_2 == 0:
-                continue  # H_2(L, 0) are always zero
-              momentsPhysCov[(momentIndex_2, L_2, M_2, momentIndex_1, L_1, M_1)] = (
-                (V_phys_ReRe[iMoment_2, iMoment_1],
-                 V_phys_ImIm[iMoment_2, iMoment_1],
-                 V_phys_ReIm[iMoment_2, iMoment_1]))
-              iMoment_2 += 1
-        iMoment_1 += 1
-  #TODO encapsulate moment values and covariances in object that takes care of the index mapping
-  return momentsPhys, momentsPhysCov
-
-
-def plotComparison(
-  measVals:           Tuple[Tuple[float, float, Tuple[int, int, int]], ...],  # Tuple[Tuple[value, uncertainty, indices], ...]
-  trueVals:           Tuple[float, ...],
-  realPart:           bool,
-  useMomentSubscript: bool,
-  dataLabel:          str = "",
-) -> None:
-  momentIndex = measVals[0][2][0]
-  if realPart:
-    fileNameSuffix    = "Re"
-    legendEntrySuffix = "Real Part"
-  else:
-    fileNameSuffix    = "Im"
-    legendEntrySuffix = "Imag Part"
-
-  # overlay measured and input values
-  hStack = ROOT.THStack(f"h{dataLabel}_Compare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")
-  nmbBins = len(measVals)
-  # create histogram with measured values
-  labelSubscript = f"_{{{momentIndex}}}" if useMomentSubscript else ""
-  hMeas = ROOT.TH1D(f"Measured #it{{H}}{labelSubscript} {legendEntrySuffix}", ";;Value", nmbBins, 0, nmbBins)
-  for index, measVal in enumerate(measVals):
-    hMeas.SetBinContent(index + 1, measVal[0])
-    hMeas.SetBinError  (index + 1, 1e-100 if measVal[1] < 1e-100 else measVal[1])  # ensure that also points with zero uncertainty are drawn
-    hMeas.GetXaxis().SetBinLabel(index + 1, f"#it{{H}}{labelSubscript}({measVal[2][1]}, {measVal[2][2]})")
-  hMeas.SetLineColor(ROOT.kRed)
-  hMeas.SetMarkerColor(ROOT.kRed)
-  hMeas.SetMarkerStyle(ROOT.kFullCircle)
-  hMeas.SetMarkerSize(0.75)
-  hStack.Add(hMeas, "PEX0")
-  # create histogram with input values
-  hInput = ROOT.TH1D("Input Values", ";;Value", nmbBins, 0, nmbBins)
-  for index, trueVal in enumerate(trueVals):
-    hInput.SetBinContent(index + 1, trueVal)
-    hInput.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-  hInput.SetMarkerColor(ROOT.kBlue)
-  hInput.SetLineColor(ROOT.kBlue)
-  hInput.SetLineWidth(2)
-  hStack.Add(hInput, "PE")
-  canv = ROOT.TCanvas()
-  hStack.Draw("NOSTACK")
-  # adjust y-range
-  ROOT.gPad.Update()
-  actualYRange = ROOT.gPad.GetUymax() - ROOT.gPad.GetUymin()
-  yRangeFraction = 0.1 * actualYRange
-  hStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)
-  hStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)
-  # adjust style of automatic zero line
-  hStack.GetHistogram().SetLineColor(ROOT.kBlack)
-  hStack.GetHistogram().SetLineStyle(ROOT.kDashed)
-  # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
-  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-  canv.SaveAs(f"{hStack.GetName()}.pdf")
-
-  # plot residuals
-  residuals = tuple((measVal[0] - trueVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
-  hResidual = ROOT.TH1D(f"h{dataLabel}_Residuals_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",
-    f"Residuals #it{{H}}{labelSubscript} {legendEntrySuffix};;(measured - input) / #sigma_{{measured}}", nmbBins, 0, nmbBins)
-  chi2 = sum(tuple(residual**2 for residual in residuals[1 if momentIndex == 0 else 0:]))  # exclude Re and Im of H_0(0, 0) from chi^2
-  ndf  = len(residuals[1 if momentIndex == 0 else 0:])
-  for index, residual in enumerate(residuals):
-    hResidual.SetBinContent(index + 1, residual)
-    hResidual.SetBinError  (index + 1, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-    hResidual.GetXaxis().SetBinLabel(index + 1, hMeas.GetXaxis().GetBinLabel(index + 1))
-  hResidual.SetMarkerColor(ROOT.kBlue)
-  hResidual.SetLineColor(ROOT.kBlue)
-  hResidual.SetLineWidth(2)
-  hResidual.SetMinimum(-3)
-  hResidual.SetMaximum(+3)
-  canv = ROOT.TCanvas()
-  hResidual.Draw("PE")
-  # draw zero line
-  xAxis = hResidual.GetXaxis()
-  line = ROOT.TLine()
-  line.SetLineStyle(ROOT.kDashed)
-  line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-  # shade 1 sigma region
-  box = ROOT.TBox()
-  box.SetFillColorAlpha(ROOT.kBlack, 0.15)
-  box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
-  # draw chi^2 info
-  label = ROOT.TLatex()
-  label.SetNDC()
-  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
-  label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
-  canv.SaveAs(f"{hResidual.GetName()}.pdf")
-
-
-def printAndPlotMoments(
-  physMoments:    List[Tuple[Tuple[int, int, int], complex]],  # List[Tuple[indices, value]]
-  physMomentsCov: Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]],  # Dict[Tuple[(indicesA, indicesB), (cov[ReRe], cov[ImIm], cov[ReIm])]]
-  trueMoments:    Optional[List[Tuple[Tuple[int, int, int], complex]]],  # List[Tuple[indices, value]]; if None true values are 1 for H_0(0, 0) and 0 for all other moments
-  dataLabel:      str = "",
-) -> None:
-  # print moments
-  for physMoment in physMoments:
-    print(f"Re[H^phys_{physMoment[0][0]}(L = {physMoment[0][1]}, M = {physMoment[0][2]})] = {physMoment[1].real} +- {math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][0])}")  # diagonal element for ReRe
-    print(f"Im[H^phys_{physMoment[0][0]}(L = {physMoment[0][1]}, M = {physMoment[0][2]})] = {physMoment[1].imag} +- {math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][1])}")  # diagonal element for ImIm
-  # compare with true values
-  for momentIndex in range(3):
-    # Re[H_i]
-    measVals = tuple((physMoment[1].real, math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][0]), physMoment[0]) for physMoment in physMoments if physMoment[0][0] == momentIndex)
-    if trueMoments:
-      trueVals = tuple(trueMoment[1].real for trueMoment in trueMoments if trueMoment[0][0] == momentIndex)
-    else:
-      trueVals = tuple(1 if physMoment[0] == (0, 0, 0) else 0 for physMoment in physMoments if physMoment[0][0] == momentIndex)
-    plotComparison(measVals, trueVals, realPart = True, useMomentSubscript = True, dataLabel = dataLabel)
-    # Im[H_i]
-    measVals = tuple((physMoment[1].imag, math.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][1]), physMoment[0]) for physMoment in physMoments if physMoment[0][0] == momentIndex)
-    if trueMoments:
-      trueVals = tuple(trueMoment[1].imag for trueMoment in trueMoments if trueMoment[0][0] == momentIndex)
-    else:
-      trueVals = tuple(0 for physMoment in physMoments if physMoment[0][0] == momentIndex)
-    plotComparison(measVals, trueVals, realPart = False, useMomentSubscript = True, dataLabel = dataLabel)
-
-
-def setupPlotStyle() -> None:
-  #TODO remove dependency from external file or add file to repo
-  ROOT.gROOT.LoadMacro("~/rootlogon.C")
-  ROOT.gROOT.ForceStyle()
-  ROOT.gStyle.SetCanvasDefW(600)
-  ROOT.gStyle.SetCanvasDefH(600)
-  ROOT.gStyle.SetPalette(ROOT.kBird)
-  # ROOT.gStyle.SetPalette(ROOT.kViridis)
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
-  ROOT.gStyle.SetLegendBorderSize(1)
-  # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
-  # ROOT.gStyle.SetOptStat("i")  # show only integral
-  ROOT.gStyle.SetOptStat("")
-  ROOT.gStyle.SetStatFormat("8.8g")
-  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
-  ROOT.gStyle.SetTitleOffset(1.35, "Y")
-
-
 if __name__ == "__main__":
   OpenMp.setNmbOpenMpThreads(5)
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)
-  setupPlotStyle()
+  PlottingUtilities.setupPlotStyle()
   ROOT.gBenchmark.Start("Total execution time")
 
   # get data
@@ -606,7 +310,7 @@ if __name__ == "__main__":
   # efficiencyFormulaGen = "1"  # acc_perfect
   # efficiencyFormulaGen = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
   # efficiencyFormulaGen = "(0.75 + 0.25 * x) * (0.75 + 0.25 * (y / 180)) * (0.75 + 0.25 * (z / 180))"  # acc_2; odd in all variables
-  #TODO fix '-' in y
+  #TODO fix '-' in y term
   efficiencyFormulaGen = "(0.6 + 0.4 * x) * (0.6 - 0.4 * (y / 180)) * (0.6 + 0.4 * (z / 180))"  # acc_3; odd in all variables
   # detune efficiency used to correct acceptance w.r.t. the one used to generate the data
   efficiencyFormulaDetune = ""
@@ -616,14 +320,22 @@ if __name__ == "__main__":
   # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
   if efficiencyFormulaDetune:
     efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-    drawEfficiencyTF3(efficiencyFcnDetune, histName = "hEfficiencyDetune")
+    PlottingUtilities.drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
     efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
   else:
     efficiencyFormulaReco = efficiencyFormulaGen
 
   # input from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
-  trueMoments: List[Tuple[Tuple[int, int, int], complex]] = calcAllMomentsFromWaves(PROD_AMPS, maxL = MAX_L)
+  HTrue: MomentCalculator.MomentResult = calcAllMomentsFromWaves(PROD_AMPS, maxL = MAX_L)
+  print("True moment values:")
+  for L in range(MAX_L + 1):
+    for M in range(L + 1):
+      moments = []
+      for momentIndex in range(2 if M == 0 else 3):
+        qnIndex = MomentCalculator.QnIndex(momentIndex, L, M)
+        moments.append(HTrue[qnIndex].val)
+      print(f"(H_0({L} {M}), H_1({L} {M})" + ("" if M == 0 else f", H_2({L} {M}))") + f" = {tuple(moments)}")
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormulaGen)
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
@@ -646,34 +358,53 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
   # calculate integral matrix
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
-  momentIndex      = MomentCalculator.MomentIndex(maxL = 5, photoProd = True)
+  momentIndices    = MomentCalculator.MomentIndices(MAX_L)
   dataSet          = MomentCalculator.DataSet(polarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents)
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  # integralMatrix = calcIntegralMatrix(dataAcceptedPs, nmbGenEvents = nmbMcEvents, polarization = polarization, maxL = MAX_L)
-  integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndex, dataSet)
-  integralMatrix.calculateMatrix()
-  integralMatrix.saveMatrix()
-  # integralMatrix.loadOrCalculateMatrix()
+  integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
+  integralMatrix.calculate()
+  # integralMatrix.loadOrCalculate()
+  integralMatrix.save()
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate and print moments of accepted phase-space data
-  print("Moments of accepted phase-space data")
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  # physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = getMaxSpin(PROD_AMPS), integralMatrix = integralMatrix)
-  # calculate moments of acceptance function
-  physMomentsPs, physMomentsPsCov = calculatePhotoProdMoments(dataAcceptedPs, polarization = polarization, maxL = MAX_L, integralMatrix = None)
+  # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
+  #   MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix)
+  # moments of acceptance function
+  momentsPs = MomentCalculator.MomentCalculator(momentIndices,
+    MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix = None)
+  momentsPs.calculate()
+  assert momentsPs.HPhys is not None, "momentsPs.HPhys is None"
+  print("Measured moments of accepted phase-space data")
+  momentsPs.HMeas.print()
+  print("Integral matrix")
+  print(f"Acceptance integral matrix = \n{integralMatrix}")
+  eigenVals, eigenVecs = np.linalg.eig(integralMatrix._IFlatIndex)
+  print(f"I_acc eigenvalues = {eigenVals}")
+  print(f"Physical moments of accepted phase-space data\n{momentsPs.HPhys}")
+  HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")    # set all true moment values to 0
+  HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # set true H_0(0, 0) to 1
+  PlottingUtilities.plotMomentsInBin(HData = momentsPs.HPhys, HTrue = HTruePs, pdfFileNamePrefix = "hPs_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  printAndPlotMoments(physMomentsPs, physMomentsPsCov, trueMoments = None, dataLabel = "Ps")
 
   # calculate moments
-  print("Moments of data generated according to PWA model")
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  physMoments, physMomentsCov = calculatePhotoProdMoments(dataPwaModel, polarization = polarization, maxL = MAX_L, integralMatrix = integralMatrix)
+  moments = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
+  moments.calculate()
+  print("Measured moments of data generated according to PWA model")
+  moments.HMeas.print()
+  print("Integral matrix")
+  print(f"Acceptance integral matrix = \n{integralMatrix}")
+  eigenVals, eigenVecs = np.linalg.eig(integralMatrix._IFlatIndex)
+  print(f"I_acc eigenvalues = {eigenVals}")
+  print(f"Physical moments of data generated according to PWA model\n{moments.HPhys}")
+  assert moments.HPhys is not None, "moments.HPhys is None"
+  PlottingUtilities.plotMomentsInBin(HData = moments.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  printAndPlotMoments(physMoments, physMomentsCov, trueMoments)
 
   ROOT.gBenchmark.Stop("Total execution time")
-  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh # type: ignore
+  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh
   ROOT.gBenchmark.Summary(_, _)
   print("!Note! the 'TOTAL' time above is wrong; ignore")
 
