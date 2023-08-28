@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import bidict as bd
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 import numpy as np
 import nptyping as npt
 from typing import (
@@ -196,6 +196,10 @@ class MomentValue:
   uncertIm: float     # uncertainty of imaginary part
   label:    str = ""  # label used for printing
 
+  def __iter__(self):
+    '''Returns iterator over shallow copy of fields'''
+    return iter(tuple(getattr(self, field.name) for field in fields(self)))
+
   def __str__(self) -> str:
     result = ""
     momentSymbol = f"H{'^' + self.label if self.label else ''}_{self.qn.momentIndex}(L = {self.qn.L}, M = {self.qn.M})"
@@ -222,6 +226,12 @@ class MomentValue:
       return self.real
     else:
       return self.imag
+
+
+@dataclass
+class MomentValueAndTruth(MomentValue):
+  '''Stores and provides access to single moment value and provides truth value'''
+  truth: Optional[complex] = None  # true moment value
 
 
 @dataclass
@@ -340,7 +350,7 @@ class MomentCalculator:
       self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
     # calculate covariances; Eqs. (88), (180), and (181)
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
-    self.HMeas._covReReFlatIndex, self.HMeas._covImImFlatIndex, self.HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
+    self.HMeas._covReReFlatIndex, self.HMeas._covImImFlatIndex, self.HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
     print(self.HMeas)
     self.HPhys = MomentResult(self.indices, label = "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
@@ -359,13 +369,14 @@ class MomentCalculator:
       # print(f"I_acc eigenvectors = {eigenVecs}")
       # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
       # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
-      #TODO move to utilities module
-      # plotComplexMatrix(I_acc, fileNamePrefix = "I_acc")
+      #TODO move to matrix class
+      import PlottingUtilities  # avoid circular dependency
+      PlottingUtilities.plotComplexMatrix(I_acc, pdfFileNamePrefix = "I_acc")
       I_inv = np.linalg.inv(I_acc)
       # eigenVals, eigenVecs = np.linalg.eig(I_inv)
       # print(f"I^-1 eigenvalues = {eigenVals}")
       # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
-      # plotComplexMatrix(I_inv, fileNamePrefix = "I_inv")
+      PlottingUtilities.plotComplexMatrix(I_inv, pdfFileNamePrefix = "I_inv")
       # calculate physical moments, i.e. correct for detection efficiency
       self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # perform linear uncertainty propagation
