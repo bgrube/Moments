@@ -295,6 +295,13 @@ class MomentResult:
     result = (str(self[flatIndex]) for flatIndex in self.indices.flatIndices())
     return "\n".join(result)
 
+  #TODO just for backwards compatibility; remove
+  def print(self) -> None:
+    for flatIndex in self.indices.flatIndices():
+      HVal = self[flatIndex]
+      momentSymbol = f"H{'^' + HVal.label if HVal.label else ''}_{HVal.qn.momentIndex}(L = {HVal.qn.L}, M = {HVal.qn.M})"
+      print(f"{momentSymbol} = {HVal.val}")
+
   def copyFrom(
     self,
     other: MomentResult,  # instance from which data are copied
@@ -351,21 +358,21 @@ class MomentCalculator:
     # calculate covariances; Eqs. (88), (180), and (181)
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
     self.HMeas._covReReFlatIndex, self.HMeas._covImImFlatIndex, self.HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
-    print(self.HMeas)
+    # print(self.HMeas)  #TODO move to user code
     self.HPhys = MomentResult(self.indices, label = "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
     if self.integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
-      self.HPhys._valsFlatIndex = self.HMeas._valsFlatIndex
-      V_phys_aug = V_meas_aug
+      np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
+      np.copyto(V_phys_aug, V_meas_aug)
     else:
       # get acceptance integral matrix
       assert self.integralMatrix._IFlatIndex is not None, "Integral matrix is None."
       #TODO move to user code
-      print(f"Acceptance integral matrix = \n{self.integralMatrix}")
+      # print(f"Acceptance integral matrix = \n{self.integralMatrix}")
       I_acc: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] = self.integralMatrix._IFlatIndex
-      eigenVals, eigenVecs = np.linalg.eig(I_acc)
-      print(f"I_acc eigenvalues = {eigenVals}")
+      # eigenVals, eigenVecs = np.linalg.eig(I_acc)
+      # print(f"I_acc eigenvalues = {eigenVals}")
       # print(f"I_acc eigenvectors = {eigenVecs}")
       # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
       # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
