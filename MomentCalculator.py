@@ -358,7 +358,6 @@ class MomentCalculator:
     # calculate covariances; Eqs. (88), (180), and (181)
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
     self.HMeas._covReReFlatIndex, self.HMeas._covImImFlatIndex, self.HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
-    # print(self.HMeas)  #TODO move to user code
     self.HPhys = MomentResult(self.indices, label = "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
     if self.integralMatrix is None:
@@ -368,21 +367,11 @@ class MomentCalculator:
     else:
       # get acceptance integral matrix
       assert self.integralMatrix._IFlatIndex is not None, "Integral matrix is None."
-      #TODO move to user code
-      # print(f"Acceptance integral matrix = \n{self.integralMatrix}")
       I_acc: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] = self.integralMatrix._IFlatIndex
-      # eigenVals, eigenVecs = np.linalg.eig(I_acc)
-      # print(f"I_acc eigenvalues = {eigenVals}")
-      # print(f"I_acc eigenvectors = {eigenVecs}")
-      # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
-      # print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
       #TODO move to matrix class
       import PlottingUtilities  # avoid circular dependency
       PlottingUtilities.plotComplexMatrix(I_acc, pdfFileNamePrefix = "I_acc")
       I_inv = np.linalg.inv(I_acc)
-      # eigenVals, eigenVecs = np.linalg.eig(I_inv)
-      # print(f"I^-1 eigenvalues = {eigenVals}")
-      # print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
       PlottingUtilities.plotComplexMatrix(I_inv, pdfFileNamePrefix = "I_inv")
       # calculate physical moments, i.e. correct for detection efficiency
       self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
