@@ -72,6 +72,8 @@ def drawTF3(
     fcn.SetNpy(nmbPoints)
     fcn.SetNpz(nmbPoints)
   canv = ROOT.TCanvas()
+  # fcn.Draw("BOX2") does not work; sigh
+  # draw function "by hand" instead
   histName = os.path.splitext(os.path.basename(pdfFileName))[0]
   fistFcn = ROOT.TH3F(histName, histTitle, *astuple(binnings[0]), *astuple(binnings[1]), *astuple(binnings[2]))
   xAxis = fistFcn.GetXaxis()
@@ -212,5 +214,5 @@ def plotMomentsInBin(
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for momentIndex in range(3):
-    HVals = tuple(MomentCalculator.MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if (HTrue and qnIndex.L < 5)  else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
+    HVals = tuple(MomentCalculator.MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
     plotMoments(HVals, momentLabel = f"{momentLabel}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
