@@ -26,27 +26,7 @@ import ROOT
 import MomentCalculator
 import OpenMp
 import PlottingUtilities
-
-
-#TODO move to RootUtilities.py
-# C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
-# also provides complexT typedef for std::complex<double>
-OpenMp.enableRootACLiCOpenMp()
-# OpenMp.printRootACLiCSettings()
-ROOT.gROOT.LoadMacro("./wignerD.C++")
-
-
-# see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
-def declareInCpp(**kwargs: Any) -> None:
-  '''Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace'''
-  for key, value in kwargs.items():
-    ROOT.gInterpreter.Declare(
-f'''
-namespace PyVars
-{{
-  auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)});
-}}
-''')
+import RootUtilities
 
 
 #TODO make wave-set object
@@ -248,7 +228,7 @@ def genDataFromWaves(
   fileName = f"{intensityFcn.GetName()}.photoProd.root"
   #TODO switch that allows loading from file
   df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
+  RootUtilities.declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
     .Define("cosTheta", "point[0]") \
     .Define("theta",    "std::acos(cosTheta)") \
@@ -278,7 +258,7 @@ def genAccepted2BodyPsPhotoProd(
   fileName = f"{efficiencyFcn.GetName()}.photoProd.root"
   #TODO switch that allows loading from file
   df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(efficiencyFcn = efficiencyFcn)
+  RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
     .Define("cosTheta", "point[0]") \
     .Define("theta",    "std::acos(cosTheta)") \

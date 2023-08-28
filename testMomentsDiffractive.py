@@ -21,7 +21,7 @@ from uncertainties import UFloat, ufloat
 import ROOT
 
 import PlottingUtilities
-import testMomentsPhotoProd
+import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -144,19 +144,6 @@ def printAndPlotMoments(
     plotComparison(measVals, trueVals, realPart = False, useMomentSubscript = True, dataLabel = dataLabel)
 
 
-# see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
-def declareInCpp(**kwargs: Any) -> None:
-  '''Creates C++ variables (names defined by keys) for PyROOT objects (given by values) in PyVars:: namespace'''
-  for key, value in kwargs.items():
-    ROOT.gInterpreter.Declare(
-f'''
-namespace PyVars
-{{
-  auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)});
-}}
-''')
-
-
 # see e.g. LHCb, PRD 92 (2015) 112009
 def generateDataLegPolLC(
   nmbEvents:  int,
@@ -183,7 +170,7 @@ def generateDataLegPolLC(
   treeName = "data"
   fileName = f"{legendrePolLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(legendrePolLC = legendrePolLC)
+  RootUtilities.declareInCpp(legendrePolLC = legendrePolLC)
   df.Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
     .Define("Theta",    "std::acos(CosTheta)") \
     .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataLegPolLC()" << endl; } return true;') \
@@ -258,7 +245,7 @@ def generateDataSphHarmLC(
   treeName = "data"
   fileName = f"{sphericalHarmLC.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(sphericalHarmLC = sphericalHarmLC)
+  RootUtilities.declareInCpp(sphericalHarmLC = sphericalHarmLC)
   df.Define("point",    "double CosTheta, PhiDeg; PyVars::sphericalHarmLC.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
     .Define("Theta",    "std::acos(CosTheta)") \
@@ -484,7 +471,7 @@ def generateDataPwd(
   treeName = "data"
   fileName = f"{intensityFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(intensityFcn = intensityFcn)
+  RootUtilities.declareInCpp(intensityFcn = intensityFcn)
   df.Define("point",    "double CosTheta, PhiDeg; PyVars::intensityFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
     .Define("Theta",    "std::acos(CosTheta)") \
@@ -615,7 +602,7 @@ def generateData2BodyPS(
   treeName = "data"
   fileName = f"{efficiencyFcn.GetName()}.root"
   df = ROOT.RDataFrame(nmbEvents)
-  declareInCpp(efficiencyFcn = efficiencyFcn)
+  RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
   df.Define("point", "double CosTheta, PhiDeg; PyVars::efficiencyFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
     .Define("CosTheta", "point[0]") \
     .Define("Theta",    "std::acos(CosTheta)") \
