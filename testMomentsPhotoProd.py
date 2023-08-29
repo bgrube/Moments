@@ -111,7 +111,7 @@ TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_
 #   prodAmp2:     complex,  # [ell']_m'^refl
 #   prodAmp2NegM: complex,  # [ell']_{-m'}^refl
 # ) -> Tuple[complex, complex, complex]:
-#   '''Calculates element of spin-density matrix components from given partial-wave amplitudes assuming rank 1'''
+#   """Calculates element of spin-density matrix components from given partial-wave amplitudes assuming rank 1"""
 #   rhos: List[complex] = 3 * [0 + 0j]
 #   rhos[0] +=                    (           prodAmp1     * prodAmp2.conjugate() + (-1)**(m1 - m2) * prodAmp1NegM * prodAmp2NegM.conjugate())  # Eq. (150)
 #   rhos[1] +=            -refl * ((-1)**m1 * prodAmp1NegM * prodAmp2.conjugate() + (-1)**m2        * prodAmp1     * prodAmp2NegM.conjugate())  # Eq. (151)
@@ -124,7 +124,7 @@ TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_
 #   L:        int,
 #   M:        int,
 # ) -> Tuple[complex, complex, complex]:
-#   '''Calculates values of (H_0, H_1, H_2) with L and M from given production amplitudes assuming rank 1'''
+#   """Calculates values of (H_0, H_1, H_2) with L and M from given production amplitudes assuming rank 1"""
 #   # Eqs. (154) to (156) assuming that rank is 1
 #   moments: List[complex] = 3 * [0 + 0j]
 #   for refl in (-1, +1):
@@ -156,7 +156,7 @@ TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_
 #   prodAmps: Dict[int, Dict[Tuple[int, int], complex]],  # Dict[reflectivity, Dict[(L, M), value]]
 #   maxL:     int,  # maximum L quantum number of moments
 # ) -> MomentCalculator.MomentResult:
-#   '''Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
+#   """Calculates moments for given production amplitudes assuming rank 1; the H_2(L, 0) are omitted"""
 #   momentIndices = MomentCalculator.MomentIndices(maxL)
 #   momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
 #   norm = 1.0
@@ -192,7 +192,7 @@ def genDataFromWaves(
   amplitudeSet:      MomentCalculator.AmplitudeSet,  # partial-wave amplitudes
   efficiencyFormula: Optional[str] = None,           # detection efficiency used to generate data
 ) -> ROOT.RDataFrame:
-  '''Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency'''
+  """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
   PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
@@ -272,7 +272,7 @@ def genAccepted2BodyPsPhotoProd(
   nmbEvents:         int,                   # number of events to generate
   efficiencyFormula: Optional[str] = None,  # detection efficiency used for acceptance correction
 ) -> ROOT.RDataFrame:
-  '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
+  """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
   PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
