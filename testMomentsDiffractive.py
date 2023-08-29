@@ -150,7 +150,7 @@ def generateDataLegPolLC(
   maxDegree:  int,
   parameters: Collection[float],
 ) -> Any:
-  '''Generates data according to linear combination of Legendre polynomials'''
+  """Generates data according to linear combination of Legendre polynomials"""
   assert len(parameters) >= maxDegree + 1, f"Need {maxDegree + 1} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of legendre polynomials up to given degree
   terms = tuple(f"[{degree}] * ROOT::Math::legendre({degree}, x)" for degree in range(maxDegree + 1))
@@ -183,7 +183,7 @@ def calculateLegMoments(
   dataFrame: Any,
   maxDegree: int,
 ) -> Dict[Tuple[int, ...], UFloat]:
-  '''Calculates moments of Legendre polynomials'''
+  """Calculates moments of Legendre polynomials"""
   nmbEvents = dataFrame.Count().GetValue()
   moments: Dict[Tuple[int], UFloat] = {}
   for degree in range(maxDegree + 5):
@@ -211,7 +211,7 @@ def generateDataSphHarmLC(
   maxL:       int,  # maximum spin of decaying object
   parameters: Collection[float],  # make sure that resulting linear combination is positive definite
 ) -> Any:
-  '''Generates data according to linear combination of spherical harmonics'''
+  """Generates data according to linear combination of spherical harmonics"""
   nmbTerms = 6 * maxL  # Eq. (17)
   assert len(parameters) >= nmbTerms, f"Need {nmbTerms} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of spherical harmonics up to given maximum orbital angular momentum
@@ -265,7 +265,7 @@ def calculateSphHarmMoments(
   maxL:           int,  # maximum spin of decaying object
   integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
 ) -> Tuple[List[Tuple[Tuple[int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
-  '''Calculates moments of spherical harmonics'''
+  """Calculates moments of spherical harmonics"""
   # define moments
   dfMoment = dataFrame
   for L in range(2 * maxL + 2):
@@ -437,7 +437,7 @@ def generateDataPwd(
   prodAmps:          Dict[int, Tuple[complex, ...]],
   efficiencyFormula: Optional[str] = None,
 ) -> Any:
-  '''Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \\ell = 2 and |m| = 1'''
+  """Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \\ell = 2 and |m| = 1"""
   # construct TF2 for intensity in Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
   assert len(prodAmps) == len(WAVE_SET), f"Need {len(WAVE_SET)} parameters; only {len(prodAmps)} were given: {prodAmps}"
   incoherentTerms = []
@@ -484,7 +484,7 @@ def generateDataPwd(
 
 
 def theta(m: int) -> float:
-  '''Calculates normalization factor in reflectivity basis'''
+  """Calculates normalization factor in reflectivity basis"""
   # see Eq. (19)
   if m > 0:
     return 1 / math.sqrt(2)
@@ -499,7 +499,7 @@ def calculateInputPwdMoment(
   L: int,
   M: int,
 ) -> complex:
-  '''Calculates value of moment with L and M for given production amplitudes'''
+  """Calculates value of moment with L and M for given production amplitudes"""
   # Eq. (29) for rank = 1
   sum = 0 + 0j
   for refl in (-1, +1):
@@ -524,7 +524,7 @@ def calculateInputPwdMoments(
   prodAmps: Dict[int, Tuple[complex, ...]],
   maxL:     int,  # maximum spin of decaying object
 ) -> List[float]:
-  '''Calculates moments for given production amplitudes'''
+  """Calculates moments for given production amplitudes"""
   moments: List[float] = []
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
@@ -548,7 +548,7 @@ def calculateWignerDMoment(
   L:         int,
   M:         int,
 ) -> Tuple[UFloat, UFloat]:  # real and imag part with uncertainty
-  '''Calculates unnormalized moment of Wigner-D function D^L_{M 0}'''
+  """Calculates unnormalized moment of Wigner-D function D^L_{M 0}"""
   # unnormalized moment
   dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, Theta)") \
                       .Define("WignerDRe", "real(WignerD)") \
@@ -564,7 +564,7 @@ def calculateWignerDMoments(
   dataFrame: Any,
   maxL:      int,  # maximum spin of decaying object
 ) -> None:
-  '''Calculates moments of Wigner-D function D^L_{M 0}'''
+  """Calculates moments of Wigner-D function D^L_{M 0}"""
   nmbEvents = dataFrame.Count().GetValue()
   # moments: List[Tuple[Tuple[int, int], UFloat]] = []
   for L in range(2 * maxL + 2):
@@ -584,7 +584,7 @@ def generateData2BodyPS(
   nmbEvents:         int,  # number of events to generate
   efficiencyFormula: Optional[str] = None,
 ) -> Any:
-  '''Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency'''
+  """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   # construct efficiency function
   efficiencyFcn = ROOT.TF2("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180)
   efficiencyFcn.SetTitle(";cos#theta;#phi [deg]")
@@ -619,7 +619,7 @@ def calcIntegralMatrix(
   maxL:                int,  # maximum orbital angular momentum
   nmbEvents:           int,  # number of events in RDataFrame
 ) -> Dict[Tuple[int, ...], complex]:
-  '''Calculates integral matrix of spherical harmonics from provided phase-space data'''
+  """Calculates integral matrix of spherical harmonics from provided phase-space data"""
   # define spherical harmonics
   for L in range(2 * maxL + 2):
     for M in range(L + 1):
