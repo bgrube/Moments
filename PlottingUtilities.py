@@ -162,7 +162,7 @@ def plotMoments(
           residuals[index] = np.nan
       # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition
       indicesToMask = tuple(index for index, H in enumerate(HVals)
-        if (H.qn == MomentCalculator.QnIndex(momentIndex = 0, L = 0, M = 0)) or np.isnan(residuals[index]))  # exclude H_0(0, 0) and NaN
+        if (H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)) or np.isnan(residuals[index]))  # exclude H_0(0, 0) and NaN
       residualsMasked = residuals.view(np.ma.MaskedArray)
       for i in indicesToMask:
         residualsMasked[i] = np.ma.masked

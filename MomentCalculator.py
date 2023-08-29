@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import bidict as bd
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, InitVar
 import numpy as np
 import nptyping as npt
 from typing import (
   overload,
   Any,
+  Dict,
   Generator,
   List,
   Optional,
+  Sequence,
   Tuple,
   Union,
 )
@@ -19,7 +21,100 @@ import ROOT
 
 
 @dataclass(frozen = True)  # immutable
-class QnIndex:
+class QnWaveIndex:
+  '''Stores information about quantum-number indices of two-pseudocalar partial-waves'''
+  refl: int  # reflectivity
+  l:    int  # orbital angular momentum
+  m:    int  # projection quantum number of l
+
+
+@dataclass
+class AmplitudeValue:
+  '''Stores and provides access to single amplitude value'''
+  qn:  QnWaveIndex  # quantum numbers
+  val: complex      # amplitude value
+
+
+@dataclass
+class AmplitudeSet:
+  '''Stores partial-wave amplitudes and makes them accessible by quantum numbers'''
+  amps: InitVar[Sequence[AmplitudeValue]]
+  _amps: Tuple[Dict[Tuple[int, int], complex], Dict[Tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
+
+  def __post_init__(
+    self,
+    amps: Sequence[AmplitudeValue],
+  ) -> None:
+    '''Constructs object from list'''
+    self._amps = ({}, {})
+    for amp in amps:
+      self[amp.qn] = amp.val
+
+  def __getitem__(
+    self,
+    subscript: QnWaveIndex,
+  ) -> AmplitudeValue:
+    '''Returns partial-wave amplitude for given quantum numbers; returns 0 for non-existing amplitudes'''
+    assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
+    reflIndex = 0 if subscript.refl == +1 else 1
+    return AmplitudeValue(subscript, self._amps[reflIndex].get((subscript.l, subscript.m), 0))
+
+  def __setitem__(
+    self,
+    subscript: QnWaveIndex,
+    amp:       complex,
+  ) -> None:
+    '''Returns partial-wave amplitude for given quantum numbers'''
+    assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
+    reflIndex = 0 if subscript.refl == +1 else 1
+    self._amps[reflIndex][(subscript.l, subscript.m)] = amp
+
+  def amplitudes(
+    self,
+    onlyRefl: Optional[int] = None,  # if set to +-1 only waves with the corresponding reflectivities
+  ) -> Generator[AmplitudeValue, None, None]:
+    '''Generates amplitude values; optionally filtered by reflectivity'''
+    assert onlyRefl is None or abs(onlyRefl) == 1, f"Invalid reflectivity value f{onlyRefl}; expect +1, -1, or None"
+    reflIndices = (0, 1)
+    if onlyRefl == +1:
+      reflIndices = (0, )
+    elif onlyRefl == -1:
+      reflIndices = (1, )
+    for reflIndex in reflIndices:
+      for (l, m), val in self._amps[reflIndex].items():
+        yield AmplitudeValue(QnWaveIndex(+1 if reflIndex == 0 else -1, l, m), self._amps[reflIndex][(l, m)])
+
+  def maxSpin(self) -> int:
+    '''Returns maximum spin of wave set ignoring 0 amplitudes'''
+    maxSpin = 0
+    for amp in self.amplitudes():
+      l = amp.qn.l
+      if amp.val != 0:
+        maxSpin = max(l, maxSpin)
+    return maxSpin
+
+  def spinDensElementSet(
+    self,
+    refl: int,  # reflectivity
+    l1:   int,  # l
+    l2:   int,  # l'
+    m1:   int,  # m
+    m2:   int,  # m'
+  ) -> Tuple[complex, complex, complex]:
+    '''Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') from partial-wave amplitudes with given quantum numbers assuming rank 1'''
+    qn1     = QnWaveIndex(refl, l1,  m1)
+    qn1NegM = QnWaveIndex(refl, l1, -m1)
+    qn2     = QnWaveIndex(refl, l2,  m2)
+    qn2NegM = QnWaveIndex(refl, l2, -m2)
+    rhos: List[complex] = 3 * [0 + 0j]
+    rhos[0] =                    (           self[qn1    ].val * self[qn2].val.conjugate() + (-1)**(m1 - m2) * self[qn1NegM].val * self[qn2NegM].val.conjugate())  # Eq. (150)
+    rhos[1] =            -refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() + (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (151)
+    rhos[2] = -(0 + 1j) * refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() - (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (152)
+    return (rhos[0], rhos[1], rhos[2])
+
+
+@dataclass(frozen = True)  # immutable
+class QnMomentIndex:
   '''Stores information about quantum-number indices of moments'''
   momentIndex: int  # subscript of photoproduction moments
   L:           int  # angular momentum
@@ -31,7 +126,7 @@ class MomentIndices:
   '''Provides mapping between moment index schemes and iterators for moment indices'''
   maxL:      int          # maximum L quantum number of moments
   photoProd: bool = True  # switches between diffraction and photoproduction mode
-  indexMap:  bd.BidictBase[int, QnIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
+  indexMap:  bd.BidictBase[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
 
   def __post_init__(self) -> None:
     # create new bidict subclass
@@ -44,7 +139,7 @@ class MomentIndices:
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
             continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-          self.indexMap[flatIndex] = QnIndex(momentIndex, L, M)
+          self.indexMap[flatIndex] = QnMomentIndex(momentIndex, L, M)
           flatIndex += 1
 
   def __len__(self) -> int:
@@ -54,7 +149,7 @@ class MomentIndices:
   def __getitem__(
     self,
     subscript: int,
-  ) -> QnIndex:
+  ) -> QnMomentIndex:
     '''Returns QnIndex that correspond to given flat index'''
     return self.indexMap[subscript]
 
@@ -63,7 +158,7 @@ class MomentIndices:
     for flatIndex in range(len(self)):
       yield flatIndex
 
-  def QnIndices(self) -> Generator[QnIndex, None, None]:
+  def QnIndices(self) -> Generator[QnMomentIndex, None, None]:
     '''Generates quantum-number indices of the form QnIndex(moment index, L, M)'''
     for flatIndex in range(len(self)):
       yield self[flatIndex]
@@ -88,19 +183,19 @@ class AcceptanceIntegralMatrix:
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[Union[int, QnIndex], Union[int, QnIndex]],
+    subscript: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],
   ) -> Optional[complex]: ...
 
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[slice, Union[int, QnIndex]],
+    subscript: Tuple[slice, Union[int, QnMomentIndex]],
   ) -> Optional[npt.NDArray[npt.Shape["*"], npt.Complex128]]: ...
 
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[Union[int, QnIndex], slice],
+    subscript: Tuple[Union[int, QnMomentIndex], slice],
   ) -> Optional[npt.NDArray[npt.Shape["*"], npt.Complex128]]: ...
 
   @overload
@@ -111,15 +206,15 @@ class AcceptanceIntegralMatrix:
 
   def __getitem__(
     self,
-    subscript: Tuple[Union[int, QnIndex, slice], Union[int, QnIndex, slice]],
+    subscript: Tuple[Union[int, QnMomentIndex, slice], Union[int, QnMomentIndex, slice]],
   ) -> Optional[Union[complex, npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["*, *"], npt.Complex128]]]:
     '''Returns integral matrix elements for any combination of flat and quantum-number indices'''
     if self._IFlatIndex is None:
       return None
     else:
       # turn quantum-number indices to flat indices
-      flatIndexMeas: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript[0]] if isinstance(subscript[0], QnIndex) else subscript[0]
-      flatIndexPhys: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript[1]] if isinstance(subscript[1], QnIndex) else subscript[1]
+      flatIndexMeas: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
+      flatIndexPhys: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
       return self._IFlatIndex[flatIndexMeas, flatIndexPhys]
 
   def __str__(self) -> str:
@@ -190,7 +285,7 @@ class AcceptanceIntegralMatrix:
 @dataclass
 class MomentValue:
   '''Stores and provides access to single moment value'''
-  qn:       QnIndex   # quantum numbers
+  qn:       QnMomentIndex   # quantum numbers
   val:      complex   # moment value
   uncertRe: float     # uncertainty of real part
   uncertIm: float     # uncertainty of imaginary part
@@ -254,7 +349,7 @@ class MomentResult:
   @overload
   def __getitem__(
     self,
-    subscript: Union[int, QnIndex],
+    subscript: Union[int, QnMomentIndex],
   ) -> MomentValue: ...
 
   @overload
@@ -265,11 +360,11 @@ class MomentResult:
 
   def __getitem__(
     self,
-    subscript: Union[int, QnIndex, slice],
+    subscript: Union[int, QnMomentIndex, slice],
   ) -> Union[MomentValue, List[MomentValue]]:
     '''Returns moment value and corresponding uncertainties at the given flat or quantum-number index/indices'''
     # turn quantum-number index to flat index
-    flatIndex: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnIndex) else subscript
+    flatIndex: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     if isinstance(flatIndex, slice):
       return [
         MomentValue(

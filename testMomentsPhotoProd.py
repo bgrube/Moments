@@ -80,17 +80,6 @@ TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_
 
 
 #TODO move into wave-set object
-def getMaxSpin(prodAmps: Dict[int, Dict[Tuple[int, int,], complex]]) -> int:
-  '''Gets maximum spin from set of production amplitudes'''
-  maxSpin = 0
-  for refl in (-1, +1):
-    for wave in prodAmps[refl]:
-      ell = wave[0]
-      maxSpin = ell if ell > maxSpin else maxSpin
-  return maxSpin
-
-
-#TODO move into wave-set object
 def calcSpinDensElemSetFromWaves(
   refl:         int,      # reflectivity
   m1:           int,      # m
@@ -132,9 +121,10 @@ def calcMomentSetFromWaves(
             py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 0,      0,     0,      ignore_invalid = True)  # (ell_2 0,    L 0 | ell_1 0  )
           * py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (ell_2 m_2,  L M | ell_1 m_1)
         )
+        rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
+        print(f"!!! {refl}; ({ell1}, {m1}); ({ell2}, {m2}) = {rhos}")
         if term == 0:  # invalid Clebsch-Gordan
           continue
-        rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
         moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
         moments[1] += -term * rhos[1]  # H_1; Eq. (125)
         moments[2] += -term * rhos[2]  # H_2; Eq. (125)
@@ -166,7 +156,7 @@ def calcAllMomentsFromWaves(
         assert moments[0].imag == 0, f"Expect H_0(0, 0) to be real-valued but got Im[H_0(0, 0)] = {moments[0].imag}."
         norm = moments[0].real  # H_0(0, 0)
       for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
-        qnIndex   = MomentCalculator.QnIndex(momentIndex, L, M)
+        qnIndex   = MomentCalculator.QnMomentIndex(momentIndex, L, M)
         flatIndex = momentIndices.indexMap.flatIndex_for[qnIndex]
         momentsFlatIndex[flatIndex] = moment / norm
   HTrue = MomentCalculator.MomentResult(momentIndices, label = "true")
@@ -313,7 +303,7 @@ if __name__ == "__main__":
     for M in range(L + 1):
       moments = []
       for momentIndex in range(2 if M == 0 else 3):
-        qnIndex = MomentCalculator.QnIndex(momentIndex, L, M)
+        qnIndex = MomentCalculator.QnMomentIndex(momentIndex, L, M)
         moments.append(HTrue[qnIndex].val)
       print(f"(H_0({L} {M}), H_1({L} {M})" + ("" if M == 0 else f", H_2({L} {M}))") + f" = {tuple(moments)}")
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, PROD_AMPS, efficiencyFormulaGen)
@@ -364,7 +354,7 @@ if __name__ == "__main__":
   print(f"I_acc eigenvalues = {eigenVals}")
   print(f"Physical moments of accepted phase-space data\n{momentsPs.HPhys}")
   HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")    # set all true moment values to 0
-  HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # set true H_0(0, 0) to 1
+  HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # set true H_0(0, 0) to 1
   PlottingUtilities.plotMomentsInBin(HData = momentsPs.HPhys, HTrue = HTruePs, pdfFileNamePrefix = "hPs_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
