@@ -1,3 +1,6 @@
+"""Module that provides classes and functions to calculate moments for photoproduction of two-(pseudo)scalar mesons"""
+# equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
+
 from __future__ import annotations
 
 import bidict as bd
@@ -23,7 +26,7 @@ import ROOT
 
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
-  '''Stores information about quantum-number indices of two-pseudocalar partial-waves'''
+  """Stores information about quantum-number indices of two-pseudocalar partial-waves"""
   refl: int  # reflectivity
   l:    int  # orbital angular momentum
   m:    int  # projection quantum number of l
@@ -31,14 +34,14 @@ class QnWaveIndex:
 
 @dataclass
 class AmplitudeValue:
-  '''Stores and provides access to single amplitude value'''
+  """Stores and provides access to single amplitude value"""
   qn:  QnWaveIndex  # quantum numbers
   val: complex      # amplitude value
 
 
 @dataclass
 class AmplitudeSet:
-  '''Stores partial-wave amplitudes and makes them accessible by quantum numbers'''
+  """Stores partial-wave amplitudes and makes them accessible by quantum numbers"""
   amps: InitVar[Sequence[AmplitudeValue]]
   _amps: Tuple[Dict[Tuple[int, int], complex], Dict[Tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
 
@@ -46,7 +49,7 @@ class AmplitudeSet:
     self,
     amps: Sequence[AmplitudeValue],
   ) -> None:
-    '''Constructs object from list'''
+    """Constructs object from list"""
     self._amps = ({}, {})
     for amp in amps:
       self[amp.qn] = amp.val
@@ -55,7 +58,7 @@ class AmplitudeSet:
     self,
     subscript: QnWaveIndex,
   ) -> AmplitudeValue:
-    '''Returns partial-wave amplitude for given quantum numbers; returns 0 for non-existing amplitudes'''
+    """Returns partial-wave amplitude for given quantum numbers; returns 0 for non-existing amplitudes"""
     assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
     reflIndex = 0 if subscript.refl == +1 else 1
     return AmplitudeValue(subscript, self._amps[reflIndex].get((subscript.l, subscript.m), 0))
@@ -65,7 +68,7 @@ class AmplitudeSet:
     subscript: QnWaveIndex,
     amp:       complex,
   ) -> None:
-    '''Returns partial-wave amplitude for given quantum numbers'''
+    """Returns partial-wave amplitude for given quantum numbers"""
     assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
     reflIndex = 0 if subscript.refl == +1 else 1
     self._amps[reflIndex][(subscript.l, subscript.m)] = amp
@@ -74,7 +77,7 @@ class AmplitudeSet:
     self,
     onlyRefl: Optional[int] = None,  # if set to +-1 only waves with the corresponding reflectivities
   ) -> Generator[AmplitudeValue, None, None]:
-    '''Generates amplitude values; optionally filtered by reflectivity'''
+    """Generates amplitude values; optionally filtered by reflectivity"""
     assert onlyRefl is None or abs(onlyRefl) == 1, f"Invalid reflectivity value f{onlyRefl}; expect +1, -1, or None"
     reflIndices = (0, 1)
     if onlyRefl == +1:
@@ -86,7 +89,7 @@ class AmplitudeSet:
         yield AmplitudeValue(QnWaveIndex(+1 if reflIndex == 0 else -1, l, m), self._amps[reflIndex][(l, m)])
 
   def maxSpin(self) -> int:
-    '''Returns maximum spin of wave set ignoring 0 amplitudes'''
+    """Returns maximum spin of wave set ignoring 0 amplitudes"""
     maxSpin = 0
     for amp in self.amplitudes():
       l = amp.qn.l
@@ -102,7 +105,7 @@ class AmplitudeSet:
     m1:   int,  # m
     m2:   int,  # m'
   ) -> Tuple[complex, complex, complex]:
-    '''Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') with given quantum numbers calculated from partial-wave amplitudes assuming rank 1'''
+    """Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
     qn1     = QnWaveIndex(refl, l1,  m1)
     qn1NegM = QnWaveIndex(refl, l1, -m1)
     qn2     = QnWaveIndex(refl, l2,  m2)
@@ -118,7 +121,7 @@ class AmplitudeSet:
     L: int,  # angular momentum
     M: int,  # projection quantum number of L
   ) -> Tuple[complex, complex, complex]:
-    '''Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1'''
+    """Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
     # Eqs. (154) to (156) assuming that rank is 1
     moments: List[complex] = 3 * [0 + 0j]
     for refl in (-1, +1):
@@ -144,7 +147,7 @@ class AmplitudeSet:
     self,
     maxL: int,  # maximum L quantum number of moments
   ) -> MomentResult:
-    '''Returns moments calculated from partial-wave amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
+    """Returns moments calculated from partial-wave amplitudes assuming rank 1; the H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
     norm = 1.0
@@ -176,7 +179,7 @@ class AmplitudeSet:
 
 @dataclass(frozen = True)  # immutable
 class QnMomentIndex:
-  '''Stores information about quantum-number indices of moments'''
+  """Stores information about quantum-number indices of moments"""
   momentIndex: int  # subscript of photoproduction moments
   L:           int  # angular momentum
   M:           int  # projection quantum number of L
@@ -184,7 +187,7 @@ class QnMomentIndex:
 
 @dataclass
 class MomentIndices:
-  '''Provides mapping between moment index schemes and iterators for moment indices'''
+  """Provides mapping between moment index schemes and iterators for moment indices"""
   maxL:      int          # maximum L quantum number of moments
   photoProd: bool = True  # switches between diffraction and photoproduction mode
   indexMap:  bd.BidictBase[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
@@ -204,30 +207,30 @@ class MomentIndices:
           flatIndex += 1
 
   def __len__(self) -> int:
-    '''Returns total number of moments'''
+    """Returns total number of moments"""
     return len(self.indexMap)
 
   def __getitem__(
     self,
     subscript: int,
   ) -> QnMomentIndex:
-    '''Returns QnIndex that correspond to given flat index'''
+    """Returns QnIndex that correspond to given flat index"""
     return self.indexMap[subscript]
 
   def flatIndices(self) -> Generator[int, None, None]:
-    '''Generates flat indices'''
+    """Generates flat indices"""
     for flatIndex in range(len(self)):
       yield flatIndex
 
   def QnIndices(self) -> Generator[QnMomentIndex, None, None]:
-    '''Generates quantum-number indices of the form QnIndex(moment index, L, M)'''
+    """Generates quantum-number indices of the form QnIndex(moment index, L, M)"""
     for flatIndex in range(len(self)):
       yield self[flatIndex]
 
 
 @dataclass
 class DataSet:
-  '''Stores information about a single dataset'''
+  """Stores information about a single dataset"""
   polarization:   float            # photon-beam polarization
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data
@@ -236,7 +239,7 @@ class DataSet:
 
 @dataclass
 class AcceptanceIntegralMatrix:
-  '''Calculates and provides access to acceptance integral matrix'''
+  """Calculates and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
   dataSet:     DataSet        # info on data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
@@ -269,7 +272,7 @@ class AcceptanceIntegralMatrix:
     self,
     subscript: Tuple[Union[int, QnMomentIndex, slice], Union[int, QnMomentIndex, slice]],
   ) -> Optional[Union[complex, npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["*, *"], npt.Complex128]]]:
-    '''Returns integral matrix elements for any combination of flat and quantum-number indices'''
+    """Returns integral matrix elements for any combination of flat and quantum-number indices"""
     if self._IFlatIndex is None:
       return None
     else:
@@ -285,7 +288,7 @@ class AcceptanceIntegralMatrix:
       return np.array2string(self._IFlatIndex, precision = 3, suppress_small = True, max_line_width = 150)
 
   def calculate(self) -> None:
-    '''Calculates integral matrix of basis functions from (accepted) phase-space data'''
+    """Calculates integral matrix of basis functions from (accepted) phase-space data"""
     # get phase-space data data as NumPy arrays
     thetas = self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
     phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
@@ -315,7 +318,7 @@ class AcceptanceIntegralMatrix:
     self,
     fileName: str = "./integralMatrix.npy",
   ) -> None:
-    '''Saves NumPy array that holds the integral matrix to file with given name'''
+    """Saves NumPy array that holds the integral matrix to file with given name"""
     if self._IFlatIndex is not None:
       print(f"Saving integral matrix to file '{fileName}'.")
       np.save(fileName, self._IFlatIndex)
@@ -324,7 +327,7 @@ class AcceptanceIntegralMatrix:
     self,
     fileName: str = "./integralMatrix.npy",
   ) -> None:
-    '''Loads NumPy array that holds the integral matrix from file with given name'''
+    """Loads NumPy array that holds the integral matrix from file with given name"""
     print(f"Loading integral matrix from file '{fileName}'.")
     array = np.load(fileName)
     if not array.shape == (len(self.indices), len(self.indices)):
@@ -335,7 +338,7 @@ class AcceptanceIntegralMatrix:
     self,
     fileName: str = "./integralMatrix.npy",
   ) -> None:
-    '''Loads NumPy array that holds the integral matrix from file with given name; and calculates the integral matrix if loading failed'''
+    """Loads NumPy array that holds the integral matrix from file with given name; and calculates the integral matrix if loading failed"""
     try:
       self.load(fileName)
     except Exception as e:
@@ -345,7 +348,7 @@ class AcceptanceIntegralMatrix:
 
 @dataclass
 class MomentValue:
-  '''Stores and provides access to single moment value'''
+  """Stores and provides access to single moment value"""
   qn:       QnMomentIndex   # quantum numbers
   val:      complex   # moment value
   uncertRe: float     # uncertainty of real part
@@ -353,7 +356,7 @@ class MomentValue:
   label:    str = ""  # label used for printing
 
   def __iter__(self):
-    '''Returns iterator over shallow copy of fields'''
+    """Returns iterator over shallow copy of fields"""
     return iter(tuple(getattr(self, field.name) for field in fields(self)))
 
   def __str__(self) -> str:
@@ -365,19 +368,19 @@ class MomentValue:
 
   @property
   def real(self) -> Tuple[float, float]:
-    '''Returns real part with uncertainty'''
+    """Returns real part with uncertainty"""
     return (self.val.real, self.uncertRe)
 
   @property
   def imag(self) -> Tuple[float, float]:
-    '''Returns imaginary part with uncertainty'''
+    """Returns imaginary part with uncertainty"""
     return (self.val.imag, self.uncertIm)
 
   def realOrImag(
     self,
     realPart: bool,  # switched between real part (True) and imaginary part (False)
   ) -> Tuple[float, float]:
-    '''Returns real or imaginary part with corresponding uncertainty according to given flag'''
+    """Returns real or imaginary part with corresponding uncertainty according to given flag"""
     if realPart:
       return self.real
     else:
@@ -386,13 +389,13 @@ class MomentValue:
 
 @dataclass
 class MomentValueAndTruth(MomentValue):
-  '''Stores and provides access to single moment value and provides truth value'''
+  """Stores and provides access to single moment value and provides truth value"""
   truth: Optional[complex] = None  # true moment value
 
 
 @dataclass(eq = False)
 class MomentResult:
-  '''Stores and provides access to moment values'''
+  """Stores and provides access to moment values"""
   indices:           MomentIndices  # index mapping and iterators
   label:             str = ""       # label used for printing
   _valsFlatIndex:    npt.NDArray[npt.Shape["*"], npt.Complex128]     = field(init = False)  # flat array with moment values
@@ -438,7 +441,7 @@ class MomentResult:
     self,
     subscript: Union[int, QnMomentIndex, slice],
   ) -> Union[MomentValue, List[MomentValue]]:
-    '''Returns moment value and corresponding uncertainties at the given flat or quantum-number index/indices'''
+    """Returns moment value and corresponding uncertainties at the given flat or quantum-number index/indices"""
     # turn quantum-number index to flat index
     flatIndex: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     if isinstance(flatIndex, slice):
@@ -477,7 +480,7 @@ class MomentResult:
     self,
     other: MomentResult,  # instance from which data are copied
   ) -> None:
-    '''Copies all values from given MomentResult instance but leaves `label` untouched'''
+    """Copies all values from given MomentResult instance but leaves `label` untouched"""
     self.indices           = other.indices
     self._valsFlatIndex    = other._valsFlatIndex
     self._covReReFlatIndex = other._covReReFlatIndex
@@ -487,7 +490,7 @@ class MomentResult:
 
 @dataclass
 class MomentCalculator:
-  '''Calculates and provides access to moments'''
+  """Calculates and provides access to moments"""
   indices:        MomentIndices  # index mapping and iterators
   dataSet:        DataSet        # info on data samples
   integralMatrix: Optional[AcceptanceIntegralMatrix] = None  # acceptance integral matrix
@@ -498,7 +501,7 @@ class MomentCalculator:
     self,
     V_aug: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128],  # augmentented covariance matrix
   ) -> Tuple[npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]]:
-    '''Calculates covariance matrices for real parts, for imaginary parts, and for real and imaginary parts from augmented covariance matrix'''
+    """Calculates covariance matrices for real parts, for imaginary parts, and for real and imaginary parts from augmented covariance matrix"""
     nmbMoments = len(self.indices)
     V_Hermit = V_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
     V_pseudo = V_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
@@ -508,7 +511,7 @@ class MomentCalculator:
     return (V_ReRe, V_ImIm, V_ReIm)
 
   def calculate(self) -> None:
-    '''Calculates photoproduction moments and their covariances'''
+    """Calculates photoproduction moments and their covariances"""
     # get input data as NumPy arrays
     thetas = self.dataSet.data.AsNumpy(columns = ["theta"])["theta"]
     phis   = self.dataSet.data.AsNumpy(columns = ["phi"]  )["phi"]
