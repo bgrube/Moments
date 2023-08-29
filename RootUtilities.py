@@ -1,3 +1,5 @@
+"""Module that provides functions for using ROOT code"""
+
 from typing import Any
 
 import ROOT
@@ -14,12 +16,12 @@ ROOT.gROOT.LoadMacro("./wignerD.C++")
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
 def declareInCpp(**kwargs: Any) -> None:
-  '''Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace'''
+  """Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace"""
   for key, value in kwargs.items():
     ROOT.gInterpreter.Declare(
-f'''
+f"""
 namespace PyVars
 {{
   auto& {key} = *reinterpret_cast<{type(value).__cpp_name__}*>({ROOT.addressof(value)});
 }}
-''')
+""")
