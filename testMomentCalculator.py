@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import bidict as bd
+import numpy as np
 from typing import TYPE_CHECKING
 
 import MomentCalculator
+import testMomentsPhotoProd
 
 
 if __name__ == "__main__":
@@ -25,7 +27,63 @@ if __name__ == "__main__":
   print(momentResult._valsFlatIndex)
   print(momentResult[0])
   print(momentResult[56])
-  i = MomentCalculator.QnIndex(2, 5, 5)
+  i = MomentCalculator.QnMomentIndex(2, 5, 5)
   print(momentResult[i].val)
   print(momentResult[i].uncertRe)
   print(momentResult[i].uncertIm)
+
+  amps = [
+    #                                                           refl J   M    amplitude
+    # negative-reflectivity waves
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 0,  0),  1.0 + 0.0j),  # S_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1, -1), -0.4 + 0.1j),  # P_-1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1,  0),  0.3 - 0.8j),  # P_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1, +1), -0.8 + 0.7j),  # P_+1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, -2),  0.1 - 0.4j),  # D_-2^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, -1),  0.5 + 0.2j),  # D_-1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2,  0), -0.1 - 0.2j),  # D_ 0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, +1),  0.2 - 0.1j),  # D_+1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, +2), -0.2 + 0.3j),  # D_+2^-
+    # positive-reflectivity waves
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 0,  0),  0.5 + 0.0j),  # S_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, -1),  0.5 - 0.1j),  # P_-1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1,  0), -0.8 - 0.3j),  # P_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, +1),  0.6 + 0.3j),  # P_+1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, -2),  0.2 + 0.1j),  # D_-2^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, -1),  0.2 - 0.3j),  # D_-1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2,  0),  0.1 - 0.2j),  # D_ 0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +1),  0.2 + 0.5j),  # D_+1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +2), -0.3 - 0.1j),  # D_+2^+
+  ]
+  ampSet = MomentCalculator.AmplitudeSet(amps)
+  qnIndex = MomentCalculator.QnWaveIndex(+1, 2, +2)
+  print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
+  # ampSet[qnIndex] = 100 + 100j
+  # print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
+  for amp in ampSet.amplitudes():
+    print(amp)
+  print(f"getMaxSpin() = {ampSet.maxSpin()}")
+
+  # print("!!! FOO")
+  # moments = testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L = 0, M = 0)
+  # print("!!! BAR")
+  for refl in (-1, +1):
+    for wave1 in testMomentsPhotoProd.PROD_AMPS[refl]:
+      l1 = wave1[0]
+      m1 = wave1[1]
+      for wave2 in testMomentsPhotoProd.PROD_AMPS[refl]:
+        l2 = wave2[0]
+        m2 = wave2[1]
+        rhos = ampSet.spinDensElementSet(refl, l1, l2, m1, m2)
+        print(f"!!! {refl}; ({l1}, {m1}); ({l2}, {m2}) = {rhos}")
+
+  for L in range(5):
+    for M in range(L + 1):
+      moments1 = np.array(testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L, M))
+      moments2 = np.array(ampSet.momentSet(L, M))
+      if not np.allclose(moments1, moments2, rtol = 0, atol = 0):
+        print(f"delta H_i(L = {L}, M = {M}) = {moments1 - moments2}")
+
+  res1 = testMomentsPhotoProd.calcAllMomentsFromWaves(testMomentsPhotoProd.PROD_AMPS, maxL = 5)
+  res2 = ampSet.allMoments(maxL = 5)
+  print(f"res1 == res2: {res1 == res2}; {np.array_equal(res1._valsFlatIndex, res2._valsFlatIndex)}")

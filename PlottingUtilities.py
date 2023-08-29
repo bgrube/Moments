@@ -1,3 +1,5 @@
+"""Module that provides collection functions for plotting"""
+
 from dataclasses import dataclass, astuple
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,14 +19,14 @@ import MomentCalculator
 
 @dataclass
 class HistAxisBinning:
-  '''Stores info that defines the binning of an axis'''
+  """Stores info that defines the binning of an axis"""
   nmbBins:   int
   minVal:    float
   maxVal:    float
 
 
 def setupPlotStyle() -> None:
-  '''Defines ROOT plotting style'''
+  """Defines ROOT plotting style"""
   ROOT.gROOT.LoadMacro("./rootlogon.C")
   ROOT.gROOT.ForceStyle()
   ROOT.gStyle.SetCanvasDefW(600)
@@ -45,7 +47,7 @@ def plotComplexMatrix(
   matrix:            npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
   pdfFileNamePrefix: str,  # name prefix for output files
 ) -> None:
-  '''Draws real and imaginary parts of given 2D array'''
+  """Draws real and imaginary parts of given 2D array"""
   dataToPlot = {
     "real" : np.real(matrix),      # real part
     "imag" : np.imag(matrix),      # imaginary part
@@ -66,7 +68,7 @@ def drawTF3(
   nmbPoints:   Optional[int]   = None,  # number of function points; used in numeric integration performed by GetRandom()
   maxVal:      Optional[float] = None,  # maximum plot range
 ) -> None:
-  '''Draws given TF3 into histogram'''
+  """Draws given TF3 into histogram"""
   if nmbPoints:
     fcn.SetNpx(nmbPoints)  # used in numeric integration performed by GetRandom()
     fcn.SetNpy(nmbPoints)
@@ -102,7 +104,7 @@ def plotMoments(
   momentLabel:       str = "H",  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
-  '''Plots given moments extracted from data and overlays the corresponding true values if given'''
+  """Plots given moments extracted from data and overlays the corresponding true values if given"""
   nmbMoments = len(HVals)
   trueValues = any((H.truth is not None for H in HVals))
 
@@ -162,7 +164,7 @@ def plotMoments(
           residuals[index] = np.nan
       # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition
       indicesToMask = tuple(index for index, H in enumerate(HVals)
-        if (H.qn == MomentCalculator.QnIndex(momentIndex = 0, L = 0, M = 0)) or np.isnan(residuals[index]))  # exclude H_0(0, 0) and NaN
+        if (H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)) or np.isnan(residuals[index]))  # exclude H_0(0, 0) and NaN
       residualsMasked = residuals.view(np.ma.MaskedArray)
       for i in indicesToMask:
         residualsMasked[i] = np.ma.masked

@@ -1,3 +1,5 @@
+"""Module that provides helper function to use OpenMp in ACLiC compiled code"""
+
 # set number of OpenMP threads
 # make sure this is executed before loading NumPy and user code
 # !NOTE! a more elaborate way to control OpenMP threads is provided by the `threadpoolctl` package
@@ -6,14 +8,14 @@ OMP_NUM_THREADS_save = None
 
 
 def setNmbOpenMpThreads(nmbThreads: int) -> None:
-  '''Sets value of OMP_NUM_THREADS environment variable; current value is saved and can be restored by calling restoreNmbOpenMpThreads()'''
+  """Sets value of OMP_NUM_THREADS environment variable; current value is saved and can be restored by calling restoreNmbOpenMpThreads()"""
   if "OMP_NUM_THREADS" in os.environ:
     OMP_NUM_THREADS_save = os.environ["OMP_NUM_THREADS"]
   os.environ["OMP_NUM_THREADS"] = str(nmbThreads)
 
 
 def restoreNmbOpenMpThreads() -> None:
-  '''Restores OMP_NUM_THREADS environment variable to state when setNmbOpenMpThreads() was called, i.e. either value is restored or variable is unset'''
+  """Restores OMP_NUM_THREADS environment variable to state when setNmbOpenMpThreads() was called, i.e. either value is restored or variable is unset"""
   if OMP_NUM_THREADS_save:
     os.environ["OMP_NUM_THREADS"] = OMP_NUM_THREADS_save
   else:
@@ -24,7 +26,7 @@ import ROOT
 
 
 def printRootACLiCSettings() -> None:
-  '''Prints ROOT settings that affect ACLiC compilation'''
+  """Prints ROOT settings that affect ACLiC compilation"""
   print(f" GetBuildArch()               = {ROOT.gSystem.GetBuildArch()}")
   print(f" GetBuildCompiler()           = {ROOT.gSystem.GetBuildCompiler()}")
   print(f" GetBuildCompilerVersion()    = {ROOT.gSystem.GetBuildCompilerVersion()}")
@@ -42,7 +44,7 @@ def printRootACLiCSettings() -> None:
 
 
 def enableRootACLiCOpenMp() -> None:
-  '''Enables OpenMP support for ROOT macros compiled via ACLiC'''
+  """Enables OpenMP support for ROOT macros compiled via ACLiC"""
   arch = ROOT.gSystem.GetBuildArch()
   if "macos" in arch.lower():
     # !Note! MacOS (Apple does not ship libomp; needs to be installed via MacPorts or Homebrew see testOpenMp.c)
