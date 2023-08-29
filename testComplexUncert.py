@@ -15,7 +15,7 @@ def getRandomCovarianceReal(
   n:   int,
   rng: np.random.Generator,
 ) -> npt.NDArray:
-  '''Generates random R^{n x n} covariance matrix'''
+  """Generates random R^{n x n} covariance matrix"""
   # generate random correlation matrix
   eigenValues = rng.random(n)
   eigenValues = eigenValues * n / np.sum(eigenValues)  # rescale such that sum of eigenvalues == nmbVars
@@ -28,14 +28,14 @@ def getRandomCovarianceReal(
 
 A = RNG.random((NMB_VARS, NMB_VARS))
 def realFunc(x: npt.NDArray) -> npt.NDArray:
-  '''Function R^n -> R^n for which to perform uncertainty propagation'''
+  """Function R^n -> R^n for which to perform uncertainty propagation"""
   return x
   # return 2 * x
   # return A @ x
 
 
 def realFuncJacobian(x: npt.NDArray) -> npt.NDArray:
-  '''Returns R^{n x n} Jacobian matrix of R^n -> R^n function evaluated at given point'''
+  """Returns R^{n x n} Jacobian matrix of R^n -> R^n function evaluated at given point"""
   return np.identity(x.shape[0])
   # return 2 * np.identity(x.shape[0])
   # return A
@@ -45,7 +45,7 @@ def testRealVectorCase(
   xMeans:  npt.NDArray,
   xCovMat: npt.NDArray,
 ) -> None:
-  '''Tests uncertainty propagation for R^n -> R^n function'''
+  """Tests uncertainty propagation for R^n -> R^n function"""
   # perform Monte Carlo uncertainty propagation
   print(f"in: mu = {xMeans}, V = \n{xCovMat}")
   print(f"A = \n{A}")
@@ -72,7 +72,7 @@ def testRealVectorCase(
 
 
 def realVecToComplexVec(xReal: npt.NDArray) -> npt.NDArray[np.complex128]:
-  '''transforms R^2n vector of form [Re_0, Im_0, Re_1, Im_1, ...] to C^n vector [Re_0 + j Im_0, Re_1 + j Im_1, ...]'''
+  """transforms R^2n vector of form [Re_0, Im_0, Re_1, Im_1, ...] to C^n vector [Re_0 + j Im_0, Re_1 + j Im_1, ...]"""
   return xReal[0::2] + 1j * xReal[1::2]
 
 
@@ -80,12 +80,12 @@ def realCovToComplexCov(
   covReal:      npt.NDArray,
   pseudoCovMat: bool = False,
 ) -> npt.NDArray[np.complex128]:
-  '''transforms R^{2n x 2n} covariance of form
+  """transforms R^{2n x 2n} covariance of form
   [[V[Re_0],         cov[Re_0, Im_0], ... ]
    [cov[Im_0, Re_0], V[Im_0],         ... ]
     ... ]
   to either the Hermitian covariance matrix or the pseudo-covariance matrix, both being C^{n x n}
-  '''
+  """
   # see https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrix_and_pseudo-covariance_matrix
   # and https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrices_of_real_and_imaginary_parts
   V_Re_Re = covReal[0::2, 0::2]
@@ -102,10 +102,10 @@ def complexCovToRealCov(
   covHermit: npt.NDArray[np.complex128],
   covPseudo: npt.NDArray[np.complex128],
 ) -> npt.NDArray:
-  '''transforms the C^{n x n} Hermitian and pseudo-covariance matrices into a R^{2n x 2n} covariance matrix with block form
+  """transforms the C^{n x n} Hermitian and pseudo-covariance matrices into a R^{2n x 2n} covariance matrix with block form
   [[V(Re, Re),   V(Re, Im)]
    [V(Re, Im)^T, V(Im, Im)]]
-  '''
+  """
   n = covHermit.shape[0]
   covReal = np.zeros((2 * n, 2 * n))
   covReal[0::2, 0::2] = (np.real(covHermit) + np.real(covPseudo)) / 2  # V_Re_Re
@@ -119,11 +119,11 @@ def realCovToComplexCov2(
   covReal:      npt.NDArray,
   pseudoCovMat: bool = False,
 ) -> npt.NDArray[np.complex128]:
-  '''transforms R^{2n x 2n} covariance with block form
+  """transforms R^{2n x 2n} covariance with block form
   [[V(Re, Re),   V(Re, Im)]
    [V(Re, Im)^T, V(Im, Im)]]
   to either the Hermitian covariance matrix or the pseudo-covariance matrix, both being C^{n x n}
-  '''
+  """
   # see https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrix_and_pseudo-covariance_matrix
   # and https://www.wikiwand.com/en/Complex_random_vector#Covariance_matrices_of_real_and_imaginary_parts
   n = covReal.shape[0] // 2
@@ -141,10 +141,10 @@ def complexCovToRealCov2(
   covHermit: npt.NDArray[np.complex128],
   covPseudo: npt.NDArray[np.complex128],
 ) -> npt.NDArray:
-  '''transforms the C^{n x n} Hermitian and pseudo-covariance matrices into a R^{2n x 2n} covariance matrix with block form
+  """transforms the C^{n x n} Hermitian and pseudo-covariance matrices into a R^{2n x 2n} covariance matrix with block form
   [[V(Re, Re),   V(Re, Im)]
    [V(Re, Im)^T, V(Im, Im)]]
-  '''
+  """
   V_Re_Re = (np.real(covHermit) + np.real(covPseudo)) / 2
   V_Im_Im = (np.real(covHermit) - np.real(covPseudo)) / 2
   V_Re_Im = (np.imag(covPseudo) - np.imag(covHermit)) / 2
@@ -161,7 +161,7 @@ def covariance(
   xSum: complex,
   ySum: complex,
 ) -> npt.NDArray:
-  '''Computes covariance of data samples of random variables x and y'''
+  """Computes covariance of data samples of random variables x and y"""
   N = x.shape[0]
   xMean = xSum / N
   yMean = ySum / N
@@ -169,7 +169,7 @@ def covariance(
 
 
 def autoCovMatrix(z: npt.NDArray) -> npt.NDArray:
-  '''Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov(z)'''
+  """Computes auto-covariance matrix for n-dim vector x of random variables; identical to np.cov(z)"""
   # see https://github.com/numpy/numpy/blob/v1.25.0/numpy/lib/function_base.py#L2530-L2749
   # columns of z represent variables; rows are observations
   Z = z.T
@@ -181,7 +181,7 @@ def crossCovMatrix(
   x: npt.NDArray,
   y: npt.NDArray,
 ) -> npt.NDArray:
-  '''Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov(x, y)[:n, n:]'''
+  """Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov(x, y)[:n, n:]"""
   # columns of x and y represent variables; rows are observations
   X = x.T
   Y = y.T
@@ -192,7 +192,7 @@ def crossCovMatrix(
 
 Acomplex = A[0::2, 0::2] + 1j * A[1::2, 1::2]
 def complexFunc(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
-  '''Function for which to perform uncertainty propagation'''
+  """Function for which to perform uncertainty propagation"""
   return z
   # return np.conjugate(z)
   # return 2 * z
@@ -203,7 +203,7 @@ def complexFunc(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
 
 
 def complexFuncJacobian(z: npt.NDArray[np.complex128]) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
-  '''Returns Jacobian matrix of function evaluated at given point'''
+  """Returns Jacobian matrix of function evaluated at given point"""
   # f(z) = z
   J     = np.identity(z.shape[0], dtype = np.complex128)
   Jconj = np.zeros((z.shape[0], z.shape[0]), dtype = np.complex128)
