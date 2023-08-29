@@ -140,6 +140,39 @@ class AmplitudeSet:
           moments[2] += -term * rhos[2]  # H_2; Eq. (125)
     return (moments[0], moments[1], moments[2])
 
+  def allMoments(
+    self,
+    maxL: int,  # maximum L quantum number of moments
+  ) -> MomentResult:
+    '''Returns moments calculated from partial-wave amplitudes assuming rank 1; the H_2(L, 0) are omitted'''
+    momentIndices = MomentIndices(maxL)
+    momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
+    norm = 1.0
+    for L in range(maxL + 1):
+      for M in range(L + 1):
+        # get all moments for given (L, M)
+        moments: List[complex] = list(self.momentSet(L, M))
+        # ensure that moments are real-valued or purely imaginary, respectively
+        tolerance = 1e-15
+        assert (abs(moments[0].imag) < tolerance) and (abs(moments[1].imag) < tolerance) and (abs(moments[2].real) < tolerance), (
+          f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
+        # set respective real and imaginary parts exactly to zero
+        moments[0] = moments[0].real + 0j
+        moments[1] = moments[1].real + 0j
+        moments[2] = 0 + moments[2].imag * 1j
+        # ensure that H_2(L, 0) is zero
+        assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2].imag}"
+        # normalize to H_0(0, 0)
+        if L == M == 0:
+          norm = moments[0].real  # H_0(0, 0)
+        for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
+          qnIndex   = QnMomentIndex(momentIndex, L, M)
+          flatIndex = momentIndices.indexMap.flatIndex_for[qnIndex]
+          momentsFlatIndex[flatIndex] = moment / norm
+    HTrue = MomentResult(momentIndices, label = "true")
+    HTrue._valsFlatIndex = momentsFlatIndex
+    return HTrue
+
 
 @dataclass(frozen = True)  # immutable
 class QnMomentIndex:
@@ -357,7 +390,7 @@ class MomentValueAndTruth(MomentValue):
   truth: Optional[complex] = None  # true moment value
 
 
-@dataclass
+@dataclass(eq = False)
 class MomentResult:
   '''Stores and provides access to moment values'''
   indices:           MomentIndices  # index mapping and iterators
@@ -373,6 +406,21 @@ class MomentResult:
     self._covReReFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
     self._covImImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
     self._covReImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+
+  def __eq__(
+    self,
+    other: MomentResult,
+  )-> bool:
+    # custom equality check needed because of NumPy arrays
+    if not isinstance(other, MomentResult):
+      return NotImplemented
+    return (
+      self.indices == other.indices
+      and np.array_equal(self._valsFlatIndex,    other._valsFlatIndex)
+      and np.array_equal(self._covReReFlatIndex, other._covReReFlatIndex)
+      and np.array_equal(self._covImImFlatIndex, other._covImImFlatIndex)
+      and np.array_equal(self._covReImFlatIndex, other._covReImFlatIndex)
+    )
 
   @overload
   def __getitem__(

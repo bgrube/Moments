@@ -83,3 +83,7 @@ if __name__ == "__main__":
       moments2 = np.array(ampSet.momentSet(L, M))
       if not np.allclose(moments1, moments2, rtol = 0, atol = 0):
         print(f"delta H_i(L = {L}, M = {M}) = {moments1 - moments2}")
+
+  res1 = testMomentsPhotoProd.calcAllMomentsFromWaves(testMomentsPhotoProd.PROD_AMPS, maxL = 5)
+  res2 = ampSet.allMoments(maxL = 5)
+  print(f"res1 == res2: {res1 == res2}; {np.array_equal(res1._valsFlatIndex, res2._valsFlatIndex)}")
