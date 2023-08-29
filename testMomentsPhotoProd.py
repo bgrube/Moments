@@ -20,7 +20,6 @@ from typing import (
 )
 
 import py3nj
-
 import ROOT
 
 import MomentCalculator
@@ -79,7 +78,6 @@ class Th3PlotKwargsType(TypedDict):
 TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
 
 
-#TODO move into wave-set object
 def calcSpinDensElemSetFromWaves(
   refl:         int,      # reflectivity
   m1:           int,      # m
@@ -97,7 +95,6 @@ def calcSpinDensElemSetFromWaves(
   return (rhos[0], rhos[1], rhos[2])
 
 
-#TODO move into wave-set object
 def calcMomentSetFromWaves(
   prodAmps: Dict[int, Dict[Tuple[int, int,], complex]],
   L:        int,
@@ -122,7 +119,7 @@ def calcMomentSetFromWaves(
           * py3nj.clebsch_gordan(2 * ell2, 2 * L, 2 * ell1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (ell_2 m_2,  L M | ell_1 m_1)
         )
         rhos: Tuple[complex, complex, complex] = calcSpinDensElemSetFromWaves(refl, m1, m2, prodAmp1, prodAmp1NegM, prodAmp2, prodAmp2NegM)
-        print(f"!!! {refl}; ({ell1}, {m1}); ({ell2}, {m2}) = {rhos}")
+        # print(f"!!! {refl}; ({ell1}, {m1}); ({ell2}, {m2}) = {rhos}")
         if term == 0:  # invalid Clebsch-Gordan
           continue
         moments[0] +=  term * rhos[0]  # H_0; Eq. (124)

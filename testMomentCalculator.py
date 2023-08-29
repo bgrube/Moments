@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import bidict as bd
+import numpy as np
 from typing import TYPE_CHECKING
 
 import MomentCalculator
@@ -63,9 +64,9 @@ if __name__ == "__main__":
     print(amp)
   print(f"getMaxSpin() = {ampSet.maxSpin()}")
 
-  print("!!! FOO")
-  moments = testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L = 0, M = 0)
-  print("!!! BAR")
+  # print("!!! FOO")
+  # moments = testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L = 0, M = 0)
+  # print("!!! BAR")
   for refl in (-1, +1):
     for wave1 in testMomentsPhotoProd.PROD_AMPS[refl]:
       l1 = wave1[0]
@@ -75,3 +76,10 @@ if __name__ == "__main__":
         m2 = wave2[1]
         rhos = ampSet.spinDensElementSet(refl, l1, l2, m1, m2)
         print(f"!!! {refl}; ({l1}, {m1}); ({l2}, {m2}) = {rhos}")
+
+  for L in range(5):
+    for M in range(L + 1):
+      moments1 = np.array(testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L, M))
+      moments2 = np.array(ampSet.momentSet(L, M))
+      if not np.allclose(moments1, moments2, rtol = 0, atol = 0):
+        print(f"delta H_i(L = {L}, M = {M}) = {moments1 - moments2}")

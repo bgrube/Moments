@@ -17,6 +17,7 @@ from typing import (
 )
 #TODO switch from int for indices to SupportsIndex; but this requires Python 3.8+
 
+import py3nj
 import ROOT
 
 
@@ -101,7 +102,7 @@ class AmplitudeSet:
     m1:   int,  # m
     m2:   int,  # m'
   ) -> Tuple[complex, complex, complex]:
-    '''Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') from partial-wave amplitudes with given quantum numbers assuming rank 1'''
+    '''Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') with given quantum numbers calculated from partial-wave amplitudes assuming rank 1'''
     qn1     = QnWaveIndex(refl, l1,  m1)
     qn1NegM = QnWaveIndex(refl, l1, -m1)
     qn2     = QnWaveIndex(refl, l2,  m2)
@@ -111,6 +112,33 @@ class AmplitudeSet:
     rhos[1] =            -refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() + (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (151)
     rhos[2] = -(0 + 1j) * refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() - (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (152)
     return (rhos[0], rhos[1], rhos[2])
+
+  def momentSet(
+    self,
+    L: int,  # angular momentum
+    M: int,  # projection quantum number of L
+  ) -> Tuple[complex, complex, complex]:
+    '''Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1'''
+    # Eqs. (154) to (156) assuming that rank is 1
+    moments: List[complex] = 3 * [0 + 0j]
+    for refl in (-1, +1):
+      for amp1 in self.amplitudes(onlyRefl = refl):
+        l1 = amp1.qn.l
+        m1 = amp1.qn.m
+        for amp2 in self.amplitudes(onlyRefl = refl):
+          l2 = amp2.qn.l
+          m2 = amp2.qn.m
+          term = np.sqrt((2 * l2 + 1) / (2 * l1 + 1)) * (
+              py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 0,      0,     0,      ignore_invalid = True)  # (l_2 0,    L 0 | l_1 0  )
+            * py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (l_2 m_2,  L M | l_1 m_1)
+          )
+          if term == 0:  # unphysical Clebsch-Gordan
+            continue
+          rhos: Tuple[complex, complex, complex] = self.spinDensElementSet(refl, l1, l2, m1, m2)
+          moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
+          moments[1] += -term * rhos[1]  # H_1; Eq. (125)
+          moments[2] += -term * rhos[2]  # H_2; Eq. (125)
+    return (moments[0], moments[1], moments[2])
 
 
 @dataclass(frozen = True)  # immutable
