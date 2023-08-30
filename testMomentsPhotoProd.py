@@ -151,9 +151,9 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")
 
   # set parameters of test case
-  nmbEvents = 1000
-  nmbMcEvents = 10000000
-  polarization = 1.0
+  nmbPwaMcEvents = 1000
+  nmbPsMcEvents = 1000000
+  beamPolarization = 1.0
   partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
     # negative-reflectivity waves
     #                                                           refl J   M    amplitude
@@ -204,7 +204,7 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
   HTrue: MomentCalculator.MomentResult = amplitudeSet.allMoments(maxL)
   print(f"True moment values\n{HTrue}")
-  dataPwaModel = genDataFromWaves(nmbEvents, polarization, amplitudeSet, efficiencyFormulaGen)
+  dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen)
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
   # plot data generated from partial-wave amplitudes
@@ -222,16 +222,16 @@ if __name__ == "__main__":
 
   # generate accepted phase-space data
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")
-  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormulaReco)
+  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco)
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
 
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   momentIndices = MomentCalculator.MomentIndices(maxL)
-  dataSet = MomentCalculator.DataSet(polarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents)
+  dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
   integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
-  integralMatrix.calculate()
-  # integralMatrix.loadOrCalculate()
+  # integralMatrix.calculate()
+  integralMatrix.loadOrCalculate()
   integralMatrix.save()
   # print and plot integral matrix and it's inverse
   print(f"Acceptance integral matrix\n{integralMatrix}")
@@ -248,7 +248,7 @@ if __name__ == "__main__":
   #   MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix)
   # moments of acceptance function
   momentsPs = MomentCalculator.MomentCalculator(momentIndices,
-    MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix = None)
+    MomentCalculator.DataSet(beamPolarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents), integralMatrix = None)
   momentsPs.calculate()
   assert momentsPs.HPhys is not None, "momentsPs.HPhys is None"
   print(f"Measured moments of accepted phase-space data\n{momentsPs.HMeas}")
@@ -260,12 +260,12 @@ if __name__ == "__main__":
 
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  moments = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
-  moments.calculate()
-  print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments.HMeas}")
-  print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments.HPhys}")
-  assert moments.HPhys is not None, "moments.HPhys is None"
-  PlottingUtilities.plotMomentsInBin(HData = moments.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
+  momentsPwa = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
+  momentsPwa.calculate()
+  print(f"Measured moments of data generated according to partial-wave amplitudes\n{momentsPwa.HMeas}")
+  print(f"Physical moments of data generated according to partial-wave amplitudes\n{momentsPwa.HPhys}")
+  assert momentsPwa.HPhys is not None, "moments.HPhys is None"
+  PlottingUtilities.plotMomentsInBin(HData = momentsPwa.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   ROOT.gBenchmark.Stop("Total execution time")
