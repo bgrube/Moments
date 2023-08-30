@@ -231,16 +231,9 @@ if __name__ == "__main__":
   momentIndices = MomentCalculator.MomentIndices(maxL)
   # dummy bin
   momentsInBin = MomentCalculator.MomentsKinematicBin({binVarMass : 1.0, binVarMomTransfer : 0.1}, dataSet, momentIndices)
-  print(f"!!! {momentsInBin}")
-  print(f"!!! {momentsInBin.varNames}")
-  print(f"!!! {momentsInBin.integralFileName}")
 
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  # integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
-  # # integralMatrix.calculate()
-  # integralMatrix.loadOrCalculate()
-  # integralMatrix.save()
   # print and plot integral matrix and it's inverse
   momentsInBin.calculateIntegralMatrix()
   print(f"Acceptance integral matrix\n{momentsInBin.integralMatrix}")
@@ -252,13 +245,6 @@ if __name__ == "__main__":
 
   # calculate moments of accepted phase-space data
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  # # acceptance-corrected phase-space moments; should all be 0 except H_0(0, 0)
-  # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
-  #   MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix)
-  # # moments of acceptance function
-  # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
-  #   MomentCalculator.DataSet(beamPolarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents), integralMatrix = None)
-  # momentsPs.calculate()
   momentsInBin.calculateMoments(dataSource = MomentCalculator.MomentsKinematicBin.MomentDataSource.ACCEPTED_PHASE_SPACE)
   print(f"Measured moments of accepted phase-space data\n{momentsInBin.moments.HMeas}")
   print(f"Physical moments of accepted phase-space data\n{momentsInBin.moments.HPhys}")
@@ -269,8 +255,6 @@ if __name__ == "__main__":
 
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  # momentsPwa = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
-  # momentsPwa.calculate()
   momentsInBin.calculateMoments()
   print(f"Measured moments of data generated according to partial-wave amplitudes\n{momentsInBin.moments.HMeas}")
   print(f"Physical moments of data generated according to partial-wave amplitudes\n{momentsInBin.moments.HPhys}")
