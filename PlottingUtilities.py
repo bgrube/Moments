@@ -1,6 +1,7 @@
 """Module that provides collection functions for plotting"""
 
 from dataclasses import dataclass, astuple
+import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
@@ -17,12 +18,50 @@ import ROOT
 import MomentCalculator
 
 
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
+
+
 @dataclass
 class HistAxisBinning:
-  """Stores info that defines the binning of an axis"""
-  nmbBins:   int
-  minVal:    float
-  maxVal:    float
+  """Stores info that defines equidistant binning of an axis"""
+  nmbBins: int    # number of bins
+  minVal:  float  # lower limit
+  maxVal:  float  # upper limit
+  var:     Optional[MomentCalculator.KinematicBinningVariable] = None  # optional info about bin variable
+
+  @property
+  def astuple(self) -> Tuple[int, float, float]:
+    """Returns tuple with binning info that can be directly used in THX() constructor"""
+    return (self.nmbBins, self.minVal, self.maxVal)
+
+  @property
+  def axisTitle(self) -> str:
+    """Returns axis title if info about binning variable is present"""
+    if self.var is None:
+      return ""
+    return f"{self.var.label} [{self.var.unit}]"
+
+  @property
+  def valueRange(self) -> float:
+    """Returns value range of binning, i.e. (maximum value - minimum value)"""
+    if self.maxVal < self.minVal:
+      self.maxVal, self.minVal = self.minVal, self.maxVal
+    return self.maxVal - self.minVal
+
+  @property
+  def binWidth(self) -> float:
+    """Returns bin width"""
+    return self.valueRange / self.nmbBins
+
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> float:
+    """Returns bin center for given bin index"""
+    if subscript < self.nmbBins:
+      return self.minVal + (subscript + 0.5) * self.binWidth
+    raise IndexError
 
 
 def setupPlotStyle() -> None:
@@ -77,7 +116,7 @@ def drawTF3(
   # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead
   histName = os.path.splitext(os.path.basename(pdfFileName))[0]
-  fistFcn = ROOT.TH3F(histName, histTitle, *astuple(binnings[0]), *astuple(binnings[1]), *astuple(binnings[2]))
+  fistFcn = ROOT.TH3F(histName, histTitle, *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
   xAxis = fistFcn.GetXaxis()
   yAxis = fistFcn.GetYaxis()
   zAxis = fistFcn.GetZaxis()
