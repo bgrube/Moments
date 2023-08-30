@@ -3,8 +3,13 @@
 # set number of OpenMP threads
 # make sure this is executed before loading NumPy and user code
 # !NOTE! a more elaborate way to control OpenMP threads is provided by the `threadpoolctl` package
+import functools
 import os
 OMP_NUM_THREADS_save = None
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 def setNmbOpenMpThreads(nmbThreads: int) -> None:

@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
+import functools
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import random_correlation
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 NMB_VARS = 4
