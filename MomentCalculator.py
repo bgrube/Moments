@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import bidict as bd
 from dataclasses import dataclass, field, fields, InitVar
+import dataclasses
+from enum import Enum
 import numpy as np
 import nptyping as npt
 from typing import (
@@ -241,7 +243,7 @@ class AcceptanceIntegralMatrix:
   """Calculates and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
   dataSet:     DataSet        # info on data samples
-  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices
+  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices; must either be given or set be calling load() or calculate()
 
   @overload
   def __getitem__(
@@ -350,16 +352,16 @@ class AcceptanceIntegralMatrix:
   @property
   def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
     """Returns acceptance integral matrix"""
-    assert self._IFlatIndex is not None, "self._IFlatIndex is None"
+    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
     return self._IFlatIndex
 
   def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
     """Returns inverse of acceptance integral matrix"""
-    assert self._IFlatIndex is not None, "self._IFlatIndex is None"
+    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
     return np.linalg.inv(self._IFlatIndex)
 
   def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
-    assert self._IFlatIndex is not None, "self._IFlatIndex is None"
+    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
     return np.linalg.eig(self._IFlatIndex)
 
 
@@ -503,9 +505,9 @@ class MomentCalculator:
   """Calculates and provides access to moments"""
   indices:        MomentIndices  # index mapping and iterators
   dataSet:        DataSet        # info on data samples
-  integralMatrix: Optional[AcceptanceIntegralMatrix] = None  # acceptance integral matrix
-  HMeas:          Optional[MomentResult]             = None  # calculated measured moments
-  HPhys:          Optional[MomentResult]             = None  # calculated physical moments
+  integralMatrix: Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed
+  HMeas:          Optional[MomentResult]             = None  # measured moments; must either be given or calculated by calling calculate()
+  HPhys:          Optional[MomentResult]             = None  # physical moments; must either be given or calculated by calling calculate()
 
   def _calcReImCovMatrices(
     self,
@@ -566,3 +568,63 @@ class MomentCalculator:
     self.HPhys._valsFlatIndex /= norm
     V_phys_aug /= norm**2
     self.HPhys._covReReFlatIndex, self.HPhys._covImImFlatIndex, self.HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
+
+
+@dataclass(frozen = True)  # immutable
+class KinematicBinningVariable:
+  name:  str  # name of variable; used e.g. for filenames
+  label: str  # TLatex expression used for plotting
+  unit:  str  # TLatex expression used for plotting
+
+
+@dataclass
+class MomentsKinematicBin:
+  """Holds all information to calculate moments for a single kinematic bin"""
+  centers:              Dict[KinematicBinningVariable, float]  # dictionary with bin centers
+  dataSet:              DataSet        # info on data samples
+  momentIndices:        MomentIndices  # index mapping and iterators
+  integralFileBaseName: str  = "integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  integralMatrix:       Optional[AcceptanceIntegralMatrix] = None  # must either be given or calculated by calling calculateIntegralMatrix()
+  moments:              Optional[MomentCalculator]         = None  # must either be given or calculated by calling calculateMoments()
+
+  @property
+  def varNames(self) -> List[str]:
+    """Returns names of kinematic variables that define bin"""
+    return sorted((key.name for key in self.centers.keys()))
+
+  @property
+  def integralFileName(self) -> str:
+    """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
+    #TODO add configurable rounding for center values
+    parts = [f"{var.name}_{center}" for var, center in self.centers.items()]
+    return "_".join([self.integralFileBaseName, ] + parts) + ".npy"
+
+  def calculateIntegralMatrix(self) -> None:
+    """Calculates integral matrix"""
+    print(f"Calculating the acceptance integral matrix for kinematic bin {self.centers}")
+    self.integralMatrix = AcceptanceIntegralMatrix(self.momentIndices, self.dataSet)
+    self.integralMatrix.loadOrCalculate(self.integralFileName)
+    self.integralMatrix.save(self.integralFileName)
+
+  MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE", "ACCEPTED_PHASE_SPACE_CORR"))
+
+  def calculateMoments(
+    self,
+    dataSource: MomentDataSource = MomentDataSource.DATA,
+  ) -> None:
+    """Calculates moments for kinematic bin using given data source"""
+    dataSetPs = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
+    if dataSource == self.MomentDataSource.DATA:
+      # calculate moments of data
+      assert self.integralMatrix is not None, "self.integralMatrix must not be None"
+      self.moments = MomentCalculator(self.momentIndices,  self.dataSet, self.integralMatrix)
+    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
+      # calculate moments of acceptance function
+      self.moments = MomentCalculator(self.momentIndices, dataSetPs, integralMatrix = None)
+    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
+      # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
+      assert self.integralMatrix is not None, "self.integralMatrix must not be None"
+      self.moments = MomentCalculator(self.momentIndices,  dataSetPs, self.integralMatrix)
+    self.moments.calculate()
+    assert self.moments.HMeas is not None, "momentsPs.HMeas must not be None"
+    assert self.moments.HPhys is not None, "momentsPs.HPhys must not be None"
