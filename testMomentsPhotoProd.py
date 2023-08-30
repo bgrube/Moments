@@ -224,47 +224,57 @@ if __name__ == "__main__":
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco)
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
 
+  # dummy binning variables
+  binVarMass        = MomentCalculator.KinematicBinningVariable("mass", "#it{m}", "GeV/#it{c}^{2}")
+  binVarMomTransfer = MomentCalculator.KinematicBinningVariable("t",    "#it{t}", "(GeV/#it{c})^{2}")
+  dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
+  momentIndices = MomentCalculator.MomentIndices(maxL)
+  # dummy bin
+  momentsInBin = MomentCalculator.MomentsKinematicBin({binVarMass : 1.0, binVarMomTransfer : 0.1}, dataSet, momentIndices)
+  print(f"!!! {momentsInBin}")
+  print(f"!!! {momentsInBin.varNames}")
+  print(f"!!! {momentsInBin.integralFileName}")
+
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
-  momentIndices = MomentCalculator.MomentIndices(maxL)
-  dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
-  integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
-  # integralMatrix.calculate()
-  integralMatrix.loadOrCalculate()
-  integralMatrix.save()
+  # integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
+  # # integralMatrix.calculate()
+  # integralMatrix.loadOrCalculate()
+  # integralMatrix.save()
   # print and plot integral matrix and it's inverse
-  print(f"Acceptance integral matrix\n{integralMatrix}")
-  eigenVals, _ = integralMatrix.eigenDecomp()
+  momentsInBin.calculateIntegralMatrix()
+  print(f"Acceptance integral matrix\n{momentsInBin.integralMatrix}")
+  eigenVals, _ = momentsInBin.integralMatrix.eigenDecomp()
   print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
-  PlottingUtilities.plotComplexMatrix(integralMatrix.matrix,    pdfFileNamePrefix = "I_acc")
-  PlottingUtilities.plotComplexMatrix(integralMatrix.inverse(), pdfFileNamePrefix = "I_inv")
+  PlottingUtilities.plotComplexMatrix(momentsInBin.integralMatrix.matrix,    pdfFileNamePrefix = "I_acc")
+  PlottingUtilities.plotComplexMatrix(momentsInBin.integralMatrix.inverse(), pdfFileNamePrefix = "I_inv")
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate moments of accepted phase-space data
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  # acceptance-corrected phase-space moments; should all be 0 except H_0(0, 0)
+  # # acceptance-corrected phase-space moments; should all be 0 except H_0(0, 0)
   # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
   #   MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix)
-  # moments of acceptance function
-  momentsPs = MomentCalculator.MomentCalculator(momentIndices,
-    MomentCalculator.DataSet(beamPolarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents), integralMatrix = None)
-  momentsPs.calculate()
-  assert momentsPs.HPhys is not None, "momentsPs.HPhys is None"
-  print(f"Measured moments of accepted phase-space data\n{momentsPs.HMeas}")
-  print(f"Physical moments of accepted phase-space data\n{momentsPs.HPhys}")
+  # # moments of acceptance function
+  # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
+  #   MomentCalculator.DataSet(beamPolarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents), integralMatrix = None)
+  # momentsPs.calculate()
+  momentsInBin.calculateMoments(dataSource = MomentCalculator.MomentsKinematicBin.MomentDataSource.ACCEPTED_PHASE_SPACE)
+  print(f"Measured moments of accepted phase-space data\n{momentsInBin.moments.HMeas}")
+  print(f"Physical moments of accepted phase-space data\n{momentsInBin.moments.HPhys}")
   HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # set all true moment values to 0
   HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # set true H_0(0, 0) to 1
-  PlottingUtilities.plotMomentsInBin(HData = momentsPs.HPhys, HTrue = HTruePs, pdfFileNamePrefix = "hPs_")
+  PlottingUtilities.plotMomentsInBin(HData = momentsInBin.moments.HPhys, HTrue = HTruePs, pdfFileNamePrefix = "hPs_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  momentsPwa = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
-  momentsPwa.calculate()
-  print(f"Measured moments of data generated according to partial-wave amplitudes\n{momentsPwa.HMeas}")
-  print(f"Physical moments of data generated according to partial-wave amplitudes\n{momentsPwa.HPhys}")
-  assert momentsPwa.HPhys is not None, "moments.HPhys is None"
-  PlottingUtilities.plotMomentsInBin(HData = momentsPwa.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
+  # momentsPwa = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
+  # momentsPwa.calculate()
+  momentsInBin.calculateMoments()
+  print(f"Measured moments of data generated according to partial-wave amplitudes\n{momentsInBin.moments.HMeas}")
+  print(f"Physical moments of data generated according to partial-wave amplitudes\n{momentsInBin.moments.HPhys}")
+  PlottingUtilities.plotMomentsInBin(HData = momentsInBin.moments.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   ROOT.gBenchmark.Stop("Total execution time")
