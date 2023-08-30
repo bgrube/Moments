@@ -74,7 +74,7 @@ def drawTF3(
     fcn.SetNpy(nmbPoints)
     fcn.SetNpz(nmbPoints)
   canv = ROOT.TCanvas()
-  # fcn.Draw("BOX2") does not work; sigh
+  # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead
   histName = os.path.splitext(os.path.basename(pdfFileName))[0]
   fistFcn = ROOT.TH3F(histName, histTitle, *astuple(binnings[0]), *astuple(binnings[1]), *astuple(binnings[2]))

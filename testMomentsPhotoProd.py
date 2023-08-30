@@ -9,6 +9,7 @@ print = functools.partial(print, flush = True)
 
 import ctypes
 import numpy as np
+import os
 from typing import (
   List,
   Optional,
@@ -23,34 +24,6 @@ import OpenMp
 import PlottingUtilities
 import RootUtilities
 
-
-# set of all possible waves up to ell = 2
-PROD_AMPS = [
-  # negative-reflectivity waves
-  #                                                           refl J   M    amplitude
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 0,  0),  1.0 + 0.0j),  # S_0^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1, -1), -0.4 + 0.1j),  # P_-1^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1,  0),  0.3 - 0.8j),  # P_0^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1, +1), -0.8 + 0.7j),  # P_+1^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, -2),  0.1 - 0.4j),  # D_-2^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, -1),  0.5 + 0.2j),  # D_-1^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2,  0), -0.1 - 0.2j),  # D_ 0^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, +1),  0.2 - 0.1j),  # D_+1^-
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, +2), -0.2 + 0.3j),  # D_+2^-
-  # positive-reflectivity waves
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 0,  0),  0.5 + 0.0j),  # S_0^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, -1),  0.5 - 0.1j),  # P_-1^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1,  0), -0.8 - 0.3j),  # P_0^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, +1),  0.6 + 0.3j),  # P_+1^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, -2),  0.2 + 0.1j),  # D_-2^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, -1),  0.2 - 0.3j),  # D_-1^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2,  0),  0.1 - 0.2j),  # D_ 0^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +1),  0.2 + 0.5j),  # D_+1^+
-  MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +2), -0.3 - 0.1j),  # D_+2^+
-]
-
-# define maximum L quantum number of moments
-MAX_L = 5
 
 # default TH3 plotting options
 TH3_NMB_BINS = 25
@@ -71,6 +44,7 @@ def genDataFromWaves(
   polarization:      float,                          # photon-beam polarization
   amplitudeSet:      MomentCalculator.AmplitudeSet,  # partial-wave amplitudes
   efficiencyFormula: Optional[str] = None,           # detection efficiency used to generate data
+  regenerateData:    bool = False,                   # if set data are regenerated although .root file exists
 ) -> ROOT.RDataFrame:
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   # construct and draw efficiency function
@@ -102,7 +76,7 @@ def genDataFromWaves(
     f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * TMath::DegToRad() * z) "
     f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))"
     + (f" * ({efficiencyFormula})" if efficiencyFormula else ""))  # Eq. (163)
-  print(f"intensity = {intensityFormula}")
+  print(f"Intensity formula = {intensityFormula}")
   intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
@@ -114,7 +88,10 @@ def genDataFromWaves(
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
   fileName = f"{intensityFcn.GetName()}.photoProd.root"
-  #TODO switch that allows loading from file
+  if os.path.exists(fileName) and not regenerateData:
+    print(f"Reading partial-wave MC data from '{fileName}'")
+    return ROOT.RDataFrame(treeName, fileName)
+  print(f"Generating partial-wave MC data and writing them to '{fileName}'")
   df = ROOT.RDataFrame(nmbEvents)
   RootUtilities.declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
@@ -135,6 +112,7 @@ def genDataFromWaves(
 def genAccepted2BodyPsPhotoProd(
   nmbEvents:         int,                   # number of events to generate
   efficiencyFormula: Optional[str] = None,  # detection efficiency used for acceptance correction
+  regenerateData:    bool = False,          # if set data are regenerated although .root file exists
 ) -> ROOT.RDataFrame:
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   # construct and draw efficiency function
@@ -144,7 +122,10 @@ def genAccepted2BodyPsPhotoProd(
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
   fileName = f"{efficiencyFcn.GetName()}.photoProd.root"
-  #TODO switch that allows loading from file
+  if os.path.exists(fileName) and not regenerateData:
+    print(f"Reading accepted phase-space MC data from '{fileName}'")
+    return ROOT.RDataFrame(treeName, fileName)
+  print(f"Generating accepted phase-space MC data and writing them to '{fileName}'")
   df = ROOT.RDataFrame(nmbEvents)
   RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
   df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
@@ -169,10 +150,35 @@ if __name__ == "__main__":
   PlottingUtilities.setupPlotStyle()
   ROOT.gBenchmark.Start("Total execution time")
 
-  # get data
+  # set parameters of test case
   nmbEvents = 1000
   nmbMcEvents = 10000000
   polarization = 1.0
+  partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
+    # negative-reflectivity waves
+    #                                                           refl J   M    amplitude
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 0,  0),  1.0 + 0.0j),  # S_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1, -1), -0.4 + 0.1j),  # P_-1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1,  0),  0.3 - 0.8j),  # P_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 1, +1), -0.8 + 0.7j),  # P_+1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, -2),  0.1 - 0.4j),  # D_-2^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, -1),  0.5 + 0.2j),  # D_-1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2,  0), -0.1 - 0.2j),  # D_ 0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, +1),  0.2 - 0.1j),  # D_+1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(-1, 2, +2), -0.2 + 0.3j),  # D_+2^-
+    # positive-reflectivity waves
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 0,  0),  0.5 + 0.0j),  # S_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, -1),  0.5 - 0.1j),  # P_-1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1,  0), -0.8 - 0.3j),  # P_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, +1),  0.6 + 0.3j),  # P_+1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, -2),  0.2 + 0.1j),  # D_-2^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, -1),  0.2 - 0.3j),  # D_-1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2,  0),  0.1 - 0.2j),  # D_ 0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +1),  0.2 + 0.5j),  # D_+1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +2), -0.3 - 0.1j),  # D_+2^+
+  ]
+  amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
+  maxL = 5  # define maximum L quantum number of moments
   # formulas for detection efficiency
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
   # efficiencyFormulaGen = "1"  # acc_perfect
@@ -192,23 +198,16 @@ if __name__ == "__main__":
     efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
   else:
     efficiencyFormulaReco = efficiencyFormulaGen
+  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
-  # input from partial-wave amplitudes
+  # calculate true moment values and generate data from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
-  amplitudeSet = MomentCalculator.AmplitudeSet(PROD_AMPS)
-  HTrue: MomentCalculator.MomentResult = amplitudeSet.allMoments(maxL = MAX_L)
-  print("True moment values:")
-  for L in range(MAX_L + 1):
-    for M in range(L + 1):
-      moments = []
-      for momentIndex in range(2 if M == 0 else 3):
-        qnIndex = MomentCalculator.QnMomentIndex(momentIndex, L, M)
-        moments.append(HTrue[qnIndex].val)
-      print(f"(H_0({L} {M}), H_1({L} {M})" + ("" if M == 0 else f", H_2({L} {M}))") + f" = {tuple(moments)}")
+  HTrue: MomentCalculator.MomentResult = amplitudeSet.allMoments(maxL)
+  print(f"True moment values\n{HTrue}")
   dataPwaModel = genDataFromWaves(nmbEvents, polarization, amplitudeSet, efficiencyFormulaGen)
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
-  # plot data
+  # plot data generated from partial-wave amplitudes
   canv = ROOT.TCanvas()
   nmbBins = 25
   hist = dataPwaModel.Histo3D(
@@ -218,26 +217,33 @@ if __name__ == "__main__":
   hist.GetXaxis().SetTitleOffset(1.5)
   hist.GetYaxis().SetTitleOffset(2)
   hist.GetZaxis().SetTitleOffset(1.5)
-  hist.Draw("BOX2")
+  hist.Draw("BOX2Z")
   canv.SaveAs(f"{hist.GetName()}.pdf")
 
   # generate accepted phase-space data
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbMcEvents, efficiencyFormulaReco)
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
+
   # calculate integral matrix
-  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
-  momentIndices    = MomentCalculator.MomentIndices(MAX_L)
-  dataSet          = MomentCalculator.DataSet(polarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents)
   ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
+  momentIndices = MomentCalculator.MomentIndices(maxL)
+  dataSet = MomentCalculator.DataSet(polarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents)
   integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
   integralMatrix.calculate()
   # integralMatrix.loadOrCalculate()
   integralMatrix.save()
+  # print and plot integral matrix and it's inverse
+  print(f"Acceptance integral matrix\n{integralMatrix}")
+  eigenVals, _ = integralMatrix.eigenDecomp()
+  print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
+  PlottingUtilities.plotComplexMatrix(integralMatrix.matrix,    pdfFileNamePrefix = "I_acc")
+  PlottingUtilities.plotComplexMatrix(integralMatrix.inverse(), pdfFileNamePrefix = "I_inv")
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
 
-  # calculate and print moments of accepted phase-space data
+  # calculate moments of accepted phase-space data
   ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+  # acceptance-corrected phase-space moments; should all be 0 except H_0(0, 0)
   # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
   #   MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix)
   # moments of acceptance function
@@ -245,29 +251,19 @@ if __name__ == "__main__":
     MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix = None)
   momentsPs.calculate()
   assert momentsPs.HPhys is not None, "momentsPs.HPhys is None"
-  print("Measured moments of accepted phase-space data")
-  momentsPs.HMeas.print()
-  print("Integral matrix")
-  print(f"Acceptance integral matrix = \n{integralMatrix}")
-  eigenVals, eigenVecs = np.linalg.eig(integralMatrix._IFlatIndex)
-  print(f"I_acc eigenvalues = {eigenVals}")
+  print(f"Measured moments of accepted phase-space data\n{momentsPs.HMeas}")
   print(f"Physical moments of accepted phase-space data\n{momentsPs.HPhys}")
-  HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")    # set all true moment values to 0
+  HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # set all true moment values to 0
   HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # set true H_0(0, 0) to 1
   PlottingUtilities.plotMomentsInBin(HData = momentsPs.HPhys, HTrue = HTruePs, pdfFileNamePrefix = "hPs_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
-  # calculate moments
+  # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
   moments.calculate()
-  print("Measured moments of data generated according to PWA model")
-  moments.HMeas.print()
-  print("Integral matrix")
-  print(f"Acceptance integral matrix = \n{integralMatrix}")
-  eigenVals, eigenVecs = np.linalg.eig(integralMatrix._IFlatIndex)
-  print(f"I_acc eigenvalues = {eigenVals}")
-  print(f"Physical moments of data generated according to PWA model\n{moments.HPhys}")
+  print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments.HMeas}")
+  print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments.HPhys}")
   assert moments.HPhys is not None, "moments.HPhys is None"
   PlottingUtilities.plotMomentsInBin(HData = moments.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
