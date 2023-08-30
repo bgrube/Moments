@@ -8,12 +8,11 @@ from dataclasses import dataclass, field, fields, InitVar
 import numpy as np
 import nptyping as npt
 from typing import (
-  overload,
-  Any,
   Dict,
   Generator,
   List,
   Optional,
+  overload,
   Sequence,
   Tuple,
   Union,
@@ -283,7 +282,7 @@ class AcceptanceIntegralMatrix:
 
   def __str__(self) -> str:
     if self._IFlatIndex is None:
-      return "None"
+      return str(None)
     else:
       return np.array2string(self._IFlatIndex, precision = 3, suppress_small = True, max_line_width = 150)
 
@@ -310,6 +309,7 @@ class AcceptanceIntegralMatrix:
     for flatIndexMeas in self.indices.flatIndices():
       for flatIndexPhys in self.indices.flatIndices():
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
+    assert self.isValid(), f"Integral matrix data are inconsistent"
 
   def isValid(self) -> bool:
     return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.indices), len(self.indices))
@@ -319,6 +319,7 @@ class AcceptanceIntegralMatrix:
     fileName: str = "./integralMatrix.npy",
   ) -> None:
     """Saves NumPy array that holds the integral matrix to file with given name"""
+    assert self.isValid(), f"Integral matrix data are inconsistent"
     if self._IFlatIndex is not None:
       print(f"Saving integral matrix to file '{fileName}'.")
       np.save(fileName, self._IFlatIndex)
@@ -333,6 +334,7 @@ class AcceptanceIntegralMatrix:
     if not array.shape == (len(self.indices), len(self.indices)):
       raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(len(self.indices), len(self.indices))} but got {array.shape}.")
     self._IFlatIndex = array
+    assert self.isValid(), f"Integral matrix data are inconsistent"
 
   def loadOrCalculate(
     self,
@@ -344,6 +346,21 @@ class AcceptanceIntegralMatrix:
     except Exception as e:
       print(f"Could not load integral matrix from file '{fileName}': {e} Calculating matrix instead.")
       self.calculate()
+
+  @property
+  def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
+    """Returns acceptance integral matrix"""
+    assert self._IFlatIndex is not None, "self._IFlatIndex is None"
+    return self._IFlatIndex
+
+  def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
+    """Returns inverse of acceptance integral matrix"""
+    assert self._IFlatIndex is not None, "self._IFlatIndex is None"
+    return np.linalg.inv(self._IFlatIndex)
+
+  def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
+    assert self._IFlatIndex is not None, "self._IFlatIndex is None"
+    return np.linalg.eig(self._IFlatIndex)
 
 
 @dataclass
@@ -469,13 +486,6 @@ class MomentResult:
     result = (str(self[flatIndex]) for flatIndex in self.indices.flatIndices())
     return "\n".join(result)
 
-  #TODO just for backwards compatibility; remove
-  def print(self) -> None:
-    for flatIndex in self.indices.flatIndices():
-      HVal = self[flatIndex]
-      momentSymbol = f"H{'^' + HVal.label if HVal.label else ''}_{HVal.qn.momentIndex}(L = {HVal.qn.L}, M = {HVal.qn.M})"
-      print(f"{momentSymbol} = {HVal.val}")
-
   def copyFrom(
     self,
     other: MomentResult,  # instance from which data are copied
@@ -539,14 +549,8 @@ class MomentCalculator:
       np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
       np.copyto(V_phys_aug, V_meas_aug)
     else:
-      # get acceptance integral matrix
-      assert self.integralMatrix._IFlatIndex is not None, "Integral matrix is None."
-      I_acc: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] = self.integralMatrix._IFlatIndex
-      #TODO move to matrix class
-      import PlottingUtilities  # avoid circular dependency
-      PlottingUtilities.plotComplexMatrix(I_acc, pdfFileNamePrefix = "I_acc")
-      I_inv = np.linalg.inv(I_acc)
-      PlottingUtilities.plotComplexMatrix(I_inv, pdfFileNamePrefix = "I_inv")
+      # get inverse of acceptance integral matrix
+      I_inv = self.integralMatrix.inverse()
       # calculate physical moments, i.e. correct for detection efficiency
       self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # perform linear uncertainty propagation
