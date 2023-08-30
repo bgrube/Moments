@@ -7,6 +7,7 @@ import bidict as bd
 from dataclasses import dataclass, field, fields, InitVar
 import dataclasses
 from enum import Enum
+import functools
 import numpy as np
 import nptyping as npt
 from typing import (
@@ -23,6 +24,10 @@ from typing import (
 
 import py3nj
 import ROOT
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 @dataclass(frozen = True)  # immutable
@@ -572,9 +577,10 @@ class MomentCalculator:
 
 @dataclass(frozen = True)  # immutable
 class KinematicBinningVariable:
-  name:  str  # name of variable; used e.g. for filenames
-  label: str  # TLatex expression used for plotting
-  unit:  str  # TLatex expression used for plotting
+  name:      str  # name of variable; used e.g. for filenames
+  label:     str  # TLatex expression used for plotting
+  unit:      str  # TLatex expression used for plotting
+  nmbDigits: Optional[int] = None  # number of digits after decimal point to use when converting value to string
 
 
 @dataclass
@@ -595,12 +601,12 @@ class MomentsKinematicBin:
   @property
   def integralFileName(self) -> str:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    #TODO add configurable rounding for center values
-    parts = [f"{var.name}_{center}" for var, center in self.centers.items()]
+    parts: List[str] = []
+    parts = [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.centers.items()]
     return "_".join([self.integralFileBaseName, ] + parts) + ".npy"
 
   def calculateIntegralMatrix(self) -> None:
-    """Calculates integral matrix"""
+    """Calculates acceptance integral matrix"""
     print(f"Calculating the acceptance integral matrix for kinematic bin {self.centers}")
     self.integralMatrix = AcceptanceIntegralMatrix(self.momentIndices, self.dataSet)
     self.integralMatrix.loadOrCalculate(self.integralFileName)
@@ -628,3 +634,41 @@ class MomentsKinematicBin:
     self.moments.calculate()
     assert self.moments.HMeas is not None, "momentsPs.HMeas must not be None"
     assert self.moments.HPhys is not None, "momentsPs.HPhys must not be None"
+
+
+@dataclass
+class MomentsKinematicBinning:
+  """Holds all information to calculate moments for several kinematic bins"""
+  moments: List[MomentsKinematicBin]  # data for all bins of the kinematic binning
+
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> MomentsKinematicBin:
+    """Returns MomentsKinematicBin that correspond to given bin index"""
+    return self.moments[subscript]
+
+  @property
+  def varNames(self) -> List[str]:
+    """Returns names of kinematic variables used in binning"""
+    varNames = None
+    for momentsInBin in self.moments:
+      varNamesInBin = momentsInBin.varNames
+      if varNames is None:
+        varNames = varNamesInBin
+      else:
+        assert varNamesInBin == varNames, f"Bins have inconsistent set of binning variables: bin '{momentsInBin.centers}': {varNamesInBin} vs. {varNames} in previous bin"
+    return varNames or []
+
+  def calculateIntegralMatrices(self) -> None:
+    """Calculates acceptance integral matrices for all kinematic bins"""
+    for momentsInBin in self:
+      momentsInBin.calculateIntegralMatrix()
+
+  def calculateMoments(
+    self,
+    dataSource: MomentsKinematicBin.MomentDataSource = MomentsKinematicBin.MomentDataSource.DATA,
+  ) -> None:
+    """Calculates moments for all kinematic bins using given data source"""
+    for momentsInBin in self:
+      momentsInBin.calculateMoments(dataSource)
