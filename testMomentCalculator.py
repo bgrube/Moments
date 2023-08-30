@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
 import bidict as bd
-import numpy as np
 from typing import TYPE_CHECKING
 
 import MomentCalculator
-import testMomentsPhotoProd
 
 
 if __name__ == "__main__":
@@ -58,32 +56,18 @@ if __name__ == "__main__":
   ampSet = MomentCalculator.AmplitudeSet(amps)
   qnIndex = MomentCalculator.QnWaveIndex(+1, 2, +2)
   print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
-  # ampSet[qnIndex] = 100 + 100j
-  # print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
+  ampSet[qnIndex] = 100 + 100j
+  print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
   for amp in ampSet.amplitudes():
     print(amp)
   print(f"getMaxSpin() = {ampSet.maxSpin()}")
 
-  # print("!!! FOO")
-  # moments = testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L = 0, M = 0)
-  # print("!!! BAR")
   for refl in (-1, +1):
-    for wave1 in testMomentsPhotoProd.PROD_AMPS[refl]:
-      l1 = wave1[0]
-      m1 = wave1[1]
-      for wave2 in testMomentsPhotoProd.PROD_AMPS[refl]:
-        l2 = wave2[0]
-        m2 = wave2[1]
+    for amp1 in ampSet.amplitudes(onlyRefl = refl):
+      l1 = amp1.qn.l
+      m1 = amp1.qn.m
+      for amp2 in ampSet.amplitudes(onlyRefl = refl):
+        l2 = amp2.qn.l
+        m2 = amp2.qn.m
         rhos = ampSet.spinDensElementSet(refl, l1, l2, m1, m2)
-        print(f"!!! {refl}; ({l1}, {m1}); ({l2}, {m2}) = {rhos}")
-
-  for L in range(5):
-    for M in range(L + 1):
-      moments1 = np.array(testMomentsPhotoProd.calcMomentSetFromWaves(testMomentsPhotoProd.PROD_AMPS, L, M))
-      moments2 = np.array(ampSet.momentSet(L, M))
-      if not np.allclose(moments1, moments2, rtol = 0, atol = 0):
-        print(f"delta H_i(L = {L}, M = {M}) = {moments1 - moments2}")
-
-  res1 = testMomentsPhotoProd.calcAllMomentsFromWaves(testMomentsPhotoProd.PROD_AMPS, maxL = 5)
-  res2 = ampSet.allMoments(maxL = 5)
-  print(f"res1 == res2: {res1 == res2}; {np.array_equal(res1._valsFlatIndex, res2._valsFlatIndex)}")
+        print(f"rho {refl}; ({l1}, {m1}); ({l2}, {m2}) = {rhos}")
