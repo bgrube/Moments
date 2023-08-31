@@ -236,22 +236,29 @@ if __name__ == "__main__":
   momentIndices = MomentCalculator.MomentIndices(maxL)
   binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 1)
   massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, var = binVarMass)
-  momentsInBins: List[MomentCalculator.MomentsKinematicBin] = []
+  momentsInBins: List[MomentCalculator.MomentCalculator] = []
   for massBinCenter in massBinning:
     # dummy bins with identical data sets
     dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
-    momentsInBins.append(MomentCalculator.MomentsKinematicBin({binVarMass : massBinCenter}, dataSet, momentIndices))
+    momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
   moments = MomentCalculator.MomentsKinematicBinning(momentsInBins)
 
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
   moments.calculateIntegralMatrices()
+  print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
+  eigenVals, _ = moments[0].integralMatrix.eigenDecomp()
+  print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
+  PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.matrix,    pdfFileNamePrefix = "I_acc")
+  PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.inverse(), pdfFileNamePrefix = "I_inv")
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments.calculateMoments()
-  qnIndex = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)
+  print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
+  print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
+  PlottingUtilities.plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
   PlottingUtilities.plotMoments1D(moments, MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0), binVarMass)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 

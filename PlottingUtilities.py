@@ -9,6 +9,7 @@ import os
 from scipy import stats
 from typing import (
   Dict,
+  Iterator,
   Optional,
   Sequence,
   Tuple,
@@ -26,8 +27,15 @@ print = functools.partial(print, flush = True)
 @dataclass
 class MomentValueAndTruth(MomentCalculator.MomentValue):
   """Stores and provides access to single moment value and provides truth value"""
-  truth: Optional[complex] = None  # true moment value
-  binCenters: Optional[Dict[MomentCalculator.KinematicBinningVariable, float]] = None  # dictionary with bin centers
+  truth:       Optional[complex] = None  # true moment value
+  _binCenters: Optional[Dict[MomentCalculator.KinematicBinningVariable, float]] = None  # dictionary with bin centers
+
+  # accessors that guarantee existence of optional fields
+  @property
+  def binCenters(self) -> Dict[MomentCalculator.KinematicBinningVariable, float]:
+    """Returns true moment value"""
+    assert self._binCenters is not None, "self._binCenters must not be None"
+    return self._binCenters
 
 
 @dataclass
@@ -37,6 +45,24 @@ class HistAxisBinning:
   minVal:  float  # lower limit
   maxVal:  float  # upper limit
   var:     Optional[MomentCalculator.KinematicBinningVariable] = None  # optional info about bin variable
+
+  def __len__(self) -> int:
+    """Returns number of bins"""
+    return self.nmbBins
+
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> float:
+    """Returns bin center for given bin index"""
+    if subscript < self.nmbBins:
+      return self.minVal + (subscript + 0.5) * self.binWidth
+    raise IndexError
+
+  def __iter__(self) -> Iterator[float]:
+    """Iterates over bin centers"""
+    for i in range(len(self)):
+      yield self[i]
 
   @property
   def astuple(self) -> Tuple[int, float, float]:
@@ -61,15 +87,6 @@ class HistAxisBinning:
   def binWidth(self) -> float:
     """Returns bin width"""
     return self.valueRange / self.nmbBins
-
-  def __getitem__(
-    self,
-    subscript: int,
-  ) -> float:
-    """Returns bin center for given bin index"""
-    if subscript < self.nmbBins:
-      return self.minVal + (subscript + 0.5) * self.binWidth
-    raise IndexError
 
 
 def setupPlotStyle() -> None:
@@ -274,7 +291,6 @@ def plotMoment1D(
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
   """Plots moments extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
-  assert all((HVal.binCenters is not None for HVal in HVals)), "All moment values must have binCenters that are not None."
   print(f"Plotting moments as a function of binning variable '{binningVar}'")
   multiGraph = ROOT.TMultiGraph()
   xVals = np.array([HVal.binCenters[binningVar] for HVal in HVals if binningVar in HVal.binCenters.keys()], dtype = npt.Double)
@@ -301,5 +317,5 @@ def plotMoments1D(
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment
-  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], None, HData.centers) for HData in moments)
+  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
   plotMoment1D(HVals, binningVar, pdfFileNamePrefix)

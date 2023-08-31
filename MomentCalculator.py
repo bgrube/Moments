@@ -13,6 +13,7 @@ import nptyping as npt
 from typing import (
   Dict,
   Generator,
+  Iterator,
   List,
   Optional,
   overload,
@@ -85,7 +86,7 @@ class AmplitudeSet:
   ) -> Generator[AmplitudeValue, None, None]:
     """Generates amplitude values; optionally filtered by reflectivity"""
     assert onlyRefl is None or abs(onlyRefl) == 1, f"Invalid reflectivity value f{onlyRefl}; expect +1, -1, or None"
-    reflIndices = (0, 1)
+    reflIndices: Tuple[int, ...] = (0, 1)
     if onlyRefl == +1:
       reflIndices = (0, )
     elif onlyRefl == -1:
@@ -443,7 +444,7 @@ class MomentResult:
 
   def __eq__(
     self,
-    other: MomentResult,
+    other: object,
   )-> bool:
     # custom equality check needed because of NumPy arrays
     if not isinstance(other, MomentResult):
@@ -514,13 +515,57 @@ class MomentResult:
 
 @dataclass
 class MomentCalculator:
-  """Calculates and provides access to moments"""
-  indices:        MomentIndices  # index mapping and iterators
-  dataSet:        DataSet        # info on data samples
-  integralMatrix: Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed
-  HMeas:          Optional[MomentResult]             = None  # measured moments; must either be given or calculated by calling calculate()
-  HPhys:          Optional[MomentResult]             = None  # physical moments; must either be given or calculated by calling calculate()
-  #TODO add accessors with asserts for optional arguments?
+  """Holds all information to calculate moments for a single kinematic bin"""
+  indices:              MomentIndices  # index mapping and iterators
+  dataSet:              DataSet  # info on data samples
+  integralFileBaseName: str  = "integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
+  _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
+  _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
+  _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None # dictionary with bin centers
+
+  # accessors that guarantee existence of optional fields
+  @property
+  def integralMatrix(self) -> AcceptanceIntegralMatrix:
+    """Returns integral matrix"""
+    assert self._integralMatrix is not None, "self._integralMatrix must not be None"
+    return self._integralMatrix
+  @property
+  def HMeas(self) -> MomentResult:
+    """Returns physical moments"""
+    assert self._HMeas is not None, "self._HMeas must not be None"
+    return self._HMeas
+  @property
+  def HPhys(self) -> MomentResult:
+    """Returns physical moments"""
+    assert self._HPhys is not None, "self._HPhys must not be None"
+    return self._HPhys
+  @property
+  def binCenters(self) -> Dict[KinematicBinningVariable, float]:
+    """Returns dictionary with kinematic variables and bin centers"""
+    assert self._binCenters is not None, "self._binCenters must not be None"
+    return self._binCenters
+
+  # @property
+  # def varNames(self) -> List[str]:
+  #   """Returns names of kinematic variables that define bin"""
+  #   if self._binCenters is None:
+  #     return []
+  #   return sorted((key.name for key in self._binCenters.keys()))
+
+  @property
+  def integralFileName(self) -> str:
+    """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
+    parts: List[str] = []
+    parts = [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
+    return "_".join([self.integralFileBaseName, ] + parts) + ".npy"
+
+  def calculateIntegralMatrix(self) -> None:
+    """Calculates acceptance integral matrix"""
+    print(f"Calculating the acceptance integral matrix for kinematic bin {self.binCenters}")
+    self._integralMatrix = AcceptanceIntegralMatrix(self.indices, self.dataSet)
+    self._integralMatrix.loadOrCalculate(self.integralFileName)
+    self._integralMatrix.save(self.integralFileName)
 
   def _calcReImCovMatrices(
     self,
@@ -535,12 +580,33 @@ class MomentCalculator:
     V_ReIm = (np.imag(V_pseudo) - np.imag(V_Hermit)) / 2  # Eq. (93)
     return (V_ReRe, V_ImIm, V_ReIm)
 
-  def calculate(self) -> None:
-    """Calculates photoproduction moments and their covariances"""
+  MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE", "ACCEPTED_PHASE_SPACE_CORR"))
+
+  def calculateMoments(
+    self,
+    dataSource: MomentDataSource = MomentDataSource.DATA,
+  ) -> None:
+    """Calculates photoproduction moments and their covariances using given data source"""
+    # define dataset and integral matrix to use for moment calculation
+    dataSet = None
+    integralMatrix = None
+    if dataSource == self.MomentDataSource.DATA:
+      # calculate moments of data
+      dataSet        = self.dataSet
+      integralMatrix = self.integralMatrix
+    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
+      # calculate moments of acceptance function
+      dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
+    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
+      # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
+      dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
+      integralMatrix = self.integralMatrix
+    else:
+      raise ValueError(f"Unknown data source '{dataSource}'")
     # get input data as NumPy arrays
-    thetas = self.dataSet.data.AsNumpy(columns = ["theta"])["theta"]
-    phis   = self.dataSet.data.AsNumpy(columns = ["phi"]  )["phi"]
-    Phis   = self.dataSet.data.AsNumpy(columns = ["Phi"]  )["Phi"]
+    thetas = dataSet.data.AsNumpy(columns = ["theta"])["theta"]
+    phis   = dataSet.data.AsNumpy(columns = ["phi"]  )["phi"]
+    Phis   = dataSet.data.AsNumpy(columns = ["Phi"]  )["Phi"]
     print(f"Input data column: {type(thetas)}; {thetas.shape}; {thetas.dtype}; {thetas.dtype.type}")
     nmbEvents = len(thetas)
     assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
@@ -549,25 +615,25 @@ class MomentCalculator:
     nmbMoments = len(self.indices)
     # calculate basis-function values and values of measured moments
     fMeas  = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
-    self.HMeas = MomentResult(self.indices, label = "meas")
+    self._HMeas = MomentResult(self.indices, label = "meas")
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))  # Eq. (176)
-      self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataSet.polarization))  # Eq. (176)
+      self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
     # calculate covariances; Eqs. (88), (180), and (181)
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
-    self.HMeas._covReReFlatIndex, self.HMeas._covImImFlatIndex, self.HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
-    self.HPhys = MomentResult(self.indices, label = "phys")
+    self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
+    self._HPhys = MomentResult(self.indices, label = "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
-    if self.integralMatrix is None:
+    if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
-      np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
+      np.copyto(self._HPhys._valsFlatIndex, self._HMeas._valsFlatIndex)
       np.copyto(V_phys_aug, V_meas_aug)
     else:
       # get inverse of acceptance integral matrix
-      I_inv = self.integralMatrix.inverse()
+      I_inv = integralMatrix.inverse()
       # calculate physical moments, i.e. correct for detection efficiency
-      self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
+      self._HPhys._valsFlatIndex = I_inv @ self._HMeas._valsFlatIndex  # Eq. (83)
       # perform linear uncertainty propagation
       J = I_inv  # Jacobian of efficiency correction; Eq. (101)
       J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
@@ -577,96 +643,43 @@ class MomentCalculator:
       ])  # augmented Jacobian; Eq. (98)
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
     # normalize moments such that H_0(0, 0) = 1
-    norm = self.HPhys[0].val
-    self.HPhys._valsFlatIndex /= norm
+    norm = self._HPhys[0].val
+    self._HPhys._valsFlatIndex /= norm
     V_phys_aug /= norm**2
-    self.HPhys._covReReFlatIndex, self.HPhys._covImImFlatIndex, self.HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
-
-
-#TODO join with MomentCalculator?
-@dataclass
-class MomentsKinematicBin:
-  """Holds all information to calculate moments for a single kinematic bin"""
-  centers:              Dict[KinematicBinningVariable, float]  # dictionary with bin centers
-  dataSet:              DataSet        # info on data samples
-  momentIndices:        MomentIndices  # index mapping and iterators
-  integralFileBaseName: str  = "integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  integralMatrix:       Optional[AcceptanceIntegralMatrix] = None  # must either be given or calculated by calling calculateIntegralMatrix()
-  moments:              Optional[MomentCalculator]         = None  # must either be given or calculated by calling calculateMoments()
-
-  @property
-  def HPhys(self) -> MomentResult:
-    """Returns physical moments"""
-    assert self.moments is not None, "self.moments must not be None"
-    assert self.moments.HPhys is not None, "self.moments.HPhys must not be None"
-    return self.moments.HPhys
-
-  @property
-  def varNames(self) -> List[str]:
-    """Returns names of kinematic variables that define bin"""
-    return sorted((key.name for key in self.centers.keys()))
-
-  @property
-  def integralFileName(self) -> str:
-    """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    parts: List[str] = []
-    parts = [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.centers.items()]
-    return "_".join([self.integralFileBaseName, ] + parts) + ".npy"
-
-  def calculateIntegralMatrix(self) -> None:
-    """Calculates acceptance integral matrix"""
-    print(f"Calculating the acceptance integral matrix for kinematic bin {self.centers}")
-    self.integralMatrix = AcceptanceIntegralMatrix(self.momentIndices, self.dataSet)
-    self.integralMatrix.loadOrCalculate(self.integralFileName)
-    self.integralMatrix.save(self.integralFileName)
-
-  MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE", "ACCEPTED_PHASE_SPACE_CORR"))
-
-  def calculateMoments(
-    self,
-    dataSource: MomentDataSource = MomentDataSource.DATA,
-  ) -> None:
-    """Calculates moments for kinematic bin using given data source"""
-    dataSetPs = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
-    if dataSource == self.MomentDataSource.DATA:
-      # calculate moments of data
-      assert self.integralMatrix is not None, "self.integralMatrix must not be None"
-      self.moments = MomentCalculator(self.momentIndices,  self.dataSet, self.integralMatrix)
-    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
-      # calculate moments of acceptance function
-      self.moments = MomentCalculator(self.momentIndices, dataSetPs, integralMatrix = None)
-    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
-      # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
-      assert self.integralMatrix is not None, "self.integralMatrix must not be None"
-      self.moments = MomentCalculator(self.momentIndices,  dataSetPs, self.integralMatrix)
-    self.moments.calculate()
-    assert self.moments.HMeas is not None, "momentsPs.HMeas must not be None"
-    assert self.moments.HPhys is not None, "momentsPs.HPhys must not be None"
+    self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 
 
 @dataclass
 class MomentsKinematicBinning:
   """Holds all information to calculate moments for several kinematic bins"""
-  moments: List[MomentsKinematicBin]  # data for all bins of the kinematic binning
+  moments: List[MomentCalculator]  # data for all bins of the kinematic binning
+
+  def __len__(self) -> int:
+    """Returns number of kinematic bins"""
+    return len(self.moments)
 
   def __getitem__(
     self,
     subscript: int,
-  ) -> MomentsKinematicBin:
-    """Returns MomentsKinematicBin that correspond to given bin index"""
+  ) -> MomentCalculator:
+    """Returns MomentCalculator that correspond to given bin index"""
     return self.moments[subscript]
 
-  @property
-  def varNames(self) -> List[str]:
-    """Returns names of kinematic variables used in binning"""
-    varNames = None
-    for momentsInBin in self.moments:
-      varNamesInBin = momentsInBin.varNames
-      if varNames is None:
-        varNames = varNamesInBin
-      else:
-        assert varNamesInBin == varNames, f"Bins have inconsistent set of binning variables: bin '{momentsInBin.centers}': {varNamesInBin} vs. {varNames} in previous bin"
-    return varNames or []
+  def __iter__(self) -> Iterator[MomentCalculator]:
+    """Iterates over MomentCalculators in kinematic bins"""
+    return iter(self.moments)
+
+  # @property
+  # def varNames(self) -> List[str]:
+  #   """Returns names of kinematic variables used in binning"""
+  #   varNames = None
+  #   for momentsInBin in self.moments:
+  #     varNamesInBin = momentsInBin.varNames
+  #     if varNames is None:
+  #       varNames = varNamesInBin
+  #     else:
+  #       assert varNamesInBin == varNames, f"Bins have inconsistent set of binning variables: bin '{momentsInBin.centers}': {varNamesInBin} vs. {varNames} in previous bin"
+  #   return varNames or []
 
   def calculateIntegralMatrices(self) -> None:
     """Calculates acceptance integral matrices for all kinematic bins"""
@@ -675,7 +688,7 @@ class MomentsKinematicBinning:
 
   def calculateMoments(
     self,
-    dataSource: MomentsKinematicBin.MomentDataSource = MomentsKinematicBin.MomentDataSource.DATA,
+    dataSource: MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
     for momentsInBin in self:
