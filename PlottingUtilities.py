@@ -10,6 +10,7 @@ from scipy import stats
 from typing import (
   Dict,
   Iterator,
+  List,
   Optional,
   Sequence,
   Tuple,
@@ -36,6 +37,17 @@ class MomentValueAndTruth(MomentCalculator.MomentValue):
     """Returns true moment value"""
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
+
+  def truthRealOrImag(
+    self,
+    realPart: bool,  # switched between real part (True) and imaginary part (False)
+  ) -> float:
+    """Returns real or imaginary part with corresponding uncertainty according to given flag"""
+    assert self.truth is not None, "self.truth must not be None"
+    if realPart:
+      return self.truth.real
+    else:
+      return self.truth.imag
 
 
 @dataclass
@@ -70,7 +82,7 @@ class HistAxisBinning:
     """Returns info about binning variable"""
     assert self._var is not None, "self._var must not be None"
     return self._var
-  
+
   @property
   def astuple(self) -> Tuple[int, float, float]:
     """Returns tuple with binning info that can be directly used in THX() constructor"""
@@ -230,35 +242,39 @@ def plotMoments(
 
     # (ii) plot residuals
     if trueValues:
-      residuals = np.empty(len(HVals))
+      histResidualName = f"{pdfFileNamePrefix}Residuals_{momentLabel}_{momentPart}"
+      histResidual = ROOT.TH1D(histResidualName, f"Residuals {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}", *histBinning.astuple)
+      # calculate residuals; NaN flags histogram bins, for which truth info is missing
+      residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
+      indicesToMask: List[int] = []
       for index, H in enumerate(HVals):
+        if (binning is not None) and (binning._var not in H.binCenters.keys()):
+          continue
         if H.truth is not None:
-          dataVal, dataValErr = H.realOrImag(realPart = momentPart == "Re")
-          trueVal             = H.truth.real if momentPart == "Re" else H.truth.imag
-          residuals[index] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
-        else:
-          residuals[index] = np.nan
-      # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition
-      indicesToMask = tuple(index for index, H in enumerate(HVals)
-        if (H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)) or np.isnan(residuals[index]))  # exclude H_0(0, 0) and NaN
-      residualsMasked = residuals.view(np.ma.MaskedArray)
+          dataVal, dataValErr = H.realOrImag     (realPart = momentPart == "Re")
+          trueVal             = H.truthRealOrImag(realPart = momentPart == "Re")
+          binIndex = index if binning is None else histResidual.GetXaxis().FindBin(H.binCenters[binning.var]) - 1
+          residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
+          if H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0):
+            indicesToMask.append(binIndex)  # tag H_0(0, 0) for exclusion
+      # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition and values for which truth value was missing (residual = NaN)
+      residualsMasked = np.ma.fix_invalid(residuals)
       for i in indicesToMask:
         residualsMasked[i] = np.ma.masked
-      histResidualName = f"{pdfFileNamePrefix}Residuals_{momentLabel}_{momentPart}"
       if residualsMasked.count() == 0:
         print(f"All residuals masked; skipping '{histResidualName}.pdf'.")
       else:
         chi2     = np.sum(residualsMasked**2)
         ndf      = residualsMasked.count()
         chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
-        # create histogram with residuals
-        histResidual = ROOT.TH1D(histResidualName, f"Residuals {legendEntrySuffix};;(Data - True) / #it{{#sigma}}_{{Data}}", *histBinning.astuple)
+        # fill histogram with residuals
         for (index,), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
           binIndex = index + 1
           histResidual.SetBinContent(binIndex, residual)
           histResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-        for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
-          histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
+        if binning is None:
+          for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
+            histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
         histResidual.SetMarkerColor(ROOT.kBlue)
         histResidual.SetLineColor(ROOT.kBlue)
         histResidual.SetLineWidth(2)
@@ -298,13 +314,18 @@ def plotMomentsInBin(
 
 
 def plotMoments1D(
-  moments:           MomentCalculator.MomentsKinematicBinning,   # moment values extracted from data
+  moments:           MomentCalculator.MomentsKinematicBinning,  # moment values extracted from data
   qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
+  momentsTruth:      Optional[MomentCalculator.MomentsKinematicBinning] = None,  # true moment values
   momentLabel:       str = "H",  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment
-  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
+  HVals = tuple(MomentValueAndTruth(
+      *HData.HPhys[qnIndex],
+      truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
+      _binCenters = HData.binCenters,
+    ) for binIndex, HData in enumerate(moments))
   plotMoments(HVals, binning, momentLabel = f"{momentLabel}{qnIndex.momentIndex}_{qnIndex.L}_{qnIndex.M}", pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_")
