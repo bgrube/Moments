@@ -265,6 +265,13 @@ class AcceptanceIntegralMatrix:
   dataSet:     DataSet        # info on data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices; must either be given or set be calling load() or calculate()
 
+  # accessor that guarantees existence of optional field
+  @property
+  def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
+    """Returns integral matrix"""
+    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
+    return self._IFlatIndex
+
   @overload
   def __getitem__(
     self,
@@ -368,12 +375,6 @@ class AcceptanceIntegralMatrix:
     except Exception as e:
       print(f"Could not load integral matrix from file '{fileName}': {e} Calculating matrix instead.")
       self.calculate()
-
-  @property
-  def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns acceptance integral matrix"""
-    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
-    return self._IFlatIndex
 
   def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
     """Returns inverse of acceptance integral matrix"""
@@ -501,16 +502,16 @@ class MomentResult:
     result = (str(self[flatIndex]) for flatIndex in self.indices.flatIndices())
     return "\n".join(result)
 
-  def copyFrom(
-    self,
-    other: MomentResult,  # instance from which data are copied
-  ) -> None:
-    """Copies all values from given MomentResult instance but leaves `label` untouched"""
-    self.indices           = other.indices
-    self._valsFlatIndex    = other._valsFlatIndex
-    self._covReReFlatIndex = other._covReReFlatIndex
-    self._covImImFlatIndex = other._covImImFlatIndex
-    self._covReImFlatIndex = other._covReImFlatIndex
+  # def assignFrom(
+  #   self,
+  #   other: MomentResult,  # instance from which data are copied
+  # ) -> None:
+  #   """Assigns all values from given MomentResult instance but leaves `label` untouched"""
+  #   self.indices           = other.indices
+  #   self._valsFlatIndex    = other._valsFlatIndex
+  #   self._covReReFlatIndex = other._covReReFlatIndex
+  #   self._covImImFlatIndex = other._covImImFlatIndex
+  #   self._covReImFlatIndex = other._covReImFlatIndex
 
 
 @dataclass
@@ -527,7 +528,7 @@ class MomentCalculator:
   # accessors that guarantee existence of optional fields
   @property
   def integralMatrix(self) -> AcceptanceIntegralMatrix:
-    """Returns integral matrix"""
+    """Returns acceptance integral matrix"""
     assert self._integralMatrix is not None, "self._integralMatrix must not be None"
     return self._integralMatrix
   @property
