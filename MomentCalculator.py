@@ -243,6 +243,20 @@ class DataSet:
   nmbGenEvents:   int              # number of generated events
 
 
+@dataclass(frozen = True)  # immutable
+class KinematicBinningVariable:
+  """Holds information that define a binning variable"""
+  name:      str  # name of variable; used e.g. for filenames
+  label:     str  # TLatex expression used for plotting
+  unit:      str  # TLatex expression used for plotting
+  nmbDigits: Optional[int] = None  # number of digits after decimal point to use when converting value to string
+
+  @property
+  def axisTitle(self) -> str:
+    """Returns axis title"""
+    return f"{self.label} [{self.unit}]"
+
+
 @dataclass
 class AcceptanceIntegralMatrix:
   """Calculates and provides access to acceptance integral matrix"""
@@ -373,7 +387,7 @@ class AcceptanceIntegralMatrix:
 @dataclass
 class MomentValue:
   """Stores and provides access to single moment value"""
-  qn:       QnMomentIndex   # quantum numbers
+  qn:       QnMomentIndex  # quantum numbers
   val:      complex   # moment value
   uncertRe: float     # uncertainty of real part
   uncertIm: float     # uncertainty of imaginary part
@@ -384,10 +398,9 @@ class MomentValue:
     return iter(tuple(getattr(self, field.name) for field in fields(self)))
 
   def __str__(self) -> str:
-    result = ""
     momentSymbol = f"H{'^' + self.label if self.label else ''}_{self.qn.momentIndex}(L = {self.qn.L}, M = {self.qn.M})"
-    result += (f"Re[{momentSymbol}] = {self.val.real} +- {self.uncertRe}\n"
-               f"Im[{momentSymbol}] = {self.val.imag} +- {self.uncertIm}")
+    result = (f"Re[{momentSymbol}] = {self.val.real} +- {self.uncertRe}\n"
+              f"Im[{momentSymbol}] = {self.val.imag} +- {self.uncertIm}")
     return result
 
   @property
@@ -409,12 +422,6 @@ class MomentValue:
       return self.real
     else:
       return self.imag
-
-
-@dataclass
-class MomentValueAndTruth(MomentValue):
-  """Stores and provides access to single moment value and provides truth value"""
-  truth: Optional[complex] = None  # true moment value
 
 
 @dataclass(eq = False)
@@ -513,6 +520,7 @@ class MomentCalculator:
   integralMatrix: Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed
   HMeas:          Optional[MomentResult]             = None  # measured moments; must either be given or calculated by calling calculate()
   HPhys:          Optional[MomentResult]             = None  # physical moments; must either be given or calculated by calling calculate()
+  #TODO add accessors with asserts for optional arguments?
 
   def _calcReImCovMatrices(
     self,
@@ -575,14 +583,7 @@ class MomentCalculator:
     self.HPhys._covReReFlatIndex, self.HPhys._covImImFlatIndex, self.HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 
 
-@dataclass(frozen = True)  # immutable
-class KinematicBinningVariable:
-  name:      str  # name of variable; used e.g. for filenames
-  label:     str  # TLatex expression used for plotting
-  unit:      str  # TLatex expression used for plotting
-  nmbDigits: Optional[int] = None  # number of digits after decimal point to use when converting value to string
-
-
+#TODO join with MomentCalculator?
 @dataclass
 class MomentsKinematicBin:
   """Holds all information to calculate moments for a single kinematic bin"""
@@ -592,6 +593,13 @@ class MomentsKinematicBin:
   integralFileBaseName: str  = "integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
   integralMatrix:       Optional[AcceptanceIntegralMatrix] = None  # must either be given or calculated by calling calculateIntegralMatrix()
   moments:              Optional[MomentCalculator]         = None  # must either be given or calculated by calling calculateMoments()
+
+  @property
+  def HPhys(self) -> MomentResult:
+    """Returns physical moments"""
+    assert self.moments is not None, "self.moments must not be None"
+    assert self.moments.HPhys is not None, "self.moments.HPhys must not be None"
+    return self.moments.HPhys
 
   @property
   def varNames(self) -> List[str]:

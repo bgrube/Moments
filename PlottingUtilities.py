@@ -8,6 +8,7 @@ import nptyping as npt
 import os
 from scipy import stats
 from typing import (
+  Dict,
   Optional,
   Sequence,
   Tuple,
@@ -20,6 +21,13 @@ import MomentCalculator
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
+
+
+@dataclass
+class MomentValueAndTruth(MomentCalculator.MomentValue):
+  """Stores and provides access to single moment value and provides truth value"""
+  truth: Optional[complex] = None  # true moment value
+  binCenters: Optional[Dict[MomentCalculator.KinematicBinningVariable, float]] = None  # dictionary with bin centers
 
 
 @dataclass
@@ -40,7 +48,7 @@ class HistAxisBinning:
     """Returns axis title if info about binning variable is present"""
     if self.var is None:
       return ""
-    return f"{self.var.label} [{self.var.unit}]"
+    return self.var.axisTitle
 
   @property
   def valueRange(self) -> float:
@@ -139,11 +147,11 @@ def drawTF3(
 
 
 def plotMoments(
-  HVals:             Sequence[MomentCalculator.MomentValueAndTruth],  # moment values extracted from data with (optional) true values
+  HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
   momentLabel:       str = "H",  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
-  """Plots given moments extracted from data and overlays the corresponding true values if given"""
+  """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   nmbMoments = len(HVals)
   trueValues = any((H.truth is not None for H in HVals))
 
@@ -252,8 +260,46 @@ def plotMomentsInBin(
   momentLabel:       str = "H",  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
+  """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for momentIndex in range(3):
-    HVals = tuple(MomentCalculator.MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
+    HVals = tuple(MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
     plotMoments(HVals, momentLabel = f"{momentLabel}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
+
+
+def plotMoment1D(
+  HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
+  binningVar:        MomentCalculator.KinematicBinningVariable,  # binning variable to plot
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+) -> None:
+  """Plots moments extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
+  assert all((HVal.binCenters is not None for HVal in HVals)), "All moment values must have binCenters that are not None."
+  print(f"Plotting moments as a function of binning variable '{binningVar}'")
+  multiGraph = ROOT.TMultiGraph()
+  xVals = np.array([HVal.binCenters[binningVar] for HVal in HVals if binningVar in HVal.binCenters.keys()], dtype = npt.Double)
+  yVals = np.array([HVal.val.real               for HVal in HVals if binningVar in HVal.binCenters.keys()], dtype = npt.Double)
+  yErrs = np.array([HVal.uncertRe               for HVal in HVals if binningVar in HVal.binCenters.keys()], dtype = npt.Double)
+  graphData = ROOT.TGraphErrors(len(xVals), xVals, yVals, ROOT.nullptr, yErrs)
+  graphData.SetTitle("Foo")
+  multiGraph.Add(graphData)
+  multiGraph.GetXaxis().SetTitle(binningVar.axisTitle)
+  multiGraph.GetYaxis().SetTitle("Normalized Moment Value")
+  canv = ROOT.TCanvas(f"foo", "")
+  multiGraph.Draw("APZ")
+  legend = canv.BuildLegend()
+  legend.SetFillStyle(0)
+  legend.SetBorderSize(0)
+  canv.SaveAs(f"Foo.pdf")
+
+
+def plotMoments1D(
+  moments:           MomentCalculator.MomentsKinematicBinning,   # moment values extracted from data
+  qnIndex:           MomentCalculator.QnMomentIndex,             # defines specific moment
+  binningVar:        MomentCalculator.KinematicBinningVariable,  # binning variable to plot
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+) -> None:
+  """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
+  # filter out specific moment
+  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], None, HData.centers) for HData in moments)
+  plotMoment1D(HVals, binningVar, pdfFileNamePrefix)

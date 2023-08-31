@@ -6,6 +6,7 @@ import ctypes
 import functools
 import numpy as np
 import os
+import subprocess
 from typing import (
   List,
   Optional,
@@ -23,6 +24,13 @@ import RootUtilities
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
+
+
+def printGitInfo() -> None:
+  """Prints directory of this file and git hash in this directory"""
+  repoDir = os.path.dirname(os.path.abspath(__file__))
+  gitInfo = subprocess.check_output(["git", "describe", "--always"], cwd = repoDir).strip().decode()
+  print(f"Running code in '{repoDir}', git version '{gitInfo}'")
 
 
 # default TH3 plotting options
@@ -143,6 +151,7 @@ def genAccepted2BodyPsPhotoProd(
 
 
 if __name__ == "__main__":
+  printGitInfo()
   OpenMp.setNmbOpenMpThreads(5)
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
@@ -226,7 +235,7 @@ if __name__ == "__main__":
 
   momentIndices = MomentCalculator.MomentIndices(maxL)
   binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 1)
-  massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 5, minVal = 1.0, maxVal = 2.0, var = binVarMass)
+  massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, var = binVarMass)
   momentsInBins: List[MomentCalculator.MomentsKinematicBin] = []
   for massBinCenter in massBinning:
     # dummy bins with identical data sets
@@ -242,6 +251,8 @@ if __name__ == "__main__":
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments.calculateMoments()
+  qnIndex = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)
+  PlottingUtilities.plotMoments1D(moments, MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0), binVarMass)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   # # dummy binning variables
