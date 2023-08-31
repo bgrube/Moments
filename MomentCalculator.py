@@ -555,11 +555,13 @@ class MomentCalculator:
   #   return sorted((key.name for key in self._binCenters.keys()))
 
   @property
+  def fileNameBinLabels(self) -> List[str]:
+    return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
+
+  @property
   def integralFileName(self) -> str:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    parts: List[str] = []
-    parts = [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
-    return "_".join([self.integralFileBaseName, ] + parts) + ".npy"
+    return "_".join([self.integralFileBaseName, ] + self.fileNameBinLabels) + ".npy"
 
   def calculateIntegralMatrix(self) -> None:
     """Calculates acceptance integral matrix"""
