@@ -302,8 +302,8 @@ def plotMoments(
 def plotMomentsInBin(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
   HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
-  momentLabel:       str = "H",  # label used in output file name
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  momentLabel:       str = "H",                      # label used in output file name
+  pdfFileNamePrefix: str = "h",                      # name prefix for output files
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -315,11 +315,11 @@ def plotMomentsInBin(
 
 def plotMoments1D(
   moments:           MomentCalculator.MomentsKinematicBinning,  # moment values extracted from data
-  qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
-  binning:           HistAxisBinning,  # binning to use for plot
+  qnIndex:           MomentCalculator.QnMomentIndex,            # defines specific moment
+  binning:           HistAxisBinning,                           # binning to use for plot
   momentsTruth:      Optional[MomentCalculator.MomentsKinematicBinning] = None,  # true moment values
-  momentLabel:       str = "H",  # label used in output file name
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  momentLabel:       str = "H",                                 # label used in output file name
+  pdfFileNamePrefix: str = "h",                                 # name prefix for output files
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment
