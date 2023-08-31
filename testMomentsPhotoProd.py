@@ -235,7 +235,7 @@ if __name__ == "__main__":
 
   momentIndices = MomentCalculator.MomentIndices(maxL)
   binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 1)
-  massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, var = binVarMass)
+  massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
   momentsInBins: List[MomentCalculator.MomentCalculator] = []
   for massBinCenter in massBinning:
     # dummy bins with identical data sets
@@ -259,7 +259,7 @@ if __name__ == "__main__":
   print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
   print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
   PlottingUtilities.plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
-  PlottingUtilities.plotMoments1D(moments, MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0), binVarMass)
+  PlottingUtilities.plotMoments1D(moments, MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0), massBinning)
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   # # dummy binning variables
