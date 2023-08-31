@@ -1,10 +1,15 @@
 """Module that provides functions for using ROOT code"""
 
+import functools
 from typing import Any
 
 import ROOT
 
 import OpenMp
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics

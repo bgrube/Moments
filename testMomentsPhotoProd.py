@@ -2,14 +2,11 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
-# always flush print() to reduce garbling of log files due to buffering
-import functools
-print = functools.partial(print, flush = True)
-
-
 import ctypes
+import functools
 import numpy as np
 import os
+import subprocess
 from typing import (
   List,
   Optional,
@@ -23,6 +20,17 @@ import MomentCalculator
 import OpenMp
 import PlottingUtilities
 import RootUtilities
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
+
+
+def printGitInfo() -> None:
+  """Prints directory of this file and git hash in this directory"""
+  repoDir = os.path.dirname(os.path.abspath(__file__))
+  gitInfo = subprocess.check_output(["git", "describe", "--always"], cwd = repoDir).strip().decode()
+  print(f"Running code in '{repoDir}', git version '{gitInfo}'")
 
 
 # default TH3 plotting options
@@ -45,11 +53,12 @@ def genDataFromWaves(
   amplitudeSet:      MomentCalculator.AmplitudeSet,  # partial-wave amplitudes
   efficiencyFormula: Optional[str] = None,           # detection efficiency used to generate data
   regenerateData:    bool = False,                   # if set data are regenerated although .root file exists
+  pdfFileNamePrefix: str = "./",                     # name prefix for output files
 ) -> ROOT.RDataFrame:
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -83,7 +92,7 @@ def genDataFromWaves(
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-  PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hIntensity.pdf")
+  PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
@@ -113,11 +122,12 @@ def genAccepted2BodyPsPhotoProd(
   nmbEvents:         int,                   # number of events to generate
   efficiencyFormula: Optional[str] = None,  # detection efficiency used for acceptance correction
   regenerateData:    bool = False,          # if set data are regenerated although .root file exists
+  pdfFileNamePrefix: str = "./",            # name prefix for output files
 ) -> ROOT.RDataFrame:
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -143,6 +153,7 @@ def genAccepted2BodyPsPhotoProd(
 
 
 if __name__ == "__main__":
+  printGitInfo()
   OpenMp.setNmbOpenMpThreads(5)
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
@@ -151,6 +162,7 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")
 
   # set parameters of test case
+  plotDirName = "./plots"
   nmbPwaMcEvents = 1000
   nmbPsMcEvents = 1000000
   beamPolarization = 1.0
@@ -193,7 +205,7 @@ if __name__ == "__main__":
   # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
   if efficiencyFormulaDetune:
     efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-    PlottingUtilities.drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = "./hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
+    PlottingUtilities.drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = f"{plotDirName}/hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
     efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
   else:
     efficiencyFormulaReco = efficiencyFormulaGen
@@ -203,7 +215,7 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
   HTrue: MomentCalculator.MomentResult = amplitudeSet.allMoments(maxL)
   print(f"True moment values\n{HTrue}")
-  dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen)
+  dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, pdfFileNamePrefix = f"{plotDirName}/")
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
   # plot data generated from partial-wave amplitudes
@@ -217,54 +229,54 @@ if __name__ == "__main__":
   hist.GetYaxis().SetTitleOffset(2)
   hist.GetZaxis().SetTitleOffset(1.5)
   hist.Draw("BOX2Z")
-  canv.SaveAs(f"{hist.GetName()}.pdf")
+  canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
 
   # generate accepted phase-space data
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")
-  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco)
+  dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco, pdfFileNamePrefix = f"{plotDirName}/")
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
 
-  # calculate integral matrix
-  ROOT.gBenchmark.Start(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
   momentIndices = MomentCalculator.MomentIndices(maxL)
-  dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
-  integralMatrix = MomentCalculator.AcceptanceIntegralMatrix(momentIndices, dataSet)
-  # integralMatrix.calculate()
-  integralMatrix.loadOrCalculate()
-  integralMatrix.save()
-  # print and plot integral matrix and it's inverse
-  print(f"Acceptance integral matrix\n{integralMatrix}")
-  eigenVals, _ = integralMatrix.eigenDecomp()
-  print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
-  PlottingUtilities.plotComplexMatrix(integralMatrix.matrix,    pdfFileNamePrefix = "I_acc")
-  PlottingUtilities.plotComplexMatrix(integralMatrix.inverse(), pdfFileNamePrefix = "I_inv")
-  ROOT.gBenchmark.Stop(f"Time to calculate integral matrix using {nmbOpenMpThreads} OpenMP threads")
+  binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+  massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
+  momentsInBins:      List[MomentCalculator.MomentCalculator] = []
+  momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
+  for massBinCenter in massBinning:
+    # dummy bins with identical data sets
+    dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
+    momentsInBins.append     (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
+    # dummy truth values; identical for all bins
+    momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+  moments      = MomentCalculator.MomentsKinematicBinning(momentsInBins)
+  momentsTruth = MomentCalculator.MomentsKinematicBinning(momentsInBinsTruth)
 
-  # calculate moments of accepted phase-space data
-  ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  # acceptance-corrected phase-space moments; should all be 0 except H_0(0, 0)
-  # momentsPs = MomentCalculator.MomentCalculator(momentIndices,
-  #   MomentCalculator.DataSet(polarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbMcEvents), integralMatrix)
-  # moments of acceptance function
-  momentsPs = MomentCalculator.MomentCalculator(momentIndices,
-    MomentCalculator.DataSet(beamPolarization, dataAcceptedPs, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents), integralMatrix = None)
-  momentsPs.calculate()
-  assert momentsPs.HPhys is not None, "momentsPs.HPhys is None"
-  print(f"Measured moments of accepted phase-space data\n{momentsPs.HMeas}")
-  print(f"Physical moments of accepted phase-space data\n{momentsPs.HPhys}")
-  HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # set all true moment values to 0
-  HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # set true H_0(0, 0) to 1
-  PlottingUtilities.plotMomentsInBin(HData = momentsPs.HPhys, HTrue = HTruePs, pdfFileNamePrefix = "hPs_")
-  ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+  # calculate integral matrix
+  ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+  moments.calculateIntegralMatrices()
+  # print acceptance integral matrix for first kinematic bin
+  print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
+  eigenVals, _ = moments[0].integralMatrix.eigenDecomp()
+  print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
+  # plot acceptance integral matrices for all kinematic bins
+  for HData in moments:
+    binLabel = "_".join(HData.fileNameBinLabels)
+    PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.matrix,    pdfFileNamePrefix = f"{plotDirName}/I_acc_{binLabel}")
+    PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.inverse(), pdfFileNamePrefix = f"{plotDirName}/I_inv_{binLabel}")
+  ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  momentsPwa = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralMatrix)
-  momentsPwa.calculate()
-  print(f"Measured moments of data generated according to partial-wave amplitudes\n{momentsPwa.HMeas}")
-  print(f"Physical moments of data generated according to partial-wave amplitudes\n{momentsPwa.HPhys}")
-  assert momentsPwa.HPhys is not None, "moments.HPhys is None"
-  PlottingUtilities.plotMomentsInBin(HData = momentsPwa.HPhys, HTrue = HTrue, pdfFileNamePrefix = "h_")
+  moments.calculateMoments()
+  # print all moments for first kinematic bin
+  print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
+  print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
+  # plot moments in each kinematic bin
+  for HData in moments:
+    binLabel = "_".join(HData.fileNameBinLabels)
+    PlottingUtilities.plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h{binLabel}_")
+  # plot kinematic dependences of all moments
+  for qnIndex in momentIndices.QnIndices():
+    PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{plotDirName}/h")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   ROOT.gBenchmark.Stop("Total execution time")

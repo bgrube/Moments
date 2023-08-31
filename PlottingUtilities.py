@@ -1,12 +1,16 @@
 """Module that provides collection functions for plotting"""
 
 from dataclasses import dataclass, astuple
+import functools
 import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
 import os
 from scipy import stats
 from typing import (
+  Dict,
+  Iterator,
+  List,
   Optional,
   Sequence,
   Tuple,
@@ -17,12 +21,91 @@ import ROOT
 import MomentCalculator
 
 
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
+
+
+@dataclass
+class MomentValueAndTruth(MomentCalculator.MomentValue):
+  """Stores and provides access to single moment value and provides truth value"""
+  truth:       Optional[complex] = None  # true moment value
+  _binCenters: Optional[Dict[MomentCalculator.KinematicBinningVariable, float]] = None  # dictionary with bin centers
+
+  # accessor that guarantees existence of optional field
+  @property
+  def binCenters(self) -> Dict[MomentCalculator.KinematicBinningVariable, float]:
+    """Returns true moment value"""
+    assert self._binCenters is not None, "self._binCenters must not be None"
+    return self._binCenters
+
+  def truthRealOrImag(
+    self,
+    realPart: bool,  # switched between real part (True) and imaginary part (False)
+  ) -> float:
+    """Returns real or imaginary part with corresponding uncertainty according to given flag"""
+    assert self.truth is not None, "self.truth must not be None"
+    if realPart:
+      return self.truth.real
+    else:
+      return self.truth.imag
+
+
 @dataclass
 class HistAxisBinning:
-  """Stores info that defines the binning of an axis"""
-  nmbBins:   int
-  minVal:    float
-  maxVal:    float
+  """Stores info that defines equidistant binning of an axis"""
+  nmbBins: int    # number of bins
+  minVal:  float  # lower limit
+  maxVal:  float  # upper limit
+  _var:    Optional[MomentCalculator.KinematicBinningVariable] = None  # optional info about bin variable
+
+  def __len__(self) -> int:
+    """Returns number of bins"""
+    return self.nmbBins
+
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> float:
+    """Returns bin center for given bin index"""
+    if subscript < self.nmbBins:
+      return self.minVal + (subscript + 0.5) * self.binWidth
+    raise IndexError
+
+  def __iter__(self) -> Iterator[float]:
+    """Iterates over bin centers"""
+    for i in range(len(self)):
+      yield self[i]
+
+  # accessor that guarantees existence of optional field
+  @property
+  def var(self) -> MomentCalculator.KinematicBinningVariable:
+    """Returns info about binning variable"""
+    assert self._var is not None, "self._var must not be None"
+    return self._var
+
+  @property
+  def astuple(self) -> Tuple[int, float, float]:
+    """Returns tuple with binning info that can be directly used in THX() constructor"""
+    return (self.nmbBins, self.minVal, self.maxVal)
+
+  @property
+  def axisTitle(self) -> str:
+    """Returns axis title if info about binning variable is present"""
+    if self._var is None:
+      return ""
+    return self._var.axisTitle
+
+  @property
+  def valueRange(self) -> float:
+    """Returns value range of binning, i.e. (maximum value - minimum value)"""
+    if self.maxVal < self.minVal:
+      self.maxVal, self.minVal = self.minVal, self.maxVal
+    return self.maxVal - self.minVal
+
+  @property
+  def binWidth(self) -> float:
+    """Returns bin width"""
+    return self.valueRange / self.nmbBins
 
 
 def setupPlotStyle() -> None:
@@ -77,7 +160,7 @@ def drawTF3(
   # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead
   histName = os.path.splitext(os.path.basename(pdfFileName))[0]
-  fistFcn = ROOT.TH3F(histName, histTitle, *astuple(binnings[0]), *astuple(binnings[1]), *astuple(binnings[2]))
+  fistFcn = ROOT.TH3F(histName, histTitle, *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
   xAxis = fistFcn.GetXaxis()
   yAxis = fistFcn.GetYaxis()
   zAxis = fistFcn.GetZaxis()
@@ -100,25 +183,30 @@ def drawTF3(
 
 
 def plotMoments(
-  HVals:             Sequence[MomentCalculator.MomentValueAndTruth],  # moment values extracted from data with (optional) true values
+  HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
+  binning:           Optional[HistAxisBinning] = None,  # if not None data are plotted as function of binning variable
   momentLabel:       str = "H",  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
-  """Plots given moments extracted from data and overlays the corresponding true values if given"""
-  nmbMoments = len(HVals)
+  """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
+  histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
+  xAxisTitle = "" if binning is None else binning.axisTitle
   trueValues = any((H.truth is not None for H in HVals))
 
   # (i) plot moments from data and overlay with true values (if given)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
-    histStack = ROOT.THStack(f"{pdfFileNamePrefix}Compare_{momentLabel}_{momentPart}", ";;Normalized Moment Value")
+    histStack = ROOT.THStack(f"{pdfFileNamePrefix}Compare_{momentLabel}_{momentPart}", f";{xAxisTitle};Normalized Moment Value")
     # create histogram with moments from data
-    histData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", nmbMoments, 0, nmbMoments)
+    histData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", *histBinning.astuple)
     for index, H in enumerate(HVals):
+      if (binning is not None) and (binning._var not in H.binCenters.keys()):
+        continue
       y, yErr = H.realOrImag(realPart = momentPart == "Re")
-      binIndex = index + 1
+      binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(H.binCenters[binning.var])
       histData.SetBinContent(binIndex, y)
       histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
-      histData.GetXaxis().SetBinLabel(binIndex, f"#it{{H}}_{{{H.qn.momentIndex}}}({H.qn.L}, {H.qn.M})")  # categorical x axis with moment labels
+      if binning is None:
+        histData.GetXaxis().SetBinLabel(binIndex, f"#it{{H}}_{{{H.qn.momentIndex}}}({H.qn.L}, {H.qn.M})")  # categorical x axis with moment labels
     histData.SetLineColor(ROOT.kRed)
     histData.SetMarkerColor(ROOT.kRed)
     histData.SetMarkerStyle(ROOT.kFullCircle)
@@ -126,7 +214,7 @@ def plotMoments(
     histStack.Add(histData, "PEX0")
     if trueValues:
       # create histogram with true values
-      histTrue = ROOT.TH1D("True values", "", nmbMoments, 0, nmbMoments)
+      histTrue = ROOT.TH1D("True values", "", *histBinning.astuple)
       for index, H in enumerate(HVals):
         if H.truth is not None:
           y = H.truth.real if momentPart == "Re" else H.truth.imag
@@ -154,35 +242,39 @@ def plotMoments(
 
     # (ii) plot residuals
     if trueValues:
-      residuals = np.empty(len(HVals))
+      histResidualName = f"{pdfFileNamePrefix}Residuals_{momentLabel}_{momentPart}"
+      histResidual = ROOT.TH1D(histResidualName, f"Residuals {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}", *histBinning.astuple)
+      # calculate residuals; NaN flags histogram bins, for which truth info is missing
+      residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
+      indicesToMask: List[int] = []
       for index, H in enumerate(HVals):
+        if (binning is not None) and (binning._var not in H.binCenters.keys()):
+          continue
         if H.truth is not None:
-          dataVal, dataValErr = H.realOrImag(realPart = momentPart == "Re")
-          trueVal             = H.truth.real if momentPart == "Re" else H.truth.imag
-          residuals[index] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
-        else:
-          residuals[index] = np.nan
-      # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition
-      indicesToMask = tuple(index for index, H in enumerate(HVals)
-        if (H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)) or np.isnan(residuals[index]))  # exclude H_0(0, 0) and NaN
-      residualsMasked = residuals.view(np.ma.MaskedArray)
+          dataVal, dataValErr = H.realOrImag     (realPart = momentPart == "Re")
+          trueVal             = H.truthRealOrImag(realPart = momentPart == "Re")
+          binIndex = index if binning is None else histResidual.GetXaxis().FindBin(H.binCenters[binning.var]) - 1
+          residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
+          if H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0):
+            indicesToMask.append(binIndex)  # tag H_0(0, 0) for exclusion
+      # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition and values for which truth value was missing (residual = NaN)
+      residualsMasked = np.ma.fix_invalid(residuals)
       for i in indicesToMask:
         residualsMasked[i] = np.ma.masked
-      histResidualName = f"{pdfFileNamePrefix}Residuals_{momentLabel}_{momentPart}"
       if residualsMasked.count() == 0:
         print(f"All residuals masked; skipping '{histResidualName}.pdf'.")
       else:
         chi2     = np.sum(residualsMasked**2)
         ndf      = residualsMasked.count()
         chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
-        # create histogram with residuals
-        histResidual = ROOT.TH1D(histResidualName, f"Residuals {legendEntrySuffix};;(Data - True) / #it{{#sigma}}_{{Data}}", nmbMoments, 0, nmbMoments)
+        # fill histogram with residuals
         for (index,), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
           binIndex = index + 1
           histResidual.SetBinContent(binIndex, residual)
           histResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-        for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
-          histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
+        if binning is None:
+          for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
+            histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
         histResidual.SetMarkerColor(ROOT.kBlue)
         histResidual.SetLineColor(ROOT.kBlue)
         histResidual.SetLineWidth(2)
@@ -210,11 +302,30 @@ def plotMoments(
 def plotMomentsInBin(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
   HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
-  momentLabel:       str = "H",  # label used in output file name
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  momentLabel:       str = "H",                      # label used in output file name
+  pdfFileNamePrefix: str = "h",                      # name prefix for output files
 ) -> None:
+  """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for momentIndex in range(3):
-    HVals = tuple(MomentCalculator.MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
+    HVals = tuple(MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
     plotMoments(HVals, momentLabel = f"{momentLabel}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
+
+
+def plotMoments1D(
+  moments:           MomentCalculator.MomentsKinematicBinning,  # moment values extracted from data
+  qnIndex:           MomentCalculator.QnMomentIndex,            # defines specific moment
+  binning:           HistAxisBinning,                           # binning to use for plot
+  momentsTruth:      Optional[MomentCalculator.MomentsKinematicBinning] = None,  # true moment values
+  momentLabel:       str = "H",                                 # label used in output file name
+  pdfFileNamePrefix: str = "h",                                 # name prefix for output files
+) -> None:
+  """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
+  # filter out specific moment
+  HVals = tuple(MomentValueAndTruth(
+      *HData.HPhys[qnIndex],
+      truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
+      _binCenters = HData.binCenters,
+    ) for binIndex, HData in enumerate(moments))
+  plotMoments(HVals, binning, momentLabel = f"{momentLabel}{qnIndex.momentIndex}_{qnIndex.L}_{qnIndex.M}", pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_")

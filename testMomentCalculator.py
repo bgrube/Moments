@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
 import bidict as bd
+import functools
 from typing import TYPE_CHECKING
 
 import MomentCalculator
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
