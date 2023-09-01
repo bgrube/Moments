@@ -3,8 +3,8 @@
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
 import ctypes
+import dataclasses
 import functools
-import numpy as np
 import os
 import subprocess
 from typing import (
@@ -239,18 +239,23 @@ if __name__ == "__main__":
   momentIndices = MomentCalculator.MomentIndices(maxL)
   binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
   massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
-  momentsInBins:      List[MomentCalculator.MomentCalculator] = []
-  momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
+  HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moment are 0 ...
+  HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
+  momentsInBins:        List[MomentCalculator.MomentCalculator] = []
+  momentsInBinsTruth:   List[MomentCalculator.MomentCalculator] = []
+  momentsInBinsTruthPs: List[MomentCalculator.MomentCalculator] = []
   for massBinCenter in massBinning:
     # dummy bins with identical data sets
     dataChunks: List[MomentCalculator.DataChunk] \
       = [MomentCalculator.DataChunk(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
           for chunkIndex in range(1)]  # dummy data chunks with identical data
     dataSet = MomentCalculator.DataSet(dataChunks)
-    momentsInBins.append     (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
-    momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))  # dummy truth values; identical for all bins
-  moments      = MomentCalculator.MomentsKinematicBinning(momentsInBins)
-  momentsTruth = MomentCalculator.MomentsKinematicBinning(momentsInBinsTruth)
+    momentsInBins.append       (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
+    momentsInBinsTruth.append  (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))  # dummy truth values; identical for all bins
+    momentsInBinsTruthPs.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTruePs))  # identical for all bins
+  moments        = MomentCalculator.MomentsKinematicBinning(momentsInBins)
+  momentsTruth   = MomentCalculator.MomentsKinematicBinning(momentsInBinsTruth)
+  momentsTruthPs = MomentCalculator.MomentsKinematicBinning(momentsInBinsTruthPs)
 
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
@@ -266,6 +271,23 @@ if __name__ == "__main__":
     PlottingUtilities.plotComplexMatrix(moments[0].dataSet[0].integralMatrix.inverse(), pdfFileNamePrefix = f"{plotDirName}/I_inv_{binLabel}_chunk0")
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
+  # calculate moments of accepted phase-space data
+  ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+  # momentsPs = dataclasses.replace(moments)
+  # momentsPs.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR)
+  moments.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
+  # print all moments for first kinematic bin
+  print(f"Measured moments of accepted phase-space data\n{moments[0].HMeas}")
+  print(f"Physical moments of accepted phase-space data\n{moments[0].HPhys}")
+  # plot moments in each kinematic bin
+  for HData in moments:
+    binLabel = "_".join(HData.fileNameBinLabels)
+    PlottingUtilities.plotMomentsInBin(HData = HData.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{plotDirName}/hPs{binLabel}_")
+  # plot kinematic dependences of all moments
+  for qnIndex in momentIndices.QnIndices():
+    PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruthPs, pdfFileNamePrefix = f"{plotDirName}/hPs")
+  ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+
   # calculate moments of data generated from partial-wave amplitudes
   ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
   moments.calculateMoments()
@@ -275,7 +297,7 @@ if __name__ == "__main__":
   # plot moments in each kinematic bin
   for HData in moments:
     binLabel = "_".join(HData.fileNameBinLabels)
-    PlottingUtilities.plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h{binLabel}_")
+    PlottingUtilities.plotMomentsInBin(HData = HData.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h{binLabel}_")
   # plot kinematic dependences of all moments
   for qnIndex in momentIndices.QnIndices():
     PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{plotDirName}/h")

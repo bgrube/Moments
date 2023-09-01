@@ -1,6 +1,6 @@
 """Module that provides collection functions for plotting"""
 
-from dataclasses import dataclass, astuple
+from dataclasses import dataclass
 import functools
 import matplotlib.pyplot as plt
 import numpy as np
