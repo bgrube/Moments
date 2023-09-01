@@ -375,10 +375,9 @@ class AcceptanceIntegralMatrix:
     for flatIndexMeas in self.indices.flatIndices():
       for flatIndexPhys in self.indices.flatIndices():
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataChunk.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
-    assert self.isValid(), f"Integral matrix data are inconsistent"
+    assert self, f"Integral matrix data are inconsistent"
 
-  #TODO use def __bool__(self) -> bool:
-  def isValid(self) -> bool:
+  def __bool__(self) -> bool:
     return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.indices), len(self.indices))
 
   def save(
@@ -386,7 +385,7 @@ class AcceptanceIntegralMatrix:
     fileName: str = "./integralMatrix.npy",
   ) -> None:
     """Saves NumPy array that holds the integral matrix to file with given name"""
-    assert self.isValid(), f"Integral matrix data are inconsistent"
+    assert self, f"Integral matrix data are inconsistent"
     if self._IFlatIndex is not None:
       print(f"Saving integral matrix to file '{fileName}'.")
       np.save(fileName, self._IFlatIndex)
@@ -401,7 +400,7 @@ class AcceptanceIntegralMatrix:
     if not array.shape == (len(self.indices), len(self.indices)):
       raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(len(self.indices), len(self.indices))} but got {array.shape}.")
     self._IFlatIndex = array
-    assert self.isValid(), f"Integral matrix data are inconsistent"
+    assert self, f"Integral matrix data are inconsistent"
 
   def loadOrCalculate(
     self,
