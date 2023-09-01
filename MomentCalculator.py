@@ -558,17 +558,10 @@ class MomentCalculator:
   indices:              MomentIndices                  # index mapping and iterators
   dataSet:              DataSet                        # info on all needed data samples
   integralFileBaseName: str  = "integralMatrix"        # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  # _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
   _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
   _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
   _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None # dictionary with bin centers
 
-  # accessors that guarantee existence of optional fields
-  # @property
-  # def integralMatrix(self) -> AcceptanceIntegralMatrix:
-  #   """Returns acceptance integral matrix"""
-  #   assert self._integralMatrix is not None, "self._integralMatrix must not be None"
-  #   return self._integralMatrix
   @property
   def HMeas(self) -> MomentResult:
     """Returns physical moments"""
