@@ -236,12 +236,46 @@ class MomentIndices:
 
 
 @dataclass
+class DataChunk:
+  """Stores information about a part of data with constant conditions"""
+  polarization:   float                      # photon-beam polarization
+  data:           ROOT.RDataFrame            # data from which to calculate moments
+  phaseSpaceData: Optional[ROOT.RDataFrame]  # (accepted) phase-space data
+  nmbGenEvents:   int                        # number of generated events
+  integralMatrix: Optional[AcceptanceIntegralMatrix] = None  # must either be given or calculated; if None, no acceptance correction is performed
+
+
+@dataclass
 class DataSet:
-  """Stores information about a single dataset"""
-  polarization:   float            # photon-beam polarization
-  data:           ROOT.RDataFrame  # data from which to calculate moments
-  phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data
-  nmbGenEvents:   int              # number of generated events
+  """Stores information about full dataset consisting of chunks with constant conditions"""
+  dataChunks: List[DataChunk]
+
+  def __len__(self) -> int:
+    """Returns number of data chunks"""
+    return len(self.dataChunks)
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> DataChunk: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: slice,
+  ) -> List[DataChunk]: ...
+
+  def __getitem__(
+    self,
+    subscript: Union[int, slice],
+  ) -> Union[DataChunk, List[DataChunk]]:
+    """Returns data chunks that correspond to given chunk index/indices"""
+    return self.dataChunks[subscript]
+
+  def __iter__(self) -> Iterator[DataChunk]:
+    """Iterates over data chunks"""
+    return iter(self.dataChunks)
 
 
 @dataclass(frozen = True)  # immutable
@@ -262,7 +296,7 @@ class KinematicBinningVariable:
 class AcceptanceIntegralMatrix:
   """Calculates and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
-  dataSet:     DataSet        # info on data samples
+  dataChunk:   DataChunk      # contains info on phase-space data sample
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices; must either be given or set be calling load() or calculate()
 
   # accessor that guarantees existence of optional field
@@ -317,10 +351,13 @@ class AcceptanceIntegralMatrix:
 
   def calculate(self) -> None:
     """Calculates integral matrix of basis functions from (accepted) phase-space data"""
+    if self.dataChunk.phaseSpaceData is None:
+      print(f"Warning: No phase-space data were provided. Cannot calculate acceptance integral matrix.")
+      return
     # get phase-space data data as NumPy arrays
-    thetas = self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
-    phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
-    Phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
+    thetas = self.dataChunk.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
+    phis   = self.dataChunk.phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
+    Phis   = self.dataChunk.phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
     print(f"Phase-space data column: {type(thetas)}; {thetas.shape}; {thetas.dtype}; {thetas.dtype.type}")
     nmbAccEvents = len(thetas)
     assert thetas.shape == (nmbAccEvents,) and thetas.shape == phis.shape == Phis.shape, (
@@ -331,15 +368,16 @@ class AcceptanceIntegralMatrix:
     fPhys: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
-      fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataChunk.polarization))
+      fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataChunk.polarization))
     # calculate integral-matrix elements; Eq. (178)
     self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.indices.flatIndices():
       for flatIndexPhys in self.indices.flatIndices():
-        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
+        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataChunk.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
     assert self.isValid(), f"Integral matrix data are inconsistent"
 
+  #TODO use def __bool__(self) -> bool:
   def isValid(self) -> bool:
     return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.indices), len(self.indices))
 
@@ -517,20 +555,20 @@ class MomentResult:
 @dataclass
 class MomentCalculator:
   """Holds all information to calculate moments for a single kinematic bin"""
-  indices:              MomentIndices  # index mapping and iterators
-  dataSet:              DataSet  # info on data samples
-  integralFileBaseName: str  = "integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
+  indices:              MomentIndices                  # index mapping and iterators
+  dataSet:              DataSet                        # info on all needed data samples
+  integralFileBaseName: str  = "integralMatrix"        # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  # _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
   _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
   _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
   _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None # dictionary with bin centers
 
   # accessors that guarantee existence of optional fields
-  @property
-  def integralMatrix(self) -> AcceptanceIntegralMatrix:
-    """Returns acceptance integral matrix"""
-    assert self._integralMatrix is not None, "self._integralMatrix must not be None"
-    return self._integralMatrix
+  # @property
+  # def integralMatrix(self) -> AcceptanceIntegralMatrix:
+  #   """Returns acceptance integral matrix"""
+  #   assert self._integralMatrix is not None, "self._integralMatrix must not be None"
+  #   return self._integralMatrix
   @property
   def HMeas(self) -> MomentResult:
     """Returns physical moments"""
@@ -558,17 +596,21 @@ class MomentCalculator:
   def fileNameBinLabels(self) -> List[str]:
     return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
 
-  @property
-  def integralFileName(self) -> str:
+  def integralFileName(
+    self,
+    chunkIndex: int,  # index of data chunk
+  ) -> str:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    return "_".join([self.integralFileBaseName, ] + self.fileNameBinLabels) + ".npy"
+    return "_".join([self.integralFileBaseName, ] + self.fileNameBinLabels) + f"_chunk{chunkIndex}.npy"
 
-  def calculateIntegralMatrix(self) -> None:
-    """Calculates acceptance integral matrix"""
-    print(f"Calculating the acceptance integral matrix for kinematic bin {self.binCenters}")
-    self._integralMatrix = AcceptanceIntegralMatrix(self.indices, self.dataSet)
-    self._integralMatrix.loadOrCalculate(self.integralFileName)
-    self._integralMatrix.save(self.integralFileName)
+  def calculateIntegralMatrices(self) -> None:
+    """Calculates acceptance integral matrices for all data chunks"""
+    for chunkIndex, dataChunk in enumerate(self.dataSet):
+      print(f"Calculating the acceptance integral matrices for kinematic bin {self.binCenters} chunk {chunkIndex} of {len(self.dataSet)}")
+      dataChunk.integralMatrix = AcceptanceIntegralMatrix(self.indices, dataChunk)
+      integralFileName = self.integralFileName(chunkIndex)
+      dataChunk.integralMatrix.loadOrCalculate(integralFileName)
+      dataChunk.integralMatrix.save(integralFileName)
 
   def _calcReImCovMatrices(
     self,
@@ -590,66 +632,86 @@ class MomentCalculator:
     dataSource: MomentDataSource = MomentDataSource.DATA,
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
-    # define dataset and integral matrix to use for moment calculation
-    dataSet = None
-    integralMatrix = None
-    if dataSource == self.MomentDataSource.DATA:
-      # calculate moments of data
-      dataSet        = self.dataSet
-      integralMatrix = self.integralMatrix
-    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
-      # calculate moments of acceptance function
-      dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
-    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
-      # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
-      dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
-      integralMatrix = self.integralMatrix
-    else:
-      raise ValueError(f"Unknown data source '{dataSource}'")
-    # get input data as NumPy arrays
-    thetas = dataSet.data.AsNumpy(columns = ["theta"])["theta"]
-    phis   = dataSet.data.AsNumpy(columns = ["phi"]  )["phi"]
-    Phis   = dataSet.data.AsNumpy(columns = ["Phi"]  )["Phi"]
-    print(f"Input data column: {type(thetas)}; {thetas.shape}; {thetas.dtype}; {thetas.dtype.type}")
-    nmbEvents = len(thetas)
-    assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
-      f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
-    # get number of moments (the poor-man's way)
-    nmbMoments = len(self.indices)
-    # calculate basis-function values and values of measured moments
-    fMeas  = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+    HMeas: List[MomentResult] = [MomentResult(self.indices, label = "meas")] * len(self.dataSet)
+    HPhys: List[MomentResult] = [MomentResult(self.indices, label = "phys")] * len(self.dataSet)
+    for chunkIndex, dataChunk in enumerate(self.dataSet):
+      # define dataset and integral matrix to use for moment calculation
+      dataChunkUse   = None
+      if dataSource == self.MomentDataSource.DATA:
+        # calculate moments of data
+        dataChunkUse = dataChunk
+      elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
+        # calculate moments of acceptance function
+        dataChunkUse = dataclasses.replace(dataChunk, data = dataChunk.phaseSpaceData, integralMatrix = None)
+      elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
+        # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
+        dataChunkUse = dataclasses.replace(dataChunk, data = dataChunk.phaseSpaceData)
+      else:
+        raise ValueError(f"Unknown data source '{dataSource}'")
+      # get input data as NumPy arrays
+      thetas = dataChunkUse.data.AsNumpy(columns = ["theta"])["theta"]
+      phis   = dataChunkUse.data.AsNumpy(columns = ["phi"]  )["phi"]
+      Phis   = dataChunkUse.data.AsNumpy(columns = ["Phi"]  )["Phi"]
+      print(f"Input data column: {type(thetas)}; {thetas.shape}; {thetas.dtype}; {thetas.dtype.type}")
+      nmbEvents = len(thetas)
+      assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
+        f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
+      # calculate basis-function values and values of measured moments
+      nmbMoments = len(self.indices)
+      fMeas  = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+      for flatIndex in self.indices.flatIndices():
+        qnIndex = self.indices[flatIndex]
+        fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataChunkUse.polarization))  # Eq. (176)
+        HMeas[chunkIndex]._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
+      # calculate covariances; Eqs. (88), (180), and (181)
+      V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
+      HMeas[chunkIndex]._covReReFlatIndex, HMeas[chunkIndex]._covImImFlatIndex, HMeas[chunkIndex]._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
+      V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
+      if dataChunkUse.integralMatrix is None:
+        # ideal detector: physical moments are identical to measured moments
+        np.copyto(HPhys[chunkIndex]._valsFlatIndex, HMeas[chunkIndex]._valsFlatIndex)
+        np.copyto(V_phys_aug, V_meas_aug)
+      else:
+        # get inverse of acceptance integral matrix
+        I_inv = dataChunkUse.integralMatrix.inverse()
+        # calculate physical moments, i.e. correct for detection efficiency
+        HPhys[chunkIndex]._valsFlatIndex = I_inv @ HMeas[chunkIndex]._valsFlatIndex  # Eq. (83)
+        # perform linear uncertainty propagation
+        J = I_inv  # Jacobian of efficiency correction; Eq. (101)
+        J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
+        J_aug = np.block([
+          [J,                    J_conj],
+          [np.conjugate(J_conj), np.conjugate(J)],
+        ])  # augmented Jacobian; Eq. (98)
+        V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
+      # normalize moments such that H_0(0, 0) = 1
+      norm = HPhys[chunkIndex][0].val
+      HPhys[chunkIndex]._valsFlatIndex /= norm
+      V_phys_aug /= norm**2
+      HPhys[chunkIndex]._covReReFlatIndex, HPhys[chunkIndex]._covImImFlatIndex, HPhys[chunkIndex]._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
+    # average over all chunks
+    #TODO implement correct weighted average as function
     self._HMeas = MomentResult(self.indices, label = "meas")
-    for flatIndex in self.indices.flatIndices():
-      qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataSet.polarization))  # Eq. (176)
-      self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
-    # calculate covariances; Eqs. (88), (180), and (181)
-    V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
-    self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
+    for H in HMeas:
+      self._HMeas._valsFlatIndex    += H._valsFlatIndex
+      self._HMeas._covReReFlatIndex += H._covReReFlatIndex
+      self._HMeas._covImImFlatIndex += H._covImImFlatIndex
+      self._HMeas._covReImFlatIndex += H._covReImFlatIndex
+    self._HMeas._valsFlatIndex    /= len(HMeas)
+    self._HMeas._covReReFlatIndex /= len(HMeas)**2
+    self._HMeas._covImImFlatIndex /= len(HMeas)**2
+    self._HMeas._covReImFlatIndex /= len(HMeas)**2
     self._HPhys = MomentResult(self.indices, label = "phys")
-    V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
-    if integralMatrix is None:
-      # ideal detector: physical moments are identical to measured moments
-      np.copyto(self._HPhys._valsFlatIndex, self._HMeas._valsFlatIndex)
-      np.copyto(V_phys_aug, V_meas_aug)
-    else:
-      # get inverse of acceptance integral matrix
-      I_inv = integralMatrix.inverse()
-      # calculate physical moments, i.e. correct for detection efficiency
-      self._HPhys._valsFlatIndex = I_inv @ self._HMeas._valsFlatIndex  # Eq. (83)
-      # perform linear uncertainty propagation
-      J = I_inv  # Jacobian of efficiency correction; Eq. (101)
-      J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
-      J_aug = np.block([
-        [J,                    J_conj],
-        [np.conjugate(J_conj), np.conjugate(J)],
-      ])  # augmented Jacobian; Eq. (98)
-      V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
-    # normalize moments such that H_0(0, 0) = 1
-    norm = self._HPhys[0].val
-    self._HPhys._valsFlatIndex /= norm
-    V_phys_aug /= norm**2
-    self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
+    for H in HPhys:
+      self._HPhys._valsFlatIndex    += H._valsFlatIndex
+      self._HPhys._covReReFlatIndex += H._covReReFlatIndex
+      self._HPhys._covImImFlatIndex += H._covImImFlatIndex
+      self._HPhys._covReImFlatIndex += H._covReImFlatIndex
+    self._HPhys._valsFlatIndex    /= len(HPhys)
+    self._HPhys._covReReFlatIndex /= len(HPhys)**2
+    self._HPhys._covImImFlatIndex /= len(HPhys)**2
+    self._HPhys._covReImFlatIndex /= len(HPhys)**2
+    #TODO calculate chi^2 P-value of weighted mean
 
 
 @dataclass
@@ -687,7 +749,7 @@ class MomentsKinematicBinning:
   def calculateIntegralMatrices(self) -> None:
     """Calculates acceptance integral matrices for all kinematic bins"""
     for momentsInBin in self:
-      momentsInBin.calculateIntegralMatrix()
+      momentsInBin.calculateIntegralMatrices()
 
   def calculateMoments(
     self,

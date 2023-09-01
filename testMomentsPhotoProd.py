@@ -243,10 +243,12 @@ if __name__ == "__main__":
   momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
   for massBinCenter in massBinning:
     # dummy bins with identical data sets
-    dataSet = MomentCalculator.DataSet(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
+    dataChunks: List[MomentCalculator.DataChunk] \
+      = [MomentCalculator.DataChunk(beamPolarization, dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)
+          for chunkIndex in range(1)]  # dummy data chunks with identical data
+    dataSet = MomentCalculator.DataSet(dataChunks)
     momentsInBins.append     (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
-    # dummy truth values; identical for all bins
-    momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+    momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))  # dummy truth values; identical for all bins
   moments      = MomentCalculator.MomentsKinematicBinning(momentsInBins)
   momentsTruth = MomentCalculator.MomentsKinematicBinning(momentsInBinsTruth)
 
@@ -254,14 +256,14 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
   moments.calculateIntegralMatrices()
   # print acceptance integral matrix for first kinematic bin
-  print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
-  eigenVals, _ = moments[0].integralMatrix.eigenDecomp()
+  print(f"Acceptance integral matrix\n{moments[0].dataSet[0].integralMatrix}")
+  eigenVals, _ = moments[0].dataSet[0].integralMatrix.eigenDecomp()
   print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
   # plot acceptance integral matrices for all kinematic bins
   for HData in moments:
     binLabel = "_".join(HData.fileNameBinLabels)
-    PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.matrix,    pdfFileNamePrefix = f"{plotDirName}/I_acc_{binLabel}")
-    PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.inverse(), pdfFileNamePrefix = f"{plotDirName}/I_inv_{binLabel}")
+    PlottingUtilities.plotComplexMatrix(moments[0].dataSet[0].integralMatrix.matrix,    pdfFileNamePrefix = f"{plotDirName}/I_acc_{binLabel}_chunk0")
+    PlottingUtilities.plotComplexMatrix(moments[0].dataSet[0].integralMatrix.inverse(), pdfFileNamePrefix = f"{plotDirName}/I_inv_{binLabel}_chunk0")
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate moments of data generated from partial-wave amplitudes
