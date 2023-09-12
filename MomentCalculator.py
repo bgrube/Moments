@@ -556,6 +556,8 @@ class MomentCalculator:
 
   @property
   def fileNameBinLabels(self) -> List[str]:
+    if self._binCenters is None:
+      return []
     return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
 
   @property
@@ -565,7 +567,6 @@ class MomentCalculator:
 
   def calculateIntegralMatrix(self) -> None:
     """Calculates acceptance integral matrix"""
-    print(f"Calculating the acceptance integral matrix for kinematic bin {self.binCenters}")
     self._integralMatrix = AcceptanceIntegralMatrix(self.indices, self.dataSet)
     self._integralMatrix.loadOrCalculate(self.integralFileName)
     self._integralMatrix.save(self.integralFileName)
@@ -687,6 +688,7 @@ class MomentsKinematicBinning:
   def calculateIntegralMatrices(self) -> None:
     """Calculates acceptance integral matrices for all kinematic bins"""
     for momentsInBin in self:
+      print(f"Calculating the acceptance integral matrix for kinematic bin {momentsInBin.binCenters}")
       momentsInBin.calculateIntegralMatrix()
 
   def calculateMoments(
