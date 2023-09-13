@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
-  momentCalculator.calculateIntegralMatrix()
+  momentCalculator.calculateIntegralMatrix(forceCalculation = True)
   # print acceptance integral matrix
   print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
   eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp

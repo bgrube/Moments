@@ -274,7 +274,7 @@ if __name__ == "__main__":
   for HData in moments:
     binLabel = "_".join(HData.fileNameBinLabels)
     PlottingUtilities.plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h{binLabel}_")
-  # plot kinematic dependences of all moments
+  # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
   for qnIndex in momentIndices.QnIndices():
     PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{plotDirName}/h")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")

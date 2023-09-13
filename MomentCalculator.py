@@ -574,10 +574,16 @@ class MomentCalculator:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
     return "_".join([self.integralFileBaseName, ] + self.fileNameBinLabels) + ".npy"
 
-  def calculateIntegralMatrix(self) -> None:
+  def calculateIntegralMatrix(
+    self,
+    forceCalculation: bool = False,
+  ) -> None:
     """Calculates acceptance integral matrix"""
     self._integralMatrix = AcceptanceIntegralMatrix(self.indices, self.dataSet)
-    self._integralMatrix.loadOrCalculate(self.integralFileName)
+    if forceCalculation:
+      self._integralMatrix.calculate()
+    else:
+      self._integralMatrix.loadOrCalculate(self.integralFileName)
     self._integralMatrix.save(self.integralFileName)
 
   def _calcReImCovMatrices(
@@ -644,7 +650,7 @@ class MomentCalculator:
       np.copyto(V_phys_aug, V_meas_aug)
     else:
       # get inverse of acceptance integral matrix
-      I_inv = integralMatrix.inverse()
+      I_inv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
       self._HPhys._valsFlatIndex = I_inv @ self._HMeas._valsFlatIndex  # Eq. (83)
       # perform linear uncertainty propagation
