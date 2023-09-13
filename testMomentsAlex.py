@@ -43,9 +43,9 @@ if __name__ == "__main__":
   plotDirName = "./plotsAlex"
   treeName = "ntFSGlueX_100_110_angles"
   signalFileName = "./Alex/tree_pippim__B4_gen_amp_030994.signal.root.angles"
-  nmbSignalEvents = 218240
+  # nmbSignalEvents = 218240
   acceptedPsFileName = "./Alex/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
-  nmbAcceptedPsEvents = 210236
+  nmbAcceptedPsEvents = 210236  #TODO not correct number to normalize integral matrix
   beamPolarization = 0.4  #TODO read from tree
   maxL = 5  # define maximum L quantum number of moments
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
@@ -77,14 +77,9 @@ if __name__ == "__main__":
 
   # calculate true moments
   partialWaveAmplitudes = [
-    # positive-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, +1), 1.0),  # P_+1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), 1.0),  # P_+1^+
   ]
   amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
-  # for m1 in (-1, +1):
-  #   for m2 in (-1, +1):
-  #     print(f"rho^+_{m1}_{m2} = {amplitudeSet.photoProdSpinDensElements(refl = +1, l1 = 1, l2 = 1, m1 = m1, m2 = m2)}")
-  # print(f"!!! {amplitudeSet.photoProdMoments(L = 2, M = 2)}")
   HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
   print(f"True moment values\n{HTrue}")
 
@@ -98,11 +93,11 @@ if __name__ == "__main__":
   momentCalculator.calculateIntegralMatrix()
   # print acceptance integral matrix
   print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
-  eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp()
+  eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
   print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
   # plot acceptance integral matrix
-  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrix,    pdfFileNamePrefix = f"{plotDirName}/I_acc")
-  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse(), pdfFileNamePrefix = f"{plotDirName}/I_inv")
+  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc")
+  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv")
   ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
   # calculate moments of accepted phase-space data

@@ -274,6 +274,22 @@ class AcceptanceIntegralMatrix:
     assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
     return self._IFlatIndex
 
+  @property
+  def matrixNormalized(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
+    """Returns integral matrix normalized to its diagonal elements"""
+    diag = np.diag(np.reciprocal(np.sqrt(np.diag(self.matrix))))
+    return diag @ self.matrix @ diag
+
+  @property
+  def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
+    """Returns inverse of acceptance integral matrix"""
+    return np.linalg.inv(self.matrix)
+
+  @property
+  def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
+    """Returns eigenvalues and eigenvectors of acceptance integral matrix"""
+    return np.linalg.eig(self.matrix)
+
   @overload
   def __getitem__(
     self,
@@ -377,15 +393,6 @@ class AcceptanceIntegralMatrix:
     except Exception as e:
       print(f"Could not load integral matrix from file '{fileName}': {e} Calculating matrix instead.")
       self.calculate()
-
-  def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns inverse of acceptance integral matrix"""
-    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
-    return np.linalg.inv(self._IFlatIndex)
-
-  def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
-    assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
-    return np.linalg.eig(self._IFlatIndex)
 
 
 @dataclass
