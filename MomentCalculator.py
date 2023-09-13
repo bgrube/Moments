@@ -84,7 +84,7 @@ class AmplitudeSet:
     self,
     onlyRefl: Optional[int] = None,  # if set to +-1 only waves with the corresponding reflectivities
   ) -> Generator[AmplitudeValue, None, None]:
-    """Generates amplitude values; optionally filtered by reflectivity"""
+    """Returns all amplitude values up maximum spin; optionally filtered by reflectivity"""
     assert onlyRefl is None or abs(onlyRefl) == 1, f"Invalid reflectivity value f{onlyRefl}; expect +1, -1, or None"
     reflIndices: Tuple[int, ...] = (0, 1)
     if onlyRefl == +1:
@@ -92,19 +92,21 @@ class AmplitudeSet:
     elif onlyRefl == -1:
       reflIndices = (1, )
     for reflIndex in reflIndices:
-      for (l, m), val in self._amps[reflIndex].items():
-        yield AmplitudeValue(QnWaveIndex(+1 if reflIndex == 0 else -1, l, m), self._amps[reflIndex][(l, m)])
+      for l in range(self.maxSpin + 1):
+        for m in range(-l, l + 1):
+          yield self[QnWaveIndex(+1 if reflIndex == 0 else -1, l, m)]
 
+  @property
   def maxSpin(self) -> int:
     """Returns maximum spin of wave set ignoring 0 amplitudes"""
-    maxSpin = 0
-    for amp in self.amplitudes():
-      l = amp.qn.l
-      if amp.val != 0:
-        maxSpin = max(l, maxSpin)
-    return maxSpin
+    maxl = 0
+    for reflIndex in (0, 1):
+      for (l, _), val in self._amps[reflIndex].items():
+        if val != 0:
+          maxl = max(l, maxl)
+    return maxl
 
-  def spinDensElementSet(
+  def photoProdSpinDensElements(
     self,
     refl: int,  # reflectivity
     l1:   int,  # l
@@ -123,7 +125,7 @@ class AmplitudeSet:
     rhos[2] = -(0 + 1j) * refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() - (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (152)
     return (rhos[0], rhos[1], rhos[2])
 
-  def momentSet(
+  def photoProdMoments(
     self,
     L: int,  # angular momentum
     M: int,  # projection quantum number of L
@@ -139,18 +141,18 @@ class AmplitudeSet:
           l2 = amp2.qn.l
           m2 = amp2.qn.m
           term = np.sqrt((2 * l2 + 1) / (2 * l1 + 1)) * (
-              py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 0,      0,     0,      ignore_invalid = True)  # (l_2 0,    L 0 | l_1 0  )
-            * py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (l_2 m_2,  L M | l_1 m_1)
+              py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 0,      0,     0,      ignore_invalid = True)  # (l_2, 0;    L, 0 | l_1, 0  )
+            * py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (l_2, m_2;  L, M | l_1, m_1)
           )
           if term == 0:  # unphysical Clebsch-Gordan
             continue
-          rhos: Tuple[complex, complex, complex] = self.spinDensElementSet(refl, l1, l2, m1, m2)
+          rhos: Tuple[complex, complex, complex] = self.photoProdSpinDensElements(refl, l1, l2, m1, m2)
           moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
           moments[1] += -term * rhos[1]  # H_1; Eq. (125)
           moments[2] += -term * rhos[2]  # H_2; Eq. (125)
     return (moments[0], moments[1], moments[2])
 
-  def allMoments(
+  def photoProdMomentSet(
     self,
     maxL: int,  # maximum L quantum number of moments
   ) -> MomentResult:
@@ -161,7 +163,7 @@ class AmplitudeSet:
     for L in range(maxL + 1):
       for M in range(L + 1):
         # get all moments for given (L, M)
-        moments: List[complex] = list(self.momentSet(L, M))
+        moments: List[complex] = list(self.photoProdMoments(L, M))
         # ensure that moments are real-valued or purely imaginary, respectively
         tolerance = 1e-15
         assert (abs(moments[0].imag) < tolerance) and (abs(moments[1].imag) < tolerance) and (abs(moments[2].real) < tolerance), (

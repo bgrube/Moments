@@ -74,5 +74,5 @@ if __name__ == "__main__":
       for amp2 in ampSet.amplitudes(onlyRefl = refl):
         l2 = amp2.qn.l
         m2 = amp2.qn.m
-        rhos = ampSet.spinDensElementSet(refl, l1, l2, m1, m2)
+        rhos = ampSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
         print(f"rho {refl}; ({l1}, {m1}); ({l2}, {m2}) = {rhos}")

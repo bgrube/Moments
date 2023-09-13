@@ -72,7 +72,7 @@ def genDataFromWaves(
         l2 = amp2.qn.l
         m2 = amp2.qn.m
         decayAmp2 = f"Ylm({l2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
-        rhos: Tuple[complex, complex, complex] = amplitudeSet.spinDensElementSet(refl, l1, l2, m1, m2)
+        rhos: Tuple[complex, complex, complex] = amplitudeSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
         terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (153)
         intensityComponentTerms.append((terms[0], terms[1], terms[2]))
   # sum terms for each intensity component
@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
   # calculate true moment values and generate data from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
-  HTrue: MomentCalculator.MomentResult = amplitudeSet.allMoments(maxL)
+  HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
   print(f"True moment values\n{HTrue}")
   dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, pdfFileNamePrefix = f"{plotDirName}/")
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
