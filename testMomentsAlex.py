@@ -75,6 +75,19 @@ if __name__ == "__main__":
     hist.Draw("BOX2Z")
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
 
+  # calculate true moments
+  partialWaveAmplitudes = [
+    # positive-reflectivity waves
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 1, +1), 1.0),  # P_+1^+
+  ]
+  amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
+  # for m1 in (-1, +1):
+  #   for m2 in (-1, +1):
+  #     print(f"rho^+_{m1}_{m2} = {amplitudeSet.photoProdSpinDensElements(refl = +1, l1 = 1, l2 = 1, m1 = m1, m2 = m2)}")
+  # print(f"!!! {amplitudeSet.photoProdMoments(L = 2, M = 2)}")
+  HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+  print(f"True moment values\n{HTrue}")
+
   # setup moment calculator
   momentIndices = MomentCalculator.MomentIndices(maxL)
   dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
@@ -111,8 +124,7 @@ if __name__ == "__main__":
   print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
   print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
   # plot moments
-  # use moments for flat phase-space as truth
-  PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{plotDirName}/h_")
+  PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h_")
   ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   ROOT.gBenchmark.Stop("Total execution time")
