@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
   # calculate true moments
   partialWaveAmplitudes = [
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), 1.0),  # P_+1^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val = 1 + 0j),  # P_+1^+
   ]
   amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
   HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
@@ -94,7 +94,7 @@ if __name__ == "__main__":
   # print acceptance integral matrix
   print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
   eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
-  print(f"Eigenvalues of acceptance integral matrix\n{eigenVals}")
+  print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
   # plot acceptance integral matrix
   PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc")
   PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv")
