@@ -700,11 +700,14 @@ class MomentsKinematicBinning:
   #       assert varNamesInBin == varNames, f"Bins have inconsistent set of binning variables: bin '{momentsInBin.centers}': {varNamesInBin} vs. {varNames} in previous bin"
   #   return varNames or []
 
-  def calculateIntegralMatrices(self) -> None:
+  def calculateIntegralMatrices(
+    self,
+    forceCalculation: bool = False,
+  ) -> None:
     """Calculates acceptance integral matrices for all kinematic bins"""
     for momentsInBin in self:
       print(f"Calculating the acceptance integral matrix for kinematic bin {momentsInBin.binCenters}")
-      momentsInBin.calculateIntegralMatrix()
+      momentsInBin.calculateIntegralMatrix(forceCalculation)
 
   def calculateMoments(
     self,
