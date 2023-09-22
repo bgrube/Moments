@@ -37,7 +37,7 @@ def genDataFromWaves(
   nmbEvents:         int,                            # number of events to generate
   polarization:      float,                          # photon-beam polarization
   amplitudeSet:      MomentCalculator.AmplitudeSet,  # partial-wave amplitudes
-  efficiencyHist:    Optional[ROOT.TH3D] = None,     # detection efficiency used to generate data
+  efficiencyHist:    ROOT.TH3D,                      # detection efficiency used to generate data
   regenerateData:    bool = False,                   # if set data are regenerated although .root file exists
   pdfFileNamePrefix: str = "./",                     # name prefix for output files
 ) -> ROOT.RDataFrame:
@@ -86,10 +86,18 @@ def genDataFromWaves(
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating partial-wave MC data and writing them to '{fileName}'")
   df = ROOT.RDataFrame(nmbEvents)
-  RootUtilities.declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
+  RootUtilities.declareInCpp(intensityFcn   = intensityFcn)    # use Python object in C++
+  RootUtilities.declareInCpp(efficiencyHist = efficiencyHist)  # use Python object in C++
+  # normalize efficiency histogram
+  efficiencyHist.Scale(1 / efficiencyHist.GetMaximum())
   pointFunc = """
     double cosTheta, phiDeg, PhiDeg;
-    PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
+    do {
+      PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
+      // cosTheta = gRandom->Uniform(2) - 1;
+      // phiDeg   = 180 * (gRandom->Uniform(2) - 1);
+      // PhiDeg   = 180 * (gRandom->Uniform(2) - 1);
+    } while(gRandom->Uniform() > PyVars::efficiencyHist.GetBinContent(PyVars::efficiencyHist.FindBin(cosTheta, phiDeg, PhiDeg)));
     std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
     return point;
   """
@@ -105,6 +113,16 @@ def genDataFromWaves(
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
     # !Note! for some reason, this is very slow
+  df = ROOT.RDataFrame(treeName, fileName)
+  nmbBins = 25
+  hist = df.Histo3D(ROOT.RDF.TH3DModel("hFOO", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "cosTheta", "phiDeg", "PhiDeg")
+  canv = ROOT.TCanvas()
+  hist.SetMinimum(0)
+  hist.GetXaxis().SetTitleOffset(1.5)
+  hist.GetYaxis().SetTitleOffset(2)
+  hist.GetZaxis().SetTitleOffset(1.5)
+  hist.Draw("BOX2Z")
+  canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
   return ROOT.RDataFrame(treeName, fileName)
 
 
@@ -141,7 +159,7 @@ if __name__ == "__main__":
   print(f"Loading accpepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
   dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
 
-  nmbBins = 25
+  nmbBins = 100
   # plot signal and phase-space data
   hists = (
     # dataSignal.Histo3D(
@@ -161,7 +179,7 @@ if __name__ == "__main__":
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
 
   print(f"Generating signal data")
-  dataSignal = genDataFromWaves(nmbSignalEvents, beamPolarization, amplitudeSet, hists[0], pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
+  dataSignal = genDataFromWaves(nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
 
   # setup moment calculator
   momentIndices = MomentCalculator.MomentIndices(maxL)
