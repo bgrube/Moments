@@ -242,7 +242,7 @@ class DataSet:
   """Stores information about a single dataset"""
   polarization:   float            # photon-beam polarization
   data:           ROOT.RDataFrame  # data from which to calculate moments
-  phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data
+  phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data  #TODO make optional
   nmbGenEvents:   int              # number of generated events
 
 
@@ -612,14 +612,14 @@ class MomentCalculator:
     if dataSource == self.MomentDataSource.DATA:
       # calculate moments of data
       dataSet        = self.dataSet
-      integralMatrix = self.integralMatrix
+      integralMatrix = self._integralMatrix
     elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
       # calculate moments of acceptance function
       dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
       # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
       dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
-      integralMatrix = self.integralMatrix
+      integralMatrix = self._integralMatrix
     else:
       raise ValueError(f"Unknown data source '{dataSource}'")
     # get input data as NumPy arrays
