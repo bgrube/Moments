@@ -74,6 +74,7 @@ def genDataFromWaves(
         m2 = amp2.qn.m
         decayAmp2 = f"Ylm({l2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
         rhos: Tuple[complex, complex, complex] = amplitudeSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
+        #TODO leave out terms when rho == 0
         terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (153)
         intensityComponentTerms.append((terms[0], terms[1], terms[2]))
   # sum terms for each intensity component
@@ -94,6 +95,7 @@ def genDataFromWaves(
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
   PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity.pdf")
+  #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
