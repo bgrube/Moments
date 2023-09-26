@@ -5,6 +5,7 @@
 import ctypes
 import functools
 import numpy as np
+import math
 import os
 import subprocess
 from typing import (
@@ -57,19 +58,41 @@ def genDataFromWaves(
         m2 = amp2.qn.m
         decayAmp2 = f"Ylm({l2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
         rhos: Tuple[complex, complex, complex] = amplitudeSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
-        #TODO leave out terms when rho == 0
-        terms = tuple(f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})" for rho in rhos)  # Eq. (153)
+        terms = tuple(
+          f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})"  # Eq. (153)
+          if rho != 0 else "" for rho in rhos
+        )
         intensityComponentTerms.append((terms[0], terms[1], terms[2]))
   # sum terms for each intensity component
   intensityComponentsFormula = []
   for iComponent in range(3):
-    intensityComponentsFormula.append(f"({' + '.join([term[iComponent] for term in intensityComponentTerms])})")
+    intensityComponentsFormula.append(f"({' + '.join(filter(None, (term[iComponent] for term in intensityComponentTerms)))})")
   # sum intensity components
   intensityFormula = (
     f"std::real({intensityComponentsFormula[0]} "
     f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * TMath::DegToRad() * z) "
     f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))")  # Eq. (163)
   print(f"Intensity formula = {intensityFormula}")
+  # print(f"!!! I_0 = {intensityComponentsFormula[0]}")
+  # I_1_formula = f"std::real({intensityComponentsFormula[1]} * {polarization})"
+  # print(f"!!! I_1 = {I_1_formula}")
+  # I_1 = ROOT.TF2("I_1", I_1_formula, -1, +1, -180, +180)
+  # I_1.SetTitle(";cos#theta;#phi [deg]")
+  # I_1.SetNpx(100)  # used in numeric integration performed by GetRandom()
+  # I_1.SetNpy(100)
+  # canv = ROOT.TCanvas()
+  # I_1.Draw("COLZ")
+  # canv.Print("I_1.pdf", "pdf")
+  # I_2_formula = f"std::real({intensityComponentsFormula[2]} * {polarization})"
+  # print(f"!!! I_2 = {I_2_formula}")
+  # I_2 = ROOT.TF2("I_2", I_2_formula, -1, +1, -180, +180)
+  # I_2.SetTitle(";cos#theta;#phi [deg]")
+  # I_2.SetNpx(100)  # used in numeric integration performed by GetRandom()
+  # I_2.SetNpy(100)
+  # canv = ROOT.TCanvas()
+  # I_2.Draw("COLZ")
+  # canv.Print("I_2.pdf", "pdf")
+
   intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
@@ -77,6 +100,22 @@ def genDataFromWaves(
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
   PlottingUtilities.drawTF3(intensityFcn, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity.pdf")
+
+  # intensity as calculated from Eqs. (9) to (12) in https://arxiv.org/abs/2305.09047 assuming P_\gamma = 1, and SCHC with NPE
+  # i.e. rho^1_{1 -1} = +1/2 and rho^2_{1 -1} = -i/2 (and rho^0_{1 1} = +1/2)
+  # parity conservation: rho^0_{-1 -1} = +1/2, rho^1_{-1 1} = +1/2, rho^2_{-1 1} = +i/2
+  # identical formulas are obtained from the Z_l^m formulation and the
+  # spin-density matrices in the reflectivity basis (see Eqs. (D8) and (D13) in PRD 100, 054017 (2019))
+  intensityFormula2 = (
+    "(3 / (8 * TMath::Pi())) * std::sin(std::acos(x)) * std::sin(std::acos(x)) "
+    "* (1 + std::cos(2 * TMath::DegToRad() * y) * std::cos(2 * TMath::DegToRad() * z) + std::sin(2 * TMath::DegToRad() * y) * std::sin(2 * TMath::DegToRad() * z))")
+  intensityFcn2 = ROOT.TF3("intensity2", intensityFormula2, -1, +1, -180, +180, -180, +180)
+  intensityFcn2.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
+  intensityFcn2.SetNpx(100)  # used in numeric integration performed by GetRandom()
+  intensityFcn2.SetNpy(100)
+  intensityFcn2.SetNpz(100)
+  intensityFcn2.SetMinimum(0)
+  PlottingUtilities.drawTF3(intensityFcn2, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity2.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
@@ -92,11 +131,14 @@ def genDataFromWaves(
   efficiencyHist.Scale(1 / efficiencyHist.GetMaximum())
   pointFunc = """
     double cosTheta, phiDeg, PhiDeg;
+    // weight intensity function by efficiency histogram using rejection sampling
     do {
-      PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
+      // uniform distribution
       // cosTheta = gRandom->Uniform(2) - 1;
       // phiDeg   = 180 * (gRandom->Uniform(2) - 1);
       // PhiDeg   = 180 * (gRandom->Uniform(2) - 1);
+      // distribution given by intensity function
+      PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
     } while(gRandom->Uniform() > PyVars::efficiencyHist.GetBinContent(PyVars::efficiencyHist.FindBin(cosTheta, phiDeg, PhiDeg)));
     std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
     return point;
@@ -115,7 +157,7 @@ def genDataFromWaves(
     # !Note! for some reason, this is very slow
   df = ROOT.RDataFrame(treeName, fileName)
   nmbBins = 25
-  hist = df.Histo3D(ROOT.RDF.TH3DModel("hFOO", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "cosTheta", "phiDeg", "PhiDeg")
+  hist = df.Histo3D(ROOT.RDF.TH3DModel("hSignalSim", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "cosTheta", "phiDeg", "PhiDeg")
   canv = ROOT.TCanvas()
   hist.SetMinimum(0)
   hist.GetXaxis().SetTitleOffset(1.5)
@@ -140,8 +182,8 @@ if __name__ == "__main__":
   nmbSignalEvents = 218240
   acceptedPsFileName = "./Alex/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
   nmbAcceptedPsEvents = 210236  #TODO not correct number to normalize integral matrix
-  # beamPolarization = 0.4  #TODO read from tree
-  beamPolarization = 1.0  #TODO read from tree
+  beamPolarization = 0.4  #TODO read from tree
+  # beamPolarization = 1.0  #TODO read from tree
   maxL = 5  # define maximum L quantum number of moments
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
@@ -152,6 +194,13 @@ if __name__ == "__main__":
   amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
   HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
   print(f"True moment values\n{HTrue}")
+  for refl in (-1, +1):
+    for l in range(3):
+      for m1 in range(-l, l + 1):
+        for m2 in range(-l, l + 1):
+          rhos = amplitudeSet.photoProdSpinDensElements(refl, l, l, m1, m2)
+          if not all(rho == 0 for rho in rhos):
+            print(f"!!! refl = {refl}, l = {l}, m = {m1}, m' = {m2}: {rhos}")
 
   # load data
   # print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
@@ -163,7 +212,7 @@ if __name__ == "__main__":
   # plot signal and phase-space data
   hists = (
     # dataSignal.Histo3D(
-    #   ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+    #   ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins // 4, -1, +1, nmbBins // 4, -180, +180, nmbBins // 4, -180, +180),
     #   "cosTheta", "phiDeg", "PhiDeg"),
     dataAcceptedPs.Histo3D(
       ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
@@ -179,25 +228,25 @@ if __name__ == "__main__":
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
 
   print(f"Generating signal data")
-  dataSignal = genDataFromWaves(nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
+  dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
 
   # setup moment calculator
   momentIndices = MomentCalculator.MomentIndices(maxL)
-  # dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
-  dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents)
+  dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
+  # dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents)
   momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet)
 
-  # # calculate integral matrix
-  # ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
-  # momentCalculator.calculateIntegralMatrix(forceCalculation = True)
-  # # print acceptance integral matrix
-  # print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
-  # eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
-  # print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
-  # # plot acceptance integral matrix
-  # PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc")
-  # PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv")
-  # ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+  # calculate integral matrix
+  ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+  momentCalculator.calculateIntegralMatrix(forceCalculation = True)
+  # print acceptance integral matrix
+  print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
+  eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
+  print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
+  # plot acceptance integral matrix
+  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc")
+  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv")
+  ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
   # # calculate moments of accepted phase-space data
   # ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
