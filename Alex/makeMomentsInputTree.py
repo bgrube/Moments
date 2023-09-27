@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
 
+import functools
 import os
 from typing import Dict
 
 import ROOT
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 def setup() -> None:
@@ -94,7 +99,7 @@ if __name__ == "__main__":
   #   HELCOSTHETA(a; b; recoil)
   #   HELPHI(a; b; recoil; beam) [rad]
   HfCosThetaDef = "HELCOSTHETA([pi+]; [pi-]; [p+])"
-  HfThetaDef    = f"acos({HfCosThetaDef}))"
+  HfThetaDef    = f"acos({HfCosThetaDef})"
   HfPhiDef      = "HELPHI([pi+]; [pi-]; [p+]; GLUEXBEAM)"
   HfPhiDegDef   = f"{HfPhiDef} * TMath::RadToDeg()"
   ROOT.FSTree.defineMacro("BIGPHI", 2, "MyFSMath::bigPhi("
@@ -127,10 +132,14 @@ if __name__ == "__main__":
   varDefs = ROOT.std.vector[ROOT.std.pair[str, str]]()
   varDefs.push_back(ROOT.std.pair[str, str]("beamPol",    f"{beamPol}"))
   varDefs.push_back(ROOT.std.pair[str, str]("beamPolPhi", "PolarizationAngle"))
-  varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",   GjCosThetaDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("theta",      GjThetaDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",     GjPhiDegDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("phi",        GjPhiDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",   GjCosThetaDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("theta",      GjThetaDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",     GjPhiDegDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("phi",        GjPhiDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",   HfCosThetaDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("theta",      HfThetaDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",     HfPhiDegDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("phi",        HfPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("Phi",        bigPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",     bigPhiDegDef))
   # varDefs.push_back(ROOT.std.pair[str, str]("myphi",      MyGjPhiDef))
