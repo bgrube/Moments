@@ -176,6 +176,8 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Start("Total execution time")
 
   # set parameters of test case
+  # !Note! the SDMEs and hence the partial-wave amplitudes are defined in the rho helicity frame
+  #        the rho decay angles need to be calculated in this frame
   plotDirName = "./plotsAlex"
   treeName = "ntFSGlueX_100_110_angles"
   signalFileName = "./Alex/tree_pippim__B4_gen_amp_030994.signal.root.angles"
@@ -203,19 +205,21 @@ if __name__ == "__main__":
             print(f"!!! refl = {refl}, l = {l}, m = {m1}, m' = {m2}: {rhos}")
 
   # load data
-  # print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
-  # dataSignal = ROOT.RDataFrame(treeName, signalFileName)
+  print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
+  dataSignal = ROOT.RDataFrame(treeName, signalFileName).Range(10000)  # take only first 10k events
   print(f"Loading accpepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
   dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
 
-  nmbBins = 100
+  nmbBins   = 25
+  nmbBinsPs = nmbBins
+  # nmbBinsPs = 100  # if histogram is used for weighting events
   # plot signal and phase-space data
   hists = (
-    # dataSignal.Histo3D(
-    #   ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins // 4, -1, +1, nmbBins // 4, -180, +180, nmbBins // 4, -180, +180),
-    #   "cosTheta", "phiDeg", "PhiDeg"),
+    dataSignal.Histo3D(
+      ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+      "cosTheta", "phiDeg", "PhiDeg"),
     dataAcceptedPs.Histo3D(
-      ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+      ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
       "cosTheta", "phiDeg", "PhiDeg"),
   )
   for hist in hists:
@@ -227,8 +231,8 @@ if __name__ == "__main__":
     hist.Draw("BOX2Z")
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
 
-  print(f"Generating signal data")
-  dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
+  # print(f"Generating signal data")
+  # dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
 
   # setup moment calculator
   momentIndices = MomentCalculator.MomentIndices(maxL)
