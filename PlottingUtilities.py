@@ -108,9 +108,9 @@ class HistAxisBinning:
     return self.valueRange / self.nmbBins
 
 
-def setupPlotStyle() -> None:
+def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   """Defines ROOT plotting style"""
-  ROOT.gROOT.LoadMacro("./rootlogon.C")
+  ROOT.gROOT.LoadMacro(rootlogonPath)
   ROOT.gROOT.ForceStyle()
   ROOT.gStyle.SetCanvasDefW(600)
   ROOT.gStyle.SetCanvasDefH(600)
