@@ -124,7 +124,6 @@ def genDataFromWaves(
     print(f"Reading partial-wave MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating partial-wave MC data and writing them to '{fileName}'")
-  df = ROOT.RDataFrame(nmbEvents)
   RootUtilities.declareInCpp(intensityFcn   = intensityFcn)    # use Python object in C++
   RootUtilities.declareInCpp(efficiencyHist = efficiencyHist)  # use Python object in C++
   # normalize efficiency histogram
@@ -139,23 +138,23 @@ def genDataFromWaves(
       // PhiDeg   = 180 * (gRandom->Uniform(2) - 1);
       // distribution given by intensity function
       PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
-    } while(gRandom->Uniform() > PyVars::efficiencyHist.GetBinContent(PyVars::efficiencyHist.FindBin(cosTheta, phiDeg, PhiDeg)));
+    } while(gRandom->Uniform() > PyVars::efficiencyHist.GetBinContent(PyVars::efficiencyHist.FindBin(cosTheta, phiDeg, PhiDeg)));  // weight by efficiency histogram
     std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
     return point;
-  """
-  df.Define("point",    pointFunc) \
-    .Define("cosTheta", "point[0]") \
-    .Define("theta",    "std::acos(cosTheta)") \
-    .Define("phiDeg",   "point[1]") \
-    .Define("phi",      "TMath::DegToRad() * phiDeg") \
-    .Define("PhiDeg",   "point[2]") \
-    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
-    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
+  """  # C++ code that throws random point in angular space
+  df = ROOT.RDataFrame(nmbEvents) \
+           .Define("point",    pointFunc) \
+           .Define("cosTheta", "point[0]") \
+           .Define("theta",    "std::acos(cosTheta)") \
+           .Define("phiDeg",   "point[1]") \
+           .Define("phi",      "TMath::DegToRad() * phiDeg") \
+           .Define("PhiDeg",   "point[2]") \
+           .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
+           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
+           .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
     # !Note! for some reason, this is very slow
-  df = ROOT.RDataFrame(treeName, fileName)
   nmbBins = 25
   hist = df.Histo3D(ROOT.RDF.TH3DModel("hSignalSim", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "cosTheta", "phiDeg", "PhiDeg")
   canv = ROOT.TCanvas()
@@ -165,7 +164,7 @@ def genDataFromWaves(
   hist.GetZaxis().SetTitleOffset(1.5)
   hist.Draw("BOX2Z")
   canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
-  return ROOT.RDataFrame(treeName, fileName)
+  return df
 
 
 if __name__ == "__main__":

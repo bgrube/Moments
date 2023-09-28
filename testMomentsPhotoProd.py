@@ -106,27 +106,27 @@ def genDataFromWaves(
     print(f"Reading partial-wave MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating partial-wave MC data and writing them to '{fileName}'")
-  df = ROOT.RDataFrame(nmbEvents)
   RootUtilities.declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
   pointFunc = """
     double cosTheta, phiDeg, PhiDeg;
     PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
     std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
     return point;
-  """
-  df.Define("point",    pointFunc) \
-    .Define("cosTheta", "point[0]") \
-    .Define("theta",    "std::acos(cosTheta)") \
-    .Define("phiDeg",   "point[1]") \
-    .Define("phi",      "TMath::DegToRad() * phiDeg") \
-    .Define("PhiDeg",   "point[2]") \
-    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
-    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
+  """  # C++ code that throws random point in angular space
+  df = ROOT.RDataFrame(nmbEvents) \
+           .Define("point",    pointFunc) \
+           .Define("cosTheta", "point[0]") \
+           .Define("theta",    "std::acos(cosTheta)") \
+           .Define("phiDeg",   "point[1]") \
+           .Define("phi",      "TMath::DegToRad() * phiDeg") \
+           .Define("PhiDeg",   "point[2]") \
+           .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
+           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
+           .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
     # !Note! for some reason, this is very slow
-  return ROOT.RDataFrame(treeName, fileName)
+  return df
 
 
 def genAccepted2BodyPsPhotoProd(
@@ -148,20 +148,27 @@ def genAccepted2BodyPsPhotoProd(
     print(f"Reading accepted phase-space MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating accepted phase-space MC data and writing them to '{fileName}'")
-  df = ROOT.RDataFrame(nmbEvents)
+  #TODO avoid code doubling with genDataFromWaves() and corresponding function in testMomentsAlex
   RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
-  df.Define("point",    "double cosTheta, phiDeg, PhiDeg; PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg); std::vector<double> point = {cosTheta, phiDeg, PhiDeg}; return point;") \
-    .Define("cosTheta", "point[0]") \
-    .Define("theta",    "std::acos(cosTheta)") \
-    .Define("phiDeg",   "point[1]") \
-    .Define("phi",      "TMath::DegToRad() * phiDeg") \
-    .Define("PhiDeg",   "point[2]") \
-    .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-    .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd()" << endl; } return true;') \
-    .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))
+  pointFunc = """
+    double cosTheta, phiDeg, PhiDeg;
+    PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
+    std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
+    return point;
+  """  # C++ code that throws random point in angular space
+  df = ROOT.RDataFrame(nmbEvents) \
+           .Define("point",    pointFunc) \
+           .Define("cosTheta", "point[0]") \
+           .Define("theta",    "std::acos(cosTheta)") \
+           .Define("phiDeg",   "point[1]") \
+           .Define("phi",      "TMath::DegToRad() * phiDeg") \
+           .Define("PhiDeg",   "point[2]") \
+           .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
+           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd()" << endl; } return true;') \
+           .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
-  return ROOT.RDataFrame(treeName, fileName)
+  return df
 
 
 if __name__ == "__main__":
