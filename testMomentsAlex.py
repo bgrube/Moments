@@ -186,6 +186,7 @@ if __name__ == "__main__":
   beamPolarization = 0.4  #TODO read from tree
   # beamPolarization = 1.0  #TODO read from tree
   maxL = 5  # define maximum L quantum number of moments
+  # maxL = 10  # define maximum L quantum number of moments
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
   # calculate true moments
@@ -206,7 +207,9 @@ if __name__ == "__main__":
   # load data
   print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
   dataSignal = ROOT.RDataFrame(treeName, signalFileName).Range(10000)  # take only first 10k events
+  # dataSignal = ROOT.RDataFrame(treeName, signalFileName)
   print(f"Loading accpepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
+  # dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName).Range(10000)  # take only first 10k events
   dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
 
   nmbBins   = 25
