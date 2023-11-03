@@ -12,6 +12,7 @@ OMP_NUM_THREADS_save = None
 print = functools.partial(print, flush = True)
 
 
+#TODO turn into context manager
 def setNmbOpenMpThreads(nmbThreads: int) -> None:
   """Sets value of OMP_NUM_THREADS environment variable; current value is saved and can be restored by calling restoreNmbOpenMpThreads()"""
   if "OMP_NUM_THREADS" in os.environ:
