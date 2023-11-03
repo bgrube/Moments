@@ -54,12 +54,14 @@ def genDataFromWaves(
   efficiencyFormula: Optional[str] = None,           # detection efficiency used to generate data
   regenerateData:    bool = False,                   # if set data are regenerated although .root file exists
   pdfFileNamePrefix: str = "./",                     # name prefix for output files
+  nameSuffix:        str = "",                       # suffix for functions and file names
 ) -> ROOT.RDataFrame:
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency {efficiencyFormula}")
   # construct and draw efficiency function
-  efficiencyFcn = ROOT.TF3("efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hEfficiencyGen.pdf", nmbPoints = 100, maxVal = 1.0)
+  efficiencyFcn = ROOT.TF3(f"efficiencyGen{nameSuffix}", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
+  PlottingUtilities.drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, nmbPoints = 100, maxVal = 1.0,
+    pdfFileName = f"{pdfFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
@@ -90,13 +92,13 @@ def genDataFromWaves(
     f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))"
     + (f" * ({efficiencyFormula})" if efficiencyFormula else ""))  # Eq. (163)
   print(f"Intensity formula = {intensityFormula}")
-  intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)
+  intensityFcn = ROOT.TF3(f"intensity{nameSuffix}", intensityFormula, -1, +1, -180, +180, -180, +180)
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-  PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity.pdf")
+  PlottingUtilities.drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}{intensityFcn.GetName()}.pdf")
   #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
   # generate random data that follow intensity given by partial-wave amplitudes
@@ -106,11 +108,11 @@ def genDataFromWaves(
     print(f"Reading partial-wave MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating partial-wave MC data and writing them to '{fileName}'")
-  RootUtilities.declareInCpp(intensityFcn = intensityFcn)  # use Python object in C++
-  pointFunc = """
+  RootUtilities.declareInCpp(**{intensityFcn.GetName() : intensityFcn})  # use Python object in C++
+  pointFunc = f"""
     double cosTheta, phiDeg, PhiDeg;
-    PyVars::intensityFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
-    std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
+    PyVars::{intensityFcn.GetName()}.GetRandom3(cosTheta, phiDeg, PhiDeg);
+    std::vector<double> point = {{cosTheta, phiDeg, PhiDeg}};
     return point;
   """  # C++ code that throws random point in angular space
   df = ROOT.RDataFrame(nmbEvents) \
