@@ -6,10 +6,6 @@ import ctypes
 import functools
 import os
 import subprocess
-from typing import (
-  Tuple,
-  TypedDict,
-)
 
 import ROOT
 
@@ -28,20 +24,6 @@ def printGitInfo() -> None:
   repoDir = os.path.dirname(os.path.abspath(__file__))
   gitInfo = subprocess.check_output(["git", "describe", "--always"], cwd = repoDir).strip().decode()
   print(f"Running code in '{repoDir}', git version '{gitInfo}'")
-
-
-# default TH3 plotting options
-TH3_NMB_BINS = 25
-TH3_BINNINGS = (
-  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS,   -1,   +1),
-  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
-  PlottingUtilities.HistAxisBinning(TH3_NMB_BINS, -180, +180),
-)
-TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
-class Th3PlotKwargsType(TypedDict):
-  binnings:  Tuple[PlottingUtilities.HistAxisBinning, PlottingUtilities.HistAxisBinning, PlottingUtilities.HistAxisBinning]
-  histTitle: str
-TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
 
 
 if __name__ == "__main__":
@@ -160,16 +142,16 @@ if __name__ == "__main__":
 
   # plot data generated from partial-wave amplitudes
   # canv = ROOT.TCanvas()
-  nmbBins = 25
+  nmbBins = testMomentsPhotoProd.TH3_NMB_BINS
   histBinning = (nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
   hists = (
     dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})").Histo3D(
-                         ROOT.RDF.TH3DModel("dataSig",     ";cos#theta;#phi [deg];#Phi [deg]", *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+                         ROOT.RDF.TH3DModel("dataSig",     testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
     dataPwaModelBkg.Filter(f"(({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))"
                         f"or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]}))").Histo3D(
-                         ROOT.RDF.TH3DModel("dataBkg",     ";cos#theta;#phi [deg];#Phi [deg]", *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
-    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        ";cos#theta;#phi [deg];#Phi [deg]", *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
-    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", ";cos#theta;#phi [deg];#Phi [deg]", *histBinning), "cosTheta", "phiDeg", "PhiDeg", "sbSubtractionWeight"),
+                         ROOT.RDF.TH3DModel("dataBkg",     testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "sbSubtractionWeight"),
   )
   for hist in hists:
     hist.SetMinimum(0)
