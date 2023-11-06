@@ -256,6 +256,7 @@ if __name__ == "__main__":
   dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco, pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
 
+  # setup moment calculator
   momentIndices = MomentCalculator.MomentIndices(maxL)
   binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
   massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
@@ -267,8 +268,8 @@ if __name__ == "__main__":
     momentsInBins.append     (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
     # dummy truth values; identical for all bins
     momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
-  moments      = MomentCalculator.MomentsKinematicBinning(momentsInBins)
-  momentsTruth = MomentCalculator.MomentsKinematicBinning(momentsInBinsTruth)
+  moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
+  momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
   # calculate integral matrix
   ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")

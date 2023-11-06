@@ -314,10 +314,10 @@ def plotMomentsInBin(
 
 
 def plotMoments1D(
-  moments:           MomentCalculator.MomentsKinematicBinning,  # moment values extracted from data
+  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
   qnIndex:           MomentCalculator.QnMomentIndex,            # defines specific moment
   binning:           HistAxisBinning,                           # binning to use for plot
-  momentsTruth:      Optional[MomentCalculator.MomentsKinematicBinning] = None,  # true moment values
+  momentsTruth:      Optional[MomentCalculator.MomentCalculatorsKinematicBinning] = None,  # true moment values
   momentLabel:       str = "H",                                 # label used in output file name
   pdfFileNamePrefix: str = "h",                                 # name prefix for output files
 ) -> None:

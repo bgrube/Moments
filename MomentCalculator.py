@@ -669,7 +669,7 @@ class MomentCalculator:
 
 
 @dataclass
-class MomentsKinematicBinning:
+class MomentCalculatorsKinematicBinning:
   """Holds all information to calculate moments for several kinematic bins"""
   moments: List[MomentCalculator]  # data for all bins of the kinematic binning
 
