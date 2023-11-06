@@ -4,14 +4,21 @@
 
 import ctypes
 import functools
+import numpy as np
 import os
 import subprocess
+from typing import List
 
 import ROOT
 
 import MomentCalculator
 import OpenMp
-import PlottingUtilities
+from PlottingUtilities import (
+  HistAxisBinning,
+  plotComplexMatrix,
+  plotMomentsInBin,
+  setupPlotStyle,
+)
 import testMomentsPhotoProd
 
 
@@ -32,13 +39,15 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)
-  PlottingUtilities.setupPlotStyle()
+  setupPlotStyle()
   ROOT.gBenchmark.Start("Total execution time")
 
   # set parameters of test case
   plotDirName = "./plots"
-  nmbPwaMcEventsSig = 10000000
-  nmbPwaMcEventsBkg = 10000000
+  nmbPwaMcEventsSig = 1000
+  nmbPwaMcEventsBkg = 1000
+  # nmbPwaMcEventsSig = 10000000
+  # nmbPwaMcEventsBkg = 10000000
   nmbPsMcEvents = 1000000
   beamPolarization = 1.0
   # define angular distribution of signal
@@ -92,9 +101,8 @@ if __name__ == "__main__":
   maxL = 3  # define maximum L quantum number of moments
   # formulas for detection efficiency
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
-  # efficiencyFormulaGen = "1"  # acc_perfect
-  efficiencyFormulaGen = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
-  efficiencyFormulaReco = efficiencyFormulaGen
+  efficiencyFormula = "1"  # acc_perfect
+  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
   print(f"!!! {nmbOpenMpThreads =}")
 
@@ -104,7 +112,7 @@ if __name__ == "__main__":
   HTrueSig: MomentCalculator.MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
   print(f"True moment values for signal:\n{HTrueSig}")
   dataPwaModelSig: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
-    nmbPwaMcEventsSig, beamPolarization, amplitudeSetSig, efficiencyFormulaGen, pdfFileNamePrefix = f"{plotDirName}/", nameSuffix = "Sig", regenerateData = True)
+    nmbPwaMcEventsSig, beamPolarization, amplitudeSetSig, efficiencyFormula, pdfFileNamePrefix = f"{plotDirName}/", nameSuffix = "Sig", regenerateData = True)
   dataPwaModelSig = dataPwaModelSig.Define("discrVariable", "gRandom->Gaus(0, 0.1)")
   treeName = "data"
   fileNameSig = f"intensitySig.photoProd.root"
@@ -113,7 +121,7 @@ if __name__ == "__main__":
   HTrueBkg: MomentCalculator.MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL)
   print(f"True moment values for signal:\n{HTrueBkg}")
   dataPwaModelBkg: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
-    nmbPwaMcEventsBkg, beamPolarization, amplitudeSetBkg, efficiencyFormulaGen, pdfFileNamePrefix = f"{plotDirName}/", nameSuffix = "Bkg", regenerateData = True)
+    nmbPwaMcEventsBkg, beamPolarization, amplitudeSetBkg, efficiencyFormula, pdfFileNamePrefix = f"{plotDirName}/", nameSuffix = "Bkg", regenerateData = True)
   dataPwaModelBkg = dataPwaModelBkg.Define("discrVariable", "gRandom->Uniform(0, 2) - 1")
   fileNameBkg = f"intensityBkg.photoProd.root"
   dataPwaModelBkg.Snapshot(treeName, fileNameBkg)
@@ -140,8 +148,7 @@ if __name__ == "__main__":
   canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
 
-  # plot data generated from partial-wave amplitudes
-  # canv = ROOT.TCanvas()
+  # plot angular distributions of data generated from partial-wave amplitudes
   nmbBins = testMomentsPhotoProd.TH3_NMB_BINS
   histBinning = (nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
   hists = (
@@ -160,6 +167,59 @@ if __name__ == "__main__":
     hist.GetZaxis().SetTitleOffset(1.5)
     hist.Draw("BOX2Z")
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
+
+  # generate accepted phase-space data
+  ROOT.gBenchmark.Start("Time to generate phase-space MC data")
+  dataAcceptedPs = testMomentsPhotoProd.genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormula, pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
+  ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
+
+  # define input data
+  # data = dataPwaModel
+  data = dataPwaModelSig
+  HTrue = HTrueSig
+  # data = dataPwaModelBkg
+  # HTrue = HTrueBkg
+
+  # setup moment calculator
+  momentIndices = MomentCalculator.MomentIndices(maxL)
+  binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+  massBinning = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
+  momentsInBins:      List[MomentCalculator.MomentCalculator] = []
+  momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
+  for massBinCenter in massBinning:
+    # dummy bins with identical data sets
+    dataSet = MomentCalculator.DataSet(beamPolarization, data, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents)  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
+    momentsInBins.append     (MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}))
+    # dummy truth values; identical for all bins
+    momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+  moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
+  momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
+
+  # calculate integral matrix
+  ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+  moments.calculateIntegralMatrices(forceCalculation = True)
+  # print acceptance integral matrix for first kinematic bin
+  print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
+  eigenVals, _ = moments[0].integralMatrix.eigenDecomp
+  print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
+  # plot acceptance integral matrices for all kinematic bins
+  for HData in moments:
+    binLabel = "_".join(HData.fileNameBinLabels)
+    plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc_{binLabel}")
+    plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv_{binLabel}")
+  ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+
+  # calculate moments of data generated from partial-wave amplitudes
+  ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+  moments.calculateMoments()
+  # print all moments for first kinematic bin
+  print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
+  print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
+  # plot moments in each kinematic bin
+  for HData in moments:
+    binLabel = "_".join(HData.fileNameBinLabels)
+    plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h{binLabel}_")
+  ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
   ROOT.gBenchmark.Stop("Total execution time")
   _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh
