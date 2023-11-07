@@ -44,11 +44,11 @@ if __name__ == "__main__":
 
   # set parameters of test case
   plotDirName = "./plots"
-  nmbPwaMcEventsSig = 1000
-  nmbPwaMcEventsBkg = 1000
+  nmbPwaMcEventsSig = 1000000
+  nmbPwaMcEventsBkg = 1000000
   # nmbPwaMcEventsSig = 10000000
   # nmbPwaMcEventsBkg = 10000000
-  nmbPsMcEvents = 1000000
+  nmbPsMcEvents = 10000000
   beamPolarization = 1.0
   # define angular distribution of signal
   partialWaveAmplitudesSig = [  # set of all possible waves up to ell = 2
@@ -134,7 +134,7 @@ if __name__ == "__main__":
   canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
   signalRange = (-0.3, +0.3)
   sideBands   = ((-1, -0.4), (+0.4, +1))
-  dataPwaModel = dataPwaModel.Define("sbSubtractionWeight", f"""
+  dataPwaModel = dataPwaModel.Define("eventWeight", f"""
     if (({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]}))
       return 1.0;
     else if (   (({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     else
       return 0.0;
   """)
-  hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hDiscrVariableSimSbSubtr", ";Discriminatory variable", 100, -1, +1), "discrVariable", "sbSubtractionWeight")
+  hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hDiscrVariableSimSbSubtr", ";Discriminatory variable", 100, -1, +1), "discrVariable", "eventWeight")
   hist.Draw()
   canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
@@ -153,12 +153,12 @@ if __name__ == "__main__":
   histBinning = (nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
   hists = (
     dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})").Histo3D(
-                         ROOT.RDF.TH3DModel("dataSig",     testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+                            ROOT.RDF.TH3DModel("dataSig",     testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
     dataPwaModelBkg.Filter(f"(({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))"
                         f"or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]}))").Histo3D(
-                         ROOT.RDF.TH3DModel("dataBkg",     testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+                            ROOT.RDF.TH3DModel("dataBkg",     testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
     dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
-    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "sbSubtractionWeight"),
+    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
   )
   for hist in hists:
     hist.SetMinimum(0)
@@ -166,7 +166,9 @@ if __name__ == "__main__":
     hist.GetYaxis().SetTitleOffset(2)
     hist.GetZaxis().SetTitleOffset(1.5)
     hist.Draw("BOX2Z")
+    print(f"Integral of histogram '{hist.GetName()}' = {hist.Integral()}")
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
+  print(f"Sum of weights = {dataPwaModel.Sum('eventWeight').GetValue()}")
 
   # generate accepted phase-space data
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")
@@ -174,8 +176,8 @@ if __name__ == "__main__":
   ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
 
   # define input data
-  # data = dataPwaModel
-  data = dataPwaModelSig
+  data = dataPwaModel
+  # data = dataPwaModelSig
   HTrue = HTrueSig
   # data = dataPwaModelBkg
   # HTrue = HTrueBkg
