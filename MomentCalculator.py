@@ -1,5 +1,6 @@
 """Module that provides classes and functions to calculate moments for photoproduction of two-(pseudo)scalar mesons"""
-# equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
+# equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=4
+#TODO update equation numbers
 
 from __future__ import annotations
 
@@ -630,17 +631,30 @@ class MomentCalculator:
     nmbEvents = len(thetas)
     assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
-    # get number of moments (the poor-man's way)
-    nmbMoments = len(self.indices)
+    # read column with event weights if it exists
+    # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
+    eventWeights = (dataSet.data.AsNumpy(columns = ["eventWeight"]  )["eventWeight"] if "eventWeight" in dataSet.data.GetColumnNames()
+                    else np.ones(nmbEvents, dtype = npt.Float64))
+    assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
+    sumOfWeights = np.sum(eventWeights)
+    sumOfSquaredWeights = np.sum(np.square(eventWeights))
     # calculate basis-function values and values of measured moments
-    fMeas  = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+    nmbMoments = len(self.indices)
+    fMeas      = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+    fMeasMeans = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
     self._HMeas = MomentResult(self.indices, label = "meas")
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataSet.polarization))  # Eq. (176)
-      self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeas[flatIndex])  # Eq. (179)
-    # calculate covariances; Eqs. (88), (180), and (181)
-    V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeas, np.conjugate(fMeas))  # augmented covariance matrix
+      weightedSum = eventWeights.dot(fMeas[flatIndex])
+      self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
+      fMeasMeans[flatIndex] = weightedSum / sumOfWeights
+    # calculate covariance matrices; Eqs. (88), (180), and (181)
+    # unfortunately, np.cov() does not accept negative weights
+    # reimplement code from https://github.com/numpy/numpy/blob/d35cd07ea997f033b2d89d349734c61f5de54b0d/numpy/lib/function_base.py#L2530-L2749
+    delta_fMeas = fMeas - fMeasMeans[:, None]
+    delta_fMeas_aug = np.concatenate((delta_fMeas, np.conjugate(delta_fMeas)), axis = 0)  # augmented vector, i.e. delta_fMeas stacked on top of delta_fMeas^*
+    V_meas_aug = (2 * np.pi)**2 * sumOfSquaredWeights * ((eventWeights * delta_fMeas_aug) @ np.asmatrix(delta_fMeas_aug).H) / (sumOfWeights - 1)
     self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
     self._HPhys = MomentResult(self.indices, label = "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
