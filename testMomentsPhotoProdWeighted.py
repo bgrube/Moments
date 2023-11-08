@@ -44,11 +44,11 @@ if __name__ == "__main__":
 
   # set parameters of test case
   plotDirName = "./plots"
-  nmbPwaMcEventsSig = 1000000
-  nmbPwaMcEventsBkg = 1000000
+  nmbPwaMcEventsSig = 1000
+  nmbPwaMcEventsBkg = 1000
   # nmbPwaMcEventsSig = 10000000
   # nmbPwaMcEventsBkg = 10000000
-  nmbPsMcEvents = 10000000
+  nmbPsMcEvents = 1000000
   beamPolarization = 1.0
   # define angular distribution of signal
   partialWaveAmplitudesSig = [  # set of all possible waves up to ell = 2
@@ -101,10 +101,9 @@ if __name__ == "__main__":
   maxL = 3  # define maximum L quantum number of moments
   # formulas for detection efficiency
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
-  efficiencyFormula = "1"  # acc_perfect
-  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
+  # efficiencyFormula = "1"  # acc_perfect
+  efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
-  print(f"!!! {nmbOpenMpThreads =}")
 
   # calculate true moment values and generate data from partial-wave amplitudes
   ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
