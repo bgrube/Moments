@@ -636,7 +636,7 @@ class MomentCalculator:
     eventWeights = (dataSet.data.AsNumpy(columns = ["eventWeight"]  )["eventWeight"] if "eventWeight" in dataSet.data.GetColumnNames()
                     else np.ones(nmbEvents, dtype = npt.Float64))
     assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
-    sumOfWeights = np.sum(eventWeights)
+    sumOfWeights        = np.sum(eventWeights)
     sumOfSquaredWeights = np.sum(np.square(eventWeights))
     # calculate basis-function values and values of measured moments
     nmbMoments = len(self.indices)
@@ -649,13 +649,20 @@ class MomentCalculator:
       weightedSum = eventWeights.dot(fMeas[flatIndex])
       self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       fMeasMeans[flatIndex] = weightedSum / sumOfWeights
-    # calculate covariance matrices; Eqs. (88), (180), and (181)
+    # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181)
     # unfortunately, np.cov() does not accept negative weights
     # reimplement code from https://github.com/numpy/numpy/blob/d35cd07ea997f033b2d89d349734c61f5de54b0d/numpy/lib/function_base.py#L2530-L2749
     delta_fMeas = fMeas - fMeasMeans[:, None]
     delta_fMeas_aug = np.concatenate((delta_fMeas, np.conjugate(delta_fMeas)), axis = 0)  # augmented vector, i.e. delta_fMeas stacked on top of delta_fMeas^*
-    V_meas_aug = (2 * np.pi)**2 * sumOfSquaredWeights * ((eventWeights * delta_fMeas_aug) @ np.asmatrix(delta_fMeas_aug).H) / (sumOfWeights - 1)
-    self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)  # type: ignore
+    # see https://juliastats.org/StatsBase.jl/stable/weights/#Implementations and https://juliastats.org/StatsBase.jl/stable/cov/
+    # for a sample of ~1000 background-subtracted events the uncertainty estimates using the various Bessel corrections differ only in the 4th decimal place
+    besselCorrection = 1 / (sumOfWeights - 1)  # assuming frequency weights, i.e. the sum of weights is the number of background-subtracted events
+    # besselCorrection = 1 / (sumOfWeights - sumOfSquaredWeights / sumOfWeights)  # assuming analytic weights that describe importance of each measurement
+    # nmbNonZeroWeights = np.count_nonzero(eventWeights)
+    # besselCorrection = nmbNonZeroWeights / ((nmbNonZeroWeights - 1) * sumOfWeights)  # assuming probability weights that represent the inverse of the sampling probability for each observation
+    V_meas_aug = (2 * np.pi)**2 * sumOfSquaredWeights * besselCorrection * ((eventWeights * delta_fMeas_aug) @ np.asmatrix(delta_fMeas_aug).H)
+    self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
+    # calculate physical moments and propagate uncertainty
     self._HPhys = MomentResult(self.indices, label = "phys")
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
     if integralMatrix is None:
