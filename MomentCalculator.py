@@ -683,7 +683,7 @@ class MomentCalculator:
       ])  # augmented Jacobian; Eq. (98)
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
     # normalize moments such that H_0(0, 0) = 1
-    norm = self._HPhys[0].val
+    norm: complex = self._HPhys[0].val
     self._HPhys._valsFlatIndex /= norm
     V_phys_aug /= norm**2
     self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
