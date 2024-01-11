@@ -78,10 +78,10 @@ def enableRootACLiCOpenMp() -> None:
     # for line in lines:
     #   if "install:" in line:
     #     gccIncludePath = line.split(": ")[1] + "include"
-    # ROOT.gSystem.AddIncludePath(f"-I \"{gccIncludePath}\"")  # this causes compile errors because it clashes with headers in `/usr/include/c++/4.8.5/`, which weirdly does not contain `omp.h``
+    # ROOT.gSystem.AddIncludePath(f"-I \"{gccIncludePath}\"")  # this causes compile errors because it clashes with headers in `/usr/include/c++/4.8.5/`, which weirdly does not contain `omp.h`
     # ROOT.gSystem.AddIncludePath(f"-idirafter \"{gccIncludePath}\"")  # this has no effect # type: ignore
     # ROOT.gSystem.AddIncludePath(f"-isystem \"{gccIncludePath}\"")  # this has no effect # type: ignore
     #
-    # The only way to make it work is to copy/link `omp.h`` from the
+    # The only way to make it work is to copy/link `omp.h` from the
     # gcc include dir here and turn the system include statement in
-    # `wigner.C`` into the quoted form.
+    # `wigner.C` into the quoted form.
