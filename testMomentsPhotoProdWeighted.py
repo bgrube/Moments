@@ -46,6 +46,8 @@ if __name__ == "__main__":
   plotDirName           = "./plots"
   nmbPwaMcEventsSig     = 1000
   nmbPwaMcEventsBkg     = 1000
+  # nmbPwaMcEventsSig     = 10000000
+  # nmbPwaMcEventsBkg     = 10000000
   nmbAcceptedPsMcEvents = 10000000
   beamPolarization      = 1.0
   maxL                  = 5  # maximum L quantum number of moments to be calculated
@@ -189,6 +191,7 @@ if __name__ == "__main__":
     print(f"Integral of histogram '{hist.GetName()}' = {hist.Integral()}")
     canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
   print(f"Sum of weights = {dataPwaModel.Sum('eventWeight').GetValue()}")
+  # raise ValueError
 
   # generate accepted phase-space data
   ROOT.gBenchmark.Start("Time to generate phase-space MC data")
