@@ -117,7 +117,7 @@ if __name__ == "__main__":
   fileNameSig = f"intensitySig.photoProd.root"
   dataPwaModelSig.Snapshot(treeName, fileNameSig)
   dataPwaModelSig = ROOT.RDataFrame(treeName, fileNameSig)
-  histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminatory variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
+  histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
   # generate background distribution
   HTrueBkg: MomentCalculator.MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL)
   print(f"True moment values for signal:\n{HTrueBkg}")
@@ -127,19 +127,19 @@ if __name__ == "__main__":
   fileNameBkg = f"intensityBkg.photoProd.root"
   dataPwaModelBkg.Snapshot(treeName, fileNameBkg)
   dataPwaModelBkg = ROOT.RDataFrame(treeName, fileNameBkg)
-  histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", ";Discriminatory variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
+  histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
   # concatenate signal and background data frames vertically
   dataPwaModel = ROOT.RDataFrame(treeName, (fileNameSig, fileNameBkg))
-  # plot discriminatory variable
+  # plot discriminating variable
   signalRange = (-0.3, +0.3)
   sideBands   = ((-1, -0.4), (+0.4, +1))
-  histDiscr = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("Total", ";Discriminatory variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
+  histDiscr = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("Total", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
   histDiscr.SetLineWidth(2)
   histDiscrSig.SetLineColor(ROOT.kGreen + 2)
   histDiscrBkg.SetLineColor(ROOT.kRed   + 1)
   histDiscrSig.SetLineStyle(ROOT.kDashed)
   histDiscrBkg.SetLineStyle(ROOT.kDashed)
-  histStack = ROOT.THStack("hDiscrVariableSim", ";Discriminatory variable;Count / 0.02")
+  histStack = ROOT.THStack("hDiscrVariableSim", ";Discriminating variable;Count / 0.02")
   histStack.Add(histDiscr)
   histStack.Add(histDiscrBkg)
   histStack.Add(histDiscrSig)
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     else
       return 0.0;
   """)
-  hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hDiscrVariableSimSbSubtr", ";Discriminatory variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
+  hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hDiscrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
   hist.Draw()
   canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
   ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
