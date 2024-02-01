@@ -17,8 +17,8 @@ if __name__ == "__main__":
 
   # dataSet = "signal"
   dataSet = "phaseSpace"
-  inputFileNamePattern = f"t010020_m104180_selectGenTandM/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.root"
-  skimFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.skim.root"
+  inputFileNamePattern = "t010020_m104180_selectGenTandM/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.root"
+  skimFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.{dataSet}.root"
   treeName = "kin"
   weightColumnName = "Weight"
   beamPol = 0.4
@@ -80,6 +80,10 @@ if __name__ == "__main__":
     {"columnName" : "phi",        "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
     {"columnName" : "PhiDeg",     "xAxisUnit" : "deg", "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
     {"columnName" : "Phi",        "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
+    # other kinematic variables
+    {"columnName" : "Mpi0",    "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 2 MeV",  "binning" : (100, 0, 0.2)},
+    {"columnName" : "Meta",    "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
+    {"columnName" : "Mpi0eta", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 1, 2)},
   )
   hists = []
   for histDef in histDefs:
