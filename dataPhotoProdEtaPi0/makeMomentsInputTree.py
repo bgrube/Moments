@@ -18,14 +18,15 @@ if __name__ == "__main__":
   # dataSet = "signal"
   dataSet = "phaseSpace"
   inputFileNamePattern = "t010020_m104180_selectGenTandM/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.root"
-  skimFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.{dataSet}.root"
-  treeName = "kin"
+  outputFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.{dataSet}.root"
+  inputTreeName = "kin"
+  outputTreeName = "etaPi0"
   weightColumnName = "Weight"
   beamPol = 0.4
   beamPolAngle = 0
 
   # apply fiducial cuts
-  data = ROOT.RDataFrame(treeName, inputFileNamePattern).Filter(
+  data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern).Filter(
            "(pVH > 0.5)"
            "&& (unusedEnergy < 0.01)"
            "&& (chiSq < 13.277)"
@@ -44,14 +45,15 @@ if __name__ == "__main__":
 
   # define columns for moments analysis
   data = (
-    data.Define  ("beamPol",    f"{beamPol}")
-        .Define  ("beamPolPhi", f"{beamPolAngle}")
-        .Define  ("cosTheta",   "cosTheta_eta_gj")
-        .Define  ("theta",      "acos(cosTheta_eta_gj)")
-        .Define  ("phiDeg",     "phi_eta_gj")
-        .Define  ("phi",        "phi_eta_gj * TMath::DegToRad()")
-        .Define  ("PhiDeg",     "Phi")
-        .Redefine("Phi",        "Phi * TMath::DegToRad()")
+    data.Define  ("beamPol",     f"{beamPol}")
+        .Define  ("beamPolPhi",  f"{beamPolAngle}")
+        .Alias   ("cosTheta",    "cosTheta_eta_gj")
+        .Define  ("theta",       "acos(cosTheta_eta_gj)")
+        .Alias   ("phiDeg",      "phi_eta_gj")
+        .Define  ("phi",         "phi_eta_gj * TMath::DegToRad()")
+        .Define  ("PhiDeg",      "Phi")  # cannot be an Alias because Redfine below would lead to infinite recursion
+        .Redefine("Phi",         "Phi * TMath::DegToRad()")
+        .Alias   ("eventWeight", weightColumnName)
   )
 
   # define histograms
@@ -88,13 +90,13 @@ if __name__ == "__main__":
   hists = []
   for histDef in histDefs:
     cName = histDef["columnName"]
-    unit = histDef["xAxisUnit"]
+    unit  = histDef["xAxisUnit"]
     hists.append(data.Histo1D((f"h_{cName}", f";{cName}" + (f" [{unit}]" if unit else "") + f";{histDef['yAxisTitle']}",
                                *histDef["binning"]), (cName,), weightColumnName))
 
   # write root tree for moments analysis
-  print(f"Writing skimmed tree to file '{skimFileName}'")
-  data.Snapshot("etaPi0", skimFileName, ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"))
+  print(f"Writing skimmed tree to file '{outputFileName}'")
+  data.Snapshot(outputTreeName, outputFileName, ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "eventWeight"))
 
   # draw histograms
   ROOT.gStyle.SetOptStat(111111)
