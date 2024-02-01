@@ -5,12 +5,10 @@
 import ctypes
 import functools
 import numpy as np
-import math
 import os
 import subprocess
 from typing import (
   List,
-  Optional,
   Tuple,
 )
 
@@ -208,7 +206,7 @@ if __name__ == "__main__":
   print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
   dataSignal = ROOT.RDataFrame(treeName, signalFileName).Range(10000)  # take only first 10k events
   # dataSignal = ROOT.RDataFrame(treeName, signalFileName)
-  print(f"Loading accpepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
+  print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
   # dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName).Range(10000)  # take only first 10k events
   dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
 
@@ -257,11 +255,11 @@ if __name__ == "__main__":
   # # calculate moments of accepted phase-space data
   # ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
   # momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
-  # # print all moments for first kinematic bin
+  # # print all moments
   # print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
   # print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")
-  # # plot moments in each kinematic bin
-  # HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moment are 0 ...
+  # # plot moments
+  # HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
   # HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
   # PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{plotDirName}/hPs_")
   # ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
