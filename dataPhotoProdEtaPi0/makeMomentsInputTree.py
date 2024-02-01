@@ -44,16 +44,17 @@ if __name__ == "__main__":
          )
 
   # define columns for moments analysis
+  # ensure that quantities used to calculate moments are doubles
   data = (
-    data.Define  ("beamPol",     f"{beamPol}")
-        .Define  ("beamPolPhi",  f"{beamPolAngle}")
+    data.Define  ("beamPol",     f"(double){beamPol}")
+        .Define  ("beamPolPhi",  f"(double){beamPolAngle}")
         .Alias   ("cosTheta",    "cosTheta_eta_gj")
-        .Define  ("theta",       "acos(cosTheta_eta_gj)")
+        .Define  ("theta",       "(double)acos(cosTheta_eta_gj)")
         .Alias   ("phiDeg",      "phi_eta_gj")
-        .Define  ("phi",         "phi_eta_gj * TMath::DegToRad()")
+        .Define  ("phi",         "(double)phi_eta_gj * TMath::DegToRad()")
         .Define  ("PhiDeg",      "Phi")  # cannot be an Alias because Redfine below would lead to infinite recursion
-        .Redefine("Phi",         "Phi * TMath::DegToRad()")
-        .Alias   ("eventWeight", weightColumnName)
+        .Redefine("Phi",         "(double)Phi * TMath::DegToRad()")
+        .Define  ("eventWeight", f"(double){weightColumnName}")
   )
 
   # define histograms
