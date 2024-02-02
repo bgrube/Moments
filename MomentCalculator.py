@@ -266,18 +266,18 @@ class AcceptanceIntegralMatrix:
   """Calculates and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
   dataSet:     DataSet        # info on data samples
-  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # integral matrix with flat indices; must either be given or set be calling load() or calculate()
+  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # acceptance integral matrix with flat indices; must either be given or set be calling load() or calculate()
 
   # accessor that guarantees existence of optional field
   @property
   def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns integral matrix"""
+    """Returns acceptance integral matrix"""
     assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
     return self._IFlatIndex
 
   @property
   def matrixNormalized(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns integral matrix normalized to its diagonal elements"""
+    """Returns acceptance integral matrix normalized to its diagonal elements"""
     diag = np.diag(np.reciprocal(np.sqrt(np.diag(self.matrix))))
     return diag @ self.matrix @ diag
 
@@ -319,7 +319,7 @@ class AcceptanceIntegralMatrix:
     self,
     subscript: Tuple[Union[int, QnMomentIndex, slice], Union[int, QnMomentIndex, slice]],
   ) -> Optional[Union[complex, npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["*, *"], npt.Complex128]]]:
-    """Returns integral matrix elements for any combination of flat and quantum-number indices"""
+    """Returns acceptance integral matrix elements for any combination of flat and quantum-number indices"""
     if self._IFlatIndex is None:
       return None
     else:
@@ -344,6 +344,14 @@ class AcceptanceIntegralMatrix:
     nmbAccEvents = len(thetas)
     assert thetas.shape == (nmbAccEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbAccEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
+    if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
+      print("Using weights in 'eventWeight' column to calculate acceptance integral matrix")
+      # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
+      eventWeights = self.dataSet.phaseSpaceData.AsNumpy(columns = ["eventWeight"])["eventWeight"]
+    else:
+      # all events have weight 1
+      eventWeights = np.ones(nmbAccEvents, dtype = npt.Float64)
+    assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `wignerD.C`
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
@@ -356,31 +364,33 @@ class AcceptanceIntegralMatrix:
     self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.indices.flatIndices():
       for flatIndexPhys in self.indices.flatIndices():
-        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeas[flatIndexMeas], fPhys[flatIndexPhys])
-    assert self.isValid(), f"Integral matrix data are inconsistent"
+        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = ((8 * np.pi**2 / self.dataSet.nmbGenEvents)
+          * np.dot(np.multiply(eventWeights, fMeas[flatIndexMeas]), fPhys[flatIndexPhys]))
+    assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
 
   def isValid(self) -> bool:
+    """Returns whether acceptance integral matrix exists and has correct shape"""
     return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.indices), len(self.indices))
 
   def save(
     self,
     fileName: str = "./integralMatrix.npy",
   ) -> None:
-    """Saves NumPy array that holds the integral matrix to file with given name"""
-    assert self.isValid(), f"Integral matrix data are inconsistent"
+    """Saves NumPy array that holds the acceptance integral matrix to file with given name"""
+    assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
     if self._IFlatIndex is not None:
-      print(f"Saving integral matrix to file '{fileName}'.")
+      print(f"Saving acceptance integral matrix to file '{fileName}'.")
       np.save(fileName, self._IFlatIndex)
 
   def load(
     self,
     fileName: str = "./integralMatrix.npy",
   ) -> None:
-    """Loads NumPy array that holds the integral matrix from file with given name"""
-    print(f"Loading integral matrix from file '{fileName}'.")
+    """Loads NumPy array that holds the acceptance integral matrix from file with given name"""
+    print(f"Loading acceptance integral matrix from file '{fileName}'.")
     array = np.load(fileName)
     if not array.shape == (len(self.indices), len(self.indices)):
-      raise IndexError(f"Integral loaded from file '{fileName}' has wrong shape. Expected {(len(self.indices), len(self.indices))} but got {array.shape}.")
+      raise IndexError(f"NumPy array loaded from file '{fileName}' has wrong shape. Expected {(len(self.indices), len(self.indices))} but got {array.shape}.")
     self._IFlatIndex = array
     assert self.isValid(), f"Integral matrix data are inconsistent"
 
@@ -388,11 +398,11 @@ class AcceptanceIntegralMatrix:
     self,
     fileName: str = "./integralMatrix.npy",
   ) -> None:
-    """Loads NumPy array that holds the integral matrix from file with given name; and calculates the integral matrix if loading failed"""
+    """Tries to load NumPy array that holds the acceptance integral matrix from file with given name; if loading failed the acceptance integral matrix is calculated"""
     try:
       self.load(fileName)
     except Exception as e:
-      print(f"Could not load integral matrix from file '{fileName}': {e} Calculating matrix instead.")
+      print(f"Could not load acceptance integral matrix from file '{fileName}': {e} Calculating matrix instead.")
       self.calculate()
 
 
@@ -631,10 +641,13 @@ class MomentCalculator:
     nmbEvents = len(thetas)
     assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
       f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
-    # read column with event weights if it exists
-    # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
-    eventWeights = (dataSet.data.AsNumpy(columns = ["eventWeight"]  )["eventWeight"] if "eventWeight" in dataSet.data.GetColumnNames()
-                    else np.ones(nmbEvents, dtype = npt.Float64))
+    if "eventWeight" in dataSet.data.GetColumnNames():
+      print("Using weights in 'eventWeight' column to calculate moments")
+      # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
+      eventWeights = dataSet.data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
+    else:
+      # all events have weight 1
+      eventWeights = np.ones(nmbEvents, dtype = npt.Float64)
     assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
     sumOfWeights        = np.sum(eventWeights)
     sumOfSquaredWeights = np.sum(np.square(eventWeights))
