@@ -539,11 +539,11 @@ class MomentCalculator:
   """Holds all information to calculate moments for a single kinematic bin"""
   indices:              MomentIndices  # index mapping and iterators
   dataSet:              DataSet  # info on data samples
-  integralFileBaseName: str  = "integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  integralFileBaseName: str  = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
   _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
   _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
   _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
-  _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None # dictionary with bin centers
+  _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None # dictionary with bin centers  #TODO shouldn't this be a public member variable?
 
   # accessors that guarantee existence of optional fields
   @property

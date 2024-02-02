@@ -31,23 +31,23 @@ if __name__ == "__main__":
   printGitInfo()
   ROOT.gROOT.SetBatch(True)
   PlottingUtilities.setupPlotStyle()
-  ROOT.gBenchmark.Start("Total execution time")
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
-  print(f"Initial state before setting number of threads\n{threadController.info()}")
+  print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
   with threadController.limit(limits = 5):
-    print(f"After setting number of threads\n{threadController.info()}")
+    print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
+    ROOT.gBenchmark.Start("Total execution time")  #TODO create Python timer object; put into Utilities module; move printGitInfo() there
 
     # set parameters of test case
-    plotDirName = "./plotsPhotoProdEtaPi0"
-    treeName = "etaPi0"
-    # signalFileName = "./dataPhotoProdEtaPi0/tree_pippim__B4_gen_amp_030994.signal.root.angles"
-    # nmbSignalEvents = 218240
-    acceptedPsFileName = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
+    outFileDirName      = "./plotsPhotoProdEtaPi0"  #TODO create output dirs; make sure integrals are saved there as well
+    treeName            = "etaPi0"
+    # signalFileName      = "./dataPhotoProdEtaPi0/tree_pippim__B4_gen_amp_030994.signal.root.angles"
+    # nmbSignalEvents     = 218240
+    acceptedPsFileName  = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
     nmbAcceptedPsEvents = 56036  #TODO not the correct number to normalize integral matrix
-    beamPolarization = 0.4  #TODO read from tree
-    # beamPolarization = 1.0  #TODO read from tree
-    maxL = 1  # define maximum L quantum number of moments
-    # maxL = 5  # define maximum L quantum number of moments
+    beamPolarization    = 0.4  #TODO read from tree
+    # beamPolarization    = 1.0  #TODO read from tree
+    # maxL                = 1  # define maximum L quantum number of moments
+    maxL                = 5  # define maximum L quantum number of moments
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # # calculate true moments
@@ -90,15 +90,15 @@ if __name__ == "__main__":
       hist.GetYaxis().SetTitleOffset(2)
       hist.GetZaxis().SetTitleOffset(1.5)
       hist.Draw("BOX2Z")
-      canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
+      canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
     # print(f"Generating signal data")
-    # dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
+    # dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
 
     # setup moment calculator
     momentIndices = MomentCalculator.MomentIndices(maxL)
     dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
-    momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet)
+    momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix")
 
     # calculate integral matrix
     ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
@@ -108,8 +108,8 @@ if __name__ == "__main__":
     eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
     print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
     # plot acceptance integral matrix
-    PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc")
-    PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv")
+    PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc")
+    PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv")
     ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
     # calculate moments of accepted phase-space data
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     # plot moments
     HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
     HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
-    PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{plotDirName}/hPs_")
+    PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
     ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
     # # calculate moments of signal data
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     # print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
     # print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
     # # plot moments
-    # PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h_")
+    # PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
     # ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
     ROOT.gBenchmark.Stop("Total execution time")

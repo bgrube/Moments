@@ -1,34 +1,12 @@
 """Module that provides helper function to use OpenMp in ACLiC compiled code"""
 
-# set number of OpenMP threads
-# make sure this is executed before loading NumPy and user code
-# !NOTE! a more elaborate way to control OpenMP threads is provided by the `threadpoolctl` package
 import functools
-import os
-OMP_NUM_THREADS_save = None
+
+import ROOT
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
-
-
-#TODO turn into context manager
-def setNmbOpenMpThreads(nmbThreads: int) -> None:
-  """Sets value of OMP_NUM_THREADS environment variable; current value is saved and can be restored by calling restoreNmbOpenMpThreads()"""
-  if "OMP_NUM_THREADS" in os.environ:
-    OMP_NUM_THREADS_save = os.environ["OMP_NUM_THREADS"]
-  os.environ["OMP_NUM_THREADS"] = str(nmbThreads)
-
-
-def restoreNmbOpenMpThreads() -> None:
-  """Restores OMP_NUM_THREADS environment variable to state when setNmbOpenMpThreads() was called, i.e. either value is restored or variable is unset"""
-  if OMP_NUM_THREADS_save:
-    os.environ["OMP_NUM_THREADS"] = OMP_NUM_THREADS_save
-  else:
-    del os.environ["OMP_NUM_THREADS"]
-
-
-import ROOT
 
 
 def printRootACLiCSettings() -> None:

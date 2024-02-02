@@ -7,6 +7,7 @@ import functools
 import numpy as np
 import os
 import subprocess
+import threadpoolctl
 from typing import (
   List,
   Tuple,
@@ -15,7 +16,7 @@ from typing import (
 import ROOT
 
 import MomentCalculator
-import OpenMp
+import OpenMpUtilities
 import PlottingUtilities
 import RootUtilities
 import testMomentsPhotoProd
@@ -38,7 +39,7 @@ def genDataFromWaves(
   amplitudeSet:      MomentCalculator.AmplitudeSet,  # partial-wave amplitudes
   efficiencyHist:    ROOT.TH3D,                      # detection efficiency used to generate data
   regenerateData:    bool = False,                   # if set data are regenerated although .root file exists
-  pdfFileNamePrefix: str = "./",                     # name prefix for output files
+  outFileNamePrefix: str = "./",                     # name prefix for output files
 ) -> ROOT.RDataFrame:
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency histogram {efficiencyHist}")
@@ -97,7 +98,7 @@ def genDataFromWaves(
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-  PlottingUtilities.drawTF3(intensityFcn, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity.pdf")
+  PlottingUtilities.drawTF3(intensityFcn, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hIntensity.pdf")
 
   # intensity as calculated from Eqs. (9) to (12) in https://arxiv.org/abs/2305.09047 assuming P_\gamma = 1, and SCHC with NPE
   # i.e. rho^1_{1 -1} = +1/2 and rho^2_{1 -1} = -i/2 (and rho^0_{1 1} = +1/2)
@@ -113,11 +114,11 @@ def genDataFromWaves(
   intensityFcn2.SetNpy(100)
   intensityFcn2.SetNpz(100)
   intensityFcn2.SetMinimum(0)
-  PlottingUtilities.drawTF3(intensityFcn2, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{pdfFileNamePrefix}hIntensity2.pdf")
+  PlottingUtilities.drawTF3(intensityFcn2, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hIntensity2.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{intensityFcn.GetName()}.photoProd.root"
+  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.photoProd.root"
   if os.path.exists(fileName) and not regenerateData:
     print(f"Reading partial-wave MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
@@ -161,122 +162,123 @@ def genDataFromWaves(
   hist.GetYaxis().SetTitleOffset(2)
   hist.GetZaxis().SetTitleOffset(1.5)
   hist.Draw("BOX2Z")
-  canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
+  canv.SaveAs(f"{outFileNamePrefix}{hist.GetName()}.pdf")
   return df
 
 
 if __name__ == "__main__":
   printGitInfo()
-  OpenMp.setNmbOpenMpThreads(5)
   ROOT.gROOT.SetBatch(True)
   PlottingUtilities.setupPlotStyle()
-  ROOT.gBenchmark.Start("Total execution time")
+  threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
+  print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
+  with threadController.limit(limits = 5):
+    print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
+    ROOT.gBenchmark.Start("Total execution time")
 
-  # set parameters of test case
-  # !Note! the SDMEs and hence the partial-wave amplitudes are defined in the rho helicity frame
-  #        the rho decay angles need to be calculated in this frame
-  plotDirName = "./plotsPhotoProdRho"
-  treeName = "ntFSGlueX_100_110_angles"
-  signalFileName = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.signal.root.angles"
-  nmbSignalEvents = 218240
-  acceptedPsFileName = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
-  nmbAcceptedPsEvents = 210236  #TODO not correct number to normalize integral matrix
-  beamPolarization = 0.4  #TODO read from tree
-  # beamPolarization = 1.0  #TODO read from tree
-  maxL = 5  # define maximum L quantum number of moments
-  # maxL = 10  # define maximum L quantum number of moments
-  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
+    # set parameters of test case
+    # !Note! the SDMEs and hence the partial-wave amplitudes are defined in the rho helicity frame
+    #        the rho decay angles need to be calculated in this frame
+    outFileDirName      = "./plotsPhotoProdRho"
+    treeName            = "ntFSGlueX_100_110_angles"
+    signalFileName      = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.signal.root.angles"
+    nmbSignalEvents     = 218240
+    acceptedPsFileName  = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
+    nmbAcceptedPsEvents = 210236  #TODO not correct number to normalize integral matrix
+    beamPolarization    = 0.4  #TODO read from tree
+    beamPolarization    = 1.0  #TODO read from tree
+    maxL                = 5  # define maximum L quantum number of moments
+    # maxL                = 10  # define maximum L quantum number of moments
+    nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
-  # calculate true moments
-  partialWaveAmplitudes = [
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val = 1 + 0j),  # P_+1^+
-  ]
-  amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
-  HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
-  print(f"True moment values\n{HTrue}")
-  for refl in (-1, +1):
-    for l in range(3):
-      for m1 in range(-l, l + 1):
-        for m2 in range(-l, l + 1):
-          rhos = amplitudeSet.photoProdSpinDensElements(refl, l, l, m1, m2)
-          if not all(rho == 0 for rho in rhos):
-            print(f"!!! refl = {refl}, l = {l}, m = {m1}, m' = {m2}: {rhos}")
+    # calculate true moments
+    partialWaveAmplitudes = [
+      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val = 1 + 0j),  # P_+1^+
+    ]
+    amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
+    HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+    print(f"True moment values\n{HTrue}")
+    for refl in (-1, +1):
+      for l in range(3):
+        for m1 in range(-l, l + 1):
+          for m2 in range(-l, l + 1):
+            rhos = amplitudeSet.photoProdSpinDensElements(refl, l, l, m1, m2)
+            if not all(rho == 0 for rho in rhos):
+              print(f"!!! refl = {refl}, l = {l}, m = {m1}, m' = {m2}: {rhos}")
 
-  # load data
-  print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
-  dataSignal = ROOT.RDataFrame(treeName, signalFileName).Range(10000)  # take only first 10k events
-  # dataSignal = ROOT.RDataFrame(treeName, signalFileName)
-  print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
-  # dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName).Range(10000)  # take only first 10k events
-  dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
+    # load data
+    print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
+    dataSignal = ROOT.RDataFrame(treeName, signalFileName).Range(10000)  # take only first 10k events
+    # dataSignal = ROOT.RDataFrame(treeName, signalFileName)
+    print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
+    # dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName).Range(10000)  # take only first 10k events
+    dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
 
-  nmbBins   = 25
-  nmbBinsPs = nmbBins
-  # nmbBinsPs = 100  # if histogram is used for weighting events
-  # plot signal and phase-space data
-  hists = (
-    dataSignal.Histo3D(
-      ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
-      "cosTheta", "phiDeg", "PhiDeg"),
-    dataAcceptedPs.Histo3D(
-      ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
-      "cosTheta", "phiDeg", "PhiDeg"),
-  )
-  for hist in hists:
-    canv = ROOT.TCanvas()
-    hist.SetMinimum(0)
-    hist.GetXaxis().SetTitleOffset(1.5)
-    hist.GetYaxis().SetTitleOffset(2)
-    hist.GetZaxis().SetTitleOffset(1.5)
-    hist.Draw("BOX2Z")
-    canv.SaveAs(f"{plotDirName}/{hist.GetName()}.pdf")
+    nmbBins   = 25
+    nmbBinsPs = nmbBins
+    # nmbBinsPs = 100  # if histogram is used for weighting events
+    # plot signal and phase-space data
+    hists = (
+      dataSignal.Histo3D(
+        ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg"),
+      dataAcceptedPs.Histo3D(
+        ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg"),
+    )
+    for hist in hists:
+      canv = ROOT.TCanvas()
+      hist.SetMinimum(0)
+      hist.GetXaxis().SetTitleOffset(1.5)
+      hist.GetYaxis().SetTitleOffset(2)
+      hist.GetZaxis().SetTitleOffset(1.5)
+      hist.Draw("BOX2Z")
+      canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
-  # print(f"Generating signal data")
-  # dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{plotDirName}/", regenerateData = True)
+    # print(f"Generating signal data")
+    # dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
 
-  # setup moment calculator
-  momentIndices = MomentCalculator.MomentIndices(maxL)
-  dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
-  # dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents)
-  momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet)
+    # setup moment calculator
+    momentIndices = MomentCalculator.MomentIndices(maxL)
+    dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
+    # dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents)
+    momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix")
 
-  # calculate integral matrix
-  ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
-  momentCalculator.calculateIntegralMatrix(forceCalculation = True)
-  # print acceptance integral matrix
-  print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
-  eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
-  print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
-  # plot acceptance integral matrix
-  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{plotDirName}/I_acc")
-  PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{plotDirName}/I_inv")
-  ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    # calculate integral matrix
+    ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    momentCalculator.calculateIntegralMatrix(forceCalculation = True)
+    # print acceptance integral matrix
+    print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
+    eigenVals, _ = momentCalculator.integralMatrix.eigenDecomp
+    print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
+    # plot acceptance integral matrix
+    PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc")
+    PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv")
+    ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
-  # # calculate moments of accepted phase-space data
-  # ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
-  # momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
-  # # print all moments
-  # print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
-  # print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")
-  # # plot moments
-  # HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-  # HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
-  # PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{plotDirName}/hPs_")
-  # ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+    # calculate moments of accepted phase-space data
+    ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+    momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
+    # print all moments
+    print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
+    print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")
+    # plot moments
+    HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+    HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
+    PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
+    ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
-  # calculate moments of signal data
-  ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-  momentCalculator.calculateMoments()
-  # print all moments for first kinematic bin
-  print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
-  print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
-  # plot moments
-  PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{plotDirName}/h_")
-  ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    # calculate moments of signal data
+    ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    momentCalculator.calculateMoments()
+    # print all moments for first kinematic bin
+    print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
+    print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
+    # plot moments
+    PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
+    ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
-  ROOT.gBenchmark.Stop("Total execution time")
-  _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh
-  ROOT.gBenchmark.Summary(_, _)
-  print("!Note! the 'TOTAL' time above is wrong; ignore")
-
-  OpenMp.restoreNmbOpenMpThreads()
+    ROOT.gBenchmark.Stop("Total execution time")
+    _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh
+    ROOT.gBenchmark.Summary(_, _)
+    print("!Note! the 'TOTAL' time above is wrong; ignore")

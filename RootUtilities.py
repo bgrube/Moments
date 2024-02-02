@@ -5,7 +5,7 @@ from typing import Any
 
 import ROOT
 
-import OpenMp
+import OpenMpUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -14,7 +14,7 @@ print = functools.partial(print, flush = True)
 
 # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
 # also provides complexT typedef for std::complex<double>
-OpenMp.enableRootACLiCOpenMp()
+OpenMpUtilities.enableRootACLiCOpenMp()
 # OpenMp.printRootACLiCSettings()
 ROOT.gROOT.LoadMacro("./wignerD.C++")
 
