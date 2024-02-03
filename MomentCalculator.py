@@ -5,8 +5,13 @@
 from __future__ import annotations
 
 import bidict as bd
-from dataclasses import dataclass, field, fields, InitVar
 import dataclasses
+from dataclasses import (
+  dataclass,
+  field,
+  fields,
+  InitVar,
+)
 from enum import Enum
 import functools
 import numpy as np
