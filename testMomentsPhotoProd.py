@@ -2,11 +2,9 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
-import ctypes
 import functools
 import numpy as np
 import os
-import subprocess
 import threadpoolctl
 from typing import (
   List,
@@ -18,7 +16,6 @@ from typing import (
 import ROOT
 
 import MomentCalculator
-import OpenMpUtilities
 import PlottingUtilities
 import RootUtilities
 import Utilities
@@ -170,6 +167,7 @@ def genAccepted2BodyPsPhotoProd(
 
 if __name__ == "__main__":
   Utilities.printGitInfo()
+  timer = Utilities.Timer()
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)
@@ -178,7 +176,7 @@ if __name__ == "__main__":
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
   with threadController.limit(limits = 5):
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
-    ROOT.gBenchmark.Start("Total execution time")
+    timer.start("Total execution time")
 
     # set parameters of test case
     outFileDirName   = "./plotsPhotoProd"
@@ -230,11 +228,11 @@ if __name__ == "__main__":
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # calculate true moment values and generate data from partial-wave amplitudes
-    ROOT.gBenchmark.Start("Time to generate MC data from partial waves")
+    timer.start("Time to generate MC data from partial waves")
     HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
     print(f"True moment values\n{HTrue}")
     dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
-    ROOT.gBenchmark.Stop("Time to generate MC data from partial waves")
+    timer.stop("Time to generate MC data from partial waves")
 
     # plot data generated from partial-wave amplitudes
     canv = ROOT.TCanvas()
@@ -250,9 +248,9 @@ if __name__ == "__main__":
     canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
     # generate accepted phase-space data
-    ROOT.gBenchmark.Start("Time to generate phase-space MC data")
+    timer.start("Time to generate phase-space MC data")
     dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
-    ROOT.gBenchmark.Stop("Time to generate phase-space MC data")
+    timer.stop("Time to generate phase-space MC data")
 
     # setup moment calculator
     momentIndices = MomentCalculator.MomentIndices(maxL)
@@ -270,7 +268,7 @@ if __name__ == "__main__":
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrix
-    ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateIntegralMatrices(forceCalculation = True)
     # print acceptance integral matrix for first kinematic bin
     print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
@@ -281,10 +279,10 @@ if __name__ == "__main__":
       binLabel = "_".join(HData.fileNameBinLabels)
       PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
       PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
-    ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    timer.stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
     # calculate moments of data generated from partial-wave amplitudes
-    ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateMoments()
     # print all moments for first kinematic bin
     print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
@@ -296,9 +294,7 @@ if __name__ == "__main__":
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.QnIndices():
       PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h")
-    ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    timer.stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
-    ROOT.gBenchmark.Stop("Total execution time")
-    _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh
-    ROOT.gBenchmark.Summary(_, _)
-    print("!Note! the 'TOTAL' time above is wrong; ignore")
+    timer.stop("Total execution time")
+    print(timer.summary())

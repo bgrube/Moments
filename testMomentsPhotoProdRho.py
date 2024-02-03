@@ -2,11 +2,9 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
-import ctypes
 import functools
 import numpy as np
 import os
-import subprocess
 import threadpoolctl
 from typing import (
   List,
@@ -16,7 +14,6 @@ from typing import (
 import ROOT
 
 import MomentCalculator
-import OpenMpUtilities
 import PlottingUtilities
 import RootUtilities
 import testMomentsPhotoProd
