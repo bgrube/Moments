@@ -21,17 +21,11 @@ import MomentCalculator
 import OpenMpUtilities
 import PlottingUtilities
 import RootUtilities
+import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
-
-
-def printGitInfo() -> None:
-  """Prints directory of this file and git hash in this directory"""
-  repoDir = os.path.dirname(os.path.abspath(__file__))
-  gitInfo = subprocess.check_output(["git", "describe", "--always"], cwd = repoDir).strip().decode()
-  print(f"Running code in '{repoDir}', git version '{gitInfo}'")
 
 
 # default TH3 plotting options
@@ -175,7 +169,7 @@ def genAccepted2BodyPsPhotoProd(
 
 
 if __name__ == "__main__":
-  printGitInfo()
+  Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)

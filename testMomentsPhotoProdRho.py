@@ -20,17 +20,11 @@ import OpenMpUtilities
 import PlottingUtilities
 import RootUtilities
 import testMomentsPhotoProd
+import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
-
-
-def printGitInfo() -> None:
-  """Prints directory of this file and git hash in this directory"""
-  repoDir = os.path.dirname(os.path.abspath(__file__))
-  gitInfo = subprocess.check_output(["git", "describe", "--always"], cwd = repoDir).strip().decode()
-  print(f"Running code in '{repoDir}', git version '{gitInfo}'")
 
 
 def genDataFromWaves(
@@ -167,14 +161,15 @@ def genDataFromWaves(
 
 
 if __name__ == "__main__":
-  printGitInfo()
+  Utilities.printGitInfo()
+  timer = Utilities.Timer()
   ROOT.gROOT.SetBatch(True)
   PlottingUtilities.setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
   with threadController.limit(limits = 5):
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
-    ROOT.gBenchmark.Start("Total execution time")
+    timer.start("Total execution time")
 
     # set parameters of test case
     # !Note! the SDMEs and hence the partial-wave amplitudes are defined in the rho helicity frame
@@ -245,7 +240,7 @@ if __name__ == "__main__":
     momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix")
 
     # calculate integral matrix
-    ROOT.gBenchmark.Start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
     momentCalculator.calculateIntegralMatrix(forceCalculation = True)
     # print acceptance integral matrix
     print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
@@ -254,10 +249,10 @@ if __name__ == "__main__":
     # plot acceptance integral matrix
     PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc")
     PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv")
-    ROOT.gBenchmark.Stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    timer.stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
 
     # calculate moments of accepted phase-space data
-    ROOT.gBenchmark.Start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+    timer.start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
     momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
     # print all moments
     print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
@@ -266,19 +261,17 @@ if __name__ == "__main__":
     HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
     HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
     PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
-    ROOT.gBenchmark.Stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+    timer.stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
     # calculate moments of signal data
-    ROOT.gBenchmark.Start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
     momentCalculator.calculateMoments()
     # print all moments for first kinematic bin
     print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
     print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
     # plot moments
     PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
-    ROOT.gBenchmark.Stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    timer.stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
-    ROOT.gBenchmark.Stop("Total execution time")
-    _ = ctypes.c_float(0.0)  # dummy argument required by ROOT; sigh
-    ROOT.gBenchmark.Summary(_, _)
-    print("!Note! the 'TOTAL' time above is wrong; ignore")
+    timer.stop("Total execution time")
+    print(timer.summary())
