@@ -34,10 +34,11 @@ if __name__ == "__main__":
     treeName            = "etaPi0"
     # signalFileName      = "./dataPhotoProdEtaPi0/tree_pippim__B4_gen_amp_030994.signal.root.angles"
     # nmbSignalEvents     = 218240
-    acceptedPsFileName  = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
-    nmbAcceptedPsEvents = 56036  #TODO not the correct number to normalize integral matrix
-    beamPolarization    = 0.4  #TODO read from tree
-    # beamPolarization    = 1.0  #TODO read from tree
+    # acceptedPsFileName  = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
+    # nmbAcceptedPsEvents = 56036  #TODO not the correct number to normalize integral matrix
+    acceptedPsFileName  = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
+    nmbAcceptedPsEvents = 334283  #TODO not the correct number to normalize integral matrix -> events after BG subtraction
+    beamPolarization    = 1.0  #TODO read from tree
     # maxL                = 1  # define maximum L quantum number of moments
     maxL                = 5  # define maximum L quantum number of moments
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
     dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
 
-    nmbBins   = 10
+    nmbBins   = 15
     nmbBinsPs = nmbBins
     # plot signal and phase-space data
     hists = (
