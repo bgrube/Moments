@@ -17,30 +17,34 @@ if __name__ == "__main__":
 
   # dataSet = "signal"
   dataSet = "phaseSpace"
-  inputFileNamePattern = "t010020_m104180_selectGenTandM/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.root"
-  outputFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.{dataSet}.root"
+  # inputFileNamePattern = "t010020_m104180_selectGenTandM/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.root"
+  # outputFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.{dataSet}.root"
+  inputFileNamePattern = "a0a2_raw/a0a2_flat_acc_flat.root"
+  outputFileName = f"./a0a2_{dataSet}_acc_flat.root"
   inputTreeName = "kin"
   outputTreeName = "etaPi0"
   weightColumnName = "Weight"
-  beamPol = 0.4
+  beamPol = 1.0
   beamPolAngle = 0
 
   # apply fiducial cuts
   data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern).Filter(
-           "(pVH > 0.5)"
-           "&& (unusedEnergy < 0.01)"
-           "&& (chiSq < 13.277)"
-           "&& (((2.5 < photonTheta1) && (photonTheta1 < 10.3)) || (photonTheta1 > 11.9))"
-           "&& (((2.5 < photonTheta2) && (photonTheta2 < 10.3)) || (photonTheta2 > 11.9))"
-           "&& (((2.5 < photonTheta3) && (photonTheta3 < 10.3)) || (photonTheta3 > 11.9))"
-           "&& (((2.5 < photonTheta4) && (photonTheta4 < 10.3)) || (photonTheta4 > 11.9))"
-           "&& (photonE1 > 0.1)"
-           "&& (photonE2 > 0.1)"
-           "&& (photonE3 > 0.1)"
-           "&& (photonE4 > 0.1)"
-           "&& (proton_momentum > 0.3)"
-           "&& ((52 < proton_z) && (proton_z < 78))"
-           "&& (abs(mmsq) < 0.05)"
+           "("
+             "(pVH > 0.5)"
+             "&& (unusedEnergy < 0.01)"  # [GeV]
+             "&& (chiSq < 13.277)"
+             "&& (((2.5 < photonTheta1) && (photonTheta1 < 10.3)) || (photonTheta1 > 11.9))"  # [deg]
+             "&& (((2.5 < photonTheta2) && (photonTheta2 < 10.3)) || (photonTheta2 > 11.9))"  # [deg]
+             "&& (((2.5 < photonTheta3) && (photonTheta3 < 10.3)) || (photonTheta3 > 11.9))"  # [deg]
+             "&& (((2.5 < photonTheta4) && (photonTheta4 < 10.3)) || (photonTheta4 > 11.9))"  # [deg]
+             "&& (photonE1 > 0.1)"  # [GeV]
+             "&& (photonE2 > 0.1)"  # [GeV]
+             "&& (photonE3 > 0.1)"  # [GeV]
+             "&& (photonE4 > 0.1)"  # [GeV]
+             "&& (proton_momentum > 0.3)"  # [GeV]
+             "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
+             "&& (abs(mmsq) < 0.05)"  # [GeV^2]
+           ")"
          )
 
   # define columns for moments analysis
@@ -52,12 +56,12 @@ if __name__ == "__main__":
         .Define  ("theta",       "(double)acos(cosTheta_eta_gj)")
         .Alias   ("phiDeg",      "phi_eta_gj")
         .Define  ("phi",         "(double)phi_eta_gj * TMath::DegToRad()")
-        .Define  ("PhiDeg",      "Phi")  # cannot be an Alias because Redfine below would lead to infinite recursion
+        .Define  ("PhiDeg",      "Phi")  # cannot be an Alias because Redefine below would lead to infinite recursion
         .Redefine("Phi",         "(double)Phi * TMath::DegToRad()")
         .Define  ("eventWeight", f"(double){weightColumnName}")
   )
 
-  # define histograms
+  # define background-subtracted histograms
   histDefs = (
     # cut variables
     {"columnName" : "pVH",             "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, -0.5, 1.5)},
@@ -71,11 +75,11 @@ if __name__ == "__main__":
     {"columnName" : "photonE2",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
     {"columnName" : "photonE3",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
     {"columnName" : "photonE4",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
-    {"columnName" : "proton_momentum", "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 2 MeV",         "binning" : (100, 0.3, 0.5)},
+    {"columnName" : "proton_momentum", "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 2 MeV",         "binning" : (100, 0.2, 1.2)},
     {"columnName" : "proton_z",        "xAxisUnit" : "cm",      "yAxisTitle" : "Combos / 0.4 cm",        "binning" : (100, 40, 80)},
     {"columnName" : "mmsq",            "xAxisUnit" : "GeV^{2}", "yAxisTitle" : "Combos / 0.002 GeV^{2}", "binning" : (100, -0.1, 0.1)},
     # moment variables
-    {"columnName" : "beamPol",    "xAxisUnit" : "",    "yAxisTitle" : "Combos",            "binning" : (100, 0, 1)},
+    {"columnName" : "beamPol",    "xAxisUnit" : "",    "yAxisTitle" : "Combos",            "binning" : (110, 0, 1.1)},
     {"columnName" : "beamPolPhi", "xAxisUnit" : "deg", "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
     {"columnName" : "cosTheta",   "xAxisUnit" : "",    "yAxisTitle" : "Combos",            "binning" : (100, -1, 1)},
     {"columnName" : "theta",      "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.04 rad", "binning" : (100, 0, 4)},
@@ -86,7 +90,8 @@ if __name__ == "__main__":
     # other kinematic variables
     {"columnName" : "Mpi0",    "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 2 MeV",  "binning" : (100, 0, 0.2)},
     {"columnName" : "Meta",    "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
-    {"columnName" : "Mpi0eta", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 1, 2)},
+    {"columnName" : "Mpi0eta", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
+    {"columnName" : "rfTime",  "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
   )
   hists = []
   for histDef in histDefs:
@@ -99,7 +104,7 @@ if __name__ == "__main__":
   print(f"Writing skimmed tree to file '{outputFileName}'")
   data.Snapshot(outputTreeName, outputFileName, ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "eventWeight"))
 
-  # draw histograms
+  # fill and draw histograms
   ROOT.gStyle.SetOptStat(111111)
   for hist in hists:
     canv = ROOT.TCanvas(f"{hist.GetName()}.{dataSet}")
