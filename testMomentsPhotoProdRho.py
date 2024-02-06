@@ -178,7 +178,7 @@ if __name__ == "__main__":
     acceptedPsFileName  = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
     nmbAcceptedPsEvents = 210236  #TODO not correct number to normalize integral matrix
     beamPolarization    = 0.4  #TODO read from tree
-    beamPolarization    = 1.0  #TODO read from tree
+    # beamPolarization    = 1.0  #TODO read from tree
     maxL                = 5  # define maximum L quantum number of moments
     # maxL                = 10  # define maximum L quantum number of moments
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
