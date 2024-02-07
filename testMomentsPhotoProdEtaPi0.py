@@ -14,7 +14,7 @@ import ROOT
 
 import MomentCalculator
 import PlottingUtilities
-# import RootUtilities  # initializes OpenMP and loads wignerD.C
+import RootUtilities  # initializes OpenMP and loads wignerD.C
 import Utilities
 
 
@@ -63,17 +63,15 @@ if __name__ == "__main__":
     # set parameters of test case
     outFileDirName       = "./plotsPhotoProdEtaPi0"  #TODO create output dirs; make sure integrals are saved there as well
     treeName             = "etaPi0"
-    # signalFileName       = "./dataPhotoProdEtaPi0/tree_pippim__B4_gen_amp_030994.signal.root.angles"
-    # nmbSignalEvents      = 218240
+    signalFileName       = "./dataPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
     signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
     # acceptedPsFileName   = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
     # nmbAcceptedPsEvents  = 56036  #TODO not the correct number to normalize integral matrix
     acceptedPsFileName   = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
-    nmbAcceptedPsEvents  = 334283  #TODO not the correct number to normalize integral matrix -> events after BG subtraction
     beamPolarization     = 1.0  #TODO read from tree
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
-    # nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
+    nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # calculate true moments
     amplitudeSet = MomentCalculator.AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, 1.34), tolerance = 1e-11)
@@ -86,22 +84,27 @@ if __name__ == "__main__":
             rhos = amplitudeSet.photoProdSpinDensElements(refl, l, l, m1, m2)
             if not all(rho == 0 for rho in rhos):
               print(f"!!! refl = {refl}, l = {l}, l' = {l}, m = {m1}, m' = {m2}: {rhos}")
-    # raise ValueError
 
-    # load data
-    # print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
-    # dataSignal = ROOT.RDataFrame(treeName, signalFileName).Range(10000)  # take only first 10k events
-    dataSignal = None
+    # define mass bin
+    binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
+    binMassRange = massBinning.valueRangeBin(11)
+    binMassRangeFilter = f"(({binMassRange[0]} < {massBinning.var.name}) && ({massBinning.var.name} < {binMassRange[1]}))"
+
+    # load data for mass bin
+    print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
+    dataSignal = ROOT.RDataFrame(treeName, signalFileName).Filter(binMassRangeFilter)
     print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
-    dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
+    dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName).Filter(binMassRangeFilter)
+    nmbAcceptedPsEvents = dataAcceptedPs.Count().GetValue()  #TODO not the correct number to normalize integral matrix -> get this from thrown MC
 
-    nmbBins   = 15
+    nmbBins   = 10
     nmbBinsPs = nmbBins
     # plot signal and phase-space data
     hists = (
-      # dataSignal.Histo3D(
-      #   ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
-      #   "cosTheta", "phiDeg", "PhiDeg"),
+      dataSignal.Histo3D(
+        ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg"),
       dataAcceptedPs.Histo3D(
         ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
         "cosTheta", "phiDeg", "PhiDeg"),
@@ -114,9 +117,6 @@ if __name__ == "__main__":
       hist.GetZaxis().SetTitleOffset(1.5)
       hist.Draw("BOX2Z")
       canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
-
-    # print(f"Generating signal data")
-    # dataSignal = genDataFromWaves(10 * nmbSignalEvents, beamPolarization, amplitudeSet, hists[0].GetValue(), pdfFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
 
     # setup moment calculator
     momentIndices = MomentCalculator.MomentIndices(maxL)
@@ -147,15 +147,15 @@ if __name__ == "__main__":
     PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
     timer.stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
 
-    # # calculate moments of signal data
-    # timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-    # momentCalculator.calculateMoments()
-    # # print all moments for first kinematic bin
-    # print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
-    # print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
-    # # plot moments
-    # PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
-    # timer.stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    # calculate moments of signal data
+    timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    momentCalculator.calculateMoments()
+    # print all moments for first kinematic bin
+    print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
+    print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
+    # plot moments
+    PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
+    timer.stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
 
     timer.stop("Total execution time")
     print(timer.summary())
