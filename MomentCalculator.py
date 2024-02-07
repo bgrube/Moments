@@ -55,8 +55,9 @@ class AmplitudeValue:
 @dataclass
 class AmplitudeSet:
   """Stores partial-wave amplitudes and makes them accessible by quantum numbers"""
-  amps: InitVar[Sequence[AmplitudeValue]]
-  _amps: Tuple[Dict[Tuple[int, int], complex], Dict[Tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
+  amps:      InitVar[Sequence[AmplitudeValue]]
+  tolerance: float = 1e-15  # used when checking whether that moments are either real-valued or purely imaginary
+  _amps:     Tuple[Dict[Tuple[int, int], complex], Dict[Tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
 
   def __post_init__(
     self,
@@ -170,10 +171,9 @@ class AmplitudeSet:
       for M in range(L + 1):
         # get all moments for given (L, M)
         moments: List[complex] = list(self.photoProdMoments(L, M))
-        # ensure that moments are real-valued or purely imaginary, respectively
-        tolerance = 1e-15
-        assert (abs(moments[0].imag) < tolerance) and (abs(moments[1].imag) < tolerance) and (abs(moments[2].real) < tolerance), (
-          f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
+        # ensure that moments are either real-valued or purely imaginary
+        assert (abs(moments[0].imag) < self.tolerance) and (abs(moments[1].imag) < self.tolerance) and (abs(moments[2].real) < self.tolerance), (
+          f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
         # set respective real and imaginary parts exactly to zero
         moments[0] = moments[0].real + 0j
         moments[1] = moments[1].real + 0j
