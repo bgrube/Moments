@@ -4,18 +4,49 @@
 
 import functools
 import numpy as np
+import pandas as pd
 import threadpoolctl
+from typing import (
+  List,
+)
 
 import ROOT
 
 import MomentCalculator
 import PlottingUtilities
-import RootUtilities  # initializes OpenMP and loads wignerD.C
+# import RootUtilities  # initializes OpenMP and loads wignerD.C
 import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
+
+
+def readPartialWaveAmplitudes(
+  csvFileName:   str,
+  massBinCenter: float,  # [GeV]
+) -> List[MomentCalculator.AmplitudeValue]:
+  """Reads partial-wave amplitudes values for given mass bin from CSV data"""
+  df = pd.read_csv(csvFileName)
+  df = df.loc[df["mass"] == massBinCenter].drop(columns = ["mass"])
+  assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
+  # Pandas cannot read-back complex values out of the box
+  # there also seems to be no interest in fixing that <https://github.com/pandas-dev/pandas/issues/9379>
+  # have to convert columns by hand
+  s = df.astype('complex128').loc[df.index[0]]
+  partialWaveAmplitudes = [
+    # negative-reflectivity waves
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0+']),   # S_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -1), val = s['D1--']),  # D_-1^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m =  0), val = s['D0+-']),  # D_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +1), val = s['D1+-']),  # D_+1^-
+    # positive-reflectivity waves
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+']),   # S_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -2), val = s['D2-+']),  # D_-2^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +2), val = s['D2++']),  # D_+2^+
+  ]
+  # print(f"!!! {partialWaveAmplitudes}")
+  return partialWaveAmplitudes
 
 
 if __name__ == "__main__":
@@ -30,33 +61,32 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName      = "./plotsPhotoProdEtaPi0"  #TODO create output dirs; make sure integrals are saved there as well
-    treeName            = "etaPi0"
-    # signalFileName      = "./dataPhotoProdEtaPi0/tree_pippim__B4_gen_amp_030994.signal.root.angles"
-    # nmbSignalEvents     = 218240
-    # acceptedPsFileName  = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
-    # nmbAcceptedPsEvents = 56036  #TODO not the correct number to normalize integral matrix
-    acceptedPsFileName  = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
-    nmbAcceptedPsEvents = 334283  #TODO not the correct number to normalize integral matrix -> events after BG subtraction
-    beamPolarization    = 1.0  #TODO read from tree
-    # maxL                = 1  # define maximum L quantum number of moments
-    maxL                = 5  # define maximum L quantum number of moments
-    nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
+    outFileDirName       = "./plotsPhotoProdEtaPi0"  #TODO create output dirs; make sure integrals are saved there as well
+    treeName             = "etaPi0"
+    # signalFileName       = "./dataPhotoProdEtaPi0/tree_pippim__B4_gen_amp_030994.signal.root.angles"
+    # nmbSignalEvents      = 218240
+    signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
+    # acceptedPsFileName   = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
+    # nmbAcceptedPsEvents  = 56036  #TODO not the correct number to normalize integral matrix
+    acceptedPsFileName   = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
+    nmbAcceptedPsEvents  = 334283  #TODO not the correct number to normalize integral matrix -> events after BG subtraction
+    beamPolarization     = 1.0  #TODO read from tree
+    # maxL                 = 1  # define maximum L quantum number of moments
+    maxL                 = 5  # define maximum L quantum number of moments
+    # nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
-    # # calculate true moments
-    # partialWaveAmplitudes = [
-    #   MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val = 1 + 0j),  # P_+1^+
-    # ]
-    # amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
-    # HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
-    # print(f"True moment values\n{HTrue}")
-    # for refl in (-1, +1):
-    #   for l in range(3):
-    #     for m1 in range(-l, l + 1):
-    #       for m2 in range(-l, l + 1):
-    #         rhos = amplitudeSet.photoProdSpinDensElements(refl, l, l, m1, m2)
-    #         if not all(rho == 0 for rho in rhos):
-    #           print(f"!!! refl = {refl}, l = {l}, m = {m1}, m' = {m2}: {rhos}")
+    # calculate true moments
+    amplitudeSet = MomentCalculator.AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, 1.34), tolerance = 1e-11)
+    HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+    print(f"True moment values\n{HTrue}")
+    for refl in (-1, +1):
+      for l in range(3):
+        for m1 in range(-l, l + 1):
+          for m2 in range(-l, l + 1):
+            rhos = amplitudeSet.photoProdSpinDensElements(refl, l, l, m1, m2)
+            if not all(rho == 0 for rho in rhos):
+              print(f"!!! refl = {refl}, l = {l}, l' = {l}, m = {m1}, m' = {m2}: {rhos}")
+    # raise ValueError
 
     # load data
     # print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
