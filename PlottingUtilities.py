@@ -85,7 +85,7 @@ class HistAxisBinning:
 
   @property
   def astuple(self) -> Tuple[int, float, float]:
-    """Returns tuple with binning info that can be directly used in THX() constructor"""
+    """Returns tuple with binning info that can be directly used in ROOT.THX() constructor"""
     return (self.nmbBins, self.minVal, self.maxVal)
 
   @property
@@ -96,8 +96,8 @@ class HistAxisBinning:
     return self._var.axisTitle
 
   @property
-  def valueRange(self) -> float:
-    """Returns value range of binning, i.e. (maximum value - minimum value)"""
+  def valueIntervalLength(self) -> float:
+    """Returns length of value interval covered by binning, i.e. (maximum value - minimum value)"""
     if self.maxVal < self.minVal:
       self.maxVal, self.minVal = self.minVal, self.maxVal
     return self.maxVal - self.minVal
@@ -105,7 +105,15 @@ class HistAxisBinning:
   @property
   def binWidth(self) -> float:
     """Returns bin width"""
-    return self.valueRange / self.nmbBins
+    return self.valueIntervalLength / self.nmbBins
+
+  def valueRangeBin(
+    self,
+    binIndex: int,
+  ) -> Tuple[float, float]:
+    """Returns value range for bin with given index"""
+    binCenter = self[binIndex]
+    return (binCenter - 0.5 * self.binWidth, binCenter + 0.5 * self.binWidth)
 
 
 def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
