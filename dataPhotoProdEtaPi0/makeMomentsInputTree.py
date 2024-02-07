@@ -15,11 +15,12 @@ print = functools.partial(print, flush = True)
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
 
-  # dataSet = "signal"
-  dataSet = "phaseSpace"
+  dataSet = "signal"
+  inputFileNamePattern = "a0a2_raw/a0a2_2bw_acc_flat.root"
+  # dataSet = "phaseSpace"
   # inputFileNamePattern = "t010020_m104180_selectGenTandM/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.root"
   # outputFileName = f"./pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.{dataSet}.root"
-  inputFileNamePattern = "a0a2_raw/a0a2_flat_acc_flat.root"
+  # inputFileNamePattern = "a0a2_raw/a0a2_flat_acc_flat.root"
   outputFileName = f"./a0a2_{dataSet}_acc_flat.root"
   inputTreeName = "kin"
   outputTreeName = "etaPi0"
@@ -49,15 +50,19 @@ if __name__ == "__main__":
 
   # define columns for moments analysis
   # ensure that quantities used to calculate moments are doubles
+  # coordSys = "gj"
+  coordSys = "hel"
   data = (
     data.Define  ("beamPol",     f"(double){beamPol}")
         .Define  ("beamPolPhi",  f"(double){beamPolAngle}")
-        .Alias   ("cosTheta",    "cosTheta_eta_gj")
-        .Define  ("theta",       "(double)acos(cosTheta_eta_gj)")
-        .Alias   ("phiDeg",      "phi_eta_gj")
-        .Define  ("phi",         "(double)phi_eta_gj * TMath::DegToRad()")
+        .Alias   ("cosTheta",    f"cosTheta_eta_{coordSys}")
+        .Define  ("theta",       f"(double)acos(cosTheta_eta_{coordSys})")
+        .Alias   ("phiDeg",      f"phi_eta_{coordSys}")
+        .Define  ("phi",         f"(double)phi_eta_{coordSys} * TMath::DegToRad()")
         .Define  ("PhiDeg",      "Phi")  # cannot be an Alias because Redefine below would lead to infinite recursion
         .Redefine("Phi",         "(double)Phi * TMath::DegToRad()")
+        .Alias   ("mass",        "Mpi0eta")
+        # .Alias   ("mass",        "Mpi0eta_thrown")
         .Define  ("eventWeight", f"(double){weightColumnName}")
   )
 
@@ -102,7 +107,8 @@ if __name__ == "__main__":
 
   # write root tree for moments analysis
   print(f"Writing skimmed tree to file '{outputFileName}'")
-  data.Snapshot(outputTreeName, outputFileName, ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "eventWeight"))
+  data.Snapshot(outputTreeName, outputFileName,
+                ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "mass", "eventWeight"))
 
   # fill and draw histograms
   ROOT.gStyle.SetOptStat(111111)
