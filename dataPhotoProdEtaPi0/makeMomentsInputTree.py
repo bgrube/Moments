@@ -45,6 +45,7 @@ if __name__ == "__main__":
              "&& (proton_momentum > 0.3)"  # [GeV]
              "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
              "&& (abs(mmsq) < 0.05)"  # [GeV^2]
+             "&& ((0.8 < Mpi0eta_thrown) && (Mpi0eta_thrown < 2.0))"  # [GeV]
            ")"
          )
 
@@ -93,10 +94,11 @@ if __name__ == "__main__":
     {"columnName" : "PhiDeg",     "xAxisUnit" : "deg", "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
     {"columnName" : "Phi",        "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
     # other kinematic variables
-    {"columnName" : "Mpi0",    "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 2 MeV",  "binning" : (100, 0, 0.2)},
-    {"columnName" : "Meta",    "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
-    {"columnName" : "Mpi0eta", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
-    {"columnName" : "rfTime",  "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
+    {"columnName" : "Mpi0",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 2 MeV",  "binning" : (100, 0, 0.2)},
+    {"columnName" : "Meta",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
+    {"columnName" : "Mpi0eta",        "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
+    {"columnName" : "Mpi0eta_thrown", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
+    {"columnName" : "rfTime",         "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
   )
   hists = []
   for histDef in histDefs:
