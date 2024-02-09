@@ -17,6 +17,7 @@ import functools
 import numpy as np
 import nptyping as npt
 from typing import (
+  ClassVar,
   Dict,
   Generator,
   Iterator,
@@ -195,9 +196,20 @@ class AmplitudeSet:
 @dataclass(frozen = True)  # immutable
 class QnMomentIndex:
   """Stores information about quantum-number indices of moments"""
-  momentIndex: int  # subscript of photoproduction moments
-  L:           int  # angular momentum
-  M:           int  # projection quantum number of L
+  momentIndex:  int  # subscript of photoproduction moments
+  L:            int  # angular momentum
+  M:            int  # projection quantum number of L
+  momentSymbol: ClassVar[str] = "H"  # symbol used to construct labels and titles
+
+  @property
+  def label(self) -> str:
+    """Returns string to construct TObject or file names"""
+    return f"{QnMomentIndex.momentSymbol}{self.momentIndex}_{self.L}_{self.M}"
+
+  @property
+  def title(self) -> str:
+    """Returns TLatex string for titles"""
+    return f"#it{{{QnMomentIndex.momentSymbol}}}_{{{self.momentIndex}}}({self.L}, {self.M})"
 
 
 @dataclass
@@ -752,7 +764,7 @@ class MomentCalculatorsKinematicBinning:
   ) -> None:
     """Calculates acceptance integral matrices for all kinematic bins"""
     for momentsInBin in self:
-      print(f"Calculating the acceptance integral matrix for kinematic bin {momentsInBin.binCenters}")
+      print(f"Calculating acceptance integral matrix for kinematic bin {momentsInBin.binCenters}")
       momentsInBin.calculateIntegralMatrix(forceCalculation)
 
   def calculateMoments(
