@@ -73,27 +73,6 @@ class MyFSMath{
 		while (Phi < -TMath::Pi()) {
 			Phi += TMath::TwoPi();
 		}
-		if (false) {
-			// test code in https://github.com/lan13005/EtaPi-Analysis/blob/99c4c8045d75619bb2bfde6e800da72078723490/DSelector_etapi.C#L740
-			const TLorentzVector target(0, 0, 0, 0.938272);
-			const TLorentzRotation cmRestBoost(-(beam + target).BoostVector());
-			const TLorentzVector beam_cm = cmRestBoost * beam;
-			const TLorentzVector recoil_cm = cmRestBoost * recoil;
-			const TVector3 y = (beam_cm.Vect().Unit().Cross(-recoil_cm.Vect().Unit())).Unit();
-			const TVector3 eps2(TMath::Cos(polAngle * TMath::DegToRad()), TMath::Sin(polAngle * TMath::DegToRad()), 0);  // beam polarization vector
-			double Phi2 = TMath::ATan2(y.Dot(eps2), beam_cm.Vect().Unit().Dot(eps2.Cross(y)));
-			// ensure [-pi, +pi] range
-			while (Phi2 > TMath::Pi()) {
-				Phi2 -= TMath::TwoPi();
-			}
-			while (Phi2 < -TMath::Pi()) {
-				Phi2 += TMath::TwoPi();
-			}
-			const double deltaPhi = Phi2 - Phi;
-			if (std::abs(deltaPhi) > 1e-15) {
-				std::cout << "!!! Phi2 = " << Phi2 << " - Phi = " << Phi << ": " << deltaPhi << std::endl;
-			}
-		}
 		return Phi;
 	}
 
