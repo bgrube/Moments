@@ -107,13 +107,18 @@ class HistAxisBinning:
     """Returns bin width"""
     return self.valueIntervalLength / self.nmbBins
 
-  def valueRangeBin(
+  def binValueRange(
     self,
     binIndex: int,
   ) -> Tuple[float, float]:
     """Returns value range for bin with given index"""
     binCenter = self[binIndex]
     return (binCenter - 0.5 * self.binWidth, binCenter + 0.5 * self.binWidth)
+
+  @property
+  def binValueRanges(self) -> Tuple[Tuple[float, float], ...]:
+    """Returns value ranges for all bins"""
+    return tuple((binCenter - 0.5 * self.binWidth, binCenter + 0.5 * self.binWidth) for binCenter in self)
 
 
 def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
