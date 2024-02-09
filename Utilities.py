@@ -33,34 +33,34 @@ class TimeData:
   wallTimeStop:  Optional[float] = None
   cpuTimeStop:   Optional[float] = None
 
-  def stop(
-    self,
-    wallTime: float,
-    cpuTime:  float,
-  ) -> None:
+  def stop(self) -> None:
     """Sets stop times"""
-    self.wallTimeStop = wallTime
-    self.cpuTimeStop  = cpuTime
+    self.wallTimeStop = time.monotonic()
+    self.cpuTimeStop  = time.process_time()
 
+  @property
   def wallTime(self) -> Optional[float]:
     """Returns elapsed wall time"""
     return None if self.wallTimeStop is None else self.wallTimeStop - self.wallTimeStart
 
+  @property
   def cpuTime(self) -> Optional[float]:
     """Returns elapsed CPU time"""
     return None if self.cpuTimeStop  is None else self.cpuTimeStop  - self.cpuTimeStart
 
+  @property
   def summary(self) -> Optional[str]:
     """Returns string that summarizes wall and CPU time"""
     strings = []
-    if self.wallTime() is not None:
-      strings.append(f"wall time = {self.wallTime():.4g} sec")
-    if self.cpuTime() is not None:
-      strings.append(f"CPU time = {self.cpuTime():.4g} sec")
+    if self.wallTime is not None:
+      strings.append(f"wall time = {self.wallTime:.4g} sec")
+    if self.cpuTime is not None:
+      strings.append(f"CPU time = {self.cpuTime:.4g} sec")
     summary = ", ".join(strings)
     return summary if summary else None
 
 
+#TODO add context manager to time code pieces
 @dataclass
 class Timer:
   """Measures time differences"""
@@ -70,25 +70,30 @@ class Timer:
   def start(
     self,
     name: str,
-  ) -> None:
+  ) -> TimeData:
     """Creates a new timer with given name"""
-    self._times[name] = TimeData(wallTimeStart = time.monotonic(), cpuTimeStart  =time.process_time())
+    t = TimeData(wallTimeStart = time.monotonic(), cpuTimeStart  =time.process_time())
+    self._times[name] = t
+    return t
 
   def stop(
     self,
     name: str,
-  ) -> None:
+  ) -> Optional[TimeData]:
     """Stops timer with given name"""
     if name not in self._times:
       # gracefully ignore unknown timers
-      return
-    self._times[name].stop(time.monotonic(), time.process_time())
+      return None
+    t = self._times[name]
+    t.stop()
+    return t
 
+  @property
   def summary(self) -> Optional[str]:
     """Returns string with summary of all timers"""
     strings = []
     for name, timeData in self._times.items():
-      if timeData.summary() is not None:
-        strings.append(f"{name}: {timeData.summary()}")
+      if timeData.summary is not None:
+        strings.append(f"{name}: {timeData.summary}")
     summary = "\n".join(strings)
     return summary if summary else None

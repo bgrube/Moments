@@ -237,7 +237,7 @@ if __name__ == "__main__":
     momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix")
 
     # calculate integral matrix
-    timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    t = timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
     momentCalculator.calculateIntegralMatrix(forceCalculation = True)
     # print acceptance integral matrix
     print(f"Acceptance integral matrix\n{momentCalculator.integralMatrix}")
@@ -246,10 +246,10 @@ if __name__ == "__main__":
     # plot acceptance integral matrix
     PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc")
     PlottingUtilities.plotComplexMatrix(momentCalculator.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv")
-    timer.stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    t.stop()
 
     # calculate moments of accepted phase-space data
-    timer.start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+    t = timer.start(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
     momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
     # print all moments
     print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
@@ -258,17 +258,17 @@ if __name__ == "__main__":
     HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
     HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
     PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
-    timer.stop(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads")
+    t.stop()
 
     # calculate moments of signal data
-    timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    t = timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
     momentCalculator.calculateMoments()
     # print all moments for first kinematic bin
     print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
     print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
     # plot moments
     PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
-    timer.stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    t.stop()
 
     timer.stop("Total execution time")
-    print(timer.summary())
+    print(timer.summary)

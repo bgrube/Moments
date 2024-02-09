@@ -101,7 +101,7 @@ if __name__ == "__main__":
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # calculate true moment values and generate data from partial-wave amplitudes
-    timer.start("Time to generate MC data from partial waves")
+    t = timer.start("Time to generate MC data from partial waves")
     # generate signal distribution
     HTrueSig: MomentCalculator.MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
     print(f"True moment values for signal:\n{HTrueSig}")
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hDiscrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
     hist.Draw()
     canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
-    timer.stop("Time to generate MC data from partial waves")
+    t.stop()
     # raise ValueError
 
     # plot angular distributions of data generated from partial-wave amplitudes
@@ -189,9 +189,9 @@ if __name__ == "__main__":
     # raise ValueError
 
     # generate accepted phase-space data
-    timer.start("Time to generate phase-space MC data")
+    t = timer.start("Time to generate phase-space MC data")
     dataAcceptedPs = testMomentsPhotoProd.genAccepted2BodyPsPhotoProd(nmbAcceptedPsMcEvents, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
-    timer.stop("Time to generate phase-space MC data")
+    t.stop()
 
     # define input data
     data = dataPwaModel
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrix
-    timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    t = timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateIntegralMatrices(forceCalculation = True)
     # print acceptance integral matrix for first kinematic bin
     print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
@@ -227,10 +227,10 @@ if __name__ == "__main__":
       binLabel = "_".join(HData.fileNameBinLabels)
       plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
       plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
-    timer.stop(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
+    t.stop()
 
     # calculate moments of data generated from partial-wave amplitudes
-    timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    t = timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateMoments()
     # print all moments for first kinematic bin
     print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     for HData in moments:
       binLabel = "_".join(HData.fileNameBinLabels)
       plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h{binLabel}_")
-    timer.stop(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
+    t.stop()
 
     timer.stop("Total execution time")
-    print(timer.summary())
+    print(timer.summary)
