@@ -256,8 +256,8 @@ if __name__ == "__main__":
 
     # setup moment calculator
     momentIndices = MomentCalculator.MomentIndices(maxL)
-    binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
+    binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
     momentsInBins:      List[MomentCalculator.MomentCalculator] = []
     momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
     for massBinCenter in massBinning:
@@ -269,13 +269,13 @@ if __name__ == "__main__":
     moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
-    # calculate integral matrix
+    # calculate integral matrices
     timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateIntegralMatrices(forceCalculation = True)
     # print acceptance integral matrix for first kinematic bin
-    print(f"Acceptance integral matrix\n{moments[0].integralMatrix}")
+    print(f"Acceptance integral matrix for first bin\n{moments[0].integralMatrix}")
     eigenVals, _ = moments[0].integralMatrix.eigenDecomp
-    print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
+    print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
     # plot acceptance integral matrices for all kinematic bins
     for HData in moments:
       binLabel = "_".join(HData.fileNameBinLabels)
@@ -287,8 +287,8 @@ if __name__ == "__main__":
     timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateMoments()
     # print all moments for first kinematic bin
-    print(f"Measured moments of data generated according to partial-wave amplitudes\n{moments[0].HMeas}")
-    print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
+    print(f"Measured moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HMeas}")
+    print(f"Physical moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HPhys}")
     # plot moments in each kinematic bin
     for HData in moments:
       binLabel = "_".join(HData.fileNameBinLabels)
