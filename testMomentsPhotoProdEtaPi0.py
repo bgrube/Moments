@@ -62,7 +62,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName       = "./plotsPhotoProdEtaPi0"  #TODO create output dirs; make sure integrals are saved there as well
+    outFileDirName       = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
     treeName             = "etaPi0"
     signalFileName       = "./dataPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
     signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     # loop over mass bins
     momentIndices = MomentCalculator.MomentIndices(maxL)
-    binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
     # massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
     # massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
@@ -172,7 +172,7 @@ if __name__ == "__main__":
       PlottingUtilities.plotMomentsInBin(HData = m.HPhys, HTrue = momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/h{binLabel}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.QnIndices():
-      PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h")
+      PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h", histTitle = qnIndex.title)
     t.stop()
 
     timer.stop("Total execution time")
