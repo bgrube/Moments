@@ -64,6 +64,7 @@ class TimeData:
 @dataclass
 class Timer:
   """Measures time differences"""
+  #TODO preserve order
   _times: Dict[str, TimeData] = field(default_factory = lambda: {})  # start and stop times for wall time and CPU time indexed by name
 
   def start(
