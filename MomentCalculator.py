@@ -548,7 +548,7 @@ class MomentCalculator:
   _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
   _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
   _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
-  _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None # dictionary with bin centers  #TODO shouldn't this be a public member variable?
+  _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None  # dictionary with bin centers  #TODO make public member and delete properties
 
   # accessors that guarantee existence of optional fields
   @property
@@ -571,6 +571,13 @@ class MomentCalculator:
     """Returns dictionary with kinematic variables and bin centers"""
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
+  @binCenters.setter
+  def binCenters(
+    self,
+    centers: Dict[KinematicBinningVariable, float],
+  ) -> None:
+    """Sets dictionary with kinematic variables and bin centers"""
+    self._binCenters = centers
 
   # @property
   # def varNames(self) -> List[str]:
@@ -604,7 +611,7 @@ class MomentCalculator:
 
   def _calcReImCovMatrices(
     self,
-    V_aug: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128],  # augmentented covariance matrix
+    V_aug: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128],  # augmented covariance matrix
   ) -> Tuple[npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]]:
     """Calculates covariance matrices for real parts, for imaginary parts, and for real and imaginary parts from augmented covariance matrix"""
     nmbMoments = len(self.indices)
