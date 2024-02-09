@@ -25,6 +25,19 @@ def printGitInfo() -> None:
   print(f"Running code in '{repoDir}', git version '{gitInfo}'")
 
 
+def makeDirPath(dirPath: str) -> str:
+  """Create path to directory and return directory path as given"""
+  try:
+    os.makedirs(dirPath, exist_ok = False)
+  except FileExistsError:
+    pass  # directory already exists; do nothing
+  except Exception:
+    raise  # something went wrong
+  else:
+    print(f"Created directory '{dirPath}'")
+  return dirPath
+
+
 @dataclass
 class TimeData:
   """Holds start and stop times for wall and cpu timer"""
