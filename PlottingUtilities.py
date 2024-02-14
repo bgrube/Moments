@@ -198,6 +198,7 @@ def drawTF3(
 def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
   binning:           Optional[HistAxisBinning] = None,  # if not None data are plotted as function of binning variable
+  normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentLabel:       str = MomentCalculator.QnMomentIndex.momentSymbol,  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   histTitle:         str = "",   # histogram title
@@ -250,7 +251,7 @@ def plotMoments(
     # adjust style of automatic zero line
     histStack.GetHistogram().SetLineColor(ROOT.kBlack)
     histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
-    # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
+    histStack.GetHistogram().SetLineWidth(1)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
     canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     canv.SaveAs(f"{histStack.GetName()}.pdf")
 
@@ -271,9 +272,11 @@ def plotMoments(
           trueVal             = H.truthRealOrImag(realPart = momentPart == "Re")
           binIndex = index if binning is None else histResidual.GetXaxis().FindBin(H.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
-          if H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0):
-            indicesToMask.append(binIndex)  # tag H_0(0, 0) for exclusion
-      # calculate chi^2 excluding Re and Im of H_0(0, 0) because it is always 1 by definition and values for which truth value was missing (residual = NaN)
+          if normalizedMoments and (H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
+            indicesToMask.append(binIndex)  # exclude H_0(0, 0) from plotting and chi^2 calculation
+      # calculate chi^2
+      # if moments were normalized, exclude Re and Im of H_0(0, 0) because it is always 1 by definition
+      # exclude values, for which truth value is missing (residual = NaN)
       residualsMasked = np.ma.fix_invalid(residuals)
       for i in indicesToMask:
         residualsMasked[i] = np.ma.masked
@@ -317,21 +320,23 @@ def plotMoments(
 
 def plotMomentsInBin(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
+  normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
-  pdfFileNamePrefix: str = "h",   # name prefix for output files
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for momentIndex in range(3):
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
-    plotMoments(HVals, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
+    plotMoments(HVals, normalizedMoments = normalizedMoments, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
 
 
 def plotMoments1D(
   moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
   qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
   binning:           HistAxisBinning,                 # binning to use for plot
+  normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentsTruth:      Optional[MomentCalculator.MomentCalculatorsKinematicBinning] = None,  # true moment values
   pdfFileNamePrefix: str = "h",   # name prefix for output files
   histTitle:         str = "",    # histogram title
@@ -343,4 +348,4 @@ def plotMoments1D(
       truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
       _binCenters = HData.binCenters,
     ) for binIndex, HData in enumerate(moments))
-  plotMoments(HVals, binning, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
+  plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
