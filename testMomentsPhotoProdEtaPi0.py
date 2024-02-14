@@ -34,7 +34,7 @@ def readPartialWaveAmplitudes(
   # Pandas cannot read-back complex values out of the box
   # there also seems to be no interest in fixing that <https://github.com/pandas-dev/pandas/issues/9379>
   # have to convert columns by hand
-  s = df.astype('complex128').loc[df.index[0]]
+  s = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
   partialWaveAmplitudes = [
     # negative-reflectivity waves
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-']),   # S_0^-
@@ -64,29 +64,30 @@ if __name__ == "__main__":
     # set parameters of test case
     outFileDirName       = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
     treeName             = "etaPi0"
-    signalFileName       = "./dataPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
+    signalAccFileName    = "./dataPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
+    signalGenFileName    = "./dataPhotoProdEtaPi0/a0a2_signal_gen_flat.root"
     signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
-    # acceptedPsFileName   = "./dataPhotoProdEtaPi0/pol000_t010020_m104180_selectGenTandM_F2017_1_selected_acc_flat.phaseSpace.root"
-    # nmbAcceptedPsEvents  = 56036  #TODO not the correct number to normalize integral matrix
-    acceptedPsFileName   = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
+    psAccFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
+    psGenFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
     beamPolarization     = 1.0  #TODO read from tree
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
+    normalizeMoments     = False
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # plot all signal and phase-space data
     #TODO plot for each mass bin
-    print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}'")
-    dataSignal = ROOT.RDataFrame(treeName, signalFileName)
-    print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}'")
-    dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName)
-    nmbBins   = 15
-    nmbBinsPs = nmbBins
+    print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}'")
+    dataSignalAcc = ROOT.RDataFrame(treeName, signalAccFileName)
+    print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
+    dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
+    nmbBinsSig = 15
+    nmbBinsPs  = nmbBinsSig
     hists = (
-      dataSignal.Histo3D(
-        ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+      dataSignalAcc.Histo3D(
+        ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsSig, -1, +1, nmbBinsSig, -180, +180, nmbBinsSig, -180, +180),
         "cosTheta", "phiDeg", "PhiDeg"),
-      dataAcceptedPs.Histo3D(
+      dataPsAcc.Histo3D(
         ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
         "cosTheta", "phiDeg", "PhiDeg"),
     )
@@ -107,6 +108,7 @@ if __name__ == "__main__":
     # massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
     momentsInBins:      List[MomentCalculator.MomentCalculator] = []
     momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
+    nmbSignalGenEvents: List[float] = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
     for massBinIndex, massBinCenter in enumerate(massBinning):
       massBinRange = massBinning.binValueRange(massBinIndex)
@@ -114,19 +116,24 @@ if __name__ == "__main__":
 
       # calculate true moments
       amplitudeSet = MomentCalculator.AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
-      HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False)
+      HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
       print(f"True moment values\n{HTrue}")
 
       # load data for mass bin
       binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
-      print(f"Loading signal data from tree '{treeName}' in file '{signalFileName}' and applying filter {binMassRangeFilter}")
-      dataSignal = ROOT.RDataFrame(treeName, signalFileName).Filter(binMassRangeFilter)
-      print(f"Loading accepted phase-space data from tree '{treeName}' in file '{acceptedPsFileName}' and applying filter {binMassRangeFilter}")
-      dataAcceptedPs = ROOT.RDataFrame(treeName, acceptedPsFileName).Filter(binMassRangeFilter)
-      nmbAcceptedPsEvents = dataAcceptedPs.Count().GetValue()  #TODO not the correct number to normalize integral matrix -> get this from thrown MC
+      print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}' and applying filter {binMassRangeFilter}")
+      dataSignalAcc = ROOT.RDataFrame(treeName, signalAccFileName).Filter(binMassRangeFilter)
+      print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
+      dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
+      print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}' and applying filter {binMassRangeFilter}")
+      dataSignalGen = ROOT.RDataFrame(treeName, signalGenFileName).Filter(binMassRangeFilter)
+      nmbSignalGenEvents.append(dataSignalGen.Count().GetValue())
+      print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
+      dataPsGen = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
+      nmbPsGenEvents = dataPsGen.Count().GetValue()
 
       # setup moment calculator for data
-      dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
+      dataSet = MomentCalculator.DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents)
       momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", _binCenters = {binVarMass : massBinCenter}))
       # setup moment calculator to hold true values
       momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
@@ -162,17 +169,25 @@ if __name__ == "__main__":
 
     # calculate moments of signal data
     t = timer.start(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
-    moments.calculateMoments()
+    moments.calculateMoments(normalize = normalizeMoments)
     # print all moments for first kinematic bin
     print(f"Measured moments of signal data for first kinematic bin\n{moments[0].HMeas}")
     print(f"Physical moments of signal data for first kinematic bin\n{moments[0].HPhys}")
     # plot moments in each kinematic bin
     for massBinIndex, m in enumerate(moments):
       binLabel = "_".join(m.fileNameBinLabels)
-      PlottingUtilities.plotMomentsInBin(HData = m.HPhys, HTrue = momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/h{binLabel}_")
-    # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
+      PlottingUtilities.plotMomentsInBin(m.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/h{binLabel}_")
+    # plot kinematic dependences of all moments
     for qnIndex in momentIndices.QnIndices():
-      PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h", histTitle = qnIndex.title)
+      PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h", histTitle = qnIndex.title)
+    # check H_0(0, 0)
+    print("!!!FOO")
+    for binIndex in range(len(moments)):
+      H = moments[binIndex].HPhys[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)]
+      HTruth = momentsTruth[binIndex].HPhys[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)]
+      print(f"    {binIndex}: H_0(0, 0) = {H.val.real} +- {H.uncertRe}"
+            f" vs. Truth = {HTruth.val.real} +- {HTruth.uncertRe}"
+            f" vs. # gen = {nmbSignalGenEvents[binIndex]}")
     t.stop()
 
     timer.stop("Total execution time")
