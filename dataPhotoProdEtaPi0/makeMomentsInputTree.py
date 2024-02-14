@@ -97,22 +97,25 @@ bigPhi(
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
 
-  dataSet = "signal"
+  dataSet = "signal_acc"
   inputFileNamePattern = "a0a2_raw/a0a2_2bw_acc_flat.root"
-  # dataSet = "signalGen"
+  # dataSet = "signal_gen"
   # inputFileNamePattern = "a0a2_raw/a0a2_2bw_gen_data_flat.root"
-  # dataSet = "phaseSpace"
+  # dataSet = "phaseSpace_acc"
   # inputFileNamePattern = "a0a2_raw/a0a2_flat_acc_flat.root"
-  outputFileName = f"./a0a2_{dataSet}_acc_flat.root"
+  # dataSet = "phaseSpace_gen"
+  # inputFileNamePattern = "a0a2_raw/a0a2_flat_gen_data_flat.root"
+  outputFileName = f"./a0a2_{dataSet}_flat.root"
   inputTreeName = "kin"
   outputTreeName = "etaPi0"
   weightColumnName = "Weight"
   beamPol = 1.0
   beamPolAngle = 0
+  thrownData = ((dataSet == "signal_gen") or (dataSet == "phaseSpace_gen"))
 
   # apply fiducial cuts
   data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern)
-  if dataSet != "signalGen":
+  if not thrownData:
     data = data.Filter(
              "("
                "(pVH > 0.5)"
@@ -133,11 +136,11 @@ if __name__ == "__main__":
              ")"
            )
 
-  data = defineDataFrameColumns(data, coordSys = "hel",  weightColumnName = weightColumnName, thrownData = (dataSet == "signalGen"))
+  data = defineDataFrameColumns(data, coordSys = "hel",  weightColumnName = weightColumnName, thrownData = thrownData)
 
   # define background-subtracted histograms
   histDefs = []
-  if dataSet != "signalGen":
+  if not thrownData:
     histDefs += [
       # cut variables
       {"columnName" : "pVH",             "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, -0.5, 1.5)},
