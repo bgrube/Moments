@@ -40,10 +40,20 @@ print = functools.partial(print, flush = True)
 
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
-  """Stores information about quantum-number indices of two-pseudocalar partial-waves"""
+  """Stores information about quantum-number indices of two-pseudocalar partial-waves in reflectivity basis"""
   refl: int  # reflectivity
   l:    int  # orbital angular momentum
   m:    int  # projection quantum number of l
+
+  @property
+  def label(self) -> str:
+    """Returns string to construct TObject or file names"""
+    return f"[{self.l}]_{self.m}_" + ("p" if self.refl > 0 else "m")
+
+  @property
+  def title(self) -> str:
+    """Returns TLatex string for titles"""
+    return f"[{self.l}]_{{{self.m}}}" + "^{(" + ("#plus" if self.refl > 0 else "#minus") + ")}"
 
 
 @dataclass
@@ -76,7 +86,7 @@ class AmplitudeSet:
     """Returns partial-wave amplitude for given quantum numbers; returns 0 for non-existing amplitudes"""
     assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
     reflIndex = 0 if subscript.refl == +1 else 1
-    return AmplitudeValue(subscript, self._amps[reflIndex].get((subscript.l, subscript.m), 0))
+    return AmplitudeValue(subscript, self._amps[reflIndex].get((subscript.l, subscript.m), 0 + 0j))
 
   def __setitem__(
     self,
@@ -137,10 +147,12 @@ class AmplitudeSet:
     self,
     L: int,  # angular momentum
     M: int,  # projection quantum number of L
+    printMoments: bool = False,
   ) -> Tuple[complex, complex, complex]:
     """Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
     # Eqs. (154) to (156) assuming that rank is 1
-    moments: List[complex] = 3 * [0 + 0j]
+    moments:        List[complex] = 3 * [0 + 0j]
+    momentFormulas: List[str]     = [f"H_{i}({L}, {M}) =" for i in range(3)]
     for refl in (-1, +1):
       for amp1 in self.amplitudes(onlyRefl = refl):
         l1 = amp1.qn.l
@@ -158,20 +170,30 @@ class AmplitudeSet:
           moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
           moments[1] += -term * rhos[1]  # H_1; Eq. (125)
           moments[2] += -term * rhos[2]  # H_2; Eq. (125)
+          if printMoments:
+            momentFormulas[0] += "" if np.isclose(rhos[0], 0) else f" + {term} * rho_0(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[0]}"
+            momentFormulas[1] += "" if np.isclose(rhos[1], 0) else f" - {term} * rho_1(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[1]}"
+            momentFormulas[2] += "" if np.isclose(rhos[2], 0) else f" - {term} * rho_2(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[2]}"
+    if printMoments:
+      print(f"Moment formulas:"
+            + ("" if np.isclose(moments[0], 0) else f"\n    {momentFormulas[0]} = {moments[0]}")
+            + ("" if np.isclose(moments[1], 0) else f"\n    {momentFormulas[1]} = {moments[1]}")
+            + ("" if np.isclose(moments[2], 0) else f"\n    {momentFormulas[2]} = {moments[2]}"))
     return (moments[0], moments[1], moments[2])
 
   def photoProdMomentSet(
     self,
-    maxL: int,  # maximum L quantum number of moments
+    maxL:         int,           # maximum L quantum number of moments
+    printMoments: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> MomentResult:
-    """Returns moments calculated from partial-wave amplitudes assuming rank 1; the H_2(L, 0) are omitted"""
+    """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
     norm = 1.0
     for L in range(maxL + 1):
       for M in range(L + 1):
         # get all moments for given (L, M)
-        moments: List[complex] = list(self.photoProdMoments(L, M))
+        moments: List[complex] = list(self.photoProdMoments(L, M, printMoments))
         # ensure that moments are either real-valued or purely imaginary
         assert (abs(moments[0].imag) < self.tolerance) and (abs(moments[1].imag) < self.tolerance) and (abs(moments[2].real) < self.tolerance), (
           f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
@@ -468,14 +490,14 @@ class MomentResult:
   """Stores and provides access to moment values"""
   indices:           MomentIndices  # index mapping and iterators
   label:             str = ""       # label used for printing
-  _valsFlatIndex:    npt.NDArray[npt.Shape["*"], npt.Complex128]     = field(init = False)  # flat array with moment values
-  _covReReFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64] = field(init = False)  # covariance matrix of real parts of moment values with flat indices
-  _covImImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64] = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
-  _covReImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64] = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
+  _valsFlatIndex:    npt.NDArray[npt.Shape["*"],        npt.Complex128] = field(init = False)  # flat array with moment values
+  _covReReFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
+  _covImImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
+  _covReImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
 
   def __post_init__(self) -> None:
     nmbMoments = len(self.indices)
-    self._valsFlatIndex    = np.zeros((nmbMoments, ), dtype = npt.Complex128)
+    self._valsFlatIndex    = np.zeros((nmbMoments, ),           dtype = npt.Complex128)
     self._covReReFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
     self._covImImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
     self._covReImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
@@ -489,6 +511,7 @@ class MomentResult:
       return NotImplemented
     return (
       self.indices == other.indices
+      #TODO shouldn't we use allclose() (+ check for identical shape) instead of array_equal()?
       and np.array_equal(self._valsFlatIndex,    other._valsFlatIndex)
       and np.array_equal(self._covReReFlatIndex, other._covReReFlatIndex)
       and np.array_equal(self._covImImFlatIndex, other._covImImFlatIndex)
@@ -511,7 +534,7 @@ class MomentResult:
     self,
     subscript: Union[int, QnMomentIndex, slice],
   ) -> Union[MomentValue, List[MomentValue]]:
-    """Returns moment value and corresponding uncertainties at the given flat or quantum-number index/indices"""
+    """Returns moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
     # turn quantum-number index to flat index
     flatIndex: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     if isinstance(flatIndex, slice):

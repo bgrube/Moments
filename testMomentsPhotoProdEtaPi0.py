@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
       # calculate true moments
       amplitudeSet = MomentCalculator.AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
-      HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+      HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False)
       print(f"True moment values\n{HTrue}")
 
       # load data for mass bin
