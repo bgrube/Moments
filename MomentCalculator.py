@@ -184,12 +184,13 @@ class AmplitudeSet:
   def photoProdMomentSet(
     self,
     maxL:         int,           # maximum L quantum number of moments
+    normalize:    bool = True,   # if set moment values are normalized to H_0(0, 0)
     printMoments: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
-    norm = 1.0
+    norm: float = 1.0
     for L in range(maxL + 1):
       for M in range(L + 1):
         # get all moments for given (L, M)
@@ -203,9 +204,9 @@ class AmplitudeSet:
         moments[2] = 0 + moments[2].imag * 1j
         # ensure that H_2(L, 0) is zero
         assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2].imag}"
-        # normalize to H_0(0, 0)
-        if L == M == 0:
-          norm = moments[0].real  # H_0(0, 0)
+        if normalize and L == M == 0:
+          # normalize to H_0(0, 0)
+          norm = moments[0].real  # Re[H_0(0, 0)]
         for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
           qnIndex   = QnMomentIndex(momentIndex, L, M)
           flatIndex = momentIndices.indexMap.flatIndex_for[qnIndex]
@@ -243,6 +244,7 @@ class MomentIndices:
 
   def __post_init__(self) -> None:
     # create new bidict subclass
+    #TODO bidict 0.23 will remove namedbidict; see https://github.com/jab/bidict/issues/290 for workaround
     QnIndexByFlatIndexBidict = bd.namedbidict(typename = 'QnIndexByFlatIndexBidict', keyname = 'flatIndex', valname = 'QnIndex')
     # instantiate bidict subclass
     self.indexMap = QnIndexByFlatIndexBidict()
@@ -661,17 +663,19 @@ class MomentCalculator:
 
   def calculateMoments(
     self,
-    dataSource: MomentDataSource = MomentDataSource.DATA,
+    dataSource: MomentDataSource = MomentDataSource.DATA,  # type of data to calculate moments from
+    normalize:  bool = True,  # if set physical moments are normalized to H_0(0, 0)
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
-    dataSet = None
+    dataSet        = None
     integralMatrix = None
     if dataSource == self.MomentDataSource.DATA:
       # calculate moments of data
       dataSet        = self.dataSet
       integralMatrix = self._integralMatrix
     elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
+      #TODO this also seems to apply acceptance correction; check!
       # calculate moments of acceptance function
       dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
@@ -742,10 +746,12 @@ class MomentCalculator:
         [np.conjugate(J_conj), np.conjugate(J)],
       ])  # augmented Jacobian; Eq. (98)
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
-    # normalize moments such that H_0(0, 0) = 1
-    norm: complex = self._HPhys[0].val
-    self._HPhys._valsFlatIndex /= norm
-    V_phys_aug /= norm**2
+    if normalize:
+      # normalize moments such that H_0(0, 0) = 1
+      #TODO ensure that accesses to indexMap are read-only
+      norm: complex = self._HPhys[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val
+      self._HPhys._valsFlatIndex /= norm
+      V_phys_aug /= norm**2
     self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 
 
@@ -792,8 +798,9 @@ class MomentCalculatorsKinematicBinning:
 
   def calculateMoments(
     self,
-    dataSource: MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,
+    dataSource: MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,  # type of data to calculate moments from
+    normalize:  bool = True,  # if set physical moments are normalized to H_0(0, 0)
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
     for momentsInBin in self:
-      momentsInBin.calculateMoments(dataSource)
+      momentsInBin.calculateMoments(dataSource, normalize)
