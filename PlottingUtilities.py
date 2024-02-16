@@ -210,7 +210,8 @@ def plotMoments(
 
   # (i) plot moments from data and overlay with true values (if given)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
-    histStack = ROOT.THStack(f"{pdfFileNamePrefix}Compare_{momentLabel}_{momentPart}", f"{histTitle};{xAxisTitle};Normalized Moment Value")
+    histStack = ROOT.THStack(f"{pdfFileNamePrefix}Compare_{momentLabel}_{momentPart}",
+                             f"{histTitle};{xAxisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value")
     # create histogram with moments from data
     histData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", *histBinning.astuple)
     for index, H in enumerate(HVals):
@@ -243,15 +244,23 @@ def plotMoments(
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
     # adjust y-range
-    ROOT.gPad.Update()
-    actualYRange = ROOT.gPad.GetUymax() - ROOT.gPad.GetUymin()
+    canv.Update()
+    actualYRange = canv.GetUymax() - canv.GetUymin()
     yRangeFraction = 0.1 * actualYRange
-    histStack.SetMaximum(ROOT.gPad.GetUymax() + yRangeFraction)
-    histStack.SetMinimum(ROOT.gPad.GetUymin() - yRangeFraction)
+    histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
+    histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
     # adjust style of automatic zero line
-    histStack.GetHistogram().SetLineColor(ROOT.kBlack)
-    histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
-    histStack.GetHistogram().SetLineWidth(1)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
+    # does not work
+    # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
+    # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
+    # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
+    if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
+      print(f"???ZERO")
+      zeroLine = ROOT.TLine()
+      zeroLine.SetLineColor(ROOT.kBlack)
+      zeroLine.SetLineStyle(ROOT.kDashed)
+      xAxis = histStack.GetXaxis()
+      zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
     canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     canv.SaveAs(f"{histStack.GetName()}.pdf")
 
