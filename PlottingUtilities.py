@@ -255,8 +255,9 @@ def plotMoments(
     # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
     # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
+    canv.Update()
     if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-      print(f"???ZERO")
+      # print(f"???ZERO")
       zeroLine = ROOT.TLine()
       zeroLine.SetLineColor(ROOT.kBlack)
       zeroLine.SetLineStyle(ROOT.kDashed)
