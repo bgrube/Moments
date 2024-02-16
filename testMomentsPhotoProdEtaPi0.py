@@ -79,16 +79,26 @@ if __name__ == "__main__":
     #TODO plot for each mass bin
     print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}'")
     dataSignalAcc = ROOT.RDataFrame(treeName, signalAccFileName)
+    print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}'")
+    dataSignalGen = ROOT.RDataFrame(treeName, signalGenFileName)
     print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
     dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
+    print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
+    dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
     nmbBinsSig = 15
     nmbBinsPs  = nmbBinsSig
     hists = (
       dataSignalAcc.Histo3D(
-        ROOT.RDF.TH3DModel("hSignal", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsSig, -1, +1, nmbBinsSig, -180, +180, nmbBinsSig, -180, +180),
+        ROOT.RDF.TH3DModel("hSignalAcc", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsSig, -1, +1, nmbBinsSig, -180, +180, nmbBinsSig, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg"),
+      dataSignalGen.Histo3D(
+        ROOT.RDF.TH3DModel("hSignalGen", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsSig, -1, +1, nmbBinsSig, -180, +180, nmbBinsSig, -180, +180),
         "cosTheta", "phiDeg", "PhiDeg"),
       dataPsAcc.Histo3D(
-        ROOT.RDF.TH3DModel("hPhaseSpace", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
+        ROOT.RDF.TH3DModel("hPhaseSpaceAcc", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg"),
+      dataPsGen.Histo3D(
+        ROOT.RDF.TH3DModel("hPhaseSpaceGen", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
         "cosTheta", "phiDeg", "PhiDeg"),
     )
     for hist in hists:
@@ -174,20 +184,28 @@ if __name__ == "__main__":
     print(f"Measured moments of signal data for first kinematic bin\n{moments[0].HMeas}")
     print(f"Physical moments of signal data for first kinematic bin\n{moments[0].HPhys}")
     # plot moments in each kinematic bin
+    namePrefix = "norm" if normalizeMoments else "unnorm"
     for massBinIndex, m in enumerate(moments):
       binLabel = "_".join(m.fileNameBinLabels)
-      PlottingUtilities.plotMomentsInBin(m.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/h{binLabel}_")
+      PlottingUtilities.plotMomentsInBin(m.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
+                                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
     # plot kinematic dependences of all moments
     for qnIndex in momentIndices.QnIndices():
-      PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h", histTitle = qnIndex.title)
+      PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
+                                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
     # check H_0(0, 0)
     print("!!!FOO")
+    H000Index = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)
     for binIndex in range(len(moments)):
-      H = moments[binIndex].HPhys[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)]
-      HTruth = momentsTruth[binIndex].HPhys[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)]
+      H = moments[binIndex].HPhys[H000Index]
+      HTruth = momentsTruth[binIndex].HPhys[H000Index]
       print(f"    {binIndex}: H_0(0, 0) = {H.val.real} +- {H.uncertRe}"
             f" vs. Truth = {HTruth.val.real} +- {HTruth.uncertRe}"
             f" vs. # gen = {nmbSignalGenEvents[binIndex]}")
+      momentsTruth[binIndex].HPhys._valsFlatIndex[0] = complex(nmbSignalGenEvents[binIndex])
+      # print(f"???BAR {momentsTruth[binIndex].HPhys[H000Index]}")
+    PlottingUtilities.plotMoments1D(moments, H000Index, massBinning, normalizeMoments, momentsTruth,
+                                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_gen_", histTitle = H000Index.title)
     t.stop()
 
     timer.stop("Total execution time")
