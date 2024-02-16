@@ -249,6 +249,7 @@ def plotMoments(
     yRangeFraction = 0.1 * actualYRange
     histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
+    canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     # adjust style of automatic zero line
     # does not work
     # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
@@ -261,7 +262,6 @@ def plotMoments(
       zeroLine.SetLineStyle(ROOT.kDashed)
       xAxis = histStack.GetXaxis()
       zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-    canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     canv.SaveAs(f"{histStack.GetName()}.pdf")
 
     # (ii) plot residuals
