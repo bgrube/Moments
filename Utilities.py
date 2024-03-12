@@ -1,5 +1,6 @@
 """Module that provides utility functions of general scope"""
 
+import contextlib
 from dataclasses import (
   dataclass,
   field,
@@ -73,19 +74,17 @@ class TimeData:
     return summary if summary else None
 
 
-#TODO add context manager to time code pieces
 @dataclass
 class Timer:
   """Measures time differences"""
-  #TODO preserve order
-  _times: Dict[str, TimeData] = field(default_factory = lambda: {})  # start and stop times for wall time and CPU time indexed by name
+  _times: Dict[str, TimeData] = field(default_factory = lambda: {})  # stores start and stop times for wall time and CPU time indexed by name
 
   def start(
     self,
     name: str,
   ) -> TimeData:
-    """Creates a new timer with given name"""
-    t = TimeData(wallTimeStart = time.monotonic(), cpuTimeStart  =time.process_time())
+    """Creates or updates the timer associated with the given name"""
+    t = TimeData(wallTimeStart = time.monotonic(), cpuTimeStart = time.process_time())
     self._times[name] = t
     return t
 
@@ -93,13 +92,25 @@ class Timer:
     self,
     name: str,
   ) -> Optional[TimeData]:
-    """Stops timer with given name"""
+    """Stops the timer associated with given name"""
     if name not in self._times:
       # gracefully ignore unknown timers
       return None
     t = self._times[name]
     t.stop()
-    return t
+    return
+
+  @contextlib.contextmanager
+  def timeThis(
+    self,
+    name: str
+  ):
+    """Context manager that measures time of enclosed code block"""
+    try:
+      t = self.start(name)
+      yield
+    finally:
+      t.stop()
 
   @property
   def summary(self) -> Optional[str]:
