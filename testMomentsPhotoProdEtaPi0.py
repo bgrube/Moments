@@ -158,10 +158,10 @@ if __name__ == "__main__":
     eigenVals, _ = moments[0].integralMatrix.eigenDecomp
     print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
     # plot acceptance integral matrices for all kinematic bins
-    for m in moments:
-      binLabel = "_".join(m.fileNameBinLabels)
-      PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
-      PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
+    for momentsInBin in moments:
+      binLabel = "_".join(momentsInBin.fileNameBinLabels)
+      PlottingUtilities.plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
+      PlottingUtilities.plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
     t.stop()
 
     #TODO add loop over mass bins
@@ -185,9 +185,9 @@ if __name__ == "__main__":
     print(f"Physical moments of signal data for first kinematic bin\n{moments[0].HPhys}")
     # plot moments in each kinematic bin
     namePrefix = "norm" if normalizeMoments else "unnorm"
-    for massBinIndex, m in enumerate(moments):
-      binLabel = "_".join(m.fileNameBinLabels)
-      PlottingUtilities.plotMomentsInBin(m.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
+    for massBinIndex, momentsInBin in enumerate(moments):
+      binLabel = "_".join(momentsInBin.fileNameBinLabels)
+      PlottingUtilities.plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
     # plot kinematic dependences of all moments
     for qnIndex in momentIndices.QnIndices():
