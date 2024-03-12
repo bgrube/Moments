@@ -40,7 +40,7 @@ print = functools.partial(print, flush = True)
 
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
-  """Stores information about quantum-number indices of two-pseudocalar partial-waves in reflectivity basis"""
+  """Immutable container class that stores information about quantum-number indices of two-pseudocalar partial-waves in reflectivity basis"""
   refl: int  # reflectivity
   l:    int  # orbital angular momentum
   m:    int  # projection quantum number of l
@@ -58,14 +58,14 @@ class QnWaveIndex:
 
 @dataclass
 class AmplitudeValue:
-  """Stores and provides access to single amplitude value"""
+  """Container class that stores and provides access to single amplitude value"""
   qn:  QnWaveIndex  # quantum numbers
   val: complex      # amplitude value
 
 
 @dataclass
 class AmplitudeSet:
-  """Stores partial-wave amplitudes and makes them accessible by quantum numbers"""
+  """Container class that stores partial-wave amplitudes, makes them accessible by quantum numbers, and calculates spin-density matrix elements and moments"""
   amps:      InitVar[Sequence[AmplitudeValue]]
   tolerance: float = 1e-15  # used when checking whether that moments are either real-valued or purely imaginary
   _amps:     Tuple[Dict[Tuple[int, int], complex], Dict[Tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
@@ -218,7 +218,7 @@ class AmplitudeSet:
 
 @dataclass(frozen = True)  # immutable
 class QnMomentIndex:
-  """Stores information about quantum-number indices of moments"""
+  """Immutable container class that stores information about quantum-number indices of moments"""
   momentIndex:  int  # subscript of photoproduction moments
   L:            int  # angular momentum
   M:            int  # projection quantum number of L
@@ -281,7 +281,7 @@ class MomentIndices:
 
 @dataclass
 class DataSet:
-  """Stores information about a single dataset"""
+  """Container class that stores information about a single dataset"""
   polarization:   float            # photon-beam polarization
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data  #TODO make optional
@@ -290,7 +290,7 @@ class DataSet:
 
 @dataclass(frozen = True)  # immutable
 class KinematicBinningVariable:
-  """Holds information that define a binning variable"""
+  """Immutable container class that stores information to define a binning variable"""
   name:      str  # name of variable; used e.g. for filenames
   label:     str  # TLatex expression used for plotting
   unit:      str  # TLatex expression used for plotting
@@ -304,7 +304,7 @@ class KinematicBinningVariable:
 
 @dataclass
 class AcceptanceIntegralMatrix:
-  """Calculates and provides access to acceptance integral matrix"""
+  """Container class that calculates, stores, and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
   dataSet:     DataSet        # info on data samples
   _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # acceptance integral matrix with flat indices; must either be given or set be calling load() or calculate()
@@ -449,7 +449,7 @@ class AcceptanceIntegralMatrix:
 
 @dataclass
 class MomentValue:
-  """Stores and provides access to single moment value"""
+  """Container class that stores and provides access to single moment value"""
   qn:       QnMomentIndex  # quantum numbers
   val:      complex   # moment value
   uncertRe: float     # uncertainty of real part
@@ -489,7 +489,7 @@ class MomentValue:
 
 @dataclass(eq = False)
 class MomentResult:
-  """Stores and provides access to moment values"""
+  """Container class that stores and provides access to moment values"""
   indices:           MomentIndices  # index mapping and iterators
   label:             str = ""       # label used for printing
   _valsFlatIndex:    npt.NDArray[npt.Shape["*"],        npt.Complex128] = field(init = False)  # flat array with moment values
@@ -578,7 +578,7 @@ class MomentResult:
 
 @dataclass
 class MomentCalculator:
-  """Holds all information to calculate moments for a single kinematic bin"""
+  """Container class that holds all information needed to calculate moments for a single kinematic bin"""
   indices:              MomentIndices  # index mapping and iterators
   dataSet:              DataSet  # info on data samples
   integralFileBaseName: str  = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
@@ -757,7 +757,7 @@ class MomentCalculator:
 
 @dataclass
 class MomentCalculatorsKinematicBinning:
-  """Holds all information to calculate moments for several kinematic bins"""
+  """Container class that holds all information needed to calculate moments for several kinematic bins"""
   moments: List[MomentCalculator]  # data for all bins of the kinematic binning
 
   def __len__(self) -> int:
