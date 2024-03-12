@@ -15,8 +15,9 @@ screen
 .proof
 
 # project dirs
-data/**
-fits/**
+foo*/**
+data*/**
+plots*/**
 
 #VSCode
 *.code-workspace
