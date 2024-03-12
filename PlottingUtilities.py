@@ -1,6 +1,8 @@
 """Module that provides a collection of functions for plotting"""
 
-from dataclasses import dataclass, astuple
+from __future__ import annotations
+
+from dataclasses import dataclass
 import functools
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,6 +10,7 @@ import nptyping as npt
 import os
 from scipy import stats
 from typing import (
+  Any,
   Dict,
   Iterator,
   List,
@@ -140,20 +143,22 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
 
 
 def plotComplexMatrix(
-  matrix:            npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
+  complexMatrix:     npt.NDArray[npt.Shape[Any, Any], npt.Complex128],  # matrix to plot
   pdfFileNamePrefix: str,  # name prefix for output files
 ) -> None:
   """Draws real and imaginary parts of given 2D array"""
-  dataToPlot = {
-    "real" : np.real(matrix),      # real part
-    "imag" : np.imag(matrix),      # imaginary part
-    "abs"  : np.absolute(matrix),  # absolute value
-    "arg"  : np.angle(matrix),     # phase
+  matricesToPlot = {
+    "real" : np.real(complexMatrix),      # real part
+    "imag" : np.imag(complexMatrix),      # imaginary part
+    "abs"  : np.absolute(complexMatrix),  # absolute value
+    "arg"  : np.angle(complexMatrix),     # phase
   }
-  for plotLabel, data in dataToPlot.items():
-    plt.figure().colorbar(plt.matshow(data))
+  for plotLabel, matrix in matricesToPlot.items():
+    fig, ax = plt.subplots()
+    cax = ax.matshow(matrix)
+    fig.colorbar(cax)
     plt.savefig(f"{pdfFileNamePrefix}_{plotLabel}.pdf", transparent = True)
-    plt.close()
+    plt.close(fig)
 
 
 def drawTF3(
