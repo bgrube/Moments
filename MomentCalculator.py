@@ -17,6 +17,7 @@ import functools
 import numpy as np
 import nptyping as npt
 from typing import (
+  Any,
   ClassVar,
   Dict,
   Generator,
@@ -328,7 +329,7 @@ class AcceptanceIntegralMatrix:
     return np.linalg.inv(self.matrix)
 
   @property
-  def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
+  def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["Dim"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
     """Returns eigenvalues and eigenvectors of acceptance integral matrix"""
     return np.linalg.eig(self.matrix)
 
@@ -342,24 +343,24 @@ class AcceptanceIntegralMatrix:
   def __getitem__(
     self,
     subscript: Tuple[slice, Union[int, QnMomentIndex]],
-  ) -> Optional[npt.NDArray[npt.Shape["*"], npt.Complex128]]: ...
+  ) -> Optional[npt.NDArray[npt.Shape[Any], npt.Complex128]]: ...
 
   @overload
   def __getitem__(
     self,
     subscript: Tuple[Union[int, QnMomentIndex], slice],
-  ) -> Optional[npt.NDArray[npt.Shape["*"], npt.Complex128]]: ...
+  ) -> Optional[npt.NDArray[npt.Shape[Any], npt.Complex128]]: ...
 
   @overload
   def __getitem__(
     self,
     subscript: Tuple[slice, slice],
-  ) -> Optional[npt.NDArray[npt.Shape["*, *"], npt.Complex128]]: ...
+  ) -> Optional[npt.NDArray[npt.Shape[Any, Any], npt.Complex128]]: ...
 
   def __getitem__(
     self,
     subscript: Tuple[Union[int, QnMomentIndex, slice], Union[int, QnMomentIndex, slice]],
-  ) -> Optional[Union[complex, npt.NDArray[npt.Shape["*"], npt.Complex128], npt.NDArray[npt.Shape["*, *"], npt.Complex128]]]:
+  ) -> Optional[Union[complex, npt.NDArray[npt.Shape[Any], npt.Complex128], npt.NDArray[npt.Shape[Any, Any], npt.Complex128]]]:
     """Returns acceptance integral matrix elements for any combination of flat and quantum-number indices"""
     if self._IFlatIndex is None:
       return None
@@ -377,14 +378,14 @@ class AcceptanceIntegralMatrix:
 
   def calculate(self) -> None:
     """Calculates integral matrix of basis functions from (accepted) phase-space data"""
-    # get phase-space data data as NumPy arrays
-    thetas = self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"]
-    phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"]  )["phi"]
-    Phis   = self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"]  )["Phi"]
-    print(f"Phase-space data column: {type(thetas)}; {thetas.shape}; {thetas.dtype}; {thetas.dtype.type}")
-    nmbAccEvents = len(thetas)
-    assert thetas.shape == (nmbAccEvents,) and thetas.shape == phis.shape == Phis.shape, (
-      f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbAccEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
+    # get phase-space data data as std::vectors
+    thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
+    phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
+    Phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"  ])["Phi"  ])
+    print(f"Phase-space data column: {type(thetas)}; {thetas.size()}; {thetas.value_type}")
+    nmbAccEvents = thetas.size()
+    assert thetas.size() == phis.size() == Phis.size(), (
+      f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
       print("Using weights in 'eventWeight' column to calculate acceptance integral matrix")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
@@ -395,14 +396,14 @@ class AcceptanceIntegralMatrix:
     assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `wignerD.C`
     nmbMoments = len(self.indices)
-    fMeas: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
-    fPhys: npt.NDArray[npt.Shape["*"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
+    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
+    fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
       fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
     # calculate integral-matrix elements; Eq. (178)
-    self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
+    self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = npt.Complex128)
     for flatIndexMeas in self.indices.flatIndices():
       for flatIndexPhys in self.indices.flatIndices():
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = ((8 * np.pi**2 / self.dataSet.nmbGenEvents)
@@ -492,7 +493,7 @@ class MomentResult:
   """Container class that stores and provides access to moment values"""
   indices:           MomentIndices  # index mapping and iterators
   label:             str = ""       # label used for printing
-  _valsFlatIndex:    npt.NDArray[npt.Shape["*"],        npt.Complex128] = field(init = False)  # flat array with moment values
+  _valsFlatIndex:    npt.NDArray[npt.Shape["Dim"],      npt.Complex128] = field(init = False)  # flat array with moment values
   _covReReFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
   _covImImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
   _covReImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
@@ -684,14 +685,14 @@ class MomentCalculator:
       integralMatrix = self._integralMatrix
     else:
       raise ValueError(f"Unknown data source '{dataSource}'")
-    # get input data as NumPy arrays
-    thetas = dataSet.data.AsNumpy(columns = ["theta"])["theta"]
-    phis   = dataSet.data.AsNumpy(columns = ["phi"]  )["phi"]
-    Phis   = dataSet.data.AsNumpy(columns = ["Phi"]  )["Phi"]
-    print(f"Input data column: {type(thetas)}; {thetas.shape}; {thetas.dtype}; {thetas.dtype.type}")
-    nmbEvents = len(thetas)
-    assert thetas.shape == (nmbEvents,) and thetas.shape == phis.shape == Phis.shape, (
-      f"Not all NumPy arrays with input data have the correct shape. Expected ({nmbEvents},) but got theta: {thetas.shape}, phi: {phis.shape}, and Phi: {Phis.shape}")
+    # get input data as std::vectors
+    thetas = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["theta"])["theta"])
+    phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["phi"  ])["phi"  ])
+    Phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["Phi"  ])["Phi"  ])
+    print(f"Input data column: {type(thetas)}; {thetas.size()}; {thetas.value_type}")
+    nmbEvents = thetas.size()
+    assert thetas.size() == phis.size() == Phis.size(), (
+      f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     if "eventWeight" in dataSet.data.GetColumnNames():
       print("Using weights in 'eventWeight' column to calculate moments")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
@@ -704,8 +705,8 @@ class MomentCalculator:
     sumOfSquaredWeights = np.sum(np.square(eventWeights))
     # calculate basis-function values and values of measured moments
     nmbMoments = len(self.indices)
-    fMeas      = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
-    fMeasMeans = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
+    fMeas:      npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+    fMeasMeans: npt.NDArray[npt.Shape["nmbMoments"],            npt.Complex128] = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
     self._HMeas = MomentResult(self.indices, label = "meas")
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
