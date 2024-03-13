@@ -394,7 +394,7 @@ class AcceptanceIntegralMatrix:
       # all events have weight 1
       eventWeights = np.ones(nmbAccEvents, dtype = npt.Float64)
     assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
-    # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `wignerD.C`
+    # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `basisFunctions.C`
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
     fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)

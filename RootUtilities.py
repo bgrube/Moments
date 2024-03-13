@@ -12,11 +12,11 @@ import OpenMpUtilities
 print = functools.partial(print, flush = True)
 
 
-# C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
+# C++ implementation of (complex conjugated) Wigner D function, spherical harmonics, and basis functions for polarized photoproduction moments
 # also provides complexT typedef for std::complex<double>
 OpenMpUtilities.enableRootACLiCOpenMp()
 # OpenMp.printRootACLiCSettings()
-ROOT.gROOT.LoadMacro("./wignerD.C++")
+ROOT.gROOT.LoadMacro("./basisFunctions.C++")
 
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3

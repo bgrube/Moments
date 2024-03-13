@@ -219,14 +219,14 @@ f_phys(
 	const double Phi,    // [rad]
 	const double polarization
 ) {
-	const double norm = std::sqrt((2 * L + 1) / (4 * TMath::Pi())) * ((M == 0) ? 1 : 2) * ylm(L, M, theta);
+	const double commonTerm = std::sqrt((2 * L + 1) / (4 * TMath::Pi())) * ((M == 0) ? 1 : 2) * ylm(L, M, theta);
 	switch (momentIndex) {
 	case 0:
-		return norm * std::cos(M * phi);
+		return commonTerm * std::cos(M * phi);
 	case 1:
-		return norm * polarization * std::cos(M * phi) * std::cos(2 * Phi);
+		return commonTerm * polarization * std::cos(M * phi) * std::cos(2 * Phi);
 	case 2:
-		return norm * I * polarization * std::sin(M * phi) * std::sin(2 * Phi);
+		return commonTerm * I * polarization * std::sin(M * phi) * std::sin(2 * Phi);
 	default:
 		throw std::domain_error("f_phys() unknown moment index.");
 	}
@@ -266,14 +266,14 @@ f_meas(
 	const double Phi,    // [rad]
 	const double polarization
 ) {
-	const std::complex<double> norm = (1 / TMath::Pi()) * std::sqrt((4 * TMath::Pi()) / (2 * L + 1)) * std::conj(Ylm(L, M, theta, phi));
+	const std::complex<double> commonTerm = (1 / TMath::Pi()) * std::sqrt((4 * TMath::Pi()) / (2 * L + 1)) * std::conj(Ylm(L, M, theta, phi));
 	switch (momentIndex) {
 	case 0:
-		return norm / 2.0;
+		return commonTerm / 2.0;
 	case 1:
-		return norm * std::cos(2 * Phi) / polarization;
+		return commonTerm * std::cos(2 * Phi) / polarization;
 	case 2:
-		return norm * std::sin(2 * Phi) / polarization;
+		return commonTerm * std::sin(2 * Phi) / polarization;
 	default:
 		throw std::domain_error("f_meas() unknown moment index.");
 	}

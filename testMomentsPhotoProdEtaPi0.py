@@ -14,7 +14,7 @@ import ROOT
 
 import MomentCalculator
 import PlottingUtilities
-import RootUtilities  # importing initializes OpenMP and loads wignerD.C
+import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
 import Utilities
 
 
