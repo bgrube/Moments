@@ -373,6 +373,7 @@ def plotMomentsBootStrap(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
   HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
   pdfFileNamePrefix: str = "h",  # name prefix for output files
+  nmbBins:           int = 100,  # number of bins for bootstrap histograms
 ) -> None:
   """Plots bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -387,12 +388,41 @@ def plotMomentsBootStrap(
       vals = HValsBs.real if momentPart == "Re" else HValsBs.imag
       min = np.min(vals)
       max = np.max(vals)
-      nmbBins = 100
       halfRange = (max - min) * 1.1 / 2.0
       center = (min + max) / 2.0
       histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f";{HVal.qn.title} {legendEntrySuffix};Count",
                          nmbBins, center - halfRange, center + halfRange)
+      # fill histogram
       np.vectorize(histBs.Fill)(vals)
+      histBs.SetMinimum(0)
+      # draw histogram
       canv = ROOT.TCanvas()
       histBs.Draw("E")
+      # indicate true value
+      if HVal.truth is not None:
+        lineTrue = ROOT.TLine(HVal.truth.real, 0, HVal.truth.real, histBs.GetMaximum())
+        lineTrue.SetLineColor(ROOT.kRed + 1)
+        lineTrue.SetLineStyle(ROOT.kDashed)
+        lineTrue.Draw()
+      # indicate boostrap estimate
+      meanBs   = np.mean(vals)
+      stdDevBs = np.std(vals, ddof = 1)
+      yCoord = histBs.GetMaximum() / 8
+      markerBs = ROOT.TMarker(meanBs, yCoord, ROOT.kFullCircle)
+      markerBs.SetMarkerColor(ROOT.kGreen + 2)
+      markerBs.SetMarkerSize(0.75)
+      markerBs.Draw()
+      lineBs = ROOT.TLine(meanBs - stdDevBs, yCoord, meanBs + stdDevBs, yCoord)
+      lineBs.SetLineColor(ROOT.kGreen + 2)
+      lineBs.Draw()
+      # indicate estimate from uncertainty propagation
+      meanEst, stdDevEst = HVal.realOrImag(realPart = momentPart == "Re")
+      markerEstimate = ROOT.TMarker(meanEst, 2 * yCoord, ROOT.kOpenCircle)
+      markerEstimate.SetMarkerColor(ROOT.kBlue + 1)
+      markerEstimate.SetMarkerSize(0.75)
+      markerEstimate.Draw()
+      lineEstimate = ROOT.TLine(meanEst - stdDevEst, 2 * yCoord, meanEst + stdDevEst, 2 * yCoord)
+      lineEstimate.SetLineColor(ROOT.kBlue + 1)
+      lineEstimate.Draw()
+      # canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
       canv.SaveAs(f"{histBs.GetName()}.pdf")
