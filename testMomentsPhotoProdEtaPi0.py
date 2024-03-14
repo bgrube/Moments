@@ -188,6 +188,10 @@ if __name__ == "__main__":
         PlottingUtilities.plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                                            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
         print(f"!!! {momentsInBin.HPhys._bsSamplesFlatIndex=}")
+        PlottingUtilities.plotMomentsBootStrap(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                               pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+      raise ValueError
+
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():
         PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,

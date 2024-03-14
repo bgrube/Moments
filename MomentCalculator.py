@@ -722,7 +722,7 @@ class MomentCalculator:
     nmbMoments = len(self.indices)
     fMeas:      npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
     fMeasMeans: npt.NDArray[npt.Shape["nmbMoments"],            npt.Complex128] = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
-    nmbBootstrapSamples = 10
+    nmbBootstrapSamples = 10000
     bootstrapSeed       = 12345
     self._HMeas = MomentResult(self.indices, label = "meas", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
     if nmbBootstrapSamples > 0:

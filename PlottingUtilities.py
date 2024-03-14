@@ -143,7 +143,7 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
 
 
 def plotComplexMatrix(
-  complexMatrix:     npt.NDArray[npt.Shape[Any, Any], npt.Complex128],  # matrix to plot
+  complexMatrix:     npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
   pdfFileNamePrefix: str,  # name prefix for output files
 ) -> None:
   """Draws real and imaginary parts of given 2D array"""
@@ -153,6 +153,9 @@ def plotComplexMatrix(
     "abs"  : np.absolute(complexMatrix),  # absolute value
     "arg"  : np.angle(complexMatrix),     # phase
   }
+  #TODO add plot titles
+  #TODO add axis titles
+  #TODO use same z-scale for all plots
   for plotLabel, matrix in matricesToPlot.items():
     fig, ax = plt.subplots()
     cax = ax.matshow(matrix)
@@ -364,3 +367,32 @@ def plotMoments1D(
       _binCenters = HData.binCenters,
     ) for binIndex, HData in enumerate(moments))
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
+
+
+def plotMomentsBootStrap(
+  HData:             MomentCalculator.MomentResult,  # moment values extracted from data
+  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+) -> None:
+  """Plots bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
+  assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
+  # generate separate plots for each moment index
+  for qnIndex in HData.indices.QnIndices():
+    HVal = MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None)  # type: ignore
+    assert HData._bsSamplesFlatIndex is not None, "Bootstrap samples must be present"
+    HValsBs = HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]]
+    print(f"!!! {HVal.qn.title}: {HVal=} vs. {HValsBs=}")
+    for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
+      # create histogram with bootstrap samples
+      vals = HValsBs.real if momentPart == "Re" else HValsBs.imag
+      min = np.min(vals)
+      max = np.max(vals)
+      nmbBins = 100
+      halfRange = (max - min) * 1.1 / 2.0
+      center = (min + max) / 2.0
+      histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f";{HVal.qn.title} {legendEntrySuffix};Count",
+                         nmbBins, center - halfRange, center + halfRange)
+      np.vectorize(histBs.Fill)(vals)
+      canv = ROOT.TCanvas()
+      histBs.Draw("E")
+      canv.SaveAs(f"{histBs.GetName()}.pdf")
