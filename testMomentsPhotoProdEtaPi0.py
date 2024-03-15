@@ -13,7 +13,15 @@ from typing import (
 import ROOT
 
 import MomentCalculator
-import PlottingUtilities
+from PlottingUtilities import (
+  HistAxisBinning,
+  plotComplexMatrix,
+  plotMomentsBootstrap1D,
+  plotMomentsBootstrapInBin,
+  plotMoments1D,
+  plotMomentsInBin,
+  setupPlotStyle,
+)
 import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
 import Utilities
 
@@ -54,10 +62,10 @@ if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
   ROOT.gROOT.SetBatch(True)
-  PlottingUtilities.setupPlotStyle()
+  setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
-  with threadController.limit(limits = 5):
+  with threadController.limit(limits = 1):
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
     timer.start("Total execution time")
 
@@ -73,7 +81,8 @@ if __name__ == "__main__":
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
     normalizeMoments     = False
-    nmbBootstrapSamples  = 10000
+    nmbBootstrapSamples  = 0
+    # nmbBootstrapSamples  = 10000
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # plot all signal and phase-space data
@@ -114,9 +123,9 @@ if __name__ == "__main__":
     # loop over mass bins
     momentIndices = MomentCalculator.MomentIndices(maxL)
     binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
-    # massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
-    # massBinning   = PlottingUtilities.HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
+    massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
+    # massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
+    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
     momentsInBins:      List[MomentCalculator.MomentCalculator] = []
     momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
     nmbSignalGenEvents: List[float] = []
@@ -161,8 +170,8 @@ if __name__ == "__main__":
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
         binLabel = "_".join(momentsInBin.fileNameBinLabels)
-        PlottingUtilities.plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
-        PlottingUtilities.plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
+        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
+        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
 
     #TODO add loop over mass bins
     # # calculate moments of accepted phase-space data
@@ -174,7 +183,7 @@ if __name__ == "__main__":
     #   # plot moments
     #   HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
     #   HTruePs._valsFlatIndex[momentIndices.indexMap.flatIndex_for[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
-    #   PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
+    #   plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
@@ -186,16 +195,18 @@ if __name__ == "__main__":
       namePrefix = "norm" if normalizeMoments else "unnorm"
       for massBinIndex, momentsInBin in enumerate(moments):
         binLabel = "_".join(momentsInBin.fileNameBinLabels)
-        PlottingUtilities.plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
-                                           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-        PlottingUtilities.plotMomentsBootstrapInBin(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
-                                                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
+                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        if nmbBootstrapSamples > 0:
+          plotMomentsBootstrapInBin(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():
-        PlottingUtilities.plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
-                                        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
-        PlottingUtilities.plotMomentsBootstrap1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
+        plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
+                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
+        if nmbBootstrapSamples > 0:
+          plotMomentsBootstrap1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
 
       print("Check H_0(0, 0):")
       H000Index = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)
@@ -206,8 +217,8 @@ if __name__ == "__main__":
               f" vs. Truth = {HTruth.val.real} +- {HTruth.uncertRe}"
               f" vs. # gen = {nmbSignalGenEvents[binIndex]}")
         momentsTruth[binIndex].HPhys._valsFlatIndex[0] = complex(nmbSignalGenEvents[binIndex])
-      PlottingUtilities.plotMoments1D(moments, H000Index, massBinning, normalizeMoments, momentsTruth,
-                                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_gen_", histTitle = H000Index.title)
+      plotMoments1D(moments, H000Index, massBinning, normalizeMoments, momentsTruth,
+                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_gen_", histTitle = H000Index.title)
 
     timer.stop("Total execution time")
     print(timer.summary)
