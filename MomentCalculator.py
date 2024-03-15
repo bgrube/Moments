@@ -572,30 +572,17 @@ class MomentResult:
 
 
 @dataclass
-class BootstrapWeightedData:
-  """Generator class for bootstrap samples"""
-  nmbSamples:   int  # number of bootstrap samples
-  seed:         int  # seed for random number generator
-  data:         Optional[npt.NDArray[npt.Shape["nmbEvents"], npt.Complex128]] = None  # original data
-  eventWeights: Optional[npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]    = None  # weights for original data
-  _rng:         np.random.Generator = field(init = False)  # random number generator
+class BootstrapIndices:
+  """Generator class for bootstrap indices"""
+  nmbEvents:  int  # number of events in data sample
+  nmbSamples: int  # number of bootstrap samples
+  seed:       int  # seed for random number generator
 
-  def __post_init__(self) -> None:
-    """Instantiates random number generator"""
-    assert self.nmbSamples > 0, "Number of bootstrap samples must be positive"
-    self._rng = np.random.default_rng(self.seed if self.seed != 0 else None)
-
-  def __iter__(self) -> Generator[
-      Tuple[npt.NDArray[npt.Shape["nmbEvents"], npt.Complex128], npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]],
-      None, None]:
+  def __iter__(self) -> Generator[npt.NDArray[npt.Shape["nmbEvents"], npt.Complex128], None, None]:
     """Generates bootstrap samples and returns data and weights for each sample"""
-    assert self.data         is not None, "self.data must not be None"
-    assert self.eventWeights is not None, "self.eventWeights must not be None"
-    bsData = np.vstack((self.data, self.eventWeights))
+    rng = np.random.default_rng(self.seed)
     for _ in range(self.nmbSamples):
-      nmbEvents = len(self.data)
-      bootstrapIndices = self._rng.choice(nmbEvents, size = nmbEvents, replace = True)
-      yield bsData[0, bootstrapIndices], bsData[1, bootstrapIndices]
+      yield rng.choice(self.nmbEvents, size = self.nmbEvents, replace = True)
 
 
 @dataclass
@@ -724,9 +711,8 @@ class MomentCalculator:
     fMeasMeans: npt.NDArray[npt.Shape["nmbMoments"],            npt.Complex128] = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
     nmbBootstrapSamples = 10000
     bootstrapSeed       = 12345
+    bootstrapIndices    = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
     self._HMeas = MomentResult(self.indices, label = "meas", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
-    if nmbBootstrapSamples > 0:
-      bootstrapData = BootstrapWeightedData(nmbBootstrapSamples, bootstrapSeed, eventWeights = eventWeights)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataSet.polarization))  # Eq. (176)
@@ -734,9 +720,13 @@ class MomentCalculator:
       self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       fMeasMeans[flatIndex] = weightedSum / sumOfWeights
       if self._HMeas._bsSamplesFlatIndex is not None:
-        bootstrapData.data = fMeas[flatIndex]
-        for sampleIndex, (fMeasSample, eventWeightsSample) in enumerate(bootstrapData):
-          self._HMeas._bsSamplesFlatIndex[flatIndex, sampleIndex] = 2 * np.pi * eventWeightsSample.dot(fMeasSample)
+        # perform bootstrapping of H_meas
+        for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
+          # resample data
+          fMeasBsSample        = fMeas       [bsDataIndices]
+          eventWeightsBsSample = eventWeights[bsDataIndices]
+          # calculate bootstrap sample for H_meas
+          self._HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181)
     # unfortunately, np.cov() does not accept negative weights
     # reimplement code from https://github.com/numpy/numpy/blob/d35cd07ea997f033b2d89d349734c61f5de54b0d/numpy/lib/function_base.py#L2530-L2749
@@ -765,8 +755,9 @@ class MomentCalculator:
       # calculate physical moments, i.e. correct for detection efficiency
       self._HPhys._valsFlatIndex = I_inv @ self._HMeas._valsFlatIndex  # Eq. (83)
       if self._HPhys._bsSamplesFlatIndex is not None and self._HMeas._bsSamplesFlatIndex is not None:
-        for sampleIndex in range(nmbBootstrapSamples):
-          self._HPhys._bsSamplesFlatIndex[:, sampleIndex] = I_inv @ self._HMeas._bsSamplesFlatIndex[:, sampleIndex]
+        # calculate bootstrap samples for H_phys
+        for bsSampleIndex in range(nmbBootstrapSamples):
+          self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = I_inv @ self._HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
       J = I_inv  # Jacobian of efficiency correction; Eq. (101)
       J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
@@ -782,9 +773,10 @@ class MomentCalculator:
       self._HPhys._valsFlatIndex /= norm
       V_phys_aug /= norm**2
       if self._HPhys._bsSamplesFlatIndex is not None:
-        for sampleIndex in range(nmbBootstrapSamples):
-          norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], sampleIndex]
-          self._HPhys._bsSamplesFlatIndex[:, sampleIndex] /= norm
+        # normalize bootstrap samples for H_phys
+        for bsSampleIndex in range(nmbBootstrapSamples):
+          norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
+          self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
     self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 
 
