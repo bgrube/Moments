@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
-      moments.calculateMoments(normalize = normalizeMoments)
+      moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = 10000)
       # print all moments for first kinematic bin
       print(f"Measured moments of signal data for first kinematic bin\n{moments[0].HMeas}")
       print(f"Physical moments of signal data for first kinematic bin\n{moments[0].HPhys}")
@@ -187,10 +187,8 @@ if __name__ == "__main__":
         binLabel = "_".join(momentsInBin.fileNameBinLabels)
         PlottingUtilities.plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                                            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-        print(f"!!! {momentsInBin.HPhys._bsSamplesFlatIndex=}")
         PlottingUtilities.plotMomentsBootStrap(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
                                                pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-      raise ValueError
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():

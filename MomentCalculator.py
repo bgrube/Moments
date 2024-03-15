@@ -666,8 +666,10 @@ class MomentCalculator:
 
   def calculateMoments(
     self,
-    dataSource: MomentDataSource = MomentDataSource.DATA,  # type of data to calculate moments from
-    normalize:  bool = True,  # if set physical moments are normalized to H_0(0, 0)
+    dataSource:          MomentDataSource = MomentDataSource.DATA,  # type of data to calculate moments from
+    normalize:           bool             = True,   # if set physical moments are normalized to H_0(0, 0)
+    nmbBootstrapSamples: int              = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapSeed:       int              = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
@@ -709,8 +711,6 @@ class MomentCalculator:
     nmbMoments = len(self.indices)
     fMeas:      npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
     fMeasMeans: npt.NDArray[npt.Shape["nmbMoments"],            npt.Complex128] = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
-    nmbBootstrapSamples = 10000
-    bootstrapSeed       = 12345
     bootstrapIndices    = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
     self._HMeas = MomentResult(self.indices, label = "meas", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
     for flatIndex in self.indices.flatIndices():
@@ -811,9 +811,11 @@ class MomentCalculatorsKinematicBinning:
 
   def calculateMoments(
     self,
-    dataSource: MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,  # type of data to calculate moments from
-    normalize:  bool = True,  # if set physical moments are normalized to H_0(0, 0)
+    dataSource:          MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,  # type of data to calculate moments from
+    normalize:           bool = True,   # if set physical moments are normalized to H_0(0, 0)
+    nmbBootstrapSamples: int  = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapSeed:       int  = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
-    for momentsInBin in self:
-      momentsInBin.calculateMoments(dataSource, normalize)
+    for kinBinIndex, momentsInBin in enumerate(self):
+      momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
