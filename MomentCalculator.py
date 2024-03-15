@@ -723,8 +723,8 @@ class MomentCalculator:
         # perform bootstrapping of H_meas
         for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
           # resample data
-          fMeasBsSample        = fMeas       [bsDataIndices]
-          eventWeightsBsSample = eventWeights[bsDataIndices]
+          fMeasBsSample        = fMeas[flatIndex][bsDataIndices]
+          eventWeightsBsSample = eventWeights    [bsDataIndices]
           # calculate bootstrap sample for H_meas
           self._HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181)
