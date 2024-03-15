@@ -382,47 +382,62 @@ def plotMomentsBootStrap(
     HVal = MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None)  # type: ignore
     assert HData._bsSamplesFlatIndex is not None, "Bootstrap samples must be present"
     HValsBs = HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]]
-    print(f"!!! {HVal.qn.title}: {HVal=} vs. {HValsBs=}")
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # create histogram with bootstrap samples
-      vals = HValsBs.real if momentPart == "Re" else HValsBs.imag
-      min = np.min(vals)
-      max = np.max(vals)
+      momentSamples = HValsBs.real if momentPart == "Re" else HValsBs.imag
+      min = np.min(momentSamples)
+      max = np.max(momentSamples)
       halfRange = (max - min) * 1.1 / 2.0
       center = (min + max) / 2.0
       histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f";{HVal.qn.title} {legendEntrySuffix};Count",
                          nmbBins, center - halfRange, center + halfRange)
       # fill histogram
-      np.vectorize(histBs.Fill)(vals)
-      histBs.SetMinimum(0)
+      np.vectorize(histBs.Fill)(momentSamples)
       # draw histogram
       canv = ROOT.TCanvas()
+      histBs.SetMinimum(0)
+      histBs.SetLineColor(ROOT.kBlue + 1)
       histBs.Draw("E")
+      # indicate boostrap estimate
+      meanBs   = np.mean(momentSamples)
+      stdDevBs = np.std(momentSamples, ddof = 1)
+      yCoord = histBs.GetMaximum() / 4
+      markerBs = ROOT.TMarker(meanBs, yCoord, ROOT.kFullCircle)
+      markerBs.SetMarkerColor(ROOT.kBlue + 1)
+      markerBs.SetMarkerSize(0.75)
+      markerBs.Draw()
+      lineBs = ROOT.TLine(meanBs - stdDevBs, yCoord, meanBs + stdDevBs, yCoord)
+      lineBs.SetLineColor(ROOT.kBlue + 1)
+      lineBs.Draw()
+      # indicate estimate from uncertainty propagation
+      meanEst, stdDevEst = HVal.realOrImag(realPart = momentPart == "Re")
+      markerEst = ROOT.TMarker(meanEst,  yCoord / 2, ROOT.kFullCircle)
+      markerEst.SetMarkerColor(ROOT.kGreen + 2)
+      markerEst.SetMarkerSize(0.75)
+      markerEst.Draw()
+      lineEst = ROOT.TLine(meanEst - stdDevEst, yCoord / 2, meanEst + stdDevEst, yCoord / 2)
+      lineEst.SetLineColor(ROOT.kGreen + 2)
+      lineEst.Draw()
+      # plot Gaussian that corresponds to estimate from uncertainty propagation
+      gaussian = ROOT.TF1("gaussian", "gausn(0)", center - halfRange, center + halfRange)
+      gaussian.SetParameters(len(momentSamples) * histBs.GetBinWidth(1), meanEst, stdDevEst)
+      gaussian.SetLineColor(ROOT.kGreen + 2)
+      gaussian.Draw("SAME")
       # indicate true value
       if HVal.truth is not None:
         lineTrue = ROOT.TLine(HVal.truth.real, 0, HVal.truth.real, histBs.GetMaximum())
         lineTrue.SetLineColor(ROOT.kRed + 1)
         lineTrue.SetLineStyle(ROOT.kDashed)
         lineTrue.Draw()
-      # indicate boostrap estimate
-      meanBs   = np.mean(vals)
-      stdDevBs = np.std(vals, ddof = 1)
-      yCoord = histBs.GetMaximum() / 8
-      markerBs = ROOT.TMarker(meanBs, yCoord, ROOT.kFullCircle)
-      markerBs.SetMarkerColor(ROOT.kGreen + 2)
-      markerBs.SetMarkerSize(0.75)
-      markerBs.Draw()
-      lineBs = ROOT.TLine(meanBs - stdDevBs, yCoord, meanBs + stdDevBs, yCoord)
-      lineBs.SetLineColor(ROOT.kGreen + 2)
-      lineBs.Draw()
-      # indicate estimate from uncertainty propagation
-      meanEst, stdDevEst = HVal.realOrImag(realPart = momentPart == "Re")
-      markerEstimate = ROOT.TMarker(meanEst, 2 * yCoord, ROOT.kOpenCircle)
-      markerEstimate.SetMarkerColor(ROOT.kBlue + 1)
-      markerEstimate.SetMarkerSize(0.75)
-      markerEstimate.Draw()
-      lineEstimate = ROOT.TLine(meanEst - stdDevEst, 2 * yCoord, meanEst + stdDevEst, 2 * yCoord)
-      lineEstimate.SetLineColor(ROOT.kBlue + 1)
-      lineEstimate.Draw()
-      # canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+      # add legend
+      legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
+      legend.AddEntry(histBs, "Bootstrap samples", "LE")
+      entry = legend.AddEntry(markerBs, "Bootstrap estimate", "LP")
+      entry.SetLineColor(ROOT.kBlue + 1)
+      entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
+      entry.SetLineColor(ROOT.kGreen + 2)
+      legend.AddEntry(gaussian,  "Nominal estimate Gaussian", "LP")
+      if HVal.truth is not None:
+        legend.AddEntry(lineTrue, "True value", "L")
+      legend.Draw()
       canv.SaveAs(f"{histBs.GetName()}.pdf")
