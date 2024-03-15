@@ -360,7 +360,7 @@ def plotMoments1D(
   histTitle:         str = "",    # histogram title
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
-  # filter out specific moment
+  # filter out specific moment given by qnIndex
   HVals = tuple(MomentValueAndTruth(
       *HData.HPhys[qnIndex],
       truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
@@ -369,7 +369,7 @@ def plotMoments1D(
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
 
 
-def plotMomentsBootStrap(
+def plotMomentsBootstrapInBin(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
   HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
   pdfFileNamePrefix: str = "h",  # name prefix for output files
@@ -384,23 +384,23 @@ def plotMomentsBootStrap(
     HValsBs = HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]]
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # create histogram with bootstrap samples
-      momentSamples = HValsBs.real if momentPart == "Re" else HValsBs.imag
-      min = np.min(momentSamples)
-      max = np.max(momentSamples)
+      momentSamplesBs = HValsBs.real if momentPart == "Re" else HValsBs.imag
+      min = np.min(momentSamplesBs)
+      max = np.max(momentSamplesBs)
       halfRange = (max - min) * 1.1 / 2.0
       center = (min + max) / 2.0
       histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f";{HVal.qn.title} {legendEntrySuffix};Count",
                          nmbBins, center - halfRange, center + halfRange)
       # fill histogram
-      np.vectorize(histBs.Fill)(momentSamples)
+      np.vectorize(histBs.Fill)(momentSamplesBs)
       # draw histogram
       canv = ROOT.TCanvas()
       histBs.SetMinimum(0)
       histBs.SetLineColor(ROOT.kBlue + 1)
       histBs.Draw("E")
       # indicate boostrap estimate
-      meanBs   = np.mean(momentSamples)
-      stdDevBs = np.std(momentSamples, ddof = 1)
+      meanBs   = np.mean(momentSamplesBs)
+      stdDevBs = np.std(momentSamplesBs, ddof = 1)
       yCoord = histBs.GetMaximum() / 4
       markerBs = ROOT.TMarker(meanBs, yCoord, ROOT.kFullCircle)
       markerBs.SetMarkerColor(ROOT.kBlue + 1)
@@ -420,7 +420,7 @@ def plotMomentsBootStrap(
       lineEst.Draw()
       # plot Gaussian that corresponds to estimate from uncertainty propagation
       gaussian = ROOT.TF1("gaussian", "gausn(0)", center - halfRange, center + halfRange)
-      gaussian.SetParameters(len(momentSamples) * histBs.GetBinWidth(1), meanEst, stdDevEst)
+      gaussian.SetParameters(len(momentSamplesBs) * histBs.GetBinWidth(1), meanEst, stdDevEst)
       gaussian.SetLineColor(ROOT.kGreen + 2)
       gaussian.Draw("SAME")
       # indicate true value
@@ -441,3 +441,56 @@ def plotMomentsBootStrap(
         legend.AddEntry(lineTrue, "True value", "L")
       legend.Draw()
       canv.SaveAs(f"{histBs.GetName()}.pdf")
+
+
+def plotMomentsBootstrap1D(
+  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
+  qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
+  binning:           HistAxisBinning,                 # binning to use for plot
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  graphTitle:        str = "",   # histogram title
+) -> None:
+  """Plots relative differences of estimates for moments and their uncertainties as a function of the binning variable"""
+  # filter out specific moment given by qnIndex
+  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
+  # create graphs with relative differences
+  graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_valDiff",
+                                           f"{graphTitle};{binning.axisTitle}" + ";#it{H}_{BS} - #it{H}_{Nom} / #it{#sigma}_{BS}")
+  graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_uncertDiff",
+                                           f"{graphTitle};{binning.axisTitle}" + ";#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
+  colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
+  for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
+    # get nominal estimates and uncertainties
+    kinVarVals      = np.array([H.binCenters[binning.var]                      for H in HVals], dtype = "d")
+    momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = "d")
+    momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = "d")
+    # get bootstrap estimates and uncertainties
+    assert all(HData.HPhys._bsSamplesFlatIndex is not None for HData in moments), "Bootstrap samples must be present"
+    momentSamplesBs = tuple(HData.HPhys._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]] for HData in moments)  # samples for each bin
+    momentSamplesBs = tuple(bsSamples.real if momentPart == "Re" else bsSamples.imag for bsSamples in momentSamplesBs)  # take only real or imaginary part
+    momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = "d")
+    momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = "d")
+    # create graphs with relative differences
+    graphMomentValDiffPart    = ROOT.TGraph(len(kinVarVals), kinVarVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
+    graphMomentUncertDiffPart = ROOT.TGraph(len(kinVarVals), kinVarVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
+    # improve style of graphs
+    for graph in (graphMomentValDiffPart, graphMomentUncertDiffPart):
+      graph.SetTitle(legendEntrySuffix)
+      graph.SetMarkerColor(colors[momentPart])
+      graph.SetMarkerStyle(ROOT.kOpenCircle)
+      graph.SetMarkerSize(0.75)
+    graphMomentValDiff.Add(graphMomentValDiffPart)
+    graphMomentUncertDiff.Add(graphMomentUncertDiffPart)
+  # draw graphs
+  for graph in (graphMomentValDiff, graphMomentUncertDiff):
+    canv = ROOT.TCanvas()
+    graph.SetMinimum(-0.2)
+    graph.SetMaximum(+0.2)
+    graph.Draw("APZ")
+    canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+    zeroLine = ROOT.TLine()
+    zeroLine.SetLineColor(ROOT.kBlack)
+    zeroLine.SetLineStyle(ROOT.kDashed)
+    xAxis = graph.GetXaxis()
+    zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    canv.SaveAs(f"{graph.GetName()}.pdf")

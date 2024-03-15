@@ -602,21 +602,25 @@ class MomentCalculator:
     """Returns acceptance integral matrix"""
     assert self._integralMatrix is not None, "self._integralMatrix must not be None"
     return self._integralMatrix
+
   @property
   def HMeas(self) -> MomentResult:
     """Returns physical moments"""
     assert self._HMeas is not None, "self._HMeas must not be None"
     return self._HMeas
+
   @property
   def HPhys(self) -> MomentResult:
     """Returns physical moments"""
     assert self._HPhys is not None, "self._HPhys must not be None"
     return self._HPhys
+
   @property
   def binCenters(self) -> Dict[KinematicBinningVariable, float]:
     """Returns dictionary with kinematic variables and bin centers"""
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
+
   @binCenters.setter
   def binCenters(
     self,
