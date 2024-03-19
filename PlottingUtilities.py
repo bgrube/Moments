@@ -380,7 +380,7 @@ def plotMomentsBootstrapDistributions(
   # generate separate plots for each moment index
   for qnIndex in HData.indices.QnIndices():
     HVal = MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None)  # type: ignore
-    assert HData._bsSamplesFlatIndex is not None, "Bootstrap samples must be present"
+    assert HData.hasBootstrapSamples, "Bootstrap samples must be present"
     HValsBs = HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]]
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # create histogram with bootstrap samples
@@ -459,20 +459,20 @@ def plotMomentsBootstrapDiff1D(
   graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_uncertDiff",
                                            f"{graphTitle};{binning.axisTitle}" + ";#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
   colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
+  xVals  = np.array([H.binCenters[binning.var] for H in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     # get nominal estimates and uncertainties
-    kinVarVals      = np.array([H.binCenters[binning.var]                      for H in HVals], dtype = "d")
-    momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = "d")
-    momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = "d")
+    momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = npt.Float64)
+    momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = npt.Float64)
     # get bootstrap estimates and uncertainties
-    assert all(HData.HPhys._bsSamplesFlatIndex is not None for HData in moments), "Bootstrap samples must be present"
+    assert all(HData.HPhys.hasBootstrapSamples for HData in moments), "Bootstrap samples must be present"
     momentSamplesBs = tuple(HData.HPhys._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]] for HData in moments)  # samples for each bin
     momentSamplesBs = tuple(bsSamples.real if momentPart == "Re" else bsSamples.imag for bsSamples in momentSamplesBs)  # take only real or imaginary part
-    momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = "d")
-    momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = "d")
+    momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = npt.Float64)
+    momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = npt.Float64)
     # create graphs with relative differences
-    graphMomentValDiffPart    = ROOT.TGraph(len(kinVarVals), kinVarVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
-    graphMomentUncertDiffPart = ROOT.TGraph(len(kinVarVals), kinVarVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
+    graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
+    graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
     # improve style of graphs
     for graph in (graphMomentValDiffPart, graphMomentUncertDiffPart):
       graph.SetTitle(legendEntrySuffix)
@@ -511,17 +511,17 @@ def plotMomentsBootstrapDiffInBin(
     graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_uncertDiff",
                                              ";;#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
     colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
+    xVals  = np.arange(len(HVals), dtype = npt.Float64)
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # get nominal estimates and uncertainties
-      xVals           = np.arange(len(HVals), dtype = "d")
-      momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = "d")
-      momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = "d")
+      momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = npt.Float64)
+      momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = npt.Float64)
       # get bootstrap estimates and uncertainties
-      assert HData._bsSamplesFlatIndex is not None, "Bootstrap samples must be present"
+      assert HData.hasBootstrapSamples, "Bootstrap samples must be present"
       momentSamplesBs = tuple(HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[H.qn]] for H in HVals)  # samples for each moment
       momentSamplesBs = tuple(bsSamples.real if momentPart == "Re" else bsSamples.imag for bsSamples in momentSamplesBs)  # take only real or imaginary part
-      momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = "d")
-      momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = "d")
+      momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = npt.Float64)
+      momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = npt.Float64)
       # create graphs with relative differences
       graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
       graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
@@ -540,18 +540,11 @@ def plotMomentsBootstrapDiffInBin(
       for binIndex, H in enumerate(HVals):
         histDummy.GetXaxis().SetBinLabel(binIndex + 1, H.qn.title)
       histDummy.SetYTitle(graph.GetYaxis().GetTitle())
-      # histDummy.SetMinimum(-0.2)
-      # histDummy.SetMaximum(+0.2)
       histDummy.SetMinimum(-1)
       histDummy.SetMaximum(+1)
       histDummy.Draw()
-      graph.Draw("P")  # !NOTE! graphs don't have a SAME option
+      graph.Draw("P")  # !NOTE! graphs don't have a SAME option; "SAME" will be interpreted as "A"
       canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-      # zeroLine = ROOT.TLine()
-      # zeroLine.SetLineColor(ROOT.kBlack)
-      # zeroLine.SetLineStyle(ROOT.kDashed)
-      # xAxis = histDummy.GetXaxis()
-      # zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
       legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
       for g in graph.GetListOfGraphs():
         legend.AddEntry(g, g.GetTitle(), "P")
