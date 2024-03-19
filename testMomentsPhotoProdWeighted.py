@@ -243,7 +243,7 @@ if __name__ == "__main__":
       plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
       if nmbBootstrapSamples > 0:
         plotMomentsBootstrapDistributions(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-        plotMomentsBootstrapDiffInBin(moments[0].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsBootstrapDiffInBin    (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
 
     timer.stop("Total execution time")
     print(timer.summary)

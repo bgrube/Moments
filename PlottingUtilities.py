@@ -442,35 +442,33 @@ def plotMomentsBootstrapDistributions(
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
 
-def plotMomentsBootstrapDiff1D(
-  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
-  qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
-  binning:           HistAxisBinning,                 # binning to use for plot
+def plotMomentsBootstrapDiff(
+  HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data
+  momentLabel:       str,  # label used in graph names and output file name
+  binning:           Optional[HistAxisBinning] = None,  # binning to use for plot; if None moment index is used as x-axis
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   graphTitle:        str = "",   # graph title
 ) -> None:
-  """Plots relative differences of estimates for moments and their uncertainties as a function of the binning variable"""
-  # get values of moment that corresponds to the given qnIndex in all kinematic bins
-  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
+  """Plots relative differences of estimates and their uncertainties for all given moments as function of moment index or binning variable"""
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
   # create graphs with relative differences
-  graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_valDiff",
-                                           f"{graphTitle};{binning.axisTitle}" + ";#it{H}_{BS} - #it{H}_{Nom} / #it{#sigma}_{BS}")
-  graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_uncertDiff",
-                                           f"{graphTitle};{binning.axisTitle}" + ";#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
+  graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_valDiff",
+                                           f"{graphTitle};{('' if binning is None else binning.axisTitle)}" + ";#it{H}_{BS} - #it{H}_{Nom} / #it{#sigma}_{BS}")
+  graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_uncertDiff",
+                                           f"{graphTitle};{('' if binning is None else binning.axisTitle)}" + ";#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
   colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
-  xVals  = np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
+  xVals  = np.arange(len(HVals), dtype = npt.Float64) if binning is None else np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     # get nominal estimates and uncertainties
-    momentValsEst    = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
-    momentUncertsEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
+    momentValsEst   = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
+    momentUncertEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
     # get bootstrap estimates and uncertainties
     momentsBs       = tuple(HVal.bootstrapEstimate(realPart = (momentPart == "Re")) for HVal in HVals)
     momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
-    momentUncertsBs = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
+    momentUncertBs  = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
     # create graphs with relative differences
-    graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs    - momentValsEst)   / momentUncertsBs)
-    graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertsBs - momentUncertsEst) / momentUncertsBs)
+    graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
+    graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
     # improve style of graphs
     for graph in (graphMomentValDiffPart, graphMomentUncertDiffPart):
       graph.SetTitle(legendEntrySuffix)
@@ -482,16 +480,35 @@ def plotMomentsBootstrapDiff1D(
   # draw graphs
   for graph in (graphMomentValDiff, graphMomentUncertDiff):
     canv = ROOT.TCanvas()
-    graph.SetMinimum(-0.2)
-    graph.SetMaximum(+0.2)
-    graph.Draw("APZ")
+    histBinning = (len(HVals), -0.5, len(HVals) - 0.5) if binning is None else binning.astuple
+    histDummy = ROOT.TH1D("dummy", "", *histBinning)  # dummy histogram needed for x-axis bin labels
+    if binning is None:
+      for binIndex, HVal in enumerate(HVals):
+        histDummy.GetXaxis().SetBinLabel(binIndex + 1, HVal.qn.title)
+    histDummy.SetYTitle(graph.GetYaxis().GetTitle())
+    histDummy.SetMinimum(-1)
+    histDummy.SetMaximum(+1)
+    histDummy.Draw()
+    graph.Draw("P")  # !NOTE! graphs don't have a SAME option; "SAME" will be interpreted as "A"
     canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-    zeroLine = ROOT.TLine()
-    zeroLine.SetLineColor(ROOT.kBlack)
-    zeroLine.SetLineStyle(ROOT.kDashed)
-    xAxis = graph.GetXaxis()
-    zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
+    for g in graph.GetListOfGraphs():
+      legend.AddEntry(g, g.GetTitle(), "P")
+    legend.Draw()
     canv.SaveAs(f"{graph.GetName()}.pdf")
+
+
+def plotMomentsBootstrapDiff1D(
+  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
+  qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
+  binning:           HistAxisBinning,                 # binning to use for plot
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  graphTitle:        str = "",   # graph title
+) -> None:
+  """Plots relative differences of estimates for moments and their uncertainties as a function of binning variable"""
+  # get values of moment that corresponds to the given qnIndex in all kinematic bins
+  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
+  plotMomentsBootstrapDiff(HVals, momentLabel = qnIndex.label, binning = binning, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", graphTitle = graphTitle)
 
 
 def plotMomentsBootstrapDiffInBin(
@@ -502,48 +519,4 @@ def plotMomentsBootstrapDiffInBin(
   for momentIndex in range(3):
     # get moments with index momentIndex
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], truth = None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
-    assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
-    # create graphs with relative differences
-    momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}"
-    graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_valDiff",
-                                             ";;#it{H}_{BS} - #it{H}_{Nom} / #it{#sigma}_{BS}")
-    graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_uncertDiff",
-                                             ";;#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
-    colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
-    xVals  = np.arange(len(HVals), dtype = npt.Float64)
-    for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
-      # get nominal estimates and uncertainties
-      momentValsEst   = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
-      momentUncertEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
-      # get bootstrap estimates and uncertainties
-      momentsBs       = tuple(HVal.bootstrapEstimate(realPart = (momentPart == "Re")) for HVal in HVals)
-      momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
-      momentUncertBs  = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
-      # create graphs with relative differences
-      graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
-      graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
-      # improve style of graphs
-      for graph in (graphMomentValDiffPart, graphMomentUncertDiffPart):
-        graph.SetTitle(legendEntrySuffix)
-        graph.SetMarkerColor(colors[momentPart])
-        graph.SetMarkerStyle(ROOT.kOpenCircle)
-        graph.SetMarkerSize(0.75)
-      graphMomentValDiff.Add(graphMomentValDiffPart)
-      graphMomentUncertDiff.Add(graphMomentUncertDiffPart)
-    # draw graphs
-    for graph in (graphMomentValDiff, graphMomentUncertDiff):
-      canv = ROOT.TCanvas()
-      histDummy = ROOT.TH1D("dummy", "", len(HVals), -0.5, len(HVals) - 0.5)  # dummy histogram to set x-axis labels
-      for binIndex, HVal in enumerate(HVals):
-        histDummy.GetXaxis().SetBinLabel(binIndex + 1, HVal.qn.title)
-      histDummy.SetYTitle(graph.GetYaxis().GetTitle())
-      histDummy.SetMinimum(-1)
-      histDummy.SetMaximum(+1)
-      histDummy.Draw()
-      graph.Draw("P")  # !NOTE! graphs don't have a SAME option; "SAME" will be interpreted as "A"
-      canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-      legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
-      for g in graph.GetListOfGraphs():
-        legend.AddEntry(g, g.GetTitle(), "P")
-      legend.Draw()
-      canv.SaveAs(f"{graph.GetName()}.pdf")
+    plotMomentsBootstrapDiff(HVals, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)

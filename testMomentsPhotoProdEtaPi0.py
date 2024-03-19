@@ -6,9 +6,7 @@ import functools
 import numpy as np
 import pandas as pd
 import threadpoolctl
-from typing import (
-  List,
-)
+from typing import List
 
 import ROOT
 
@@ -17,6 +15,7 @@ from PlottingUtilities import (
   HistAxisBinning,
   plotComplexMatrix,
   plotMomentsBootstrapDiff1D,
+  plotMomentsBootstrapDiffInBin,
   plotMomentsBootstrapDistributions,
   plotMoments1D,
   plotMomentsInBin,
@@ -198,8 +197,8 @@ if __name__ == "__main__":
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
         if nmbBootstrapSamples > 0:
-          plotMomentsBootstrapDistributions(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
-                                            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+          plotMomentsBootstrapDistributions(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+          plotMomentsBootstrapDiffInBin    (momentsInBin.HPhys,                                   pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():
