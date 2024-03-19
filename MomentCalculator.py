@@ -451,11 +451,12 @@ class AcceptanceIntegralMatrix:
 @dataclass
 class MomentValue:
   """Container class that stores and provides access to single moment value"""
-  qn:       QnMomentIndex  # quantum numbers
-  val:      complex   # moment value
-  uncertRe: float     # uncertainty of real part
-  uncertIm: float     # uncertainty of imaginary part
-  label:    str = ""  # label used for printing
+  qn:        QnMomentIndex  # quantum numbers
+  val:       complex   # moment value
+  uncertRe:  float     # uncertainty of real part
+  uncertIm:  float     # uncertainty of imaginary part
+  label:     str = ""  # label used for printing
+  bsSamples: npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __iter__(self):
     """Returns iterator over shallow copy of fields"""
@@ -486,6 +487,22 @@ class MomentValue:
       return self.real
     else:
       return self.imag
+
+  @property
+  def hasBootstrapSamples(self) -> bool:
+    """Returns whether bootstrap samples exist"""
+    return self.bsSamples.size > 0
+
+  def bootstrapEstimate(
+    self,
+    realPart: bool,  # switched between real part (True) and imaginary part (False)
+  ) -> Tuple[float, float]:
+    """Returns bootstrap estimate and its uncertainty for real or imaginary part"""
+    assert self.hasBootstrapSamples, "No bootstrap samples available"
+    bsSamples = self.bsSamples.real if realPart else self.bsSamples.imag
+    bsVal     = float(np.mean(bsSamples))
+    bsUncert  = float(np.std(bsSamples, ddof = 1))
+    return (bsVal, bsUncert)
 
 
 @dataclass(eq = False)
@@ -547,20 +564,22 @@ class MomentResult:
     if isinstance(flatIndex, slice):
       return [
         MomentValue(
-          qn       = self.indices[i],
-          val      = self._valsFlatIndex[i],
-          uncertRe = np.sqrt(self._covReReFlatIndex[i, i]),
-          uncertIm = np.sqrt(self._covImImFlatIndex[i, i]),
-          label    = self.label,
+          qn        = self.indices[i],
+          val       = self._valsFlatIndex[i],
+          uncertRe  = np.sqrt(self._covReReFlatIndex[i, i]),
+          uncertIm  = np.sqrt(self._covImImFlatIndex[i, i]),
+          bsSamples = self._bsSamplesFlatIndex[i],
+          label     = self.label,
         ) for i in range(*flatIndex.indices(len(self.indices)))
       ]
     elif isinstance(flatIndex, int):
       return MomentValue(
-        qn       = self.indices[flatIndex],
-        val      = self._valsFlatIndex[flatIndex],
-        uncertRe = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
-        uncertIm = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
-        label    = self.label,
+        qn        = self.indices[flatIndex],
+        val       = self._valsFlatIndex[flatIndex],
+        uncertRe  = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
+        uncertIm  = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
+        bsSamples = self._bsSamplesFlatIndex[flatIndex],
+        label     = self.label,
       )
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")

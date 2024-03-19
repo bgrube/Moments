@@ -214,7 +214,7 @@ def plotMoments(
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
   xAxisTitle = "" if binning is None else binning.axisTitle
-  trueValues = any((H.truth is not None for H in HVals))
+  trueValues = any((HVal.truth is not None for HVal in HVals))
 
   # (i) plot moments from data and overlay with true values (if given)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
@@ -222,15 +222,15 @@ def plotMoments(
                              f"{histTitle};{xAxisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value")
     # create histogram with moments from data
     histData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", *histBinning.astuple)
-    for index, H in enumerate(HVals):
-      if (binning is not None) and (binning._var not in H.binCenters.keys()):
+    for index, HVal in enumerate(HVals):
+      if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
         continue
-      y, yErr = H.realOrImag(realPart = momentPart == "Re")
-      binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(H.binCenters[binning.var])
+      y, yErr = HVal.realOrImag(realPart = (momentPart == "Re"))
+      binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
       histData.SetBinContent(binIndex, y)
       histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
       if binning is None:
-        histData.GetXaxis().SetBinLabel(binIndex, H.qn.title)  # categorical x axis with moment labels
+        histData.GetXaxis().SetBinLabel(binIndex, HVal.qn.title)  # categorical x axis with moment labels
     histData.SetLineColor(ROOT.kRed)
     histData.SetMarkerColor(ROOT.kRed)
     histData.SetMarkerStyle(ROOT.kFullCircle)
@@ -239,9 +239,9 @@ def plotMoments(
     if trueValues:
       # create histogram with true values
       histTrue = ROOT.TH1D("True values", "", *histBinning.astuple)
-      for index, H in enumerate(HVals):
-        if H.truth is not None:
-          y = H.truth.real if momentPart == "Re" else H.truth.imag
+      for index, HVal in enumerate(HVals):
+        if HVal.truth is not None:
+          y = HVal.truth.real if momentPart == "Re" else HVal.truth.imag
           binIndex = index + 1
           histTrue.SetBinContent(binIndex, y)
           histTrue.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
@@ -282,15 +282,15 @@ def plotMoments(
       # calculate residuals; NaN flags histogram bins, for which truth info is missing
       residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
       indicesToMask: List[int] = []
-      for index, H in enumerate(HVals):
-        if (binning is not None) and (binning._var not in H.binCenters.keys()):
+      for index, HVal in enumerate(HVals):
+        if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
           continue
-        if H.truth is not None:
-          dataVal, dataValErr = H.realOrImag     (realPart = momentPart == "Re")
-          trueVal             = H.truthRealOrImag(realPart = momentPart == "Re")
-          binIndex = index if binning is None else histResidual.GetXaxis().FindBin(H.binCenters[binning.var]) - 1
+        if HVal.truth is not None:
+          dataVal, dataValErr = HVal.realOrImag     (realPart = (momentPart == "Re"))
+          trueVal             = HVal.truthRealOrImag(realPart = (momentPart == "Re"))
+          binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
-          if normalizedMoments and (H.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
+          if normalizedMoments and (HVal.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
             indicesToMask.append(binIndex)  # exclude H_0(0, 0) from plotting and chi^2 calculation
       # calculate chi^2
       # if moments were normalized, exclude Re and Im of H_0(0, 0) because it is always 1 by definition
@@ -380,11 +380,10 @@ def plotMomentsBootstrapDistributions(
   # generate separate plots for each moment index
   for qnIndex in HData.indices.QnIndices():
     HVal = MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None)  # type: ignore
-    assert HData.hasBootstrapSamples, "Bootstrap samples must be present"
-    HValsBs = HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]]
+    assert HVal.hasBootstrapSamples, "Bootstrap samples must be present"
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # create histogram with bootstrap samples
-      momentSamplesBs = HValsBs.real if momentPart == "Re" else HValsBs.imag
+      momentSamplesBs = HVal.bsSamples.real if momentPart == "Re" else HVal.bsSamples.imag
       min = np.min(momentSamplesBs)
       max = np.max(momentSamplesBs)
       halfRange = (max - min) * 1.1 / 2.0
@@ -410,7 +409,7 @@ def plotMomentsBootstrapDistributions(
       lineBs.SetLineColor(ROOT.kBlue + 1)
       lineBs.Draw()
       # indicate estimate from uncertainty propagation
-      meanEst, stdDevEst = HVal.realOrImag(realPart = momentPart == "Re")
+      meanEst, stdDevEst = HVal.realOrImag(realPart = (momentPart == "Re"))
       markerEst = ROOT.TMarker(meanEst,  yCoord / 2, ROOT.kFullCircle)
       markerEst.SetMarkerColor(ROOT.kGreen + 2)
       markerEst.SetMarkerSize(0.75)
@@ -453,26 +452,25 @@ def plotMomentsBootstrapDiff1D(
   """Plots relative differences of estimates for moments and their uncertainties as a function of the binning variable"""
   # get values of moment that corresponds to the given qnIndex in all kinematic bins
   HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
+  assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
   # create graphs with relative differences
   graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_valDiff",
                                            f"{graphTitle};{binning.axisTitle}" + ";#it{H}_{BS} - #it{H}_{Nom} / #it{#sigma}_{BS}")
   graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{qnIndex.label}_uncertDiff",
                                            f"{graphTitle};{binning.axisTitle}" + ";#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
   colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
-  xVals  = np.array([H.binCenters[binning.var] for H in HVals], dtype = npt.Float64)
+  xVals  = np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     # get nominal estimates and uncertainties
-    momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = npt.Float64)
-    momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = npt.Float64)
+    momentValsEst    = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
+    momentUncertsEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
     # get bootstrap estimates and uncertainties
-    assert all(HData.HPhys.hasBootstrapSamples for HData in moments), "Bootstrap samples must be present"
-    momentSamplesBs = tuple(HData.HPhys._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[qnIndex]] for HData in moments)  # samples for each bin
-    momentSamplesBs = tuple(bsSamples.real if momentPart == "Re" else bsSamples.imag for bsSamples in momentSamplesBs)  # take only real or imaginary part
-    momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = npt.Float64)
-    momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = npt.Float64)
+    momentsBs       = tuple(HVal.bootstrapEstimate(realPart = (momentPart == "Re")) for HVal in HVals)
+    momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
+    momentUncertsBs = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
     # create graphs with relative differences
-    graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
-    graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
+    graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs    - momentValsEst)   / momentUncertsBs)
+    graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertsBs - momentUncertsEst) / momentUncertsBs)
     # improve style of graphs
     for graph in (graphMomentValDiffPart, graphMomentUncertDiffPart):
       graph.SetTitle(legendEntrySuffix)
@@ -504,6 +502,7 @@ def plotMomentsBootstrapDiffInBin(
   for momentIndex in range(3):
     # get moments with index momentIndex
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], truth = None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
+    assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
     # create graphs with relative differences
     momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}"
     graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_valDiff",
@@ -514,14 +513,12 @@ def plotMomentsBootstrapDiffInBin(
     xVals  = np.arange(len(HVals), dtype = npt.Float64)
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # get nominal estimates and uncertainties
-      momentValsEst   = np.array([H.realOrImag(realPart = momentPart == "Re")[0] for H in HVals], dtype = npt.Float64)
-      momentUncertEst = np.array([H.realOrImag(realPart = momentPart == "Re")[1] for H in HVals], dtype = npt.Float64)
+      momentValsEst   = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
+      momentUncertEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
       # get bootstrap estimates and uncertainties
-      assert HData.hasBootstrapSamples, "Bootstrap samples must be present"
-      momentSamplesBs = tuple(HData._bsSamplesFlatIndex[HData.indices.indexMap.flatIndex_for[H.qn]] for H in HVals)  # samples for each moment
-      momentSamplesBs = tuple(bsSamples.real if momentPart == "Re" else bsSamples.imag for bsSamples in momentSamplesBs)  # take only real or imaginary part
-      momentValsBs    = np.array([np.mean(bsSamples)          for bsSamples in momentSamplesBs], dtype = npt.Float64)
-      momentUncertBs  = np.array([np.std(bsSamples, ddof = 1) for bsSamples in momentSamplesBs], dtype = npt.Float64)
+      momentsBs       = tuple(HVal.bootstrapEstimate(realPart = (momentPart == "Re")) for HVal in HVals)
+      momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
+      momentUncertBs  = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
       # create graphs with relative differences
       graphMomentValDiffPart    = ROOT.TGraph(len(xVals), xVals, (momentValsBs   - momentValsEst)   / momentUncertBs)
       graphMomentUncertDiffPart = ROOT.TGraph(len(xVals), xVals, (momentUncertBs - momentUncertEst) / momentUncertBs)
@@ -537,8 +534,8 @@ def plotMomentsBootstrapDiffInBin(
     for graph in (graphMomentValDiff, graphMomentUncertDiff):
       canv = ROOT.TCanvas()
       histDummy = ROOT.TH1D("dummy", "", len(HVals), -0.5, len(HVals) - 0.5)  # dummy histogram to set x-axis labels
-      for binIndex, H in enumerate(HVals):
-        histDummy.GetXaxis().SetBinLabel(binIndex + 1, H.qn.title)
+      for binIndex, HVal in enumerate(HVals):
+        histDummy.GetXaxis().SetBinLabel(binIndex + 1, HVal.qn.title)
       histDummy.SetYTitle(graph.GetYaxis().GetTitle())
       histDummy.SetMinimum(-1)
       histDummy.SetMaximum(+1)
