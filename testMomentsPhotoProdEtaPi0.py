@@ -16,8 +16,8 @@ import MomentCalculator
 from PlottingUtilities import (
   HistAxisBinning,
   plotComplexMatrix,
-  plotMomentsBootstrap1D,
-  plotMomentsBootstrapInBin,
+  plotMomentsBootstrapDiff1D,
+  plotMomentsBootstrapDistributions,
   plotMoments1D,
   plotMomentsInBin,
   setupPlotStyle,
@@ -198,15 +198,15 @@ if __name__ == "__main__":
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
         if nmbBootstrapSamples > 0:
-          plotMomentsBootstrapInBin(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
-                                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+          plotMomentsBootstrapDistributions(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():
         plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
         if nmbBootstrapSamples > 0:
-          plotMomentsBootstrap1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
+          plotMomentsBootstrapDiff1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
 
       print("Check H_0(0, 0):")
       H000Index = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)
