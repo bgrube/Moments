@@ -278,7 +278,7 @@ if __name__ == "__main__":
     print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
     # plot acceptance integral matrices for all kinematic bins
     for HData in moments:
-      binLabel = "_".join(HData.fileNameBinLabels)
+      binLabel = "_".join(HData.binLabels)
       PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
       PlottingUtilities.plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
     t.stop()
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     print(f"Physical moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HPhys}")
     # plot moments in each kinematic bin
     for HData in moments:
-      binLabel = "_".join(HData.fileNameBinLabels)
+      binLabel = "_".join(HData.binLabels)
       PlottingUtilities.plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h{binLabel}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.QnIndices():

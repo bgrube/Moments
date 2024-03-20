@@ -29,7 +29,7 @@ from typing import (
   Tuple,
   Union,
 )
-#TODO switch from int for indices to SupportsIndex; but this requires Python 3.8+
+#TODO switch from int for indices to SupportsIndex; requires Python 3.8+
 
 import py3nj
 import ROOT
@@ -343,24 +343,24 @@ class AcceptanceIntegralMatrix:
   def __getitem__(
     self,
     subscript: Tuple[slice, Union[int, QnMomentIndex]],
-  ) -> Optional[npt.NDArray[npt.Shape[Any], npt.Complex128]]: ...
+  ) -> Optional[npt.NDArray[npt.Shape["Slice"], npt.Complex128]]: ...
 
   @overload
   def __getitem__(
     self,
     subscript: Tuple[Union[int, QnMomentIndex], slice],
-  ) -> Optional[npt.NDArray[npt.Shape[Any], npt.Complex128]]: ...
+  ) -> Optional[npt.NDArray[npt.Shape["Slice"], npt.Complex128]]: ...
 
   @overload
   def __getitem__(
     self,
     subscript: Tuple[slice, slice],
-  ) -> Optional[npt.NDArray[npt.Shape[Any, Any], npt.Complex128]]: ...
+  ) -> Optional[npt.NDArray[npt.Shape["Slice1, Slice2"], npt.Complex128]]: ...
 
   def __getitem__(
     self,
     subscript: Tuple[Union[int, QnMomentIndex, slice], Union[int, QnMomentIndex, slice]],
-  ) -> Optional[Union[complex, npt.NDArray[npt.Shape[Any], npt.Complex128], npt.NDArray[npt.Shape[Any, Any], npt.Complex128]]]:
+  ) -> Optional[Union[complex, npt.NDArray[npt.Shape["Slice"], npt.Complex128], npt.NDArray[npt.Shape["Slice1, Slice2"], npt.Complex128]]]:
     """Returns acceptance integral matrix elements for any combination of flat and quantum-number indices"""
     if self._IFlatIndex is None:
       return None
@@ -451,11 +451,12 @@ class AcceptanceIntegralMatrix:
 @dataclass
 class MomentValue:
   """Container class that stores and provides access to single moment value"""
-  qn:       QnMomentIndex  # quantum numbers
-  val:      complex   # moment value
-  uncertRe: float     # uncertainty of real part
-  uncertIm: float     # uncertainty of imaginary part
-  label:    str = ""  # label used for printing
+  qn:        QnMomentIndex  # quantum numbers
+  val:       complex   # moment value
+  uncertRe:  float     # uncertainty of real part
+  uncertIm:  float     # uncertainty of imaginary part
+  label:     str = ""  # label used for printing
+  bsSamples: npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __iter__(self):
     """Returns iterator over shallow copy of fields"""
@@ -487,23 +488,43 @@ class MomentValue:
     else:
       return self.imag
 
+  @property
+  def hasBootstrapSamples(self) -> bool:
+    """Returns whether bootstrap samples exist"""
+    return self.bsSamples.size > 0
+
+  def bootstrapEstimate(
+    self,
+    realPart: bool,  # switched between real part (True) and imaginary part (False)
+  ) -> Tuple[float, float]:
+    """Returns bootstrap estimate and its uncertainty for real or imaginary part"""
+    assert self.hasBootstrapSamples, "No bootstrap samples available"
+    bsSamples = self.bsSamples.real if realPart else self.bsSamples.imag
+    bsVal     = float(np.mean(bsSamples))
+    bsUncert  = float(np.std(bsSamples, ddof = 1))
+    return (bsVal, bsUncert)
+
 
 @dataclass(eq = False)
 class MomentResult:
   """Container class that stores and provides access to moment values"""
-  indices:           MomentIndices  # index mapping and iterators
-  label:             str = ""       # label used for printing
-  _valsFlatIndex:    npt.NDArray[npt.Shape["Dim"],      npt.Complex128] = field(init = False)  # flat array with moment values
-  _covReReFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
-  _covImImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
-  _covReImFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
+  indices:             MomentIndices  # index mapping and iterators
+  label:               str = ""  # label used for printing
+  nmbBootstrapSamples: int = 0   # number of bootstrap samples
+  bootstrapSeed:       int = 0   # seed for random number generator used for bootstrap samples
+  _valsFlatIndex:      npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
+  _covReReFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
+  _covImImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
+  _covReImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
+  _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __post_init__(self) -> None:
     nmbMoments = len(self.indices)
-    self._valsFlatIndex    = np.zeros((nmbMoments, ),           dtype = npt.Complex128)
-    self._covReReFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
-    self._covImImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
-    self._covReImFlatIndex = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+    self._valsFlatIndex      = np.zeros((nmbMoments, ),                         dtype = npt.Complex128)
+    self._covReReFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
+    self._covImImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
+    self._covReImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
+    self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = npt.Complex128)
 
   def __eq__(
     self,
@@ -543,20 +564,22 @@ class MomentResult:
     if isinstance(flatIndex, slice):
       return [
         MomentValue(
-          qn       = self.indices[i],
-          val      = self._valsFlatIndex[i],
-          uncertRe = np.sqrt(self._covReReFlatIndex[i, i]),
-          uncertIm = np.sqrt(self._covImImFlatIndex[i, i]),
-          label    = self.label,
+          qn        = self.indices[i],
+          val       = self._valsFlatIndex[i],
+          uncertRe  = np.sqrt(self._covReReFlatIndex[i, i]),
+          uncertIm  = np.sqrt(self._covImImFlatIndex[i, i]),
+          bsSamples = self._bsSamplesFlatIndex[i],
+          label     = self.label,
         ) for i in range(*flatIndex.indices(len(self.indices)))
       ]
     elif isinstance(flatIndex, int):
       return MomentValue(
-        qn       = self.indices[flatIndex],
-        val      = self._valsFlatIndex[flatIndex],
-        uncertRe = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
-        uncertIm = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
-        label    = self.label,
+        qn        = self.indices[flatIndex],
+        val       = self._valsFlatIndex[flatIndex],
+        uncertRe  = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
+        uncertIm  = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
+        bsSamples = self._bsSamplesFlatIndex[flatIndex],
+        label     = self.label,
       )
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
@@ -565,16 +588,24 @@ class MomentResult:
     result = (str(self[flatIndex]) for flatIndex in self.indices.flatIndices())
     return "\n".join(result)
 
-  # def assignFrom(
-  #   self,
-  #   other: MomentResult,  # instance from which data are copied
-  # ) -> None:
-  #   """Assigns all values from given MomentResult instance but leaves `label` untouched"""
-  #   self.indices           = other.indices
-  #   self._valsFlatIndex    = other._valsFlatIndex
-  #   self._covReReFlatIndex = other._covReReFlatIndex
-  #   self._covImImFlatIndex = other._covImImFlatIndex
-  #   self._covReImFlatIndex = other._covReImFlatIndex
+  @property
+  def hasBootstrapSamples(self) -> bool:
+    """Returns whether bootstrap samples exist"""
+    return self._bsSamplesFlatIndex.size > 0
+
+
+@dataclass
+class BootstrapIndices:
+  """Generator class for bootstrap indices"""
+  nmbEvents:  int  # number of events in data sample
+  nmbSamples: int  # number of bootstrap samples
+  seed:       int  # seed for random number generator
+
+  def __iter__(self) -> Generator[npt.NDArray[npt.Shape["nmbEvents"], npt.Complex128], None, None]:
+    """Generates bootstrap samples and returns data and weights for each sample"""
+    rng = np.random.default_rng(self.seed)
+    for _ in range(self.nmbSamples):
+      yield rng.choice(self.nmbEvents, size = self.nmbEvents, replace = True)
 
 
 @dataclass
@@ -594,21 +625,25 @@ class MomentCalculator:
     """Returns acceptance integral matrix"""
     assert self._integralMatrix is not None, "self._integralMatrix must not be None"
     return self._integralMatrix
+
   @property
   def HMeas(self) -> MomentResult:
     """Returns physical moments"""
     assert self._HMeas is not None, "self._HMeas must not be None"
     return self._HMeas
+
   @property
   def HPhys(self) -> MomentResult:
     """Returns physical moments"""
     assert self._HPhys is not None, "self._HPhys must not be None"
     return self._HPhys
+
   @property
   def binCenters(self) -> Dict[KinematicBinningVariable, float]:
     """Returns dictionary with kinematic variables and bin centers"""
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
+
   @binCenters.setter
   def binCenters(
     self,
@@ -617,23 +652,24 @@ class MomentCalculator:
     """Sets dictionary with kinematic variables and bin centers"""
     self._binCenters = centers
 
-  # @property
-  # def varNames(self) -> List[str]:
-  #   """Returns names of kinematic variables that define bin"""
-  #   if self._binCenters is None:
-  #     return []
-  #   return sorted((key.name for key in self._binCenters.keys()))
-
   @property
-  def fileNameBinLabels(self) -> List[str]:
+  def binLabels(self) -> List[str]:
+    """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>_...'"""
     if self._binCenters is None:
       return []
     return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
 
   @property
+  def binTitles(self) -> List[str]:
+    """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
+    if self._binCenters is None:
+      return []
+    return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in self.binCenters.items()]
+
+  @property
   def integralFileName(self) -> str:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    return "_".join([self.integralFileBaseName, ] + self.fileNameBinLabels) + ".npy"
+    return "_".join([self.integralFileBaseName, ] + self.binLabels) + ".npy"
 
   def calculateIntegralMatrix(
     self,
@@ -664,8 +700,10 @@ class MomentCalculator:
 
   def calculateMoments(
     self,
-    dataSource: MomentDataSource = MomentDataSource.DATA,  # type of data to calculate moments from
-    normalize:  bool = True,  # if set physical moments are normalized to H_0(0, 0)
+    dataSource:          MomentDataSource = MomentDataSource.DATA,  # type of data to calculate moments from
+    normalize:           bool             = True,   # if set physical moments are normalized to H_0(0, 0)
+    nmbBootstrapSamples: int              = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapSeed:       int              = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
@@ -707,13 +745,21 @@ class MomentCalculator:
     nmbMoments = len(self.indices)
     fMeas:      npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
     fMeasMeans: npt.NDArray[npt.Shape["nmbMoments"],            npt.Complex128] = np.empty((nmbMoments,),           dtype = npt.Complex128)  # weighted means of fMeas values
-    self._HMeas = MomentResult(self.indices, label = "meas")
+    bootstrapIndices    = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
+    self._HMeas = MomentResult(self.indices, label = "meas", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataSet.polarization))  # Eq. (176)
       weightedSum = eventWeights.dot(fMeas[flatIndex])
       self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       fMeasMeans[flatIndex] = weightedSum / sumOfWeights
+      # perform bootstrapping of H_meas
+      for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
+        # resample data
+        fMeasBsSample        = fMeas[flatIndex][bsDataIndices]
+        eventWeightsBsSample = eventWeights    [bsDataIndices]
+        # calculate bootstrap sample for H_meas
+        self._HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181)
     # unfortunately, np.cov() does not accept negative weights
     # reimplement code from https://github.com/numpy/numpy/blob/d35cd07ea997f033b2d89d349734c61f5de54b0d/numpy/lib/function_base.py#L2530-L2749
@@ -728,17 +774,21 @@ class MomentCalculator:
     V_meas_aug = (2 * np.pi)**2 * sumOfSquaredWeights * besselCorrection * ((eventWeights * delta_fMeas_aug) @ np.asmatrix(delta_fMeas_aug).H)
     self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
     # calculate physical moments and propagate uncertainty
-    self._HPhys = MomentResult(self.indices, label = "phys")
+    self._HPhys = MomentResult(self.indices, label = "phys", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
       np.copyto(self._HPhys._valsFlatIndex, self._HMeas._valsFlatIndex)
       np.copyto(V_phys_aug, V_meas_aug)
+      np.copyto(self._HPhys._bsSamplesFlatIndex, self._HMeas._bsSamplesFlatIndex)
     else:
       # get inverse of acceptance integral matrix
       I_inv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
       self._HPhys._valsFlatIndex = I_inv @ self._HMeas._valsFlatIndex  # Eq. (83)
+      # calculate bootstrap samples for H_phys
+      for bsSampleIndex in range(nmbBootstrapSamples):
+        self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = I_inv @ self._HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
       J = I_inv  # Jacobian of efficiency correction; Eq. (101)
       J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
@@ -753,6 +803,10 @@ class MomentCalculator:
       norm: complex = self._HPhys[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val
       self._HPhys._valsFlatIndex /= norm
       V_phys_aug /= norm**2
+      # normalize bootstrap samples for H_phys
+      for bsSampleIndex in range(nmbBootstrapSamples):
+        norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
+        self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
     self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 
 
@@ -776,18 +830,6 @@ class MomentCalculatorsKinematicBinning:
     """Iterates over MomentCalculators in kinematic bins"""
     return iter(self.moments)
 
-  # @property
-  # def varNames(self) -> List[str]:
-  #   """Returns names of kinematic variables used in binning"""
-  #   varNames = None
-  #   for momentsInBin in self.moments:
-  #     varNamesInBin = momentsInBin.varNames
-  #     if varNames is None:
-  #       varNames = varNamesInBin
-  #     else:
-  #       assert varNamesInBin == varNames, f"Bins have inconsistent set of binning variables: bin '{momentsInBin.centers}': {varNamesInBin} vs. {varNames} in previous bin"
-  #   return varNames or []
-
   def calculateIntegralMatrices(
     self,
     forceCalculation: bool = False,
@@ -799,9 +841,11 @@ class MomentCalculatorsKinematicBinning:
 
   def calculateMoments(
     self,
-    dataSource: MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,  # type of data to calculate moments from
-    normalize:  bool = True,  # if set physical moments are normalized to H_0(0, 0)
+    dataSource:          MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,  # type of data to calculate moments from
+    normalize:           bool = True,   # if set physical moments are normalized to H_0(0, 0)
+    nmbBootstrapSamples: int  = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapSeed:       int  = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
-    for momentsInBin in self:
-      momentsInBin.calculateMoments(dataSource, normalize)
+    for kinBinIndex, momentsInBin in enumerate(self):
+      momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
