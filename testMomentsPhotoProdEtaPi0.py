@@ -80,8 +80,8 @@ if __name__ == "__main__":
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
     normalizeMoments     = False
-    nmbBootstrapSamples  = 0
-    # nmbBootstrapSamples  = 10000
+    # nmbBootstrapSamples  = 0
+    nmbBootstrapSamples  = 10000
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # plot all signal and phase-space data
@@ -168,7 +168,7 @@ if __name__ == "__main__":
       print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
-        binLabel = "_".join(momentsInBin.fileNameBinLabels)
+        binLabel = "_".join(momentsInBin.binLabels)
         plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
         plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
 
@@ -193,12 +193,15 @@ if __name__ == "__main__":
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
       for massBinIndex, momentsInBin in enumerate(moments):
-        binLabel = "_".join(momentsInBin.fileNameBinLabels)
+        binLabel = "_".join(momentsInBin.binLabels)
+        binTitle = ", ".join(momentsInBin.binTitles)
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
         if nmbBootstrapSamples > 0:
-          plotMomentsBootstrapDistributions(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-          plotMomentsBootstrapDiffInBin    (momentsInBin.HPhys,                                   pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+          graphTitle = f"({binLabel})"
+          plotMomentsBootstrapDistributions(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_",
+                                            histTitle = binTitle)
+          plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", graphTitle = binTitle)
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():

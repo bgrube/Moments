@@ -373,6 +373,7 @@ def plotMomentsBootstrapDistributions(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
   HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
   pdfFileNamePrefix: str = "h",  # name prefix for output files
+  histTitle:         str = "",   # histogram title
   nmbBins:           int = 100,  # number of bins for bootstrap histograms
 ) -> None:
   """Plots bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
@@ -388,7 +389,7 @@ def plotMomentsBootstrapDistributions(
       max = np.max(momentSamplesBs)
       halfRange = (max - min) * 1.1 / 2.0
       center = (min + max) / 2.0
-      histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f";{HVal.qn.title} {legendEntrySuffix};Count",
+      histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f"{histTitle};{HVal.qn.title} {legendEntrySuffix};Count",
                          nmbBins, center - halfRange, center + halfRange)
       # fill histogram
       np.vectorize(histBs.Fill)(momentSamplesBs)
@@ -482,15 +483,27 @@ def plotMomentsBootstrapDiff(
     canv = ROOT.TCanvas()
     histBinning = (len(HVals), -0.5, len(HVals) - 0.5) if binning is None else binning.astuple
     histDummy = ROOT.TH1D("dummy", "", *histBinning)  # dummy histogram needed for x-axis bin labels
+    xAxis = histDummy.GetXaxis()
     if binning is None:
       for binIndex, HVal in enumerate(HVals):
-        histDummy.GetXaxis().SetBinLabel(binIndex + 1, HVal.qn.title)
+        xAxis.SetBinLabel(binIndex + 1, HVal.qn.title)
+    histDummy.SetTitle(graph.GetTitle())
+    histDummy.SetXTitle(graph.GetXaxis().GetTitle())
     histDummy.SetYTitle(graph.GetYaxis().GetTitle())
-    histDummy.SetMinimum(-1)
-    histDummy.SetMaximum(+1)
+    histDummy.SetMinimum(-0.5)
+    histDummy.SetMaximum(+0.5)
+    histDummy.SetLineColor(ROOT.kBlack)
+    histDummy.SetLineStyle(ROOT.kDashed)
     histDummy.Draw()
     graph.Draw("P")  # !NOTE! graphs don't have a SAME option; "SAME" will be interpreted as "A"
-    canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+    # draw average difference
+    for g in graph.GetListOfGraphs():
+      avg = g.GetMean(2)
+      avgLine = ROOT.TLine()
+      avgLine.SetLineColor(g.GetMarkerColor())
+      avgLine.SetLineStyle(ROOT.kDotted)
+      avgLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), avg, xAxis.GetBinUpEdge(xAxis.GetLast()), avg)
+    # draw legend
     legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
     for g in graph.GetListOfGraphs():
       legend.AddEntry(g, g.GetTitle(), "P")
@@ -514,9 +527,11 @@ def plotMomentsBootstrapDiff1D(
 def plotMomentsBootstrapDiffInBin(
   HData:             MomentCalculator.MomentResult,  # moment values extracted from data
   pdfFileNamePrefix: str = "h",  # name prefix for output files
+  graphTitle:        str = "",   # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all moments"""
   for momentIndex in range(3):
     # get moments with index momentIndex
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], truth = None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
-    plotMomentsBootstrapDiff(HVals, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
+    plotMomentsBootstrapDiff(HVals, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}",
+                             pdfFileNamePrefix = pdfFileNamePrefix, graphTitle = graphTitle)

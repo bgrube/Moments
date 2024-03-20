@@ -227,7 +227,7 @@ if __name__ == "__main__":
       print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
-        binLabel = "_".join(momentsInBin.fileNameBinLabels)
+        binLabel = "_".join(momentsInBin.binLabels)
         plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
         plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
 
@@ -239,7 +239,7 @@ if __name__ == "__main__":
       print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
-      binLabel = "_".join(moments[0].fileNameBinLabels)
+      binLabel = "_".join(moments[0].binLabels)
       plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
       if nmbBootstrapSamples > 0:
         plotMomentsBootstrapDistributions(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")

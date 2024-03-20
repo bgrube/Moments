@@ -653,16 +653,23 @@ class MomentCalculator:
     self._binCenters = centers
 
   @property
-  def fileNameBinLabels(self) -> List[str]:
+  def binLabels(self) -> List[str]:
     """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>_...'"""
     if self._binCenters is None:
       return []
     return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
 
   @property
+  def binTitles(self) -> List[str]:
+    """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
+    if self._binCenters is None:
+      return []
+    return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in self.binCenters.items()]
+
+  @property
   def integralFileName(self) -> str:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    return "_".join([self.integralFileBaseName, ] + self.fileNameBinLabels) + ".npy"
+    return "_".join([self.integralFileBaseName, ] + self.binLabels) + ".npy"
 
   def calculateIntegralMatrix(
     self,
