@@ -218,7 +218,7 @@ def plotMoments(
 
   # (i) plot moments from data and overlay with true values (if given)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
-    histStack = ROOT.THStack(f"{pdfFileNamePrefix}Compare_{momentLabel}_{momentPart}",
+    histStack = ROOT.THStack(f"{pdfFileNamePrefix}compare_{momentLabel}_{momentPart}",
                              f"{histTitle};{xAxisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value")
     # create histogram with moments from data
     histData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", *histBinning.astuple)
@@ -275,7 +275,7 @@ def plotMoments(
 
     # (ii) plot residuals
     if trueValues:
-      histResidualName = f"{pdfFileNamePrefix}Residuals_{momentLabel}_{momentPart}"
+      histResidualName = f"{pdfFileNamePrefix}residuals_{momentLabel}_{momentPart}"
       histResidual = ROOT.TH1D(histResidualName,
         (f"{histTitle} " if histTitle else "") + f"Residuals {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}",
         *histBinning.astuple)
