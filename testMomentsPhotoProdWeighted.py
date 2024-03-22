@@ -49,6 +49,7 @@ if __name__ == "__main__":
     beamPolarization      = 1.0
     # maxL                  = 1  # maximum L quantum number of moments to be calculated
     maxL                  = 5  # maximum L quantum number of moments to be calculated
+    # normalizeMoments      = True
     normalizeMoments      = False
     # nmbBootstrapSamples   = 0
     nmbBootstrapSamples   = 10000
@@ -109,7 +110,7 @@ if __name__ == "__main__":
     # calculate true moment values and generate data from partial-wave amplitudes
     with timer.timeThis("Time to generate MC data from partial waves"):
       # generate signal distribution
-      HTrueSig: MomentCalculator.MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = normalizeMoments)
+      HTrueSig: MomentCalculator.MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
       print(f"True moment values for signal:\n{HTrueSig}")
       dataPwaModelSig: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
         nmbPwaMcEventsSig, beamPolarization, amplitudeSetSig, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", nameSuffix = "Sig", regenerateData = True)
@@ -120,7 +121,7 @@ if __name__ == "__main__":
       dataPwaModelSig = ROOT.RDataFrame(treeName, fileNameSig)
       histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
       # generate background distribution
-      HTrueBkg: MomentCalculator.MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = normalizeMoments)
+      HTrueBkg: MomentCalculator.MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
       print(f"True moment values for signal:\n{HTrueBkg}")
       dataPwaModelBkg: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
         nmbPwaMcEventsBkg, beamPolarization, amplitudeSetBkg, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", nameSuffix = "Bkg", regenerateData = True)
@@ -159,7 +160,7 @@ if __name__ == "__main__":
       dataPwaModel = dataPwaModel.Define("eventWeight", f"""
         if (({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]}))
           return 1.0;
-        else if (   (({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))
+        else if (  (({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))
                 or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]})))
           return -0.5;
         else
