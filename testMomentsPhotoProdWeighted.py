@@ -35,7 +35,7 @@ if __name__ == "__main__":
   setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
-  with threadController.limit(limits = 5):
+  with threadController.limit(limits = 3):
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
     timer.start("Total execution time")
 
