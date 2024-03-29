@@ -434,7 +434,8 @@ def plotMomentsBootstrapDistributions(
       label.DrawLatex(0.13, 0.85, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{nmbBins}, prob = {chi2Prob * 100:.0f}%")
       # indicate true value
       if HVal.truth is not None:
-        lineTrue = ROOT.TLine(HVal.truth.real, 0, HVal.truth.real, histBs.GetMaximum())
+        truth = HVal.truth.real if momentPart == "Re" else HVal.truth.imag
+        lineTrue = ROOT.TLine(truth, 0, truth, histBs.GetMaximum())
         lineTrue.SetLineColor(ROOT.kRed + 1)
         lineTrue.SetLineStyle(ROOT.kDashed)
         lineTrue.Draw()
