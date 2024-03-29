@@ -423,6 +423,15 @@ def plotMomentsBootstrapDistributions(
       gaussian.SetParameters(len(momentSamplesBs) * histBs.GetBinWidth(1), meanEst, stdDevEst)
       gaussian.SetLineColor(ROOT.kGreen + 2)
       gaussian.Draw("SAME")
+      # print chi^2 of Gaussian and histogram
+      chi2 = histBs.Chisquare(gaussian, "L")
+      chi2Prob = stats.distributions.chi2.sf(chi2, nmbBins)
+      label = ROOT.TLatex()
+      label.SetNDC()
+      label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
+      label.SetTextSize(0.04)
+      label.SetTextColor(ROOT.kGreen + 2)
+      label.DrawLatex(0.13, 0.85, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{nmbBins}, prob = {chi2Prob * 100:.0f}%")
       # indicate true value
       if HVal.truth is not None:
         lineTrue = ROOT.TLine(HVal.truth.real, 0, HVal.truth.real, histBs.GetMaximum())
