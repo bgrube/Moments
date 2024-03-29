@@ -337,9 +337,9 @@ def plotMoments(
 
 
 def plotMomentsInBin(
-  HData:             MomentCalculator.MomentResult,  # moment values extracted from data
+  HData:             MomentCalculator.MomentResult,  # moments extracted from data
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
+  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moments
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
@@ -351,11 +351,11 @@ def plotMomentsInBin(
 
 
 def plotMoments1D(
-  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
+  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moments extracted from data
   qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
   binning:           HistAxisBinning,                 # binning to use for plot
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentsTruth:      Optional[MomentCalculator.MomentCalculatorsKinematicBinning] = None,  # true moment values
+  momentsTruth:      Optional[MomentCalculator.MomentCalculatorsKinematicBinning] = None,  # true moments
   pdfFileNamePrefix: str = "h",   # name prefix for output files
   histTitle:         str = "",    # histogram title
 ) -> None:
@@ -370,8 +370,8 @@ def plotMoments1D(
 
 
 def plotMomentsBootstrapDistributions(
-  HData:             MomentCalculator.MomentResult,  # moment values extracted from data
-  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moment values
+  HData:             MomentCalculator.MomentResult,  # moments extracted from data
+  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moments
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   histTitle:         str = "",   # histogram title
   nmbBins:           int = 100,  # number of bins for bootstrap histograms
@@ -392,7 +392,7 @@ def plotMomentsBootstrapDistributions(
       histBs = ROOT.TH1D(f"{pdfFileNamePrefix}bootstrap_{HVal.qn.label}_{momentPart}", f"{histTitle};{HVal.qn.title} {legendEntrySuffix};Count",
                          nmbBins, center - halfRange, center + halfRange)
       # fill histogram
-      np.vectorize(histBs.Fill)(momentSamplesBs)
+      np.vectorize(histBs.Fill, otypes = [int])(momentSamplesBs)
       # draw histogram
       canv = ROOT.TCanvas()
       histBs.SetMinimum(0)
