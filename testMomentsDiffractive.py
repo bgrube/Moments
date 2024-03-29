@@ -6,6 +6,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
+import threadpoolctl
 from typing import (
   Any,
   Collection,
@@ -20,8 +21,11 @@ from uncertainties import UFloat, ufloat
 
 import ROOT
 
-import PlottingUtilities
-import RootUtilities
+from PlottingUtilities import (
+  setupPlotStyle,
+)
+import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
+import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -34,6 +38,7 @@ def plotComparison(
   realPart:           bool,
   useMomentSubscript: bool,
   dataLabel:          str = "",
+  pdfFileNamePrefix:  str = "",
 ) -> None:
   momentIndex = measVals[0][2][0]
   if realPart:
@@ -80,7 +85,7 @@ def plotComparison(
   hStack.GetHistogram().SetLineStyle(ROOT.kDashed)
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-  canv.SaveAs(f"{hStack.GetName()}.pdf")
+  canv.SaveAs(f"{pdfFileNamePrefix}{hStack.GetName()}.pdf")
 
   # plot residuals
   residuals = tuple((measVal[0] - trueVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
@@ -113,14 +118,15 @@ def plotComparison(
   label.SetNDC()
   label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
   label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {stats.distributions.chi2.sf(chi2, ndf) * 100:.0f}%")
-  canv.SaveAs(f"{hResidual.GetName()}.pdf")
+  canv.SaveAs(f"{pdfFileNamePrefix}{hResidual.GetName()}.pdf")
 
 
 def printAndPlotMoments(
-  physMoments:    List[Tuple[Tuple[int, int, int], complex]],  # List[Tuple[indices, value]]
-  physMomentsCov: Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]],  # Dict[Tuple[(indicesA, indicesB), (cov[ReRe], cov[ImIm], cov[ReIm])]]
-  trueMoments:    Optional[List[Tuple[Tuple[int, int, int], complex]]],  # List[Tuple[indices, value]]; if None true values are 1 for H_0(0, 0) and 0 for all other moments
-  dataLabel:      str = "",
+  physMoments:       List[Tuple[Tuple[int, int, int], complex]],  # List[Tuple[indices, value]]
+  physMomentsCov:    Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]],  # Dict[Tuple[(indicesA, indicesB), (cov[ReRe], cov[ImIm], cov[ReIm])]]
+  trueMoments:       Optional[List[Tuple[Tuple[int, int, int], complex]]],  # List[Tuple[indices, value]]; if None true values are 1 for H_0(0, 0) and 0 for all other moments
+  dataLabel:         str = "",
+  pdfFileNamePrefix: str = "",
 ) -> None:
   # print moments
   for physMoment in physMoments:
@@ -134,21 +140,22 @@ def printAndPlotMoments(
       trueVals = tuple(trueMoment[1].real for trueMoment in trueMoments if trueMoment[0][0] == momentIndex)
     else:
       trueVals = tuple(1 if physMoment[0] == (0, 0, 0) else 0 for physMoment in physMoments if physMoment[0][0] == momentIndex)
-    plotComparison(measVals, trueVals, realPart = True, useMomentSubscript = True, dataLabel = dataLabel)
+    plotComparison(measVals, trueVals, realPart = True, useMomentSubscript = True, dataLabel = dataLabel, pdfFileNamePrefix = pdfFileNamePrefix)
     # Im[H_i]
     measVals = tuple((physMoment[1].imag, np.sqrt(physMomentsCov[(*physMoment[0], *physMoment[0])][1]), physMoment[0]) for physMoment in physMoments if physMoment[0][0] == momentIndex)
     if trueMoments:
       trueVals = tuple(trueMoment[1].imag for trueMoment in trueMoments if trueMoment[0][0] == momentIndex)
     else:
       trueVals = tuple(0 for physMoment in physMoments if physMoment[0][0] == momentIndex)
-    plotComparison(measVals, trueVals, realPart = False, useMomentSubscript = True, dataLabel = dataLabel)
+    plotComparison(measVals, trueVals, realPart = False, useMomentSubscript = True, dataLabel = dataLabel, pdfFileNamePrefix = pdfFileNamePrefix)
 
 
 # see e.g. LHCb, PRD 92 (2015) 112009
 def generateDataLegPolLC(
-  nmbEvents:  int,
-  maxDegree:  int,
-  parameters: Collection[float],
+  nmbEvents:         int,
+  maxDegree:         int,
+  parameters:        Collection[float],
+  outFileNamePrefix: str = "",
 ) -> Any:
   """Generates data according to linear combination of Legendre polynomials"""
   assert len(parameters) >= maxDegree + 1, f"Need {maxDegree + 1} parameters; only {len(parameters)} were given: {parameters}"
@@ -164,11 +171,11 @@ def generateDataLegPolLC(
   # draw function
   canv = ROOT.TCanvas()
   legendrePolLC.Draw()
-  canv.SaveAs("hLegendrePolLC.pdf")
+  canv.SaveAs(f"{outFileNamePrefix}hLegendrePolLC.pdf")
 
   # generate random data that follow linear combination of legendre polynomials
   treeName = "data"
-  fileName = f"{legendrePolLC.GetName()}.root"
+  fileName = f"{outFileNamePrefix}{legendrePolLC.GetName()}.root"
   RootUtilities.declareInCpp(legendrePolLC = legendrePolLC)
   df = ROOT.RDataFrame(nmbEvents) \
            .Define("CosTheta", "PyVars::legendrePolLC.GetRandom()") \
@@ -207,9 +214,10 @@ def calculateLegMoments(
 #     E852, PRD 60 (1999) 092001
 #     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataSphHarmLC(
-  nmbEvents:  int,
-  maxL:       int,  # maximum spin of decaying object
-  parameters: Collection[float],  # make sure that resulting linear combination is positive definite
+  nmbEvents:         int,
+  maxL:              int,  # maximum spin of decaying object
+  parameters:        Collection[float],  # make sure that resulting linear combination is positive definite
+  outFileNamePrefix: str = "",
 ) -> Any:
   """Generates data according to linear combination of spherical harmonics"""
   nmbTerms = 6 * maxL  # Eq. (17)
@@ -239,11 +247,11 @@ def generateDataSphHarmLC(
   # draw function
   canv = ROOT.TCanvas()
   sphericalHarmLC.Draw("COLZ")
-  canv.SaveAs("hSphericalHarmlLC.pdf")
+  canv.SaveAs(f"{outFileNamePrefix}hSphericalHarmlLC.pdf")
 
   # generate random data that follow linear combination of of spherical harmonics
   treeName = "data"
-  fileName = f"{sphericalHarmLC.GetName()}.root"
+  fileName = f"{outFileNamePrefix}{sphericalHarmLC.GetName()}.root"
   RootUtilities.declareInCpp(sphericalHarmLC = sphericalHarmLC)
   df = ROOT.RDataFrame(nmbEvents) \
            .Define("point",    "double CosTheta, PhiDeg; PyVars::sphericalHarmLC.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
@@ -261,9 +269,10 @@ def generateDataSphHarmLC(
 ROOT.gROOT.LoadMacro("./Covariance.C++")
 
 def calculateSphHarmMoments(
-  dataFrame:      Any,
-  maxL:           int,  # maximum spin of decaying object
-  integralMatrix: Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
+  dataFrame:         Any,
+  maxL:              int,  # maximum spin of decaying object
+  integralMatrix:    Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
+  pdfFileNamePrefix: str = "",
 ) -> Tuple[List[Tuple[Tuple[int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
   """Calculates moments of spherical harmonics"""
   # define moments
@@ -356,25 +365,25 @@ def calculateSphHarmMoments(
     # print(f"I_acc eigenvectors = {eigenVecs}")
     # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
     plt.figure().colorbar(plt.matshow(I_acc.real))
-    plt.savefig("I_acc_real.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_acc_real.pdf")
     plt.figure().colorbar(plt.matshow(I_acc.imag))
-    plt.savefig("I_acc_imag.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_acc_imag.pdf")
     plt.figure().colorbar(plt.matshow(np.absolute(I_acc)))
-    plt.savefig("I_acc_abs.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_acc_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(I_acc)))
-    plt.savefig("I_acc_arg.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_acc_arg.pdf")
     I_inv = np.linalg.inv(I_acc)
     # eigenVals, eigenVecs = np.linalg.eig(I_inv)
     # print(f"I^-1 eigenvalues = {eigenVals}")
     print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
     plt.figure().colorbar(plt.matshow(I_inv.real))
-    plt.savefig("I_inv_real.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_inv_real.pdf")
     plt.figure().colorbar(plt.matshow(I_inv.imag))
-    plt.savefig("I_inv_imag.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_inv_imag.pdf")
     plt.figure().colorbar(plt.matshow(np.absolute(I_inv)))
-    plt.savefig("I_inv_abs.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_inv_abs.pdf")
     plt.figure().colorbar(plt.matshow(np.angle(I_inv)))
-    plt.savefig("I_inv_arg.pdf")
+    plt.savefig(f"{pdfFileNamePrefix}I_inv_arg.pdf")
     H_phys = I_inv @ H_meas
     # linear uncertainty propagation
     J = I_inv  # Jacobian of efficiency correction
@@ -436,6 +445,7 @@ def generateDataPwd(
   nmbEvents:         int,
   prodAmps:          Dict[int, Tuple[complex, ...]],
   efficiencyFormula: Optional[str] = None,
+  outFileNamePrefix: str = "",
 ) -> Any:
   """Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \\ell = 2 and |m| = 1"""
   # construct TF2 for intensity in Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
@@ -465,11 +475,11 @@ def generateDataPwd(
   # draw function
   canv = ROOT.TCanvas()
   intensityFcn.Draw("COLZ")
-  canv.SaveAs("hIntensity.pdf")
+  canv.SaveAs(f"{outFileNamePrefix}hIntensity.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{intensityFcn.GetName()}.root"
+  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
   RootUtilities.declareInCpp(intensityFcn = intensityFcn)
   df = ROOT.RDataFrame(nmbEvents) \
            .Define("point",    "double CosTheta, PhiDeg; PyVars::intensityFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
@@ -583,6 +593,7 @@ def calculateWignerDMoments(
 def generateData2BodyPS(
   nmbEvents:         int,  # number of events to generate
   efficiencyFormula: Optional[str] = None,
+  outFileNamePrefix: str = "",
 ) -> Any:
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   # construct efficiency function
@@ -596,11 +607,11 @@ def generateData2BodyPS(
   # draw function
   canv = ROOT.TCanvas()
   efficiencyFcn.Draw("COLZ")
-  canv.SaveAs("hEfficiency.pdf")
+  canv.SaveAs(f"{outFileNamePrefix}hEfficiency.pdf")
 
   # generate isotropic distributions in cos theta and phi and weight with efficiency function
   treeName = "data"
-  fileName = f"{efficiencyFcn.GetName()}.root"
+  fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
   RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
   df = ROOT.RDataFrame(nmbEvents) \
            .Define("point", "double CosTheta, PhiDeg; PyVars::efficiencyFcn.GetRandom2(CosTheta, PhiDeg); std::vector<double> point = {CosTheta, PhiDeg}; return point;") \
@@ -648,95 +659,103 @@ def calcIntegralMatrix(
 
 
 if __name__ == "__main__":
+  Utilities.printGitInfo()
+  timer = Utilities.Timer()
   ROOT.gROOT.SetBatch(True)
   ROOT.gRandom.SetSeed(1234567890)
   # ROOT.EnableImplicitMT(10)
-  PlottingUtilities.setupPlotStyle()
-  ROOT.gBenchmark.Start("Total execution time")
+  setupPlotStyle()
+  threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
+  print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
+  with threadController.limit(limits = 3):
+    print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
+    timer.start("Total execution time")
 
-  # get data
-  nmbEvents = 1000
-  nmbMcEvents = 1000000
-  # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
-  efficiencyFormula = "1"  # acc_perfect
-  # efficiencyFormula = "2 - x * x"  # acc_1
-  # efficiencyFormula = "1 - x * x"  # acc_2
-  # efficiencyFormula = "180 * 180 - y * y"  # acc_3
-  # efficiencyFormula = "0.25 + (1 - x * x) * (180 * 180 - y * y) / (180 * 180)"  # acc_4
-  # efficiencyFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # Mathematica: PiecewiseExpand[BernsteinBasis[4,3,x]]
-  # efficiencyFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
+    # set parameters of test case
+    outFileDirName    = Utilities.makeDirPath("./plotsDiffractive")
+    nmbEvents         = 1000
+    nmbMcEvents       = 1000000
+    # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
+    efficiencyFormula = "1"  # acc_perfect
+    # efficiencyFormula = "2 - x * x"  # acc_1
+    # efficiencyFormula = "1 - x * x"  # acc_2
+    # efficiencyFormula = "180 * 180 - y * y"  # acc_3
+    # efficiencyFormula = "0.25 + (1 - x * x) * (180 * 180 - y * y) / (180 * 180)"  # acc_4
+    # efficiencyFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # Mathematica: PiecewiseExpand[BernsteinBasis[4,3,x]]
+    # efficiencyFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
 
-  # # Legendre polynomials
-  # chose parameters such that resulting linear combinations are positive definite
-  # maxOrder = 5
-  # # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
-  # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
-  # dataModel = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
+    # # Legendre polynomials
+    # chose parameters such that resulting linear combinations are positive definite
+    # maxOrder = 5
+    # # parameters = (1, 1, 0.5, -0.5, -0.25, 0.25)
+    # parameters = (0.5, 0.5, 0.25, -0.25, -0.125, 0.125)
+    # dataModel = generateDataLegPolLC(nmbEvents,  maxDegree = maxOrder, parameters = parameters)
 
-  # # spherical harmonics
-  # maxOrder = 2
-  # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
-  # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
-  # dataModel = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+    # # spherical harmonics
+    # maxOrder = 2
+    # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
+    # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
+    # dataModel = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
 
-  # normalize parameters 0th moment and pad with 0
-  # inputMoments = [par / parameters[0] for par in parameters]
-  # if len(inputMoments) < len(moments):
-  #   inputMoments += [0] * (len(moments) - len(inputMoments))
+    # normalize parameters 0th moment and pad with 0
+    # inputMoments = [par / parameters[0] for par in parameters]
+    # if len(inputMoments) < len(moments):
+    #   inputMoments += [0] * (len(moments) - len(inputMoments))
 
-  # partial-wave decomposition
-  maxOrder = 2
-  prodAmps: Dict[int, Tuple[complex, ...]] = {
-    # negative-reflectivity waves
-    -1 : (
-       1   + 0j,    # S_0
-       0.3 - 0.8j,  # P_0
-      -0.4 + 0.1j,  # P_-
-      -0.1 - 0.2j,  # D_0
-       0.2 - 0.5j,  # D_-
-    ),
-    # positive-reflectivity waves
-    +1 : (
-       0.5 + 0j,    # P_+
-      -0.1 + 0.3j,  # D_+
-    ),
-  }
-  inputMoments: List[float] = calculateInputPwdMoments(prodAmps, maxL = maxOrder)
-  dataPwaModel = generateDataPwd(nmbEvents, prodAmps, efficiencyFormula)
-  # print("!!!", dataModel.AsNumpy())
+    # partial-wave decomposition
+    maxOrder = 2
+    prodAmps: Dict[int, Tuple[complex, ...]] = {
+      # negative-reflectivity waves
+      -1 : (
+         1   + 0j,    # S_0
+         0.3 - 0.8j,  # P_0
+        -0.4 + 0.1j,  # P_-
+        -0.1 - 0.2j,  # D_0
+         0.2 - 0.5j,  # D_-
+      ),
+      # positive-reflectivity waves
+      +1 : (
+         0.5 + 0j,    # P_+
+        -0.1 + 0.3j,  # D_+
+      ),
+    }
+    inputMoments: List[float] = calculateInputPwdMoments(prodAmps, maxL = maxOrder)
+    dataPwaModel = generateDataPwd(nmbEvents, prodAmps, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/")
+    # print("!!!", dataModel.AsNumpy())
 
-  # plot data
-  canv = ROOT.TCanvas()
-  if "Phi" in dataPwaModel.GetColumnNames():
-    hist = dataPwaModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")
-    hist.SetMinimum(0)
-    hist.Draw("COLZ")
-  else:
-    hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")
-    hist.SetMinimum(0)
-    hist.Draw()
-  canv.SaveAs(f"{hist.GetName()}.pdf")
+    # plot data
+    canv = ROOT.TCanvas()
+    if "Phi" in dataPwaModel.GetColumnNames():
+      hist = dataPwaModel.Histo2D(ROOT.RDF.TH2DModel("hData", ";cos#theta;#phi [deg]", 25, -1, +1, 25, -180, +180), "CosTheta", "PhiDeg")
+      hist.SetMinimum(0)
+      hist.Draw("COLZ")
+    else:
+      hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "CosTheta")
+      hist.SetMinimum(0)
+      hist.Draw()
+    canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
-  # calculate moments
-  dataAcceptedPS = generateData2BodyPS(nmbMcEvents, efficiencyFormula)
-  integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxL = maxOrder, nmbEvents = nmbMcEvents)
-  print("Moments of accepted phase-space data")
-  calculateSphHarmMoments(dataAcceptedPS, maxL = maxOrder, integralMatrix = integralMatrix)
-  # calculateLegMoments(dataModel, maxDegree = maxOrder)
-  print("Moments of data generated according to model")
-  moments:    List[Tuple[Tuple[int, int], complex]]
-  momentsCov: Dict[Tuple[int, ...], Tuple[float, ...]]
-  moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxL = maxOrder, integralMatrix = integralMatrix)
-  # calculateWignerDMoments(dataModel, maxL = maxOrder)
-  #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
+    # calculate moments
+    dataAcceptedPS = generateData2BodyPS(nmbMcEvents, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/")
+    integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxL = maxOrder, nmbEvents = nmbMcEvents)
+    print("Moments of accepted phase-space data")
+    calculateSphHarmMoments(dataAcceptedPS, maxL = maxOrder, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
+    # calculateLegMoments(dataModel, maxDegree = maxOrder)
+    print("Moments of data generated according to model")
+    moments:    List[Tuple[Tuple[int, int], complex]]
+    momentsCov: Dict[Tuple[int, ...], Tuple[float, ...]]
+    moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxL = maxOrder, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
+    # calculateWignerDMoments(dataModel, maxL = maxOrder)
+    #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
-  # Re[H_i]
-  measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), (0, *moment[0])) for moment in moments)
-  inputVals = tuple(inputMoment.real for inputMoment in inputMoments)
-  plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = False)
-  # Im[H_i]
-  measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), (0, *moment[0])) for moment in moments)
-  inputVals = tuple(inputMoment.imag for inputMoment in inputMoments)
-  plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = False)
+    # Re[H_i]
+    measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), (0, *moment[0])) for moment in moments)
+    inputVals = tuple(inputMoment.real for inputMoment in inputMoments)
+    plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = False, pdfFileNamePrefix = f"{outFileDirName}/")
+    # Im[H_i]
+    measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), (0, *moment[0])) for moment in moments)
+    inputVals = tuple(inputMoment.imag for inputMoment in inputMoments)
+    plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = False, pdfFileNamePrefix = f"{outFileDirName}/")
 
-  ROOT.gBenchmark.Show("Total execution time")
+    timer.stop("Total execution time")
+    print(timer.summary)
