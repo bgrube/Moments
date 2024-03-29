@@ -186,7 +186,7 @@ def crossCovMatrix(
   x: npt.NDArray,
   y: npt.NDArray,
 ) -> npt.NDArray:
-  """Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov(x, y)[:n, n:]"""
+  """Computes cross-covariance matrix for n-dim vectors x and y of random variables; identical to np.cov(x, y, rowvar = False)[:n, n:]"""
   # columns of x and y represent variables; rows are observations
   X = x.T
   Y = y.T
