@@ -21,7 +21,13 @@ from typing import (
 
 import ROOT
 
-import MomentCalculator
+from  MomentCalculator import (
+  KinematicBinningVariable,
+  MomentCalculatorsKinematicBinning,
+  MomentResult,
+  MomentValue,
+  QnMomentIndex,
+)
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -29,14 +35,14 @@ print = functools.partial(print, flush = True)
 
 
 @dataclass
-class MomentValueAndTruth(MomentCalculator.MomentValue):
+class MomentValueAndTruth(MomentValue):
   """Stores and provides access to single moment value and provides truth value"""
   truth:       Optional[complex] = None  # true moment value
-  _binCenters: Optional[Dict[MomentCalculator.KinematicBinningVariable, float]] = None  # dictionary with bin centers
+  _binCenters: Optional[Dict[KinematicBinningVariable, float]] = None  # dictionary with bin centers
 
   # accessor that guarantees existence of optional field
   @property
-  def binCenters(self) -> Dict[MomentCalculator.KinematicBinningVariable, float]:
+  def binCenters(self) -> Dict[KinematicBinningVariable, float]:
     """Returns true moment value"""
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
@@ -59,7 +65,7 @@ class HistAxisBinning:
   nmbBins: int    # number of bins
   minVal:  float  # lower limit
   maxVal:  float  # upper limit
-  _var:    Optional[MomentCalculator.KinematicBinningVariable] = None  # optional info about bin variable
+  _var:    Optional[KinematicBinningVariable] = None  # optional info about bin variable
 
   def __len__(self) -> int:
     """Returns number of bins"""
@@ -81,7 +87,7 @@ class HistAxisBinning:
 
   # accessor that guarantees existence of optional field
   @property
-  def var(self) -> MomentCalculator.KinematicBinningVariable:
+  def var(self) -> KinematicBinningVariable:
     """Returns info about binning variable"""
     assert self._var is not None, "self._var must not be None"
     return self._var
@@ -207,7 +213,7 @@ def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
   binning:           Optional[HistAxisBinning] = None,  # if not None data are plotted as function of binning variable
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentLabel:       str = MomentCalculator.QnMomentIndex.momentSymbol,  # label used in output file name
+  momentLabel:       str = QnMomentIndex.momentSymbol,  # label used in output file name
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   histTitle:         str = "",   # histogram title
 ) -> None:
@@ -290,7 +296,7 @@ def plotMoments(
           trueVal             = HVal.truthRealOrImag(realPart = (momentPart == "Re"))
           binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
-          if normalizedMoments and (HVal.qn == MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
+          if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
             indicesToMask.append(binIndex)  # exclude H_0(0, 0) from plotting and chi^2 calculation
       # calculate chi^2
       # if moments were normalized, exclude Re and Im of H_0(0, 0) because it is always 1 by definition
@@ -337,9 +343,9 @@ def plotMoments(
 
 
 def plotMomentsInBin(
-  HData:             MomentCalculator.MomentResult,  # moments extracted from data
+  HData:             MomentResult,  # moments extracted from data
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moments
+  HTrue:             Optional[MomentResult] = None,  # true moments
   pdfFileNamePrefix: str = "h",  # name prefix for output files
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
@@ -347,15 +353,15 @@ def plotMomentsInBin(
   # generate separate plots for each moment index
   for momentIndex in range(3):
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
-    plotMoments(HVals, normalizedMoments = normalizedMoments, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
+    plotMoments(HVals, normalizedMoments = normalizedMoments, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}", pdfFileNamePrefix = pdfFileNamePrefix)
 
 
 def plotMoments1D(
-  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moments extracted from data
-  qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
+  moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
+  qnIndex:           QnMomentIndex,  # defines specific moment
   binning:           HistAxisBinning,                 # binning to use for plot
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentsTruth:      Optional[MomentCalculator.MomentCalculatorsKinematicBinning] = None,  # true moments
+  momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
   pdfFileNamePrefix: str = "h",   # name prefix for output files
   histTitle:         str = "",    # histogram title
 ) -> None:
@@ -369,9 +375,9 @@ def plotMoments1D(
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
 
 
-def plotMomentsBootstrapDistributions(
-  HData:             MomentCalculator.MomentResult,  # moments extracted from data
-  HTrue:             Optional[MomentCalculator.MomentResult] = None,  # true moments
+def plotMomentsBootstrapDistributionsVar(
+  HData:             MomentResult,  # moments extracted from data
+  HTrue:             Optional[MomentResult] = None,  # true moments
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   histTitle:         str = "",   # histogram title
   nmbBins:           int = 100,  # number of bins for bootstrap histograms
@@ -398,7 +404,7 @@ def plotMomentsBootstrapDistributions(
       histBs.SetMinimum(0)
       histBs.SetLineColor(ROOT.kBlue + 1)
       histBs.Draw("E")
-      # indicate boostrap estimate
+      # indicate bootstrap estimate
       meanBs   = np.mean(momentSamplesBs)
       stdDevBs = np.std(momentSamplesBs, ddof = 1)
       yCoord = histBs.GetMaximum() / 4
@@ -522,8 +528,8 @@ def plotMomentsBootstrapDiff(
 
 
 def plotMomentsBootstrapDiff1D(
-  moments:           MomentCalculator.MomentCalculatorsKinematicBinning,  # moment values extracted from data
-  qnIndex:           MomentCalculator.QnMomentIndex,  # defines specific moment
+  moments:           MomentCalculatorsKinematicBinning,  # moment values extracted from data
+  qnIndex:           QnMomentIndex,  # defines specific moment
   binning:           HistAxisBinning,                 # binning to use for plot
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   graphTitle:        str = "",   # graph title
@@ -535,7 +541,7 @@ def plotMomentsBootstrapDiff1D(
 
 
 def plotMomentsBootstrapDiffInBin(
-  HData:             MomentCalculator.MomentResult,  # moment values extracted from data
+  HData:             MomentResult,  # moment values extracted from data
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   graphTitle:        str = "",   # graph title
 ) -> None:
@@ -543,5 +549,5 @@ def plotMomentsBootstrapDiffInBin(
   for momentIndex in range(3):
     # get moments with index momentIndex
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], truth = None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
-    plotMomentsBootstrapDiff(HVals, momentLabel = f"{MomentCalculator.QnMomentIndex.momentSymbol}{momentIndex}",
+    plotMomentsBootstrapDiff(HVals, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
                              pdfFileNamePrefix = pdfFileNamePrefix, graphTitle = graphTitle)
