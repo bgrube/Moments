@@ -459,6 +459,110 @@ def plotMomentsBootstrapDistributionsVar(
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
 
+def plotMomentsBootstrapDistributionsCov(
+  momentIndices:     Tuple[QnMomentIndex, QnMomentIndex],  # pair of moment indices
+  HData:             MomentResult,  # moments extracted from data
+  HTrue:             Optional[MomentResult] = None,  # true moments
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  histTitle:         str = "",   # histogram title
+  nmbBins:           int = 20,   # number of bins for bootstrap histograms
+) -> None:
+  """Plots bootstrap distributions for correlation of the values of two moments and overlays the true value and the estimate from uncertainty propagation"""
+  HVals = (MomentValueAndTruth(*HData[momentIndices[0]], HTrue[momentIndices[0]].val if HTrue else None),  # type: ignore
+           MomentValueAndTruth(*HData[momentIndices[1]], HTrue[momentIndices[1]].val if HTrue else None))  # type: ignore
+  assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
+  assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
+  #TODO loop over ReRe, ImIm, and 2x ReIm
+  for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
+    # create histogram with bootstrap samples
+    momentSamplesBs = np.vstack((HVals[0].bsSamples, HVals[1].bsSamples))
+    momentSamplesBs = momentSamplesBs.real if momentPart == "Re" else momentSamplesBs.imag
+    mins = np.min(momentSamplesBs, axis = 1)
+    maxs = np.max(momentSamplesBs, axis = 1)
+    halfRanges = (maxs - mins) * 1.1 / 2.0
+    centers    = (mins + maxs) / 2.0
+    histBs = ROOT.TH2D(
+      f"{pdfFileNamePrefix}bootstrap_{HVals[1].qn.label}_vs_{HVals[0].qn.label}_{momentPart}",
+      f"{histTitle};{HVals[1].qn.title} {legendEntrySuffix};{HVals[0].qn.title} {legendEntrySuffix}",
+      nmbBins, centers[0] - halfRanges[0], centers[0] + halfRanges[0],
+      nmbBins, centers[1] - halfRanges[1], centers[1] + halfRanges[1]
+    )
+    # fill histogram
+    np.vectorize(histBs.Fill, otypes = [int])(momentSamplesBs[0, :], momentSamplesBs[1, :])
+    # draw histogram
+    canv = ROOT.TCanvas()
+    histBs.Draw("COLZ")
+
+    # indicate bootstrap estimate
+    meansBs = np.mean(momentSamplesBs, axis = 1)
+    markerBs = ROOT.TMarker(meansBs[0], meansBs[1], ROOT.kFullCircle)
+    markerBs.SetMarkerColor(ROOT.kBlue + 1)
+    markerBs.SetMarkerSize(0.75)
+    markerBs.Draw()
+    # indicate bootstrap covariance matrix
+    covBs = np.cov(momentSamplesBs, ddof = 1)
+    covEigenValsBs, covEigenVectsBs = np.linalg.eig(covBs)
+    print(f"!!!FOO Bs {meansBs=}, {covBs=}")
+    # calculate lengths of major axes and rotation angle of ellipse
+    r1    = np.sqrt(covEigenValsBs[0])
+    r2    = np.sqrt(covEigenValsBs[1])
+    theta = np.arctan2(covEigenVectsBs[1, 0], covEigenVectsBs[0, 0]) * 180.0 / np.pi
+    print(f"!!!FOO BS {r1=}, {r2=}, {theta=}")
+    # draw the ellipse
+    #TODO improve by drawing major axes in kDotted
+    ellipseBs = ROOT.TEllipse(*meansBs, r1, r2, 0, 360, theta)
+    ellipseBs.SetLineColor(ROOT.kBlue + 1)
+    ellipseBs.SetLineWidth(3)
+    ellipseBs.SetFillStyle(0)
+    ellipseBs.Draw()
+
+    # indicate estimate from uncertainty propagation
+    meansEst: Tuple[float, float] = tuple(HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals)
+    markerEst = ROOT.TMarker(meansEst[0], meansEst[1], ROOT.kFullCircle)
+    markerEst.SetMarkerColor(ROOT.kRed + 1)
+    markerEst.SetMarkerSize(0.75)
+    markerEst.Draw()
+    # indicate nominal covariance matrix
+    flatIndices: Tuple[int, int] = tuple(HData.indices.indexMap.flatIndex_for[momentIndex] for momentIndex in momentIndices)
+    covEst = np.array([
+      [HData._covReReFlatIndex[flatIndices[0], flatIndices[0]], HData._covReReFlatIndex[flatIndices[0], flatIndices[1]]],
+      [HData._covReReFlatIndex[flatIndices[1], flatIndices[0]], HData._covReReFlatIndex[flatIndices[1], flatIndices[1]]],
+    ])
+    print(f"!!!FOO Est {meansEst=}, {covEst=}")
+    covEigenValsEst, covEigenVectsEst = np.linalg.eig(covEst)
+    # calculate lengths of major axes and rotation angle of ellipse
+    r1    = np.sqrt(covEigenValsEst[0])
+    r2    = np.sqrt(covEigenValsEst[1])
+    theta = np.arctan2(covEigenVectsEst[1, 0], covEigenVectsEst[0, 0]) * 180.0 / np.pi
+    print(f"!!!FOO Est {r1=}, {r2=}, {theta=}")
+    # draw the ellipse
+    #TODO improve by drawing major axes in kDotted
+    ellipseEst = ROOT.TEllipse(*meansEst, r1, r2, 0, 360, theta)
+    ellipseEst.SetLineColor(ROOT.kRed + 1)
+    ellipseEst.SetLineWidth(2)
+    ellipseEst.SetFillStyle(0)
+    ellipseEst.Draw()
+
+    # indicate true value
+    plotTruth = all(HVal.truth is not None for HVal in HVals)
+    if plotTruth:
+      markerTruth = ROOT.TMarker(HVals[0].truth, HVals[1].truth, 31)
+      markerTruth.SetMarkerColor(ROOT.kGreen + 2)
+      markerTruth.SetMarkerSize(0.75)
+      markerTruth.Draw()
+    # add legend
+    legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
+    entry = legend.AddEntry(markerBs, "Bootstrap estimate", "LP")
+    entry.SetLineColor(ROOT.kBlue + 1)
+    entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
+    entry.SetLineColor(ROOT.kRed + 1)
+    if plotTruth:
+      entry = legend.AddEntry(markerTruth, "True value", "P")
+      entry.SetLineColor(ROOT.kGreen + 2)
+    legend.Draw()
+    canv.SaveAs(f"{histBs.GetName()}.pdf")
+
+
 def plotMomentsBootstrapDiff(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data
   momentLabel:       str,  # label used in graph names and output file name
