@@ -47,7 +47,7 @@ class MomentValueAndTruth(MomentValue):
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
 
-  def truthRealOrImag(
+  def truthRealPart(
     self,
     realPart: bool,  # switched between real part (True) and imaginary part (False)
   ) -> float:
@@ -231,7 +231,7 @@ def plotMoments(
     for index, HVal in enumerate(HVals):
       if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
         continue
-      y, yErr = HVal.realOrImag(realPart = (momentPart == "Re"))
+      y, yErr = HVal.realPart(momentPart == "Re")
       binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
       histData.SetBinContent(binIndex, y)
       histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
@@ -292,8 +292,8 @@ def plotMoments(
         if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
           continue
         if HVal.truth is not None:
-          dataVal, dataValErr = HVal.realOrImag     (realPart = (momentPart == "Re"))
-          trueVal             = HVal.truthRealOrImag(realPart = (momentPart == "Re"))
+          dataVal, dataValErr = HVal.realPart     (momentPart == "Re")
+          trueVal             = HVal.truthRealPart(momentPart == "Re")
           binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
           if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
@@ -416,7 +416,7 @@ def plotMomentsBootstrapDistributionsVar(
       lineBs.SetLineColor(ROOT.kBlue + 1)
       lineBs.Draw()
       # indicate estimate from uncertainty propagation
-      meanEst, stdDevEst = HVal.realOrImag(realPart = (momentPart == "Re"))
+      meanEst, stdDevEst = HVal.realPart(momentPart == "Re")
       markerEst = ROOT.TMarker(meanEst,  yCoord / 2, ROOT.kFullCircle)
       markerEst.SetMarkerColor(ROOT.kGreen + 2)
       markerEst.SetMarkerSize(0.75)
@@ -494,7 +494,7 @@ def plotMomentsBootstrapDistributionsCov(
     histBs.Draw("COLZ")
 
     # indicate bootstrap estimate
-    meansBs = np.mean(momentSamplesBs, axis = 1)
+    meansBs  = np.mean(momentSamplesBs, axis = 1)
     markerBs = ROOT.TMarker(meansBs[0], meansBs[1], ROOT.kFullCircle)
     markerBs.SetMarkerColor(ROOT.kBlue + 1)
     markerBs.SetMarkerSize(0.75)
@@ -517,17 +517,13 @@ def plotMomentsBootstrapDistributionsCov(
     ellipseBs.Draw()
 
     # indicate estimate from uncertainty propagation
-    meansEst: Tuple[float, float] = tuple(HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals)
+    meansEst: Tuple[float, float] = tuple(HVal.realPart(momentPart == "Re")[0] for HVal in HVals)
     markerEst = ROOT.TMarker(meansEst[0], meansEst[1], ROOT.kFullCircle)
-    markerEst.SetMarkerColor(ROOT.kRed + 1)
+    markerEst.SetMarkerColor(ROOT.kGreen + 2)
     markerEst.SetMarkerSize(0.75)
     markerEst.Draw()
     # indicate nominal covariance matrix
-    flatIndices: Tuple[int, int] = tuple(HData.indices.indexMap.flatIndex_for[momentIndex] for momentIndex in momentIndices)
-    covEst = np.array([
-      [HData._covReReFlatIndex[flatIndices[0], flatIndices[0]], HData._covReReFlatIndex[flatIndices[0], flatIndices[1]]],
-      [HData._covReReFlatIndex[flatIndices[1], flatIndices[0]], HData._covReReFlatIndex[flatIndices[1], flatIndices[1]]],
-    ])
+    covEst = HData.covariance(momentIndices, realParts = (momentPart == "Re", momentPart == "Re"))
     print(f"!!!FOO Est {meansEst=}, {covEst=}")
     covEigenValsEst, covEigenVectsEst = np.linalg.eig(covEst)
     # calculate lengths of major axes and rotation angle of ellipse
@@ -538,7 +534,7 @@ def plotMomentsBootstrapDistributionsCov(
     # draw the ellipse
     #TODO improve by drawing major axes in kDotted
     ellipseEst = ROOT.TEllipse(*meansEst, r1, r2, 0, 360, theta)
-    ellipseEst.SetLineColor(ROOT.kRed + 1)
+    ellipseEst.SetLineColor(ROOT.kGreen + 2)
     ellipseEst.SetLineWidth(2)
     ellipseEst.SetFillStyle(0)
     ellipseEst.Draw()
@@ -546,19 +542,19 @@ def plotMomentsBootstrapDistributionsCov(
     # indicate true value
     plotTruth = all(HVal.truth is not None for HVal in HVals)
     if plotTruth:
-      markerTruth = ROOT.TMarker(HVals[0].truth, HVals[1].truth, 31)
-      markerTruth.SetMarkerColor(ROOT.kGreen + 2)
-      markerTruth.SetMarkerSize(0.75)
+      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(momentPart == "Re"), HVals[1].truthRealPart(momentPart == "Re"), 31)
+      markerTruth.SetMarkerColor(ROOT.kRed + 1)
+      markerTruth.SetMarkerSize(1.25)
       markerTruth.Draw()
+
     # add legend
     legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
     entry = legend.AddEntry(markerBs, "Bootstrap estimate", "LP")
     entry.SetLineColor(ROOT.kBlue + 1)
     entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
-    entry.SetLineColor(ROOT.kRed + 1)
+    entry.SetLineColor(ROOT.kGreen + 2)
     if plotTruth:
       entry = legend.AddEntry(markerTruth, "True value", "P")
-      entry.SetLineColor(ROOT.kGreen + 2)
     legend.Draw()
     canv.SaveAs(f"{histBs.GetName()}.pdf")
 
@@ -581,10 +577,10 @@ def plotMomentsBootstrapDiff(
   xVals  = np.arange(len(HVals), dtype = npt.Float64) if binning is None else np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     # get nominal estimates and uncertainties
-    momentValsEst   = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
-    momentUncertEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
+    momentValsEst   = np.array([HVal.realPart(momentPart == "Re")[0] for HVal in HVals], dtype = npt.Float64)
+    momentUncertEst = np.array([HVal.realPart(momentPart == "Re")[1] for HVal in HVals], dtype = npt.Float64)
     # get bootstrap estimates and uncertainties
-    momentsBs       = tuple(HVal.bootstrapEstimate(realPart = (momentPart == "Re")) for HVal in HVals)
+    momentsBs       = tuple(HVal.bootstrapEstimate(momentPart == "Re") for HVal in HVals)
     momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
     momentUncertBs  = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
     # create graphs with relative differences

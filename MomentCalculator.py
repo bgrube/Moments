@@ -483,9 +483,9 @@ class MomentValue:
     """Returns imaginary part with uncertainty"""
     return (self.val.imag, self.uncertIm)
 
-  def realOrImag(
+  def realPart(
     self,
-    realPart: bool,  # switched between real part (True) and imaginary part (False)
+    realPart: bool,  # switches between real part (True) and imaginary part (False)
   ) -> Tuple[float, float]:
     """Returns real or imaginary part with corresponding uncertainty according to given flag"""
     if realPart:
@@ -500,7 +500,7 @@ class MomentValue:
 
   def bootstrapEstimate(
     self,
-    realPart: bool,  # switched between real part (True) and imaginary part (False)
+    realPart: bool,  # switches between real part (True) and imaginary part (False)
   ) -> Tuple[float, float]:
     """Returns bootstrap estimate and its uncertainty for real or imaginary part"""
     assert self.hasBootstrapSamples, "No bootstrap samples available"
