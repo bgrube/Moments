@@ -593,6 +593,39 @@ class MomentResult:
     result = (str(self[flatIndex]) for flatIndex in self.indices.flatIndices())
     return "\n".join(result)
 
+  def covariance(
+    self,
+    subscripts: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
+    realParts:  Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
+  ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
+    """Returns 2x2 covariance submatrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
+    assert len(subscripts) == 2, f"Expect exactly two moment indices; got {len(subscripts)} instead"
+    assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
+    flatIndices: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
+                                         for subscript in subscripts)
+    if realParts == (True, True):
+      return np.array([
+        [self._covReReFlatIndex[flatIndices[0], flatIndices[0]], self._covReReFlatIndex[flatIndices[0], flatIndices[1]]],
+        [self._covReReFlatIndex[flatIndices[1], flatIndices[0]], self._covReReFlatIndex[flatIndices[1], flatIndices[1]]],
+      ])
+    elif realParts == (False, False):
+      return np.array([
+        [self._covImImFlatIndex[flatIndices[0], flatIndices[0]], self._covImImFlatIndex[flatIndices[0], flatIndices[1]]],
+        [self._covImImFlatIndex[flatIndices[1], flatIndices[0]], self._covImImFlatIndex[flatIndices[1], flatIndices[1]]],
+      ])
+    elif realParts == (True, False):
+      return np.array([
+        [self._covReReFlatIndex[flatIndices[0], flatIndices[0]], self._covReImFlatIndex[flatIndices[0], flatIndices[1]]],
+        [self._covReImFlatIndex[flatIndices[0], flatIndices[1]], self._covImImFlatIndex[flatIndices[1], flatIndices[1]]],
+      ])
+    elif realParts == (False, True):
+      return np.array([
+        [self._covImImFlatIndex[flatIndices[0], flatIndices[0]], self._covReImFlatIndex[flatIndices[1], flatIndices[0]]],
+        [self._covReImFlatIndex[flatIndices[1], flatIndices[0]], self._covReReFlatIndex[flatIndices[1], flatIndices[1]]],
+      ])
+    else:
+      raise ValueError(f"Invalid realParts tuple {realParts}; must be tuple of 2 bools")
+
   @property
   def hasBootstrapSamples(self) -> bool:
     """Returns whether bootstrap samples exist"""
