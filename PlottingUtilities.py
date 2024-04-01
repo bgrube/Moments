@@ -459,7 +459,7 @@ def plotMomentsBootstrapDistributionsVar(
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
 
-def plotMomentsBootstrapDistributionsCov(
+def plotMomentsBootstrapDistributionsCor(
   momentIndices:     Tuple[QnMomentIndex, QnMomentIndex],  # pair of moment indices
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
@@ -472,18 +472,20 @@ def plotMomentsBootstrapDistributionsCov(
            MomentValueAndTruth(*HData[momentIndices[1]], HTrue[momentIndices[1]].val if HTrue else None))  # type: ignore
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
   assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
-  #TODO loop over ReRe, ImIm, and 2x ReIm
-  for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
+  #TODO loop over combinations of real and imag parts
+  for realParts in ((True, True), (False, False), (True, False), (False, True)):  # True = real part, False = imaginary part
+    momentParts         = tuple("Re"        if realPart else "Im"        for realPart in realParts)
+    legendEntrySuffixes = tuple("Real Part" if realPart else "Imag Part" for realPart in realParts)
     # create histogram with bootstrap samples
-    momentSamplesBs = np.vstack((HVals[0].bsSamples, HVals[1].bsSamples))
-    momentSamplesBs = momentSamplesBs.real if momentPart == "Re" else momentSamplesBs.imag
+    momentSamplesBs = np.vstack((HVals[0].bsSamples.real if realParts[0] else HVals[0].bsSamples.imag,
+                                 HVals[1].bsSamples.real if realParts[1] else HVals[1].bsSamples.imag))
     mins = np.min(momentSamplesBs, axis = 1)
     maxs = np.max(momentSamplesBs, axis = 1)
     halfRanges = (maxs - mins) * 1.1 / 2.0
     centers    = (mins + maxs) / 2.0
     histBs = ROOT.TH2D(
-      f"{pdfFileNamePrefix}bootstrap_{HVals[1].qn.label}_vs_{HVals[0].qn.label}_{momentPart}",
-      f"{histTitle};{HVals[1].qn.title} {legendEntrySuffix};{HVals[0].qn.title} {legendEntrySuffix}",
+      f"{pdfFileNamePrefix}bootstrap_{HVals[1].qn.label}_{momentParts[1]}_vs_{HVals[0].qn.label}_{momentParts[0]}",
+      f"{histTitle};{HVals[0].qn.title} {legendEntrySuffixes[0]};{HVals[1].qn.title} {legendEntrySuffixes[1]}",
       nmbBins, centers[0] - halfRanges[0], centers[0] + halfRanges[0],
       nmbBins, centers[1] - halfRanges[1], centers[1] + halfRanges[1]
     )
@@ -517,13 +519,13 @@ def plotMomentsBootstrapDistributionsCov(
     ellipseBs.Draw()
 
     # indicate estimate from uncertainty propagation
-    meansEst: Tuple[float, float] = tuple(HVal.realPart(momentPart == "Re")[0] for HVal in HVals)
+    meansEst  = (HVals[0].realPart(realParts[0])[0], HVals[1].realPart(realParts[1])[0])
     markerEst = ROOT.TMarker(meansEst[0], meansEst[1], ROOT.kFullCircle)
     markerEst.SetMarkerColor(ROOT.kGreen + 2)
     markerEst.SetMarkerSize(0.75)
     markerEst.Draw()
     # indicate nominal covariance matrix
-    covEst = HData.covariance(momentIndices, realParts = (momentPart == "Re", momentPart == "Re"))
+    covEst = HData.covariance(momentIndices, realParts)
     print(f"!!!FOO Est {meansEst=}, {covEst=}")
     covEigenValsEst, covEigenVectsEst = np.linalg.eig(covEst)
     # calculate lengths of major axes and rotation angle of ellipse
@@ -542,7 +544,7 @@ def plotMomentsBootstrapDistributionsCov(
     # indicate true value
     plotTruth = all(HVal.truth is not None for HVal in HVals)
     if plotTruth:
-      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(momentPart == "Re"), HVals[1].truthRealPart(momentPart == "Re"), 31)
+      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(realParts[0]), HVals[1].truthRealPart(realParts[1]), 31)
       markerTruth.SetMarkerColor(ROOT.kRed + 1)
       markerTruth.SetMarkerSize(1.25)
       markerTruth.Draw()

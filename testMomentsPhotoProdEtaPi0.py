@@ -16,7 +16,7 @@ from PlottingUtilities import (
   plotComplexMatrix,
   plotMomentsBootstrapDiff1D,
   plotMomentsBootstrapDiffInBin,
-  plotMomentsBootstrapDistributionsCov,
+  plotMomentsBootstrapDistributionsCor,
   plotMomentsBootstrapDistributionsVar,
   plotMoments1D,
   plotMomentsInBin,
@@ -196,7 +196,7 @@ if __name__ == "__main__":
       namePrefix = "norm" if normalizeMoments else "unnorm"
 
       HIndices = (MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0), MomentCalculator.QnMomentIndex(momentIndex = 1, L = 0, M =0))
-      plotMomentsBootstrapDistributionsCov(HIndices, moments[0].HPhys, momentsTruth[0].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+      plotMomentsBootstrapDistributionsCor(HIndices, moments[0].HPhys, momentsTruth[0].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
 
       for massBinIndex, momentsInBin in enumerate(moments):
         binLabel = "_".join(momentsInBin.binLabels)
