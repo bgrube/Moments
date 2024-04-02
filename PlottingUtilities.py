@@ -241,8 +241,8 @@ def plotMoments(
   binning:           Optional[HistAxisBinning] = None,  # if not None data are plotted as function of binning variable
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentLabel:       str = QnMomentIndex.momentSymbol,  # label used in output file name
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  histTitle:         str = "",   # histogram title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
 ) -> None:
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -372,7 +372,7 @@ def plotMomentsInBin(
   HData:             MomentResult,  # moments extracted from data
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  pdfFileNamePrefix: str = "",  # name prefix for output files
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -385,11 +385,11 @@ def plotMomentsInBin(
 def plotMoments1D(
   moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,  # defines specific moment
-  binning:           HistAxisBinning,                 # binning to use for plot
+  binning:           HistAxisBinning,   # binning to use for plot
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
-  pdfFileNamePrefix: str = "h",   # name prefix for output files
-  histTitle:         str = "",    # histogram title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
@@ -404,7 +404,7 @@ def plotMoments1D(
 def plotMomentsBootstrapDistributions1D(
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  pdfFileNamePrefix: str = "",   # name prefix for output files
   histTitle:         str = "",   # histogram title
   nmbBins:           int = 100,  # number of bins for bootstrap histograms
 ) -> None:
@@ -489,9 +489,9 @@ def plotMomentPairBootstrapDistributions2D(
   momentIndexPair:   Tuple[QnMomentIndex, QnMomentIndex],  # indices of moments to plot
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  histTitle:         str = "",   # histogram title
-  nmbBins:           int = 20,   # number of bins for bootstrap histograms
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
+  nmbBins:           int = 20,  # number of bins for bootstrap histograms
 ) -> None:
   """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
   HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], HTrue[momentIndexPair[0]].val if HTrue else None),  # type: ignore
@@ -586,9 +586,9 @@ def plotMomentPairBootstrapDistributions2D(
 def plotMomentsBootstrapDistributions2D(
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  histTitle:         str = "",   # histogram title
-  nmbBins:           int = 20,   # number of bins for bootstrap histograms
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
+  nmbBins:           int = 20,  # number of bins for bootstrap histograms
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
   momentIndexPairs = ((HData.indices[flatIndex1], HData.indices[flatIndex2])
@@ -603,8 +603,8 @@ def plotMomentsBootstrapDiff(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data
   momentLabel:       str,  # label used in graph names and output file name
   binning:           Optional[HistAxisBinning] = None,  # binning to use for plot; if None moment index is used as x-axis
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  graphTitle:        str = "",   # graph title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all given moments as function of moment index or binning variable"""
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
@@ -670,9 +670,9 @@ def plotMomentsBootstrapDiff(
 def plotMomentsBootstrapDiff1D(
   moments:           MomentCalculatorsKinematicBinning,  # moment values extracted from data
   qnIndex:           QnMomentIndex,  # defines specific moment
-  binning:           HistAxisBinning,                 # binning to use for plot
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  graphTitle:        str = "",   # graph title
+  binning:           HistAxisBinning,  # binning to use for plot
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates for moments and their uncertainties as a function of binning variable"""
   # get values of moment that corresponds to the given qnIndex in all kinematic bins
@@ -682,8 +682,8 @@ def plotMomentsBootstrapDiff1D(
 
 def plotMomentsBootstrapDiffInBin(
   HData:             MomentResult,  # moment values extracted from data
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  graphTitle:        str = "",   # graph title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all moments"""
   for momentIndex in range(3):
