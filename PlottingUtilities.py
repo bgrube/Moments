@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
@@ -28,6 +29,15 @@ from  MomentCalculator import (
   MomentValue,
   QnMomentIndex,
 )
+
+
+# set default matplotlib font to STIX
+mpl.rcParams["font.family"] = "STIXGeneral"
+mpl.rcParams["mathtext.fontset"] = "stix"
+# set default matplotlib font to Computer Modern Roman
+# mpl.rcParams['font.family'] = 'serif'
+# mpl.rcParams['font.serif'] = 'cmr10'
+# mpl.rcParams['mathtext.fontset'] = 'cm'
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -148,26 +158,43 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   ROOT.gStyle.SetTitleOffset(1.35, "Y")
 
 
+def plotRealMatrix(
+  matrix:      npt.NDArray[npt.Shape["*, *"], npt.Float64],  # matrix to plot
+  pdfFileName: str,  # name of output file
+  axisTitles:  Tuple[str, str]                         = ("", ""),  # titles for x and y axes
+  plotTitle:   str                                     = "",  # title for plot
+  zRange:      Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+) -> None:
+  """Draws given matrix"""
+  fig, ax = plt.subplots()
+  cax = ax.matshow(matrix, vmin = zRange[0], vmax = zRange[1])
+  # ax.xaxis.set_tick_params(which = "both", labelbottom = True)
+  ax.xaxis.tick_bottom()
+  fig.colorbar(cax)
+  plt.title(plotTitle)
+  plt.xlabel(axisTitles[0])
+  plt.ylabel(axisTitles[1])
+  plt.savefig(f"{pdfFileName}.pdf", transparent = True)
+  plt.close(fig)
+
+
 def plotComplexMatrix(
   complexMatrix:     npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
   pdfFileNamePrefix: str,  # name prefix for output files
+  axisTitles:        Tuple[str, str]                         = ("", ""),  # titles for x and y axes
+  plotTitle:         str                                     = "",  # title for plot
+  zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
 ) -> None:
-  """Draws real and imaginary parts of given 2D array"""
+  """Draws real and imaginary parts, absolute value and phase of given complex-valued matrix"""
   matricesToPlot = {
-    "real" : np.real(complexMatrix),      # real part
-    "imag" : np.imag(complexMatrix),      # imaginary part
-    "abs"  : np.absolute(complexMatrix),  # absolute value
-    "arg"  : np.angle(complexMatrix),     # phase
+    ("real", "Real Part"     ) : np.real    (complexMatrix),
+    ("imag", "Imag Part"     ) : np.imag    (complexMatrix),
+    ("abs",  "Absolute Value") : np.absolute(complexMatrix),
+    ("arg",  "Phase"         ) : np.angle   (complexMatrix, deg = True),  # [degree]
   }
-  #TODO add plot titles
-  #TODO add axis titles
   #TODO use same z-scale for all plots
-  for plotLabel, matrix in matricesToPlot.items():
-    fig, ax = plt.subplots()
-    cax = ax.matshow(matrix)
-    fig.colorbar(cax)
-    plt.savefig(f"{pdfFileNamePrefix}_{plotLabel}.pdf", transparent = True)
-    plt.close(fig)
+  for label, matrix in matricesToPlot.items():
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}_{label[0]}", axisTitles, plotTitle = (plotTitle + ", " if plotTitle else "") + label[1], zRange = zRange)
 
 
 def drawTF3(
