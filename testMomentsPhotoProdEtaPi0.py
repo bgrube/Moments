@@ -16,8 +16,8 @@ from PlottingUtilities import (
   plotComplexMatrix,
   plotMomentsBootstrapDiff1D,
   plotMomentsBootstrapDiffInBin,
-  plotMomentsBootstrapDistributionsCor,
-  plotMomentsBootstrapDistributionsVar,
+  plotMomentsBootstrapDistributions1D,
+  plotMomentsBootstrapDistributions2D,
   plotMoments1D,
   plotMomentsInBin,
   setupPlotStyle,
@@ -40,17 +40,17 @@ def readPartialWaveAmplitudes(
   print(f"Amplitudes for mass bin at {massBinCenter} GeV\n{df}")
   assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
   # Pandas cannot read-back complex values out of the box
-  # there also seems to be no interest in fixing that <https://github.com/pandas-dev/pandas/issues/9379>
+  # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
   # have to convert columns by hand
   s = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-']),   # S_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-' ]),  # S_0^-
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -1), val = s['D1--']),  # D_-1^-
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m =  0), val = s['D0+-']),  # D_0^-
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +1), val = s['D1+-']),  # D_+1^-
     # positive-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+']),   # S_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+' ]),  # S_0^+
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -2), val = s['D2-+']),  # D_-2^+
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +2), val = s['D2++']),  # D_+2^+
   ]
@@ -195,9 +195,6 @@ if __name__ == "__main__":
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
 
-      HIndices = (MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0), MomentCalculator.QnMomentIndex(momentIndex = 1, L = 0, M =0))
-      plotMomentsBootstrapDistributionsCor(HIndices, moments[0].HPhys, momentsTruth[0].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-
       for massBinIndex, momentsInBin in enumerate(moments):
         binLabel = "_".join(momentsInBin.binLabels)
         binTitle = ", ".join(momentsInBin.binTitles)
@@ -205,9 +202,10 @@ if __name__ == "__main__":
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
         if nmbBootstrapSamples > 0:
           graphTitle = f"({binLabel})"
-          plotMomentsBootstrapDistributionsVar(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
-                                               pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
-          raise ValueError("stop here")
+          plotMomentsBootstrapDistributions1D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
+          plotMomentsBootstrapDistributions2D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
           plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", graphTitle = binTitle)
 
       # plot kinematic dependences of all moments

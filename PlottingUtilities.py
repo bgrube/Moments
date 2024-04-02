@@ -271,7 +271,6 @@ def plotMoments(
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
     canv.Update()
     if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-      # print(f"???ZERO")
       zeroLine = ROOT.TLine()
       zeroLine.SetLineColor(ROOT.kBlack)
       zeroLine.SetLineStyle(ROOT.kDashed)
@@ -375,14 +374,14 @@ def plotMoments1D(
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
 
 
-def plotMomentsBootstrapDistributionsVar(
+def plotMomentsBootstrapDistributions1D(
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   histTitle:         str = "",   # histogram title
   nmbBins:           int = 100,  # number of bins for bootstrap histograms
 ) -> None:
-  """Plots bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
+  """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for qnIndex in HData.indices.QnIndices():
@@ -459,17 +458,17 @@ def plotMomentsBootstrapDistributionsVar(
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
 
-def plotMomentsBootstrapDistributionsCor(
-  momentIndices:     Tuple[QnMomentIndex, QnMomentIndex],  # pair of moment indices
+def plotMomentPairBootstrapDistributions2D(
+  momentIndexPair:   Tuple[QnMomentIndex, QnMomentIndex],  # indices of moments to plot
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
   pdfFileNamePrefix: str = "h",  # name prefix for output files
   histTitle:         str = "",   # histogram title
   nmbBins:           int = 20,   # number of bins for bootstrap histograms
 ) -> None:
-  """Plots bootstrap distributions for correlation of the values of two moments and overlays the true value and the estimate from uncertainty propagation"""
-  HVals = (MomentValueAndTruth(*HData[momentIndices[0]], HTrue[momentIndices[0]].val if HTrue else None),  # type: ignore
-           MomentValueAndTruth(*HData[momentIndices[1]], HTrue[momentIndices[1]].val if HTrue else None))  # type: ignore
+  """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
+  HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], HTrue[momentIndexPair[0]].val if HTrue else None),  # type: ignore
+           MomentValueAndTruth(*HData[momentIndexPair[1]], HTrue[momentIndexPair[1]].val if HTrue else None))  # type: ignore
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
   assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
   #TODO loop over combinations of real and imag parts
@@ -504,12 +503,10 @@ def plotMomentsBootstrapDistributionsCor(
     # indicate bootstrap covariance matrix
     covBs = np.cov(momentSamplesBs, ddof = 1)
     covEigenValsBs, covEigenVectsBs = np.linalg.eig(covBs)
-    print(f"!!!FOO Bs {meansBs=}, {covBs=}")
     # calculate lengths of major axes and rotation angle of ellipse
     r1    = np.sqrt(covEigenValsBs[0])
     r2    = np.sqrt(covEigenValsBs[1])
     theta = np.arctan2(covEigenVectsBs[1, 0], covEigenVectsBs[0, 0]) * 180.0 / np.pi
-    print(f"!!!FOO BS {r1=}, {r2=}, {theta=}")
     # draw the ellipse
     #TODO improve by drawing major axes in kDotted
     ellipseBs = ROOT.TEllipse(*meansBs, r1, r2, 0, 360, theta)
@@ -525,14 +522,12 @@ def plotMomentsBootstrapDistributionsCor(
     markerEst.SetMarkerSize(0.75)
     markerEst.Draw()
     # indicate nominal covariance matrix
-    covEst = HData.covariance(momentIndices, realParts)
-    print(f"!!!FOO Est {meansEst=}, {covEst=}")
+    covEst = HData.covariance(momentIndexPair, realParts)
     covEigenValsEst, covEigenVectsEst = np.linalg.eig(covEst)
     # calculate lengths of major axes and rotation angle of ellipse
     r1    = np.sqrt(covEigenValsEst[0])
     r2    = np.sqrt(covEigenValsEst[1])
     theta = np.arctan2(covEigenVectsEst[1, 0], covEigenVectsEst[0, 0]) * 180.0 / np.pi
-    print(f"!!!FOO Est {r1=}, {r2=}, {theta=}")
     # draw the ellipse
     #TODO improve by drawing major axes in kDotted
     ellipseEst = ROOT.TEllipse(*meansEst, r1, r2, 0, 360, theta)
@@ -559,6 +554,22 @@ def plotMomentsBootstrapDistributionsCor(
       entry = legend.AddEntry(markerTruth, "True value", "P")
     legend.Draw()
     canv.SaveAs(f"{histBs.GetName()}.pdf")
+
+
+def plotMomentsBootstrapDistributions2D(
+  HData:             MomentResult,  # moments extracted from data
+  HTrue:             Optional[MomentResult] = None,  # true moments
+  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  histTitle:         str = "",   # histogram title
+  nmbBins:           int = 20,   # number of bins for bootstrap histograms
+) -> None:
+  """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
+  momentIndexPairs = ((HData.indices[flatIndex1], HData.indices[flatIndex2])
+                      for flatIndex1 in HData.indices.flatIndices()
+                      for flatIndex2 in HData.indices.flatIndices()
+                      if flatIndex1 < flatIndex2)
+  for momentIndexPair in momentIndexPairs:
+    plotMomentPairBootstrapDistributions2D(momentIndexPair, HData, HTrue, pdfFileNamePrefix, histTitle, nmbBins)
 
 
 def plotMomentsBootstrapDiff(
