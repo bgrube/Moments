@@ -194,7 +194,7 @@ def plotComplexMatrix(
   }
   #TODO use same z-scale for all plots
   for label, matrix in matricesToPlot.items():
-    plotRealMatrix(matrix, f"{pdfFileNamePrefix}_{label[0]}", axisTitles, plotTitle = (plotTitle + ", " if plotTitle else "") + label[1], zRange = zRange)
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label[0]}", axisTitles, plotTitle = plotTitle + label[1], zRange = zRange)
 
 
 def drawTF3(
@@ -597,6 +597,24 @@ def plotMomentsBootstrapDistributions2D(
                       if flatIndex1 < flatIndex2)
   for momentIndexPair in momentIndexPairs:
     plotMomentPairBootstrapDistributions2D(momentIndexPair, HData, HTrue, pdfFileNamePrefix, histTitle, nmbBins)
+
+
+def plotMomentsCovMatrices(
+  HData:             MomentResult,  # moments extracted from data
+  pdfFileNamePrefix: str,  # name prefix for output files
+  axisTitles:        Tuple[str, str]                         = ("", ""),  # titles for x and y axes
+  plotTitle:         str                                     = "",  # title for plot
+  zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+):
+  """Plots covariance matrices of moments and the difference w.r.t. the bootstrap estimates"""
+  # plot covariance matrices
+  matricesToPlot = {
+    ("ReRe", "Auto Covariance Real Parts")           : HData._covReReFlatIndex,
+    ("ImIm", "Auto Covariance Imag Parts")           : HData._covImImFlatIndex,
+    ("ReIm", "Cross Covariance Real and Imag Parts") : HData._covReImFlatIndex,
+  }
+  for label, matrix in  matricesToPlot.items():
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label[0]}", axisTitles, plotTitle = plotTitle + label[1], zRange = zRange)
 
 
 def plotMomentsBootstrapDiff(
