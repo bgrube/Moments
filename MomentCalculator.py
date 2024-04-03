@@ -595,36 +595,54 @@ class MomentResult:
 
   def covariance(
     self,
-    subscripts: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
-    realParts:  Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
+    momentIndexPair: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
+    realParts:       Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
   ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
-    """Returns 2 x 2 covariance submatrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
-    assert len(subscripts) == 2, f"Expect exactly two moment indices; got {len(subscripts)} instead"
+    """Returns 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
+    assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndices: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
-                                         for subscript in subscripts)
+    flatIndexPair: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
+                                           for momentIndex in momentIndexPair)
     if realParts == (True, True):
       return np.array([
-        [self._covReReFlatIndex[flatIndices[0], flatIndices[0]], self._covReReFlatIndex[flatIndices[0], flatIndices[1]]],
-        [self._covReReFlatIndex[flatIndices[1], flatIndices[0]], self._covReReFlatIndex[flatIndices[1], flatIndices[1]]],
+        [self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
+        [self._covReReFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     elif realParts == (False, False):
       return np.array([
-        [self._covImImFlatIndex[flatIndices[0], flatIndices[0]], self._covImImFlatIndex[flatIndices[0], flatIndices[1]]],
-        [self._covImImFlatIndex[flatIndices[1], flatIndices[0]], self._covImImFlatIndex[flatIndices[1], flatIndices[1]]],
+        [self._covImImFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covImImFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
+        [self._covImImFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._covImImFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     elif realParts == (True, False):
       return np.array([
-        [self._covReReFlatIndex[flatIndices[0], flatIndices[0]], self._covReImFlatIndex[flatIndices[0], flatIndices[1]]],
-        [self._covReImFlatIndex[flatIndices[0], flatIndices[1]], self._covImImFlatIndex[flatIndices[1], flatIndices[1]]],
+        [self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReImFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
+        [self._covReImFlatIndex[flatIndexPair[0], flatIndexPair[1]], self._covImImFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     elif realParts == (False, True):
       return np.array([
-        [self._covImImFlatIndex[flatIndices[0], flatIndices[0]], self._covReImFlatIndex[flatIndices[1], flatIndices[0]]],
-        [self._covReImFlatIndex[flatIndices[1], flatIndices[0]], self._covReReFlatIndex[flatIndices[1], flatIndices[1]]],
+        [self._covImImFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReImFlatIndex[flatIndexPair[1], flatIndexPair[0]]],
+        [self._covReImFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     else:
       raise ValueError(f"Invalid realParts tuple {realParts}; must be tuple of 2 bools")
+
+  def covarianceBootstrap(
+    self,
+    momentIndexPair: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
+    realParts:       Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
+  ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
+    """Returns bootstrap estimate of 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
+    assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
+    assert len(realParts      ) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
+    flatIndexPair: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
+                                           for momentIndex in momentIndexPair)
+    # get bootstrap samples of moments
+    HVals = (self[flatIndexPair[0]], self[flatIndexPair[1]])
+    assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
+    assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
+    momentSamplesBs = ((HVals[0].bsSamples.real if realParts[0] else HVals[0].bsSamples.imag,
+                        HVals[1].bsSamples.real if realParts[1] else HVals[1].bsSamples.imag))
+    return np.cov(momentSamplesBs[0], momentSamplesBs[1], ddof = 1)
 
   @property
   def compositeCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Float64]:
