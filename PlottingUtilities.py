@@ -628,14 +628,8 @@ def plotMomentsCovMatrices(
                           for flatIndex1 in HData.indices.flatIndices()
                           if (realParts[0] != realParts[1]) or (flatIndex0 <= flatIndex1))
       for momentIndexPair in momentIndexPairs:
-        # get bootstrap samples of moments
-        HVals = (HData[momentIndexPair[0]], HData[momentIndexPair[1]])
-        assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
-        assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
-        momentSamplesBs = ((HVals[0].bsSamples.real if realParts[0] else HVals[0].bsSamples.imag,
-                            HVals[1].bsSamples.real if realParts[1] else HVals[1].bsSamples.imag))
         # covariance = off-diagonal element of the 2 x 2 covariance matrix returned by np.cov():
-        covMatrixBs[momentIndexPair[0], momentIndexPair[1]] = np.cov(momentSamplesBs[0], momentSamplesBs[1], ddof = 1)[:1, 1:][0]
+        covMatrixBs[momentIndexPair[0], momentIndexPair[1]] = HData.covarianceBootstrap(momentIndexPair, realParts)[0, 1]
       if realParts[0] == realParts[1]:
         # symmetrize bootstrap covariance matrix for ReRe and ImIm
         covMatrixBs += covMatrixBs.T - np.diag(np.diag(covMatrixBs))
