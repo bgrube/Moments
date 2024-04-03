@@ -164,11 +164,12 @@ def plotRealMatrix(
   axisTitles:  Tuple[str, str]                         = ("", ""),  # titles for x and y axes
   plotTitle:   str                                     = "",  # title for plot
   zRange:      Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+  **kwargs:    Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
   """Plots given matrix into PDF file with given name"""
   print(f"Plotting matrix '{plotTitle}' and writing plot to '{pdfFileName}'")
   fig, ax = plt.subplots()
-  cax = ax.matshow(matrix, vmin = zRange[0], vmax = zRange[1])
+  cax = ax.matshow(matrix, vmin = zRange[0], vmax = zRange[1], **kwargs)
   ax.xaxis.tick_bottom()
   fig.colorbar(cax)
   plt.title(plotTitle)
@@ -184,6 +185,7 @@ def plotComplexMatrix(
   axisTitles:        Tuple[str, str]                         = ("", ""),  # titles for x and y axes
   plotTitle:         str                                     = "",  # title for plot
   zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+  **kwargs:          Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
   """Plots real and imaginary parts, absolute value and phase of given complex-valued matrix"""
   matricesToPlot = {
@@ -194,7 +196,7 @@ def plotComplexMatrix(
   }
   #TODO use same z-scale for all plots
   for (label, title), matrix in matricesToPlot.items():
-    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange, **kwargs)
 
 
 def drawTF3(
