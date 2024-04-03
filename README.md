@@ -1,11 +1,12 @@
 # Repository for moment analysis of two-(pseudo)scalar meson systems #
 
-Currently, the repository contains three test cases with made-up acceptance:
+Currently, the repository contains three test cases with contrived acceptance:
 
 * **Diffractive scattering** (`testMomentsDiffractive.py`): For this process, the intensity distribution is a function of the decay angles $\Omega = (\theta, \phi)$ of one of the daughters particles and is described by a set of moments $H(L, M)$.
 * **Photoproduction with linearly polarized photon beam** (`testMomentsPhotoProd.py`): For this process, the intensity distribution is a function of $\Omega$ and of the azimuthal angle $\Phi$ of the beam-photon polarization with respect to the production plane. The intensity is described by three sets of moments $H_{0, 1, 2}(L, M)$.
-* **Photoproduction with linearly polarized photon beam and sideband subtraction** (`testMomentsPhotoProdWeighted.py`): In addition to the signal sample that is identical to the above case, a background sample is added that has a different angular distribution and is subtracted using side bands in a hypothetical discriminating variable. The signal follows a Gaussian in the discriminating variable, whereas the background is uniformly distributed.
+* **Photoproduction with linearly polarized photon beam and sideband subtraction** (`testMomentsPhotoProdWeighted.py`): In addition to the signal sample that is identical to the above case, a background sample is added that has a different angular distribution and is subtracted using side bands in a contrived discriminating variable. The signal follows a Gaussian in the discriminating variable, whereas the background is uniformly distributed.
 
-There is one test case with realistic GlueX acceptance:
+There are two test cases with realistic GlueX acceptance:
 
-* **Photoproduction of rho**  (`testMomentsPhotoProdRho.py`): Moments for linearly polarized rho production are extracted from signal Monte Carlo generated using the assumptions of natural-parity exchange and s-channel helicity conservation. No background subtraction is performed. No event weighting is performed; background from RF sidebands is removed using Chi^2-ranking approach.
+* **Photoproduction of rho**  (`testMomentsPhotoProdRho.py`): Moments for linearly polarized photoproduction of $\rho(770)$ are extracted from signal Monte Carlo data generated using the assumptions of natural-parity exchange and s-channel helicity conservation. No background subtraction is performed. No event weighting is performed; background from RF sidebands is removed using Chi^2-ranking approach.
+* **Photoproduction of eta pi0**  (`testMomentsPhotoProdEtaPi0.py`): Moments for linearly polarized photoproduction of the $\eta \pi^0$ final state are calculated from partial-wave amplitudes. The amplitudes were obtained by performing a partial-wave analysis of signal Monte Carlo data generated using model with 7 partial waves, where the $S_0^-$ and $S_0^+$ waves contain a Breit-Wigner amplitude for the $a_0(980)$ and the $D_{-1, 0, +1}^-$ and $D_{-2, +2}^+$ waves contain a Breit-Wigner amplitude for the $a_2(1320)$.  No background was simulated. Event weighting is performed to remove background from RF sidebands.
