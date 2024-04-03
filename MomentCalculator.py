@@ -151,6 +151,7 @@ class AmplitudeSet:
     printMoments: bool = False,
   ) -> Tuple[complex, complex, complex]:
     """Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
+    #TODO this function seems to be extremely slow; check
     # Eqs. (154) to (156) assuming that rank is 1
     moments:        List[complex] = 3 * [0 + 0j]
     momentFormulas: List[str]     = [f"H_{i}({L}, {M}) =" for i in range(3)]
@@ -556,12 +557,15 @@ class MomentResult:
     if not isinstance(other, MomentResult):
       return NotImplemented
     return (
-      self.indices == other.indices
-      #TODO shouldn't we use allclose() (+ check for identical shape) instead of array_equal()?
-      and np.array_equal(self._valsFlatIndex,    other._valsFlatIndex)
-      and np.array_equal(self._covReReFlatIndex, other._covReReFlatIndex)
-      and np.array_equal(self._covImImFlatIndex, other._covImImFlatIndex)
-      and np.array_equal(self._covReImFlatIndex, other._covReImFlatIndex)
+      (self.indices == other.indices)
+      and (self._valsFlatIndex.shape    == other._valsFlatIndex.shape   )
+      and (self._covReReFlatIndex.shape == other._covReReFlatIndex.shape)
+      and (self._covImImFlatIndex.shape == other._covImImFlatIndex.shape)
+      and (self._covReImFlatIndex.shape == other._covReImFlatIndex.shape)
+      and np.allclose(self._valsFlatIndex,    other._valsFlatIndex   )
+      and np.allclose(self._covReReFlatIndex, other._covReReFlatIndex)
+      and np.allclose(self._covImImFlatIndex, other._covImImFlatIndex)
+      and np.allclose(self._covReImFlatIndex, other._covReImFlatIndex)
     )
 
   @overload
