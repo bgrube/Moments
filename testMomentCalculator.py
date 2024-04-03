@@ -14,16 +14,22 @@ print = functools.partial(print, flush = True)
 if __name__ == "__main__":
   momentIndices = MomentCalculator.MomentIndices(maxL = 5, photoProd = True)
   for i in momentIndices.flatIndices():
-    print(f"{i} : {momentIndices.indexMap.QnIndex_for[i]}")
+    print(f"{i} : {momentIndices._QnIndexByFlatIndex.QnIndex_for[i]} vs. {momentIndices[i]}")
   for i in momentIndices.QnIndices():
-    print(f"{i} : {momentIndices.indexMap.flatIndex_for[i]}")
-  print(f"{type(momentIndices.indexMap[0])}, {momentIndices.indexMap[0]} vs. {momentIndices[0]}")
+    print(f"{i} : {momentIndices._QnIndexByFlatIndex.flatIndex_for[i]} vs. {momentIndices[i]}")
+  i = MomentCalculator.QnMomentIndex(0, 0, 0)
+  print(f"{type(momentIndices._QnIndexByFlatIndex[0])}, {momentIndices._QnIndexByFlatIndex[0]} vs. {momentIndices[0]} vs. {momentIndices[i]}")
   print(f"__str__ = '{momentIndices}' vs. __repr__ = '{repr(momentIndices)}'")
   momentIndices2 = MomentCalculator.MomentIndices(maxL = 5, photoProd = True)
   print(f"equality = {momentIndices == momentIndices2}")
   if TYPE_CHECKING:
     a = bd.namedbidict(typename = 'QnIndexByFlatIndexBidict', keyname = 'flatIndex', valname = 'QnIndex')
     reveal_type(a)
+  i = MomentCalculator.QnMomentIndex(3, 0, 0)
+  try:
+    print(f"{momentIndices[i]}")
+  except KeyError as e:
+    print(f"KeyError: {e}: {i} does not exist in momentIndices")
 
   momentResult = MomentCalculator.MomentResult(momentIndices)
   print(momentResult)

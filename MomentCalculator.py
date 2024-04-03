@@ -215,7 +215,7 @@ class AmplitudeSet:
             norm = moments[0].real / float(normalize)
         for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
           qnIndex   = QnMomentIndex(momentIndex, L, M)
-          flatIndex = momentIndices.indexMap.flatIndex_for[qnIndex]
+          flatIndex = momentIndices[qnIndex]
           momentsFlatIndex[flatIndex] = moment / norm
     HTrue = MomentResult(momentIndices, label = "true")
     HTrue._valsFlatIndex = momentsFlatIndex
@@ -244,35 +244,48 @@ class QnMomentIndex:
 @dataclass
 class MomentIndices:
   """Provides mapping between moment index schemes and iterators for moment indices"""
-  maxL:      int          # maximum L quantum number of moments
-  photoProd: bool = True  # switches between diffraction and photoproduction mode
-  indexMap:  bd.BidictBase[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
+  maxL:                int  # maximum L quantum number of moments
+  photoProd:           bool = True  # switches between diffraction and photoproduction mode
+  _QnIndexByFlatIndex: bd.bidict[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
 
   def __post_init__(self) -> None:
-    # create new bidict subclass
-    #TODO bidict 0.23 will remove namedbidict; see https://github.com/jab/bidict/issues/290 for workaround
-    QnIndexByFlatIndexBidict = bd.namedbidict(typename = 'QnIndexByFlatIndexBidict', keyname = 'flatIndex', valname = 'QnIndex')
-    # instantiate bidict subclass
-    self.indexMap = QnIndexByFlatIndexBidict()
+    self._QnIndexByFlatIndex = bd.bidict()
     flatIndex = 0
     for momentIndex in range(3 if self.photoProd else 1):
       for L in range(self.maxL + 1):
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
             continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-          self.indexMap[flatIndex] = QnMomentIndex(momentIndex, L, M)
+          self._QnIndexByFlatIndex[flatIndex] = QnMomentIndex(momentIndex, L, M)
           flatIndex += 1
 
   def __len__(self) -> int:
     """Returns total number of moments"""
-    return len(self.indexMap)
+    return len(self._QnIndexByFlatIndex)
 
+  @overload
   def __getitem__(
     self,
     subscript: int,
-  ) -> QnMomentIndex:
-    """Returns QnIndex that correspond to given flat index"""
-    return self.indexMap[subscript]
+  ) -> QnMomentIndex: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: QnMomentIndex,
+  ) -> int: ...
+
+  def __getitem__(
+    self,
+    subscript: Union[int, QnMomentIndex],
+  ) -> Union[QnMomentIndex, int]:
+    """Returns QnIndex that correspond to given flat index and vice versa"""
+    if isinstance(subscript, int):
+      return self._QnIndexByFlatIndex[subscript]
+    elif isinstance(subscript, QnMomentIndex):
+      return self._QnIndexByFlatIndex.inverse[subscript]
+    else:
+      raise TypeError(f"Invalid subscript type {type(subscript)}.")
 
   def flatIndices(self) -> Generator[int, None, None]:
     """Generates flat indices"""
@@ -371,8 +384,8 @@ class AcceptanceIntegralMatrix:
       return None
     else:
       # turn quantum-number indices to flat indices
-      flatIndexMeas: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
-      flatIndexPhys: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
+      flatIndexMeas: Union[int, slice] = self.indices[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
+      flatIndexPhys: Union[int, slice] = self.indices[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
       return self._IFlatIndex[flatIndexMeas, flatIndexPhys]
 
   def __str__(self) -> str:
@@ -565,7 +578,7 @@ class MomentResult:
   ) -> Union[MomentValue, List[MomentValue]]:
     """Returns moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
     # turn quantum-number index to flat index
-    flatIndex: Union[int, slice] = self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
+    flatIndex: Union[int, slice] = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     if isinstance(flatIndex, slice):
       return [
         MomentValue(
@@ -601,7 +614,7 @@ class MomentResult:
     """Returns 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndexPair: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
+    flatIndexPair: Tuple[int, int] = tuple(self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
                                            for momentIndex in momentIndexPair)
     if realParts == (True, True):
       return np.array([
@@ -634,7 +647,7 @@ class MomentResult:
     """Returns bootstrap estimate of 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts      ) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndexPair: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
+    flatIndexPair: Tuple[int, int] = tuple(self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
                                            for momentIndex in momentIndexPair)
     # get bootstrap samples of moments
     HVals = (self[flatIndexPair[0]], self[flatIndexPair[1]])
@@ -885,13 +898,12 @@ class MomentCalculator:
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
     if normalize:
       # normalize moments such that H_0(0, 0) = 1
-      #TODO ensure that accesses to indexMap are read-only
-      norm: complex = self._HPhys[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val
+      norm: complex = self._HPhys[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val
       self._HPhys._valsFlatIndex /= norm
       V_phys_aug /= norm**2
       # normalize bootstrap samples for H_phys
       for bsSampleIndex in range(nmbBootstrapSamples):
-        norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices.indexMap.flatIndex_for[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
+        norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
         self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
     self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 

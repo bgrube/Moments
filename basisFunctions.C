@@ -207,6 +207,7 @@ ImYlm(
 
 // basis functions for (polarized) photoproduction moments
 // equation numbers below refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
+// see https://stackoverflow.com/a/58043564 for an example of implementing a NumPy function in C++
 
 // basis functions for physical moments; Eq. (175)
 std::complex<double>

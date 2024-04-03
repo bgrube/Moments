@@ -500,7 +500,7 @@ def plotMomentPairBootstrapDistributions2D(
            MomentValueAndTruth(*HData[momentIndexPair[1]], HTrue[momentIndexPair[1]].val if HTrue else None))  # type: ignore
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
   assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
-  #TODO loop over combinations of real and imag parts
+  # loop over combinations of real and imag parts
   for realParts in ((True, True), (False, False), (True, False), (False, True)):  # True = real part, False = imaginary part
     momentParts         = tuple("Re"        if realPart else "Im"        for realPart in realParts)
     legendEntrySuffixes = tuple("Real Part" if realPart else "Imag Part" for realPart in realParts)
