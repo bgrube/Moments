@@ -607,18 +607,18 @@ def plotMomentsCovMatrices(
   zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
 ):
   """Plots covariance matrices of moments and the difference w.r.t. the bootstrap estimates"""
-  # plot covariance matrices
-  matricesToPlot = {
-    ((True,  True ), "ReRe", "Auto Covariance Real Parts"          ) : HData._covReReFlatIndex,  # symmetric
-    ((False, False), "ImIm", "Auto Covariance Imag Parts"          ) : HData._covImImFlatIndex,  # symmetric
-    ((True,  False), "ReIm", "Cross Covariance Real and Imag Parts") : HData._covReImFlatIndex,  # _not_ symmetric
-  }
-  for (realParts, label, title), matrix in  matricesToPlot.items():
-    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)
-    if HData.hasBootstrapSamples:
-      # get bootstrap estimates of covariance matrices
-      nmbMoments = len(HData.indices)
-      covMatrixBs = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+  # get full composite covariance matrix from nominal estimate
+  covMatrixCompEst  = HData.compositeCovarianceMatrix
+  covMatrixCompDiff = None
+  if HData.hasBootstrapSamples:
+    # get full composite covariance matrix from bootstrap samples
+    nmbMoments    = len(HData.indices)
+    covMatricesBs = {
+      (True,  True ) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ReRe, symmetric
+      (False, False) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ImIm, symmetric
+      (True,  False) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ReIm, _not_ symmetric
+    }
+    for realParts, covMatrixBs in covMatricesBs.items():
       # !Note! the covariance matrices for ReRe and ImIm are
       # symmetric, so we need only the indices of the upper triangle
       # of the covariance matrix including the diagonal
@@ -639,16 +639,36 @@ def plotMomentsCovMatrices(
       if realParts[0] == realParts[1]:
         # symmetrize bootstrap covariance matrix for ReRe and ImIm
         covMatrixBs += covMatrixBs.T - np.diag(np.diag(covMatrixBs))
-      print(f"!!!FOO {matrix=}")
-      print(f"!!!FOO {covMatrixBs=}")
-      print(f"!!!FOO {covMatrixBs - matrix=}")
-      # calculate and plot relative difference of bootstrap and nominal covariance matrices
-      #TODO this does not work for the ReIm matrix, because it is not symmetric
-      # relative difference is defined as (covMatrixBs_ij - matrix_ij) / sqrt(covMatrixBs_ii * covMatrixBs_jj)
-      diag = np.diag(np.reciprocal(np.sqrt(np.diag(covMatrixBs))))  # diagonal matrix with 1 / sqrt(covMatrixBs_ii)
-      covMatrixDiff = diag @ (covMatrixBs - matrix) @ diag
-      print(f"!!!FOO {covMatrixDiff=}")
-      plotRealMatrix(covMatrixDiff, f"{pdfFileNamePrefix}{label}_BSdiff.pdf", axisTitles, plotTitle = plotTitle + f"BS Diff {title}", zRange = zRange)
+    covMatrixCompBs = np.block([
+      [covMatricesBs[(True, True )],   covMatricesBs[(True,  False)]],
+      [covMatricesBs[(True, False)].T, covMatricesBs[(False, False)]],
+    ])
+    # calculate relative difference of bootstrap and nominal covariance matrices
+    # relative difference is defined as (covMatrixCompBs_ij - covMatrixCompEst_ij) / sqrt(covMatrixCompBs_ii * covMatrixCompBs_jj)
+    norm = np.diag(np.reciprocal(np.sqrt(np.diag(covMatrixCompBs))))  # diagonal matrix with 1 / sqrt(covMatrixBs_ii)
+    covMatrixCompDiff = norm @ (covMatrixCompBs - covMatrixCompEst) @ norm
+  # plot covariance matrices for nominal estimates
+  covMatricesEst = {
+    (True,  True ) : ("ReRe", "Auto Covariance Real Parts"          , HData._covReReFlatIndex),  # ReRe, symmetric
+    (False, False) : ("ImIm", "Auto Covariance Imag Parts"          , HData._covImImFlatIndex),  # ImIm, symmetric
+    (True,  False) : ("ReIm", "Cross Covariance Real and Imag Parts", HData._covReImFlatIndex),  # ReIm, _not_ symmetric
+  }
+  for realParts, (label, title, covMatrixEst) in  covMatricesEst.items():
+    plotRealMatrix(covMatrixEst, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)
+  # plot differences of bootstrap and nominal covariance matrices
+  if covMatrixCompDiff is not None:
+    covMatricesDiff = {
+      (True,  True ) : covMatrixCompDiff[:nmbMoments, :nmbMoments],  # ReRe, symmetric
+      (False, False) : covMatrixCompDiff[nmbMoments:, nmbMoments:],  # ImIm, symmetric
+      (True,  False) : covMatrixCompDiff[:nmbMoments, nmbMoments:],  # ReIm, _not_ symmetric
+    }
+    for realParts, (label, title, covMatrixEst) in  covMatricesEst.items():
+      print(f"!!!FOO {realParts=}: {covMatrixEst=}")
+      print(f"!!!FOO {realParts=}: {covMatricesBs[realParts]=}")
+      print(f"!!!FOO {realParts=}: {covMatricesBs[realParts] - covMatrixEst=}")
+      print(f"!!!FOO {realParts=}: {covMatricesDiff[realParts]=}")
+      #TODO use more suitable color scheme and range for differences
+      plotRealMatrix(covMatricesDiff[realParts], f"{pdfFileNamePrefix}{label}_BSdiff.pdf", axisTitles, plotTitle = plotTitle + f"{title} BS Diff", zRange = zRange)
 
 
 def plotMomentsBootstrapDiff(
