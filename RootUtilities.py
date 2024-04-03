@@ -16,7 +16,7 @@ print = functools.partial(print, flush = True)
 # also provides complexT typedef for std::complex<double>
 OpenMpUtilities.enableRootACLiCOpenMp()
 # OpenMp.printRootACLiCSettings()
-ROOT.gROOT.LoadMacro("./basisFunctions.C++")
+ROOT.gROOT.LoadMacro("./basisFunctions.C+")
 
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3
