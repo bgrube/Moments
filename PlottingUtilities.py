@@ -658,13 +658,11 @@ def plotMomentsCovMatrices(
       (False, False) : covMatrixCompDiff[nmbMoments:, nmbMoments:],  # ImIm, symmetric
       (True,  False) : covMatrixCompDiff[:nmbMoments, nmbMoments:],  # ReIm, _not_ symmetric
     }
-    for realParts, (label, title, covMatrixEst) in  covMatricesEst.items():
-      print(f"!!!FOO {realParts=}: {covMatrixEst=}")
-      print(f"!!!FOO {realParts=}: {covMatricesBs[realParts]=}")
-      print(f"!!!FOO {realParts=}: {covMatricesBs[realParts] - covMatrixEst=}")
-      print(f"!!!FOO {realParts=}: {covMatricesDiff[realParts]=}")
-      #TODO use more suitable color scheme and range for differences
-      plotRealMatrix(covMatricesDiff[realParts], f"{pdfFileNamePrefix}{label}_BSdiff.pdf", axisTitles, plotTitle = plotTitle + f"{title} BS Diff", zRange = zRange)
+    for realParts, (label, title, _) in  covMatricesEst.items():
+      covMatrixDiff = covMatricesDiff[realParts]
+      range = max(abs(np.min(covMatrixDiff)), abs(np.max(covMatrixDiff)))
+      plotRealMatrix(covMatrixDiff, f"{pdfFileNamePrefix}{label}_BSdiff.pdf", axisTitles, plotTitle = plotTitle + f"{title} BS Diff",
+                     zRange = (-range, +range), cmap = "RdBu")
 
 
 def plotMomentsBootstrapDiff(
