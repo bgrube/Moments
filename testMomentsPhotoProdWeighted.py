@@ -14,7 +14,7 @@ from PlottingUtilities import (
   HistAxisBinning,
   plotComplexMatrix,
   plotMomentsBootstrapDiffInBin,
-  plotMomentsBootstrapDistributions,
+  plotMomentsBootstrapDistributions1D,
   plotMomentsInBin,
   setupPlotStyle,
 )
@@ -243,8 +243,8 @@ if __name__ == "__main__":
       binLabel = "_".join(moments[0].binLabels)
       plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
       if nmbBootstrapSamples > 0:
-        plotMomentsBootstrapDistributions(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-        plotMomentsBootstrapDiffInBin    (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
 
     timer.stop("Total execution time")
     print(timer.summary)

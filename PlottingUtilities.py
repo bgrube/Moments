@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import nptyping as npt
@@ -30,6 +31,15 @@ from  MomentCalculator import (
 )
 
 
+# set default matplotlib font to STIX
+mpl.rcParams["font.family"] = "STIXGeneral"
+mpl.rcParams["mathtext.fontset"] = "stix"
+# set default matplotlib font to Computer Modern Roman
+# mpl.rcParams['font.family'] = 'serif'
+# mpl.rcParams['font.serif'] = 'cmr10'
+# mpl.rcParams['mathtext.fontset'] = 'cm'
+
+
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
 
@@ -47,7 +57,7 @@ class MomentValueAndTruth(MomentValue):
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
 
-  def truthRealOrImag(
+  def truthRealPart(
     self,
     realPart: bool,  # switched between real part (True) and imaginary part (False)
   ) -> float:
@@ -148,26 +158,45 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   ROOT.gStyle.SetTitleOffset(1.35, "Y")
 
 
+def plotRealMatrix(
+  matrix:      npt.NDArray[npt.Shape["*, *"], npt.Float64],  # matrix to plot
+  pdfFileName: str,  # name of output file
+  axisTitles:  Tuple[str, str]                         = ("", ""),  # titles for x and y axes
+  plotTitle:   str                                     = "",  # title for plot
+  zRange:      Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+  **kwargs:    Any,  # additional keyword arguments for plt.matshow()
+) -> None:
+  """Plots given matrix into PDF file with given name"""
+  print(f"Plotting matrix '{plotTitle}' and writing plot to '{pdfFileName}'")
+  fig, ax = plt.subplots()
+  cax = ax.matshow(matrix, vmin = zRange[0], vmax = zRange[1], **kwargs)
+  ax.xaxis.tick_bottom()
+  fig.colorbar(cax)
+  plt.title(plotTitle)
+  plt.xlabel(axisTitles[0])
+  plt.ylabel(axisTitles[1])
+  plt.savefig(pdfFileName, transparent = True)
+  plt.close(fig)
+
+
 def plotComplexMatrix(
   complexMatrix:     npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
   pdfFileNamePrefix: str,  # name prefix for output files
+  axisTitles:        Tuple[str, str]                         = ("", ""),  # titles for x and y axes
+  plotTitle:         str                                     = "",  # title for plot
+  zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+  **kwargs:          Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
-  """Draws real and imaginary parts of given 2D array"""
+  """Plots real and imaginary parts, absolute value and phase of given complex-valued matrix"""
   matricesToPlot = {
-    "real" : np.real(complexMatrix),      # real part
-    "imag" : np.imag(complexMatrix),      # imaginary part
-    "abs"  : np.absolute(complexMatrix),  # absolute value
-    "arg"  : np.angle(complexMatrix),     # phase
+    ("real", "Real Part"     ) : np.real    (complexMatrix),
+    ("imag", "Imag Part"     ) : np.imag    (complexMatrix),
+    ("abs",  "Absolute Value") : np.absolute(complexMatrix),
+    ("arg",  "Phase"         ) : np.angle   (complexMatrix, deg = True),  # [degree]
   }
-  #TODO add plot titles
-  #TODO add axis titles
   #TODO use same z-scale for all plots
-  for plotLabel, matrix in matricesToPlot.items():
-    fig, ax = plt.subplots()
-    cax = ax.matshow(matrix)
-    fig.colorbar(cax)
-    plt.savefig(f"{pdfFileNamePrefix}_{plotLabel}.pdf", transparent = True)
-    plt.close(fig)
+  for (label, title), matrix in matricesToPlot.items():
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange, **kwargs)
 
 
 def drawTF3(
@@ -214,8 +243,8 @@ def plotMoments(
   binning:           Optional[HistAxisBinning] = None,  # if not None data are plotted as function of binning variable
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentLabel:       str = QnMomentIndex.momentSymbol,  # label used in output file name
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  histTitle:         str = "",   # histogram title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
 ) -> None:
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -231,7 +260,7 @@ def plotMoments(
     for index, HVal in enumerate(HVals):
       if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
         continue
-      y, yErr = HVal.realOrImag(realPart = (momentPart == "Re"))
+      y, yErr = HVal.realPart(momentPart == "Re")
       binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
       histData.SetBinContent(binIndex, y)
       histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
@@ -271,7 +300,6 @@ def plotMoments(
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
     canv.Update()
     if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-      # print(f"???ZERO")
       zeroLine = ROOT.TLine()
       zeroLine.SetLineColor(ROOT.kBlack)
       zeroLine.SetLineStyle(ROOT.kDashed)
@@ -292,8 +320,8 @@ def plotMoments(
         if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
           continue
         if HVal.truth is not None:
-          dataVal, dataValErr = HVal.realOrImag     (realPart = (momentPart == "Re"))
-          trueVal             = HVal.truthRealOrImag(realPart = (momentPart == "Re"))
+          dataVal, dataValErr = HVal.realPart     (momentPart == "Re")
+          trueVal             = HVal.truthRealPart(momentPart == "Re")
           binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
           if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
@@ -346,7 +374,7 @@ def plotMomentsInBin(
   HData:             MomentResult,  # moments extracted from data
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  pdfFileNamePrefix: str = "",  # name prefix for output files
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -359,11 +387,11 @@ def plotMomentsInBin(
 def plotMoments1D(
   moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,  # defines specific moment
-  binning:           HistAxisBinning,                 # binning to use for plot
+  binning:           HistAxisBinning,   # binning to use for plot
   normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
-  pdfFileNamePrefix: str = "h",   # name prefix for output files
-  histTitle:         str = "",    # histogram title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
@@ -375,14 +403,14 @@ def plotMoments1D(
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
 
 
-def plotMomentsBootstrapDistributionsVar(
+def plotMomentsBootstrapDistributions1D(
   HData:             MomentResult,  # moments extracted from data
   HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
+  pdfFileNamePrefix: str = "",   # name prefix for output files
   histTitle:         str = "",   # histogram title
   nmbBins:           int = 100,  # number of bins for bootstrap histograms
 ) -> None:
-  """Plots bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
+  """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for qnIndex in HData.indices.QnIndices():
@@ -416,7 +444,7 @@ def plotMomentsBootstrapDistributionsVar(
       lineBs.SetLineColor(ROOT.kBlue + 1)
       lineBs.Draw()
       # indicate estimate from uncertainty propagation
-      meanEst, stdDevEst = HVal.realOrImag(realPart = (momentPart == "Re"))
+      meanEst, stdDevEst = HVal.realPart(momentPart == "Re")
       markerEst = ROOT.TMarker(meanEst,  yCoord / 2, ROOT.kFullCircle)
       markerEst.SetMarkerColor(ROOT.kGreen + 2)
       markerEst.SetMarkerSize(0.75)
@@ -459,12 +487,190 @@ def plotMomentsBootstrapDistributionsVar(
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
 
+def plotMomentPairBootstrapDistributions2D(
+  momentIndexPair:   Tuple[QnMomentIndex, QnMomentIndex],  # indices of moments to plot
+  HData:             MomentResult,  # moments extracted from data
+  HTrue:             Optional[MomentResult] = None,  # true moments
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
+  nmbBins:           int = 20,  # number of bins for bootstrap histograms
+) -> None:
+  """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
+  HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], HTrue[momentIndexPair[0]].val if HTrue else None),  # type: ignore
+           MomentValueAndTruth(*HData[momentIndexPair[1]], HTrue[momentIndexPair[1]].val if HTrue else None))  # type: ignore
+  assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
+  assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
+  #TODO loop over combinations of real and imag parts
+  for realParts in ((True, True), (False, False), (True, False), (False, True)):  # True = real part, False = imaginary part
+    momentParts         = tuple("Re"        if realPart else "Im"        for realPart in realParts)
+    legendEntrySuffixes = tuple("Real Part" if realPart else "Imag Part" for realPart in realParts)
+    # create histogram with bootstrap samples
+    momentSamplesBs = np.vstack((HVals[0].bsSamples.real if realParts[0] else HVals[0].bsSamples.imag,
+                                 HVals[1].bsSamples.real if realParts[1] else HVals[1].bsSamples.imag))
+    mins = np.min(momentSamplesBs, axis = 1)
+    maxs = np.max(momentSamplesBs, axis = 1)
+    halfRanges = (maxs - mins) * 1.1 / 2.0
+    centers    = (mins + maxs) / 2.0
+    histBs = ROOT.TH2D(
+      f"{pdfFileNamePrefix}bootstrap_{HVals[1].qn.label}_{momentParts[1]}_vs_{HVals[0].qn.label}_{momentParts[0]}",
+      f"{histTitle};{HVals[0].qn.title} {legendEntrySuffixes[0]};{HVals[1].qn.title} {legendEntrySuffixes[1]}",
+      nmbBins, centers[0] - halfRanges[0], centers[0] + halfRanges[0],
+      nmbBins, centers[1] - halfRanges[1], centers[1] + halfRanges[1]
+    )
+    # fill histogram
+    np.vectorize(histBs.Fill, otypes = [int])(momentSamplesBs[0, :], momentSamplesBs[1, :])
+    # draw histogram
+    canv = ROOT.TCanvas()
+    histBs.Draw("COLZ")
+
+    # indicate bootstrap estimate
+    meansBs  = np.mean(momentSamplesBs, axis = 1)
+    markerBs = ROOT.TMarker(meansBs[0], meansBs[1], ROOT.kFullCircle)
+    markerBs.SetMarkerColor(ROOT.kBlue + 1)
+    markerBs.SetMarkerSize(0.75)
+    markerBs.Draw()
+    # indicate bootstrap covariance matrix
+    covBs = np.cov(momentSamplesBs, ddof = 1)
+    covEigenValsBs, covEigenVectsBs = np.linalg.eig(covBs)
+    # calculate lengths of major axes and rotation angle of ellipse
+    r1    = np.sqrt(covEigenValsBs[0])
+    r2    = np.sqrt(covEigenValsBs[1])
+    theta = np.arctan2(covEigenVectsBs[1, 0], covEigenVectsBs[0, 0]) * 180.0 / np.pi
+    # draw the ellipse
+    #TODO improve by drawing major axes in kDotted
+    ellipseBs = ROOT.TEllipse(*meansBs, r1, r2, 0, 360, theta)
+    ellipseBs.SetLineColor(ROOT.kBlue + 1)
+    ellipseBs.SetLineWidth(3)
+    ellipseBs.SetFillStyle(0)
+    ellipseBs.Draw()
+
+    # indicate estimate from uncertainty propagation
+    meansEst  = (HVals[0].realPart(realParts[0])[0], HVals[1].realPart(realParts[1])[0])
+    markerEst = ROOT.TMarker(meansEst[0], meansEst[1], ROOT.kFullCircle)
+    markerEst.SetMarkerColor(ROOT.kGreen + 2)
+    markerEst.SetMarkerSize(0.75)
+    markerEst.Draw()
+    # indicate nominal covariance matrix
+    covEst = HData.covariance(momentIndexPair, realParts)
+    covEigenValsEst, covEigenVectsEst = np.linalg.eig(covEst)
+    # calculate lengths of major axes and rotation angle of ellipse
+    r1    = np.sqrt(covEigenValsEst[0])
+    r2    = np.sqrt(covEigenValsEst[1])
+    theta = np.arctan2(covEigenVectsEst[1, 0], covEigenVectsEst[0, 0]) * 180.0 / np.pi
+    # draw the ellipse
+    #TODO improve by drawing major axes in kDotted
+    ellipseEst = ROOT.TEllipse(*meansEst, r1, r2, 0, 360, theta)
+    ellipseEst.SetLineColor(ROOT.kGreen + 2)
+    ellipseEst.SetLineWidth(2)
+    ellipseEst.SetFillStyle(0)
+    ellipseEst.Draw()
+
+    # indicate true value
+    plotTruth = all(HVal.truth is not None for HVal in HVals)
+    if plotTruth:
+      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(realParts[0]), HVals[1].truthRealPart(realParts[1]), 31)
+      markerTruth.SetMarkerColor(ROOT.kRed + 1)
+      markerTruth.SetMarkerSize(1.25)
+      markerTruth.Draw()
+
+    # add legend
+    legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
+    entry = legend.AddEntry(markerBs, "Bootstrap estimate", "LP")
+    entry.SetLineColor(ROOT.kBlue + 1)
+    entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
+    entry.SetLineColor(ROOT.kGreen + 2)
+    if plotTruth:
+      entry = legend.AddEntry(markerTruth, "True value", "P")
+    legend.Draw()
+    canv.SaveAs(f"{histBs.GetName()}.pdf")
+
+
+def plotMomentsBootstrapDistributions2D(
+  HData:             MomentResult,  # moments extracted from data
+  HTrue:             Optional[MomentResult] = None,  # true moments
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
+  nmbBins:           int = 20,  # number of bins for bootstrap histograms
+) -> None:
+  """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
+  momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
+                      for flatIndex0 in HData.indices.flatIndices()
+                      for flatIndex1 in HData.indices.flatIndices()
+                      if flatIndex0 < flatIndex1)
+  for momentIndexPair in momentIndexPairs:
+    plotMomentPairBootstrapDistributions2D(momentIndexPair, HData, HTrue, pdfFileNamePrefix, histTitle, nmbBins)
+
+
+def plotMomentsCovMatrices(
+  HData:             MomentResult,  # moments extracted from data
+  pdfFileNamePrefix: str,  # name prefix for output files
+  axisTitles:        Tuple[str, str]                         = ("", ""),  # titles for x and y axes
+  plotTitle:         str                                     = "",  # title for plot
+  zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+):
+  """Plots covariance matrices of moments and the difference w.r.t. the bootstrap estimates"""
+  # get full composite covariance matrix from nominal estimate
+  covMatrixCompEst  = HData.compositeCovarianceMatrix
+  covMatrixCompDiff = None
+  if HData.hasBootstrapSamples:
+    # get full composite covariance matrix from bootstrap samples
+    nmbMoments    = len(HData.indices)
+    covMatricesBs = {
+      (True,  True ) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ReRe, symmetric
+      (False, False) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ImIm, symmetric
+      (True,  False) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ReIm, _not_ symmetric
+    }
+    for realParts, covMatrixBs in covMatricesBs.items():
+      # !Note! the covariance matrices for ReRe and ImIm are
+      # symmetric, so we need only the indices of the upper triangle
+      # of the covariance matrix including the diagonal
+      # !Note! the ReIm matrix is _not_ symmetric, so we need all indices
+      momentIndexPairs = ((flatIndex0, flatIndex1)
+                          for flatIndex0 in HData.indices.flatIndices()
+                          for flatIndex1 in HData.indices.flatIndices()
+                          if (realParts[0] != realParts[1]) or (flatIndex0 <= flatIndex1))
+      for momentIndexPair in momentIndexPairs:
+        # covariance = off-diagonal element of the 2 x 2 covariance matrix returned by np.cov():
+        covMatrixBs[momentIndexPair[0], momentIndexPair[1]] = HData.covarianceBootstrap(momentIndexPair, realParts)[0, 1]
+      if realParts[0] == realParts[1]:
+        # symmetrize bootstrap covariance matrix for ReRe and ImIm
+        covMatrixBs += covMatrixBs.T - np.diag(np.diag(covMatrixBs))
+    covMatrixCompBs = np.block([
+      [covMatricesBs[(True, True )],   covMatricesBs[(True,  False)]],
+      [covMatricesBs[(True, False)].T, covMatricesBs[(False, False)]],
+    ])
+    # calculate relative difference of bootstrap and nominal covariance matrices
+    # relative difference is defined as (covMatrixCompBs_ij - covMatrixCompEst_ij) / sqrt(covMatrixCompBs_ii * covMatrixCompBs_jj)
+    norm = np.diag(np.reciprocal(np.sqrt(np.diag(covMatrixCompBs))))  # diagonal matrix with 1 / sqrt(covMatrixBs_ii)
+    covMatrixCompDiff = norm @ (covMatrixCompBs - covMatrixCompEst) @ norm
+  # plot covariance matrices for nominal estimates
+  covMatricesEst = {
+    (True,  True ) : ("ReRe", "Auto Covariance Real Parts"          , HData._covReReFlatIndex),  # ReRe, symmetric
+    (False, False) : ("ImIm", "Auto Covariance Imag Parts"          , HData._covImImFlatIndex),  # ImIm, symmetric
+    (True,  False) : ("ReIm", "Cross Covariance Real and Imag Parts", HData._covReImFlatIndex),  # ReIm, _not_ symmetric
+  }
+  for realParts, (label, title, covMatrixEst) in  covMatricesEst.items():
+    plotRealMatrix(covMatrixEst, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)
+  # plot differences of bootstrap and nominal covariance matrices
+  if covMatrixCompDiff is not None:
+    covMatricesDiff = {
+      (True,  True ) : covMatrixCompDiff[:nmbMoments, :nmbMoments],  # ReRe, symmetric
+      (False, False) : covMatrixCompDiff[nmbMoments:, nmbMoments:],  # ImIm, symmetric
+      (True,  False) : covMatrixCompDiff[:nmbMoments, nmbMoments:],  # ReIm, _not_ symmetric
+    }
+    for realParts, (label, title, _) in  covMatricesEst.items():
+      covMatrixDiff = covMatricesDiff[realParts]
+      range = max(abs(np.min(covMatrixDiff)), abs(np.max(covMatrixDiff)))
+      plotRealMatrix(covMatrixDiff, f"{pdfFileNamePrefix}{label}_BSdiff.pdf", axisTitles, plotTitle = plotTitle + f"{title} BS Diff",
+                     zRange = (-range, +range), cmap = "RdBu")
+
+
 def plotMomentsBootstrapDiff(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data
   momentLabel:       str,  # label used in graph names and output file name
   binning:           Optional[HistAxisBinning] = None,  # binning to use for plot; if None moment index is used as x-axis
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  graphTitle:        str = "",   # graph title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all given moments as function of moment index or binning variable"""
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
@@ -477,10 +683,10 @@ def plotMomentsBootstrapDiff(
   xVals  = np.arange(len(HVals), dtype = npt.Float64) if binning is None else np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     # get nominal estimates and uncertainties
-    momentValsEst   = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
-    momentUncertEst = np.array([HVal.realOrImag(realPart = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
+    momentValsEst   = np.array([HVal.realPart(momentPart == "Re")[0] for HVal in HVals], dtype = npt.Float64)
+    momentUncertEst = np.array([HVal.realPart(momentPart == "Re")[1] for HVal in HVals], dtype = npt.Float64)
     # get bootstrap estimates and uncertainties
-    momentsBs       = tuple(HVal.bootstrapEstimate(realPart = (momentPart == "Re")) for HVal in HVals)
+    momentsBs       = tuple(HVal.bootstrapEstimate(momentPart == "Re") for HVal in HVals)
     momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
     momentUncertBs  = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
     # create graphs with relative differences
@@ -530,9 +736,9 @@ def plotMomentsBootstrapDiff(
 def plotMomentsBootstrapDiff1D(
   moments:           MomentCalculatorsKinematicBinning,  # moment values extracted from data
   qnIndex:           QnMomentIndex,  # defines specific moment
-  binning:           HistAxisBinning,                 # binning to use for plot
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  graphTitle:        str = "",   # graph title
+  binning:           HistAxisBinning,  # binning to use for plot
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates for moments and their uncertainties as a function of binning variable"""
   # get values of moment that corresponds to the given qnIndex in all kinematic bins
@@ -542,8 +748,8 @@ def plotMomentsBootstrapDiff1D(
 
 def plotMomentsBootstrapDiffInBin(
   HData:             MomentResult,  # moment values extracted from data
-  pdfFileNamePrefix: str = "h",  # name prefix for output files
-  graphTitle:        str = "",   # graph title
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all moments"""
   for momentIndex in range(3):

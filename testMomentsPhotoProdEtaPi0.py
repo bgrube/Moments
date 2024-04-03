@@ -6,7 +6,10 @@ import functools
 import numpy as np
 import pandas as pd
 import threadpoolctl
-from typing import List
+from typing import (
+  List,
+  Tuple,
+)
 
 import ROOT
 
@@ -16,7 +19,9 @@ from PlottingUtilities import (
   plotComplexMatrix,
   plotMomentsBootstrapDiff1D,
   plotMomentsBootstrapDiffInBin,
-  plotMomentsBootstrapDistributions,
+  plotMomentsBootstrapDistributions1D,
+  plotMomentsBootstrapDistributions2D,
+  plotMomentsCovMatrices,
   plotMoments1D,
   plotMomentsInBin,
   setupPlotStyle,
@@ -39,17 +44,17 @@ def readPartialWaveAmplitudes(
   print(f"Amplitudes for mass bin at {massBinCenter} GeV\n{df}")
   assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
   # Pandas cannot read-back complex values out of the box
-  # there also seems to be no interest in fixing that <https://github.com/pandas-dev/pandas/issues/9379>
+  # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
   # have to convert columns by hand
   s = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-']),   # S_0^-
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-' ]),  # S_0^-
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -1), val = s['D1--']),  # D_-1^-
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m =  0), val = s['D0+-']),  # D_0^-
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +1), val = s['D1+-']),  # D_+1^-
     # positive-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+']),   # S_0^+
+    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+' ]),  # S_0^+
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -2), val = s['D2-+']),  # D_-2^+
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +2), val = s['D2++']),  # D_+2^+
   ]
@@ -64,7 +69,7 @@ if __name__ == "__main__":
   setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
-  with threadController.limit(limits = 1):
+  with threadController.limit(limits = 3):
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
     timer.start("Total execution time")
 
@@ -77,11 +82,11 @@ if __name__ == "__main__":
     psAccFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
     psGenFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
     beamPolarization     = 1.0  #TODO read from tree
-    # maxL                 = 1  # define maximum L quantum number of moments
-    maxL                 = 5  # define maximum L quantum number of moments
+    maxL                 = 1  # define maximum L quantum number of moments
+    # maxL                 = 5  # define maximum L quantum number of moments
     normalizeMoments     = False
     # nmbBootstrapSamples  = 0
-    nmbBootstrapSamples  = 10000
+    nmbBootstrapSamples  = 1000
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # plot all signal and phase-space data
@@ -122,9 +127,9 @@ if __name__ == "__main__":
     # loop over mass bins
     momentIndices = MomentCalculator.MomentIndices(maxL)
     binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
+    # massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
+    massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
     momentsInBins:      List[MomentCalculator.MomentCalculator] = []
     momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
     nmbSignalGenEvents: List[float] = []
@@ -160,6 +165,7 @@ if __name__ == "__main__":
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrices
+    matrixAxisTitles = ("Moment Index", ) * 2
     with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       moments.calculateIntegralMatrices(forceCalculation = True)
       # print acceptance integral matrix for first kinematic bin
@@ -169,8 +175,11 @@ if __name__ == "__main__":
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
         binLabel = "_".join(momentsInBin.binLabels)
-        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
-        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
+        # binTitle = ", ".join(momentsInBin.binTitles)
+        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
+                          axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ")
+        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}",
+                          axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ")
 
     #TODO add loop over mass bins
     # # calculate moments of accepted phase-space data
@@ -190,17 +199,23 @@ if __name__ == "__main__":
       # print all moments for first kinematic bin
       print(f"Measured moments of signal data for first kinematic bin\n{moments[0].HMeas}")
       print(f"Physical moments of signal data for first kinematic bin\n{moments[0].HPhys}")
+
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
+
       for massBinIndex, momentsInBin in enumerate(moments):
         binLabel = "_".join(momentsInBin.binLabels)
         binTitle = ", ".join(momentsInBin.binTitles)
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsCovMatrices(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{binLabel}_",
+                               axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: ")
         if nmbBootstrapSamples > 0:
           graphTitle = f"({binLabel})"
-          plotMomentsBootstrapDistributions(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_",
-                                            histTitle = binTitle)
+          plotMomentsBootstrapDistributions1D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
+          plotMomentsBootstrapDistributions2D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
+                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
           plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", graphTitle = binTitle)
 
       # plot kinematic dependences of all moments
@@ -210,7 +225,7 @@ if __name__ == "__main__":
         if nmbBootstrapSamples > 0:
           plotMomentsBootstrapDiff1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
 
-      print("Check H_0(0, 0):")
+      print("Check H_0(0, 0) with true generated values:")  # instead of the values from the fit results
       H000Index = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)
       for binIndex in range(len(moments)):
         H = moments[binIndex].HPhys[H000Index]
