@@ -325,8 +325,8 @@ class AcceptanceIntegralMatrix:
   @property
   def matrixNormalized(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
     """Returns acceptance integral matrix normalized to its diagonal elements"""
-    diag = np.diag(np.reciprocal(np.sqrt(np.diag(self.matrix))))
-    return diag @ self.matrix @ diag
+    norm = np.diag(np.reciprocal(np.sqrt(np.diag(self.matrix))))  # diagonal matrix with 1 / sqrt(self_ii)
+    return norm @ self.matrix @ norm
 
   @property
   def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
@@ -520,7 +520,7 @@ class MomentResult:
   _valsFlatIndex:      npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
   _covReReFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
   _covImImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
-  _covReImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices
+  _covReImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices; !Note! this matrix is _not_ symmetric
   _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __post_init__(self) -> None:
@@ -598,7 +598,7 @@ class MomentResult:
     subscripts: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
     realParts:  Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
   ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
-    """Returns 2x2 covariance submatrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
+    """Returns 2 x 2 covariance submatrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(subscripts) == 2, f"Expect exactly two moment indices; got {len(subscripts)} instead"
     assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
     flatIndices: Tuple[int, int] = tuple(self.indices.indexMap.flatIndex_for[subscript] if isinstance(subscript, QnMomentIndex) else subscript
@@ -625,6 +625,34 @@ class MomentResult:
       ])
     else:
       raise ValueError(f"Invalid realParts tuple {realParts}; must be tuple of 2 bools")
+
+  @property
+  def compositeCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Float64]:
+    """Returns real-valued composite covariance matrix for all moments"""
+    # Eq. (11) in https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6125&version=2
+    return np.block([
+      [self._covReReFlatIndex,   self._covReImFlatIndex],
+      [self._covReImFlatIndex.T, self._covImImFlatIndex],
+    ])
+
+  @property
+  def hermitianAndPseudoCovarianceMatrix(self) \
+    -> Tuple[npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128],
+             npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128]]:
+    """Returns tuple with complex-valued Hermitian covariance matrix and pseudo-covariance matrix for all moments"""
+    # Eqs. (101) and (102)
+    return (self._covReReFlatIndex + self._covImImFlatIndex + 1j * (self._covReImFlatIndex.T - self._covReImFlatIndex),  # Hermitian covariance matrix
+            self._covReReFlatIndex - self._covImImFlatIndex + 1j * (self._covReImFlatIndex.T + self._covReImFlatIndex))  # pseudo-covariance matrix
+
+  @property
+  def augmentedCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Complex128]:
+    """Returns augmented covariance matrix for all moments"""
+    covHermit, covPseudo = self.hermitianAndPseudoCovarianceMatrix
+    # Eq. (95)
+    return np.block([
+      [covPseudo,               covPseudo              ],
+      [np.conjugate(covPseudo), np.conjugate(covPseudo)],
+    ])
 
   @property
   def hasBootstrapSamples(self) -> bool:
