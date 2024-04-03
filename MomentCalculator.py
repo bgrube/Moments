@@ -301,10 +301,10 @@ class MomentIndices:
 @dataclass
 class DataSet:
   """Container class that stores information about a single dataset"""
-  polarization:   float            # photon-beam polarization
+  polarization:   float  # photon-beam polarization
   data:           ROOT.RDataFrame  # data from which to calculate moments
-  phaseSpaceData: ROOT.RDataFrame  # (accepted) phase-space data  #TODO make optional
-  nmbGenEvents:   int              # number of generated events
+  phaseSpaceData: Optional[ROOT.RDataFrame]  # (accepted) phase-space data; None corresponds to perfect acceptance
+  nmbGenEvents:   int  # number of generated events
 
 
 @dataclass(frozen = True)  # immutable
@@ -396,6 +396,10 @@ class AcceptanceIntegralMatrix:
 
   def calculate(self) -> None:
     """Calculates integral matrix of basis functions from (accepted) phase-space data"""
+    if self.dataSet.phaseSpaceData is None:
+      print("Warning: no phase-space data; using perfect acceptance")
+      self._IFlatIndex = np.eye(len(self.indices), dtype = npt.Complex128)
+      return
     # get phase-space data data as std::vectors
     thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
     phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
