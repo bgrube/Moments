@@ -6,7 +6,10 @@ import functools
 import numpy as np
 import pandas as pd
 import threadpoolctl
-from typing import List
+from typing import (
+  List,
+  Tuple,
+)
 
 import ROOT
 
@@ -18,6 +21,7 @@ from PlottingUtilities import (
   plotMomentsBootstrapDiffInBin,
   plotMomentsBootstrapDistributions1D,
   plotMomentsBootstrapDistributions2D,
+  plotMomentsCovMatrices,
   plotMoments1D,
   plotMomentsInBin,
   setupPlotStyle,
@@ -161,6 +165,7 @@ if __name__ == "__main__":
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrices
+    matrixAxisTitles = ("Moment Index", ) * 2
     with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       moments.calculateIntegralMatrices(forceCalculation = True)
       # print acceptance integral matrix for first kinematic bin
@@ -170,8 +175,11 @@ if __name__ == "__main__":
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
         binLabel = "_".join(momentsInBin.binLabels)
-        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
-        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
+        # binTitle = ", ".join(momentsInBin.binTitles)
+        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
+                          axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ")
+        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}",
+                          axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ")
 
     #TODO add loop over mass bins
     # # calculate moments of accepted phase-space data
@@ -200,6 +208,8 @@ if __name__ == "__main__":
         binTitle = ", ".join(momentsInBin.binTitles)
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsCovMatrices(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{binLabel}_",
+                               axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: ")
         if nmbBootstrapSamples > 0:
           graphTitle = f"({binLabel})"
           plotMomentsBootstrapDistributions1D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
