@@ -48,12 +48,12 @@ print = functools.partial(print, flush = True)
 class MomentValueAndTruth(MomentValue):
   """Stores and provides access to single moment value and provides truth value"""
   truth:       Optional[complex] = None  # true moment value
-  _binCenters: Optional[Dict[KinematicBinningVariable, float]] = None  # dictionary with bin centers
+  _binCenters: Optional[Dict[KinematicBinningVariable, float]] = None  # dictionary with center values of kinematic variables that define bin
 
   # accessor that guarantees existence of optional field
   @property
   def binCenters(self) -> Dict[KinematicBinningVariable, float]:
-    """Returns true moment value"""
+    """Returns center values of kinematic variables that define bin"""
     assert self._binCenters is not None, "self._binCenters must not be None"
     return self._binCenters
 

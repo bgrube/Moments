@@ -158,9 +158,9 @@ if __name__ == "__main__":
 
       # setup moment calculator for data
       dataSet = MomentCalculator.DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents)
-      momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", _binCenters = {binVarMass : massBinCenter}))
+      momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # setup moment calculator to hold true values
-      momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+      momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
     moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 

@@ -234,7 +234,8 @@ if __name__ == "__main__":
     momentIndices = MomentCalculator.MomentIndices(maxL)
     dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
     # dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents)
-    momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix")
+    binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : 0.77})
 
     # calculate integral matrix
     t = timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")

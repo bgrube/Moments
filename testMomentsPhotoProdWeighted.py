@@ -213,9 +213,9 @@ if __name__ == "__main__":
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
       dataSet = MomentCalculator.DataSet(beamPolarization, data, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsMcEvents)  #TODO nmbAcceptedPsMcEvents is not correct number to normalize integral matrix
-      momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", _binCenters = {binVarMass : massBinCenter}))
+      momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # dummy truth values; identical for all bins
-      momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, _binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+      momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
     moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 

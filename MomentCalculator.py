@@ -714,11 +714,11 @@ class MomentCalculator:
   """Container class that holds all information needed to calculate moments for a single kinematic bin"""
   indices:              MomentIndices  # index mapping and iterators
   dataSet:              DataSet  # info on data samples
-  integralFileBaseName: str  = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  binCenters:           Dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
+  integralFileBaseName: str = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
   _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
   _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
   _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
-  _binCenters:          Optional[Dict[KinematicBinningVariable, float]] = None  # dictionary with bin centers  #TODO make public member and delete properties
 
   # accessors that guarantee existence of optional fields
   @property
@@ -740,31 +740,13 @@ class MomentCalculator:
     return self._HPhys
 
   @property
-  def binCenters(self) -> Dict[KinematicBinningVariable, float]:
-    """Returns dictionary with kinematic variables and bin centers"""
-    assert self._binCenters is not None, "self._binCenters must not be None"
-    return self._binCenters
-
-  @binCenters.setter
-  def binCenters(
-    self,
-    centers: Dict[KinematicBinningVariable, float],
-  ) -> None:
-    """Sets dictionary with kinematic variables and bin centers"""
-    self._binCenters = centers
-
-  @property
   def binLabels(self) -> List[str]:
     """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>_...'"""
-    if self._binCenters is None:
-      return []
     return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
 
   @property
   def binTitles(self) -> List[str]:
     """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
-    if self._binCenters is None:
-      return []
     return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in self.binCenters.items()]
 
   @property
