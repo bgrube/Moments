@@ -165,16 +165,16 @@ def plotRealMatrix(
   plotTitle:   str                                     = "",  # title for plot
   zRange:      Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
 ) -> None:
-  """Draws given matrix"""
+  """Plots given matrix into PDF file with given name"""
+  print(f"Plotting matrix '{plotTitle}' and writing plot to '{pdfFileName}'")
   fig, ax = plt.subplots()
   cax = ax.matshow(matrix, vmin = zRange[0], vmax = zRange[1])
-  # ax.xaxis.set_tick_params(which = "both", labelbottom = True)
   ax.xaxis.tick_bottom()
   fig.colorbar(cax)
   plt.title(plotTitle)
   plt.xlabel(axisTitles[0])
   plt.ylabel(axisTitles[1])
-  plt.savefig(f"{pdfFileName}.pdf", transparent = True)
+  plt.savefig(pdfFileName, transparent = True)
   plt.close(fig)
 
 
@@ -185,7 +185,7 @@ def plotComplexMatrix(
   plotTitle:         str                                     = "",  # title for plot
   zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
 ) -> None:
-  """Draws real and imaginary parts, absolute value and phase of given complex-valued matrix"""
+  """Plots real and imaginary parts, absolute value and phase of given complex-valued matrix"""
   matricesToPlot = {
     ("real", "Real Part"     ) : np.real    (complexMatrix),
     ("imag", "Imag Part"     ) : np.imag    (complexMatrix),
@@ -193,8 +193,8 @@ def plotComplexMatrix(
     ("arg",  "Phase"         ) : np.angle   (complexMatrix, deg = True),  # [degree]
   }
   #TODO use same z-scale for all plots
-  for label, matrix in matricesToPlot.items():
-    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label[0]}", axisTitles, plotTitle = plotTitle + label[1], zRange = zRange)
+  for (label, title), matrix in matricesToPlot.items():
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)
 
 
 def drawTF3(
@@ -591,10 +591,10 @@ def plotMomentsBootstrapDistributions2D(
   nmbBins:           int = 20,  # number of bins for bootstrap histograms
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
-  momentIndexPairs = ((HData.indices[flatIndex1], HData.indices[flatIndex2])
+  momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
+                      for flatIndex0 in HData.indices.flatIndices()
                       for flatIndex1 in HData.indices.flatIndices()
-                      for flatIndex2 in HData.indices.flatIndices()
-                      if flatIndex1 < flatIndex2)
+                      if flatIndex0 < flatIndex1)
   for momentIndexPair in momentIndexPairs:
     plotMomentPairBootstrapDistributions2D(momentIndexPair, HData, HTrue, pdfFileNamePrefix, histTitle, nmbBins)
 
@@ -609,12 +609,46 @@ def plotMomentsCovMatrices(
   """Plots covariance matrices of moments and the difference w.r.t. the bootstrap estimates"""
   # plot covariance matrices
   matricesToPlot = {
-    ("ReRe", "Auto Covariance Real Parts")           : HData._covReReFlatIndex,
-    ("ImIm", "Auto Covariance Imag Parts")           : HData._covImImFlatIndex,
-    ("ReIm", "Cross Covariance Real and Imag Parts") : HData._covReImFlatIndex,
+    ((True,  True ), "ReRe", "Auto Covariance Real Parts"          ) : HData._covReReFlatIndex,  # symmetric
+    ((False, False), "ImIm", "Auto Covariance Imag Parts"          ) : HData._covImImFlatIndex,  # symmetric
+    ((True,  False), "ReIm", "Cross Covariance Real and Imag Parts") : HData._covReImFlatIndex,  # _not_ symmetric
   }
-  for label, matrix in  matricesToPlot.items():
-    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label[0]}", axisTitles, plotTitle = plotTitle + label[1], zRange = zRange)
+  for (realParts, label, title), matrix in  matricesToPlot.items():
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)
+    if HData.hasBootstrapSamples:
+      # get bootstrap estimates of covariance matrices
+      nmbMoments = len(HData.indices)
+      covMatrixBs = np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64)
+      # !Note! the covariance matrices for ReRe and ImIm are
+      # symmetric, so we need only the indices of the upper triangle
+      # of the covariance matrix including the diagonal
+      # !Note! the ReIm matrix is _not_ symmetric, so we need all indices
+      momentIndexPairs = ((flatIndex0, flatIndex1)
+                          for flatIndex0 in HData.indices.flatIndices()
+                          for flatIndex1 in HData.indices.flatIndices()
+                          if (realParts[0] != realParts[1]) or (flatIndex0 <= flatIndex1))
+      for momentIndexPair in momentIndexPairs:
+        # get bootstrap samples of moments
+        HVals = (HData[momentIndexPair[0]], HData[momentIndexPair[1]])
+        assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
+        assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
+        momentSamplesBs = ((HVals[0].bsSamples.real if realParts[0] else HVals[0].bsSamples.imag,
+                            HVals[1].bsSamples.real if realParts[1] else HVals[1].bsSamples.imag))
+        # covariance = off-diagonal element of the 2 x 2 covariance matrix returned by np.cov():
+        covMatrixBs[momentIndexPair[0], momentIndexPair[1]] = np.cov(momentSamplesBs[0], momentSamplesBs[1], ddof = 1)[:1, 1:][0]
+      if realParts[0] == realParts[1]:
+        # symmetrize bootstrap covariance matrix for ReRe and ImIm
+        covMatrixBs += covMatrixBs.T - np.diag(np.diag(covMatrixBs))
+      print(f"!!!FOO {matrix=}")
+      print(f"!!!FOO {covMatrixBs=}")
+      print(f"!!!FOO {covMatrixBs - matrix=}")
+      # calculate and plot relative difference of bootstrap and nominal covariance matrices
+      #TODO this does not work for the ReIm matrix, because it is not symmetric
+      # relative difference is defined as (covMatrixBs_ij - matrix_ij) / sqrt(covMatrixBs_ii * covMatrixBs_jj)
+      diag = np.diag(np.reciprocal(np.sqrt(np.diag(covMatrixBs))))  # diagonal matrix with 1 / sqrt(covMatrixBs_ii)
+      covMatrixDiff = diag @ (covMatrixBs - matrix) @ diag
+      print(f"!!!FOO {covMatrixDiff=}")
+      plotRealMatrix(covMatrixDiff, f"{pdfFileNamePrefix}{label}_BSdiff.pdf", axisTitles, plotTitle = plotTitle + f"BS Diff {title}", zRange = zRange)
 
 
 def plotMomentsBootstrapDiff(
