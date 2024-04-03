@@ -14,32 +14,32 @@ print = functools.partial(print, flush = True)
 if __name__ == "__main__":
   momentIndices = MomentCalculator.MomentIndices(maxL = 5, photoProd = True)
   for i in momentIndices.flatIndices():
-    print(f"{i} : {momentIndices._QnIndexByFlatIndex.QnIndex_for[i]} vs. {momentIndices[i]}")
+    print(f"{i} : {momentIndices[i]}")
   for i in momentIndices.QnIndices():
-    print(f"{i} : {momentIndices._QnIndexByFlatIndex.flatIndex_for[i]} vs. {momentIndices[i]}")
-  i = MomentCalculator.QnMomentIndex(0, 0, 0)
-  print(f"{type(momentIndices._QnIndexByFlatIndex[0])}, {momentIndices._QnIndexByFlatIndex[0]} vs. {momentIndices[0]} vs. {momentIndices[i]}")
+    print(f"{i} : {momentIndices[i]}")
+  qnIndex = MomentCalculator.QnMomentIndex(0, 0, 0)
+  print(f"{type(momentIndices._QnIndexByFlatIndex[0])=}, {momentIndices[0]=} vs. {momentIndices[qnIndex]=}")
   print(f"__str__ = '{momentIndices}' vs. __repr__ = '{repr(momentIndices)}'")
   momentIndices2 = MomentCalculator.MomentIndices(maxL = 5, photoProd = True)
-  print(f"equality = {momentIndices == momentIndices2}")
+  print(f"equality: {momentIndices == momentIndices2=}")
   if TYPE_CHECKING:
-    a = bd.namedbidict(typename = 'QnIndexByFlatIndexBidict', keyname = 'flatIndex', valname = 'QnIndex')
+    a = bd.bidict({0 : qnIndex})
     reveal_type(a)
-  i = MomentCalculator.QnMomentIndex(3, 0, 0)
+  qnIndex = MomentCalculator.QnMomentIndex(3, 0, 0)
   try:
-    print(f"{momentIndices[i]}")
+    print(f"{momentIndices[qnIndex]}")
   except KeyError as e:
-    print(f"KeyError: {e}: {i} does not exist in momentIndices")
+    print(f"KeyError: {e}: {qnIndex} does not exist in momentIndices")
 
   momentResult = MomentCalculator.MomentResult(momentIndices)
-  print(momentResult)
-  print(momentResult._valsFlatIndex)
-  print(momentResult[0])
-  print(momentResult[56])
-  i = MomentCalculator.QnMomentIndex(2, 5, 5)
-  print(momentResult[i].val)
-  print(momentResult[i].uncertRe)
-  print(momentResult[i].uncertIm)
+  print(f"{momentResult=}")
+  print(f"{momentResult._valsFlatIndex=}")
+  print(f"{momentResult[0]=}")
+  print(f"{momentResult[56]=}")
+  qnIndex = MomentCalculator.QnMomentIndex(2, 5, 5)
+  print(f"{momentResult[qnIndex].val=}")
+  print(f"{momentResult[qnIndex].uncertRe=}")
+  print(f"{momentResult[qnIndex].uncertIm=}")
 
   amps = [
     #                                                           refl J   M    amplitude
@@ -64,14 +64,14 @@ if __name__ == "__main__":
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +1),  0.2 + 0.5j),  # D_+1^+
     MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(+1, 2, +2), -0.3 - 0.1j),  # D_+2^+
   ]
-  ampSet = MomentCalculator.AmplitudeSet(amps)
+  ampSet = MomentCalculator.AmplitudeSet(amps, tolerance = 1e-14)
   qnIndex = MomentCalculator.QnWaveIndex(+1, 2, +2)
-  print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
+  print(f"{ampSet[qnIndex]=}")
   ampSet[qnIndex] = 100 + 100j
-  print(f"ampSet[{qnIndex}] = {ampSet[qnIndex]}")
+  print(f"{ampSet[qnIndex]=}")
   for amp in ampSet.amplitudes():
-    print(amp)
-  print(f"getMaxSpin() = {ampSet.maxSpin()}")
+    print(f"{amp=}")
+  print(f"{ampSet.maxSpin=}")
 
   for refl in (-1, +1):
     for amp1 in ampSet.amplitudes(onlyRefl = refl):
@@ -81,4 +81,15 @@ if __name__ == "__main__":
         l2 = amp2.qn.l
         m2 = amp2.qn.m
         rhos = ampSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
-        print(f"rho {refl}; ({l1}, {m1}); ({l2}, {m2}) = {rhos}")
+        print(f"rho {refl=}; ({l1=}, {m1=}); ({l2=}, {m2=}) = {rhos}")
+
+  # H:  MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, printMoments = True,  normalize = True)
+  print("Calculating moments...")
+  H:  MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, printMoments = False, normalize = True)
+  H2: MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, printMoments = False, normalize = True)
+
+  print(f"equality: {H == H2=}, {H2._valsFlatIndex[0]=}")
+  H2._valsFlatIndex[0] = H2._valsFlatIndex[0] + 1e-6
+  print(f"equality: {H == H2=}, {H2._valsFlatIndex[0]=}")
+  H2._valsFlatIndex[0] = H2._valsFlatIndex[0] + 1e-5
+  print(f"equality: {H == H2=}, {H2._valsFlatIndex[0]=}")
