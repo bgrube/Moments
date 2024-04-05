@@ -7,13 +7,25 @@ import numpy as np
 import pandas as pd
 import threadpoolctl
 from typing import (
+  Dict,
   List,
   Tuple,
 )
 
 import ROOT
 
-import MomentCalculator
+from MomentCalculator import (
+  AmplitudeSet,
+  AmplitudeValue,
+  DataSet,
+  KinematicBinningVariable,
+  MomentCalculator,
+  MomentCalculatorsKinematicBinning,
+  MomentIndices,
+  MomentResult,
+  QnMomentIndex,
+  QnWaveIndex,
+)
 from PlottingUtilities import (
   HistAxisBinning,
   plotComplexMatrix,
@@ -38,7 +50,7 @@ print = functools.partial(print, flush = True)
 def readPartialWaveAmplitudes(
   csvFileName:   str,
   massBinCenter: float,  # [GeV]
-) -> List[MomentCalculator.AmplitudeValue]:
+) -> List[AmplitudeValue]:
   """Reads partial-wave amplitudes values for given mass bin from CSV data"""
   df = pd.read_csv(csvFileName).astype({"mass": float})
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])
@@ -50,14 +62,14 @@ def readPartialWaveAmplitudes(
   s = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-' ]),  # S_0^-
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -1), val = s['D1--']),  # D_-1^-
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m =  0), val = s['D0+-']),  # D_0^-
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +1), val = s['D1+-']),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-' ]),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = s['D1--']),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = s['D0+-']),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = s['D1+-']),  # D_+1^-
     # positive-reflectivity waves
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+' ]),  # S_0^+
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -2), val = s['D2-+']),  # D_-2^+
-    MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +2), val = s['D2++']),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+' ]),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = s['D2-+']),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = s['D2++']),  # D_+2^+
   ]
   # print(f"!!! {partialWaveAmplitudes=}")
   return partialWaveAmplitudes
@@ -127,8 +139,8 @@ if __name__ == "__main__":
       canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
     # loop over mass bins
-    momentIndices = MomentCalculator.MomentIndices(maxL)
-    binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    momentIndices = MomentIndices(maxL)
+    binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     # massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
@@ -136,8 +148,8 @@ if __name__ == "__main__":
     massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 0.92 , maxVal = 2.00, _var = binVarMass)
-    momentsInBins:      List[MomentCalculator.MomentCalculator] = []
-    momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
+    momentsInBins:      List[MomentCalculator] = []
+    momentsInBinsTruth: List[MomentCalculator] = []
     nmbSignalGenEvents: List[float] = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
     for massBinIndex, massBinCenter in enumerate(massBinning):
@@ -164,20 +176,20 @@ if __name__ == "__main__":
             f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
 
       # calculate true moments
-      amplitudeSet = MomentCalculator.AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
-      HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
+      amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
+      HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
       # scale true moments such that H_0(0, 0) is number of generated signal events
       scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]
       HTrue._valsFlatIndex *= scale
       print(f"True moment values\n{HTrue}")
 
       # setup moment calculator for data
-      dataSet = MomentCalculator.DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents)
-      momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
+      dataSet = DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents)
+      momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # setup moment calculator to hold true values
-      momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
-    moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
-    momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
+      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+    moments      = MomentCalculatorsKinematicBinning(momentsInBins)
+    momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrices
     matrixAxisTitles = ("Moment Index", ) * 2
@@ -199,13 +211,13 @@ if __name__ == "__main__":
     #TODO add loop over mass bins
     # # calculate moments of accepted phase-space data
     # with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
-    #   momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
+    #   momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
     #   # print all moments
     #   print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
     #   print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")
     #   # plot moments
-    #   HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-    #   HTruePs._valsFlatIndex[momentIndices[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
+    #   HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+    #   HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
     #   plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
 
     # calculate moments of signal data
@@ -242,7 +254,7 @@ if __name__ == "__main__":
           plotMomentsBootstrapDiff1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
 
       print("Check H_0(0, 0) with true generated values:")  # instead of the values from the fit results
-      H000Index = MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M =0)
+      H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
       for binIndex in range(len(moments)):
         H = moments[binIndex].HPhys[H000Index]
         HTruth = momentsTruth[binIndex].HPhys[H000Index]
