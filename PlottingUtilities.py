@@ -765,7 +765,7 @@ def plotPullsForMoment(
   momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
   pdfFileNamePrefix: str = "",  # name prefix for output files
   histTitle:         str = "",  # histogram title
-) -> None:
+) -> Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]:  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   """Plots pulls of moment with given qnIndex estimated from moment values in kinematic bins"""
   # filter out specific moment given by qnIndex
   HVals = tuple(MomentValueAndTruth(
@@ -811,3 +811,48 @@ def plotPullsForMoment(
   label.DrawLatex(0.13, 0.80, f"Im: #it{{#mu}} = {gaussPars[False][0][0]:.2f} #pm {gaussPars[False][0][1]:.2f}, "
                                f"#it{{#sigma}} = {gaussPars[False][1][0]:.2f} #pm {gaussPars[False][1][1]:.2f}")
   canv.SaveAs(f"{histStack.GetName()}.pdf")
+  return gaussPars
+
+
+def plotPullParameters(
+  pullParameters:    Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]],  # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
+) -> None:
+  """Plots Gaussian means and sigmas of pull distributions for each moment"""
+  # generate separate plots for each moment index
+  for momentIndex in range(3):
+    # get pull parameters for moment with given momentIndex
+    pullPars = {qnIndex : pars for qnIndex, pars in pullParameters.items() if qnIndex.momentIndex == momentIndex}
+    # create a histograms with the moments as the categorical axis and the Gaussian parameters as the y-axis
+    histStack = ROOT.THStack(f"{pdfFileNamePrefix}pullParameters_H{momentIndex}", f"{histTitle}#it{{H}}_{{{momentIndex}}};;Parameter Value")
+    for meanOrSigma in (0, 1):
+      for realPart in (False, True):
+        histPar = ROOT.TH1D(f"{'#it{#mu}' if meanOrSigma == 0 else '#it{#sigma}'} {'Real Part' if realPart else 'Imag Part'}", "", len(pullPars), 0, len(pullPars))
+        for binIndex, (qnIndex, gaussPars) in enumerate(pullPars.items()):
+          val,  valErr  = gaussPars[realPart][meanOrSigma]
+          histPar.SetBinContent(binIndex + 1, val)
+          histPar.SetBinError  (binIndex + 1, valErr)
+          histPar.GetXaxis().SetBinLabel(binIndex, qnIndex.title)  # categorical x axis with moment labels
+        color = ROOT.kRed + 1 if realPart else ROOT.kBlue + 1
+        histPar.SetLineColor(color)
+        histPar.SetMarkerColor(color)
+        histPar.SetMarkerStyle(ROOT.kFullCircle if meanOrSigma == 0 else ROOT.kOpenCircle)
+        histPar.SetMarkerSize(0.75)
+        histStack.Add(histPar)
+    # draw histograms
+    canv = ROOT.TCanvas()
+    histStack.SetMinimum(-1)
+    histStack.SetMaximum(+2)
+    histStack.Draw("NOSTACK,E1P")
+    # draw legend
+    canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+    canv.Update()
+    # draw horizontal lines at y = 0 and 1
+    line = ROOT.TLine()
+    line.SetLineColor(ROOT.kBlack)
+    line.SetLineStyle(ROOT.kDashed)
+    xAxis = histStack.GetXaxis()
+    line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 1, xAxis.GetBinUpEdge(xAxis.GetLast()), 1)
+    canv.SaveAs(f"{histStack.GetName()}.pdf")

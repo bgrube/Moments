@@ -37,6 +37,7 @@ from PlottingUtilities import (
   plotMoments1D,
   plotMomentsInBin,
   plotPullsForMoment,
+  plotPullParameters,
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
@@ -246,12 +247,14 @@ if __name__ == "__main__":
           plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", graphTitle = binTitle)
 
       # plot kinematic dependences of all moments
+      pullParameters: Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
       for qnIndex in momentIndices.QnIndices():
         plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
-        plotPullsForMoment(moments, qnIndex, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
+        pullParameters[qnIndex] = plotPullsForMoment(moments, qnIndex, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
         if nmbBootstrapSamples > 0:
           plotMomentsBootstrapDiff1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
+      plotPullParameters(pullParameters, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_")
 
       print("Check H_0(0, 0) with true generated values:")  # instead of the values from the fit results
       H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
