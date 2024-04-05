@@ -266,8 +266,8 @@ def plotMoments(
       histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
       if binning is None:
         histData.GetXaxis().SetBinLabel(binIndex, HVal.qn.title)  # categorical x axis with moment labels
-    histData.SetLineColor(ROOT.kRed)
-    histData.SetMarkerColor(ROOT.kRed)
+    histData.SetLineColor(ROOT.kRed + 1)
+    histData.SetMarkerColor(ROOT.kRed + 1)
     histData.SetMarkerStyle(ROOT.kFullCircle)
     histData.SetMarkerSize(0.75)
     histStack.Add(histData, "PEX0")
@@ -280,8 +280,8 @@ def plotMoments(
           binIndex = index + 1
           histTrue.SetBinContent(binIndex, y)
           histTrue.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-      histTrue.SetMarkerColor(ROOT.kBlue)
-      histTrue.SetLineColor(ROOT.kBlue)
+      histTrue.SetMarkerColor(ROOT.kBlue + 1)
+      histTrue.SetLineColor(ROOT.kBlue + 1)
       histTrue.SetLineWidth(2)
       histStack.Add(histTrue, "PE")
     canv = ROOT.TCanvas()
@@ -346,8 +346,8 @@ def plotMoments(
         if binning is None:
           for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
             histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
-        histResidual.SetMarkerColor(ROOT.kBlue)
-        histResidual.SetLineColor(ROOT.kBlue)
+        histResidual.SetMarkerColor(ROOT.kBlue + 1)
+        histResidual.SetLineColor(ROOT.kBlue + 1)
         histResidual.SetLineWidth(2)
         histResidual.SetMinimum(-3)
         histResidual.SetMaximum(+3)
@@ -757,3 +757,57 @@ def plotMomentsBootstrapDiffInBin(
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], truth = None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
     plotMomentsBootstrapDiff(HVals, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
                              pdfFileNamePrefix = pdfFileNamePrefix, graphTitle = graphTitle)
+
+
+def plotPullsForMoment(
+  moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
+  qnIndex:           QnMomentIndex,  # defines specific moment
+  momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  histTitle:         str = "",  # histogram title
+) -> None:
+  """Plots pulls of moment with given qnIndex estimated from moment values in kinematic bins"""
+  # filter out specific moment given by qnIndex
+  HVals = tuple(MomentValueAndTruth(
+      *HData.HPhys[qnIndex],
+      truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
+      _binCenters = HData.binCenters,
+    ) for binIndex, HData in enumerate(moments))
+  histStack = ROOT.THStack(f"{pdfFileNamePrefix}pulls_{qnIndex.label}", f"{histTitle};""(#it{#hat{H}} - #it{H}_{true}) / #it{#hat{#sigma}};Count")
+  gaussPars: Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]] = {}  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
+  for realPart in (False, True):
+    # loop over kinematic bins and fill histogram with pulls
+    histPull = ROOT.TH1D(f"{histStack.GetName()}_{'Re' if realPart else 'Im'}", "Real Part" if realPart else "Imag Part", 25, -5, +5)
+    for HVal in HVals:
+      if HVal.truth is not None:
+        moment, momentErr = HVal.realPart(realPart)
+        pull = (moment - HVal.truthRealPart(realPart)) / momentErr
+        histPull.Fill(pull)
+    color = ROOT.kRed + 1 if realPart else ROOT.kBlue + 1
+    histPull.SetLineColor(color)
+    histPull.SetFillColor(color)
+    histPull.SetFillStyle(3003)
+    # fit Gaussian to pull histogram
+    gauss = ROOT.TF1("gauss", "gausn", -4, +4)
+    gauss.SetLineColor(color)
+    histPull.Fit(gauss, "LEIMR")
+    gaussPars[realPart] = ((gauss.GetParameter(1), gauss.GetParError(1)),  # mean
+                           (gauss.GetParameter(2), gauss.GetParError(2)))  # sigma
+    histStack.Add(histPull)
+  # draw pulls
+  canv = ROOT.TCanvas()
+  histStack.Draw("NOSTACK")
+  # draw legend
+  canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+  # print Gaussian parameters for real and imaginary parts
+  label = ROOT.TLatex()
+  label.SetNDC()
+  label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
+  label.SetTextSize(0.035)
+  label.SetTextColor(ROOT.kRed + 1)
+  label.DrawLatex(0.13, 0.85, f"Re: #it{{#mu}} = {gaussPars[True][0][0]:.2f} #pm {gaussPars[True][0][1]:.2f}, "
+                               f"#it{{#sigma}} = {gaussPars[True][1][0]:.2f} #pm {gaussPars[True][1][1]:.2f}")
+  label.SetTextColor(ROOT.kBlue + 1)
+  label.DrawLatex(0.13, 0.80, f"Im: #it{{#mu}} = {gaussPars[False][0][0]:.2f} #pm {gaussPars[False][0][1]:.2f}, "
+                               f"#it{{#sigma}} = {gaussPars[False][1][0]:.2f} #pm {gaussPars[False][1][1]:.2f}")
+  canv.SaveAs(f"{histStack.GetName()}.pdf")
