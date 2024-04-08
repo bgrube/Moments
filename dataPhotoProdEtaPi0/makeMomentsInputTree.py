@@ -153,6 +153,7 @@ if __name__ == "__main__":
                 "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
                 "&& (abs(mmsq) < 0.05)"  # [GeV^2]
                 "&& ((0.8 < Mpi0eta_thrown) && (Mpi0eta_thrown < 2.0))"  # [GeV]
+                # "&& (run < 51400)"  # exclude region were signal and phase-space sample differ signficantly
               ")"
             )
 
@@ -182,6 +183,7 @@ if __name__ == "__main__":
         {"columnName" : "Meta",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
         {"columnName" : "Mpi0eta_thrown", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
         {"columnName" : "rfTime",         "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
+        {"columnName" : "run",            "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (1200, 50600, 51800)},
       ]
     histDefs += [
       # moment variables
