@@ -189,13 +189,13 @@ def plotComplexMatrix(
 ) -> None:
   """Plots real and imaginary parts, absolute value and phase of given complex-valued matrix"""
   matricesToPlot = {
-    ("real", "Real Part"     ) : np.real    (complexMatrix),
-    ("imag", "Imag Part"     ) : np.imag    (complexMatrix),
-    ("abs",  "Absolute Value") : np.absolute(complexMatrix),
-    ("arg",  "Phase"         ) : np.angle   (complexMatrix, deg = True),  # [degree]
+    ("real", "Real Part",      (-1.2, +1.2)) : np.real    (complexMatrix),
+    ("imag", "Imag Part",      (-0.1, +0.1)) : np.imag    (complexMatrix),
+    ("abs",  "Absolute Value", (   0,  1.2)) : np.absolute(complexMatrix),
+    ("arg",  "Phase",          (-180, +180)) : np.angle   (complexMatrix, deg = True),  # [degree]
   }
   #TODO use same z-scale for all plots
-  for (label, title), matrix in matricesToPlot.items():
+  for (label, title, zRange), matrix in matricesToPlot.items():
     plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange, **kwargs)
 
 
@@ -676,9 +676,9 @@ def plotMomentsBootstrapDiff(
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
   # create graphs with relative differences
   graphMomentValDiff    = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_valDiff",
-                                           f"{graphTitle};{('' if binning is None else binning.axisTitle)}" + ";#it{H}_{BS} - #it{H}_{Nom} / #it{#sigma}_{BS}")
+                                           f"{graphTitle};{('' if binning is None else binning.axisTitle)}" + ";(#it{H}_{BS} #minus #it{H}_{Nom}) / #it{#sigma}_{BS}")
   graphMomentUncertDiff = ROOT.TMultiGraph(f"{pdfFileNamePrefix}bootstrap_{momentLabel}_uncertDiff",
-                                           f"{graphTitle};{('' if binning is None else binning.axisTitle)}" + ";#it{#sigma}_{BS} - #it{#sigma}_{Nom} / #it{#sigma}_{BS}")
+                                           f"{graphTitle};{('' if binning is None else binning.axisTitle)}" + ";(#it{#sigma}_{BS} #minus #it{#sigma}_{Nom}) / #it{#sigma}_{BS}")
   colors = {"Re": ROOT.kRed + 1, "Im": ROOT.kBlue + 1}
   xVals  = np.arange(len(HVals), dtype = npt.Float64) if binning is None else np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
@@ -833,7 +833,7 @@ def plotPullParameters(
           val,  valErr  = gaussPars[realPart][meanOrSigma]
           histPar.SetBinContent(binIndex + 1, val)
           histPar.SetBinError  (binIndex + 1, valErr)
-          histPar.GetXaxis().SetBinLabel(binIndex, qnIndex.title)  # categorical x axis with moment labels
+          histPar.GetXaxis().SetBinLabel(binIndex + 1, qnIndex.title)  # categorical x axis with moment labels
         color = ROOT.kRed + 1 if realPart else ROOT.kBlue + 1
         histPar.SetLineColor(color)
         histPar.SetMarkerColor(color)
