@@ -102,6 +102,8 @@ if __name__ == "__main__":
     normalizeMoments     = False
     # nmbBootstrapSamples  = 0
     nmbBootstrapSamples  = 10000
+    plotPulls            = True
+    # plotPulls            = False
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # plot all signal and phase-space data
@@ -193,7 +195,7 @@ if __name__ == "__main__":
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrices
-    matrixAxisTitles = ("Moment Index", ) * 2
+    matrixAxisTitles = ("Physical Moment Index", "Measured Moment Index")
     with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       moments.calculateIntegralMatrices(forceCalculation = True)
       # print acceptance integral matrix for first kinematic bin
@@ -251,10 +253,12 @@ if __name__ == "__main__":
       for qnIndex in momentIndices.QnIndices():
         plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
-        pullParameters[qnIndex] = plotPullsForMoment(moments, qnIndex, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
+        if plotPulls:
+          pullParameters[qnIndex] = plotPullsForMoment(moments, qnIndex, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
         if nmbBootstrapSamples > 0:
           plotMomentsBootstrapDiff1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
-      plotPullParameters(pullParameters, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_")
+      if plotPulls:
+        plotPullParameters(pullParameters, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_")
 
       print("Check H_0(0, 0) with true generated values:")  # instead of the values from the fit results
       H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
