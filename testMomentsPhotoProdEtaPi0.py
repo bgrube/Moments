@@ -100,8 +100,8 @@ if __name__ == "__main__":
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
     normalizeMoments     = False
-    # nmbBootstrapSamples  = 0
-    nmbBootstrapSamples  = 10000
+    nmbBootstrapSamples  = 0
+    # nmbBootstrapSamples  = 10000
     plotPulls            = True
     # plotPulls            = False
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
@@ -148,12 +148,14 @@ if __name__ == "__main__":
     # massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
     # study with constant amplitude values taken form bin 10 at 1.30 GeV
-    massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
+    massBinning   = HistAxisBinning(nmbBins = 25, minVal = 0.92, maxVal = 1.92, _var = binVarMass)
+    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 0.88 , maxVal = 0.92, _var = binVarMass)
     # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 0.92 , maxVal = 2.00, _var = binVarMass)
+    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 0.92 , maxVal = 1.92, _var = binVarMass)
     momentsInBins:      List[MomentCalculator] = []
     momentsInBinsTruth: List[MomentCalculator] = []
-    nmbSignalGenEvents: List[float] = []
+    nmbSignalGenEvents: List[float]            = []
+    nmbPsGenEvents:     List[float]            = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
     for massBinIndex, massBinCenter in enumerate(massBinning):
       massBinRange = massBinning.binValueRange(massBinIndex)
@@ -174,9 +176,9 @@ if __name__ == "__main__":
             f" -> efficiency = {nmbSignalAccEvents / nmbSignalGenEvents[-1]:.3f}")
       print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
       dataPsGen = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
-      nmbPsGenEvents = dataPsGen.Count().GetValue()
-      print(f"Phase-space events: number generated = {nmbPsGenEvents}, number accepted = {nmbPsAccEvents}"
-            f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
+      nmbPsGenEvents.append(dataPsGen.Count().GetValue())
+      print(f"Phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
+            f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
       # calculate true moments
       amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
@@ -187,7 +189,7 @@ if __name__ == "__main__":
       print(f"True moment values\n{HTrue}")
 
       # setup moment calculator for data
-      dataSet = DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents)
+      dataSet = DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents[-1])
       momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # setup moment calculator to hold true values
       momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
@@ -198,7 +200,6 @@ if __name__ == "__main__":
     matrixAxisTitles = ("Physical Moment Index", "Measured Moment Index")
     with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       moments.calculateIntegralMatrices(forceCalculation = True)
-      # print acceptance integral matrix for first kinematic bin
       print(f"Acceptance integral matrix for first bin\n{moments[0].integralMatrix}")
       eigenVals, _ = moments[0].integralMatrix.eigenDecomp
       print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
@@ -208,34 +209,37 @@ if __name__ == "__main__":
         # binTitle = ", ".join(momentsInBin.binTitles)
         plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
                           axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ")
-        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}",
+        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}_",
                           axisTitles = matrixAxisTitles, plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ")
 
-    #TODO add loop over mass bins
-    # # calculate moments of accepted phase-space data
-    # with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
-    #   momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
-    #   # print all moments
-    #   print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
-    #   print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")
-    #   # plot moments
-    #   HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-    #   HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
-    #   plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
+    # calculate moments of accepted phase-space data
+    namePrefix = "norm" if normalizeMoments else "unnorm"
+    with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
+      moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
+      # plot accepted phase-space moments in each kinematic bin
+      for massBinIndex, momentsInBin in enumerate(moments):
+        binLabel = "_".join(momentsInBin.binLabels)
+        binTitle = ", ".join(momentsInBin.binTitles)
+        print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}\n{momentsInBin.HMeas}")
+        print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}\n{momentsInBin.HPhys}")
+        # construct true moments for phase-space data
+        HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+        HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+        # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
+        momentsInBin.HMeas._valsFlatIndex[0] = 0
+        # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
+        plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpace_")
+        plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpaceCorr_")
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
-      # print all moments for first kinematic bin
-      print(f"Measured moments of signal data for first kinematic bin\n{moments[0].HMeas}")
-      print(f"Physical moments of signal data for first kinematic bin\n{moments[0].HPhys}")
-
       # plot moments in each kinematic bin
-      namePrefix = "norm" if normalizeMoments else "unnorm"
-
       for massBinIndex, momentsInBin in enumerate(moments):
         binLabel = "_".join(momentsInBin.binLabels)
         binTitle = ", ".join(momentsInBin.binTitles)
+        print(f"Measured moments of signal data for kinematic bin {binTitle}\n{momentsInBin.HMeas}")
+        print(f"Physical moments of signal data for kinematic bin {binTitle}\n{momentsInBin.HPhys}")
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
         plotMomentsCovMatrices(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{binLabel}_",
