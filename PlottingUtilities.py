@@ -874,21 +874,21 @@ def plotAngularDistr(
   title3D = title2D + ";#it{#Phi} [deg]"
   hists = (
     dataSignalAcc.Histo3D(
-      ROOT.RDF.TH3DModel("angDistr3D_signalAcc", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+      ROOT.RDF.TH3DModel("signalAcc_3D", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataSignalGen.Histo3D(
-      ROOT.RDF.TH3DModel("angDistr3D_signalGen", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+      ROOT.RDF.TH3DModel("signalGen_3D", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataPsAcc.Histo3D(
-      ROOT.RDF.TH3DModel("angDistr3D_psAcc",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+      ROOT.RDF.TH3DModel("psAcc_3D",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataPsGen.Histo3D(
-      ROOT.RDF.TH3DModel("angDistr3D_psGen",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+      ROOT.RDF.TH3DModel("psGen_3D",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataSignalAcc.Histo2D(
-      ROOT.RDF.TH2DModel("angDistr2D_signalAcc", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
+      ROOT.RDF.TH2DModel("signalAcc_2D", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
     dataSignalGen.Histo2D(
-      ROOT.RDF.TH2DModel("angDistr2D_signalGen", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
+      ROOT.RDF.TH2DModel("signalGen_2D", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
     dataPsAcc.Histo2D(
-      ROOT.RDF.TH2DModel("angDistr2D_psAcc",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
+      ROOT.RDF.TH2DModel("psAcc_2D",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
     dataPsGen.Histo2D(
-      ROOT.RDF.TH2DModel("angDistr2D_psGen",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
+      ROOT.RDF.TH2DModel("psGen_2D",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
   )
   for hist in hists:
     canv = ROOT.TCanvas()

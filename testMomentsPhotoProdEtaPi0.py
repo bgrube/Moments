@@ -99,16 +99,15 @@ if __name__ == "__main__":
     psGenFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
     beamPolarization     = 1.0  #TODO read from tree
     # maxL                 = 1  # define maximum L quantum number of moments
-    maxL                 = 5  # define maximum L quantum number of moments
+    maxL                 = 8  # define maximum L quantum number of moments
     normalizeMoments     = False
     nmbBootstrapSamples  = 0
     # nmbBootstrapSamples  = 10000
-    plotPulls            = True
-    # plotPulls            = False
+    # plotPulls            = True
+    plotPulls            = False
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
-    # plot all signal and phase-space data
-    #TODO plot for each mass bin
+    # load all signal and phase-space data
     print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}'")
     dataSignalAcc = ROOT.RDataFrame(treeName, signalAccFileName)
     print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}'")
@@ -117,7 +116,8 @@ if __name__ == "__main__":
     dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
     print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
     dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
-    plotAngularDistr(dataSignalAcc, dataSignalGen, dataPsAcc, dataPsGen, pdfFileNamePrefix = f"{outFileDirName}/total_")
+    # plot total angular distributions
+    plotAngularDistr(dataSignalAcc, dataSignalGen, dataPsAcc, dataPsGen, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
 
     # loop over mass bins
     momentIndices = MomentIndices(maxL)
@@ -171,6 +171,9 @@ if __name__ == "__main__":
       momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # setup moment calculator to hold true values
       momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+
+      # plot angular distributions for mass bin
+      plotAngularDistr(dataSignalAcc, dataSignalGen, dataPsAcc, dataPsGen, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{'_'.join(momentsInBins[-1].binLabels)}_")
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
@@ -207,7 +210,7 @@ if __name__ == "__main__":
         momentsInBin.HMeas._valsFlatIndex[0] = 0
         # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
         plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpace_")
-        plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpaceCorr_")
+        # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpaceCorr_")
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
