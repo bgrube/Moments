@@ -28,6 +28,7 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   HistAxisBinning,
+  plotAngularDistr,
   plotComplexMatrix,
   plotMomentsBootstrapDiff1D,
   plotMomentsBootstrapDiffInBin,
@@ -116,30 +117,7 @@ if __name__ == "__main__":
     dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
     print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
     dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
-    nmbBinsSig = 15
-    nmbBinsPs  = nmbBinsSig
-    hists = (
-      dataSignalAcc.Histo3D(
-        ROOT.RDF.TH3DModel("hSignalAcc", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsSig, -1, +1, nmbBinsSig, -180, +180, nmbBinsSig, -180, +180),
-        "cosTheta", "phiDeg", "PhiDeg"),
-      dataSignalGen.Histo3D(
-        ROOT.RDF.TH3DModel("hSignalGen", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsSig, -1, +1, nmbBinsSig, -180, +180, nmbBinsSig, -180, +180),
-        "cosTheta", "phiDeg", "PhiDeg"),
-      dataPsAcc.Histo3D(
-        ROOT.RDF.TH3DModel("hPhaseSpaceAcc", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
-        "cosTheta", "phiDeg", "PhiDeg"),
-      dataPsGen.Histo3D(
-        ROOT.RDF.TH3DModel("hPhaseSpaceGen", ";cos#theta;#phi [deg];#Phi [deg]", nmbBinsPs, -1, +1, nmbBinsPs, -180, +180, nmbBinsPs, -180, +180),
-        "cosTheta", "phiDeg", "PhiDeg"),
-    )
-    for hist in hists:
-      canv = ROOT.TCanvas()
-      hist.SetMinimum(0)
-      hist.GetXaxis().SetTitleOffset(1.5)
-      hist.GetYaxis().SetTitleOffset(2)
-      hist.GetZaxis().SetTitleOffset(1.5)
-      hist.Draw("BOX2Z")
-      canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
+    plotAngularDistr(dataSignalAcc, dataSignalGen, dataPsAcc, dataPsGen, pdfFileNamePrefix = f"{outFileDirName}/total_")
 
     # loop over mass bins
     momentIndices = MomentIndices(maxL)
