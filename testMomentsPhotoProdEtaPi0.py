@@ -28,8 +28,10 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   HistAxisBinning,
+  MomentValueAndTruth,
   plotAngularDistr,
   plotComplexMatrix,
+  plotMoments,
   plotMomentsBootstrapDiff1D,
   plotMomentsBootstrapDiffInBin,
   plotMomentsBootstrapDistributions1D,
@@ -93,10 +95,11 @@ if __name__ == "__main__":
     treeName             = "etaPi0"
     signalAccFileName    = "./dataPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
     signalGenFileName    = "./dataPhotoProdEtaPi0/a0a2_signal_gen_flat.root"
-    # signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
-    signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
     psAccFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
     psGenFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
+    #!Note! partial-wave amplitudes for signal are defined in helicity frame
+    # signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
+    signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
     beamPolarization     = 1.0  #TODO read from tree
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 8  # define maximum L quantum number of moments
@@ -209,8 +212,13 @@ if __name__ == "__main__":
         # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
         momentsInBin.HMeas._valsFlatIndex[0] = 0
         # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
-        plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpace_")
-        # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPhaseSpaceCorr_")
+        plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPs_")
+        # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
+      # plot kinematic dependences of all measured moments
+      for qnIndex in momentIndices.QnIndices():
+        HVals = tuple(MomentValueAndTruth(*HData.HMeas[qnIndex], _binCenters = HData.binCenters) for HData in moments)
+        plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
+                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title)
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
