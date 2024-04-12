@@ -327,7 +327,7 @@ class AcceptanceIntegralMatrix:
   """Container class that calculates, stores, and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
   dataSet:     DataSet        # info on data samples
-  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # acceptance integral matrix with flat indices; must either be given or set be calling load() or calculate()
+  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # acceptance integral matrix with flat indices; first index is for measured moments, second index is for physical moments; must either be given or set be calling load() or calculate()
 
   # accessor that guarantees existence of optional field
   @property
@@ -410,7 +410,7 @@ class AcceptanceIntegralMatrix:
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
-      print("Using weights in 'eventWeight' column to calculate acceptance integral matrix")
+      print("Applying weights from 'eventWeight' column in calculation of acceptance integral matrix")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
       eventWeights = self.dataSet.phaseSpaceData.AsNumpy(columns = ["eventWeight"])["eventWeight"]
     else:
@@ -783,7 +783,7 @@ class MomentCalculator:
     V_ReIm = (np.imag(V_pseudo) - np.imag(V_Hermit)) / 2  # Eq. (93)
     return (V_ReRe, V_ImIm, V_ReIm)
 
-  MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE", "ACCEPTED_PHASE_SPACE_CORR"))
+  MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE"))
 
   def calculateMoments(
     self,
@@ -801,11 +801,7 @@ class MomentCalculator:
       dataSet        = self.dataSet
       integralMatrix = self._integralMatrix
     elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
-      #TODO this also seems to apply acceptance correction; check!
-      # calculate moments of acceptance function
-      dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
-    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE_CORR:
-      # calculate moments of acceptance-corrected phase space; should all be 0 except H_0(0, 0)
+      # calculate moments of acceptance-corrected phase space; physical moments should all be 0 except H_0(0, 0)
       dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
       integralMatrix = self._integralMatrix
     else:
@@ -819,7 +815,7 @@ class MomentCalculator:
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     if "eventWeight" in dataSet.data.GetColumnNames():
-      print("Using weights in 'eventWeight' column to calculate moments")
+      print("Applying weights from 'eventWeight' column in calculation of moments")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
       eventWeights = dataSet.data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
     else:
