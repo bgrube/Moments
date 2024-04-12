@@ -184,19 +184,20 @@ def plotComplexMatrix(
   pdfFileNamePrefix: str,  # name prefix for output files
   axisTitles:        Tuple[str, str] = ("", ""),  # titles for x and y axes
   plotTitle:         str             = "",   # title for plot
-  zRangeAbs:         float           = 1.2,  # range for absolute value and for abs(real part)
-  zRangeImag:        float           = 0.1,  # range for abs(imag part)
+  zRangeAbs:         float           = 1.1,  # range for absolute value and for abs(real part)
+  zRangeImag:        float           = 0.075,  # range for abs(imag part)
   **kwargs:          Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
   """Plots real and imaginary parts, absolute value and phase of given complex-valued matrix"""
   matricesToPlot = {
-    ("real", "Real Part",      ( -zRangeAbs, +zRangeAbs )) : np.real    (complexMatrix),
+    ("real", "Real Part",      ( -zRangeAbs,  +zRangeAbs)) : np.real    (complexMatrix),
     ("imag", "Imag Part",      (-zRangeImag, +zRangeImag)) : np.imag    (complexMatrix),
-    ("abs",  "Absolute Value", (          0,  zRangeAbs )) : np.absolute(complexMatrix),
+    ("abs",  "Absolute Value", (          0,   zRangeAbs)) : np.absolute(complexMatrix),
     ("arg",  "Phase",          (       -180,        +180)) : np.angle   (complexMatrix, deg = True),  # [degree]
   }
   for (label, title, zRange), matrix in matricesToPlot.items():
-    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange, **kwargs)
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}.pdf",       axisTitles, plotTitle = plotTitle + title, zRange = zRange, **kwargs)
+    plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}_color.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange, cmap = "RdBu", **kwargs)
 
 
 def drawTF3(

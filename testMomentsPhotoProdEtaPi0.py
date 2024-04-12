@@ -193,31 +193,33 @@ if __name__ == "__main__":
         plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
                           axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ")
         plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}_",
-                          axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ")
+                          axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
+                          zRangeAbs = 100, zRangeImag = 10)
 
     # calculate moments of accepted phase-space data
+    #FIXME this part influences the calculation of the moments of the signal data below
     namePrefix = "norm" if normalizeMoments else "unnorm"
-    with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
-      moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
-      # plot accepted phase-space moments in each kinematic bin
-      for massBinIndex, momentsInBin in enumerate(moments):
-        binLabel = "_".join(momentsInBin.binLabels)
-        binTitle = ", ".join(momentsInBin.binTitles)
-        print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}\n{momentsInBin.HMeas}")
-        print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}\n{momentsInBin.HPhys}")
-        # construct true moments for phase-space data
-        HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-        HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
-        # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
-        momentsInBin.HMeas._valsFlatIndex[0] = 0
-        # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
-        plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPs_", plotLegend = False)
-        # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
-      # plot kinematic dependences of all measured moments
-      for qnIndex in momentIndices.QnIndices():
-        HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex], _binCenters = momentsInBin.binCenters) for momentsInBin in moments)
-        plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
-                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
+    # with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
+    #   moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
+    #   # plot accepted phase-space moments in each kinematic bin
+    #   for massBinIndex, momentsInBin in enumerate(moments):
+    #     binLabel = "_".join(momentsInBin.binLabels)
+    #     binTitle = ", ".join(momentsInBin.binTitles)
+    #     print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}\n{momentsInBin.HMeas}")
+    #     print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}\n{momentsInBin.HPhys}")
+    #     # construct true moments for phase-space data
+    #     HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+    #     HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+    #     # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
+    #     momentsInBin.HMeas._valsFlatIndex[0] = 0
+    #     # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
+    #     plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPs_", plotLegend = False)
+    #     # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
+    #   # plot kinematic dependences of all measured moments
+    #   for qnIndex in momentIndices.QnIndices():
+    #     HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex], _binCenters = momentsInBin.binCenters) for momentsInBin in moments)
+    #     plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
+    #                 pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
@@ -230,6 +232,7 @@ if __name__ == "__main__":
         print(f"Physical moments of signal data for kinematic bin {binTitle}\n{momentsInBin.HPhys}")
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
                          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        #TODO also plot correlation matrices
         plotMomentsCovMatrices(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{binLabel}_",
                                axisTitles = ("Physical Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: ")
         if nmbBootstrapSamples > 0:
