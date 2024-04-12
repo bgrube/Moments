@@ -290,8 +290,8 @@ def plotMoments(
     canv.Update()
     actualYRange = canv.GetUymax() - canv.GetUymin()
     yRangeFraction = 0.1 * actualYRange
-    histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
+    histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     # adjust style of automatic zero line
     # does not work
@@ -856,3 +856,51 @@ def plotPullParameters(
     line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
     line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 1, xAxis.GetBinUpEdge(xAxis.GetLast()), 1)
     canv.SaveAs(f"{histStack.GetName()}.pdf")
+
+
+def plotAngularDistr(
+  dataSignalAcc:     ROOT.RDataFrame,  # accepted signal data
+  dataSignalGen:     ROOT.RDataFrame,  # generated signal data
+  dataPsAcc:         ROOT.RDataFrame,  # accepted phase-space data
+  dataPsGen:         ROOT.RDataFrame,  # generated phase-space data
+  pdfFileNamePrefix: str = "",  # name prefix for output files
+  nmbBins3DSig:      int = 15,  # number of bins for 3D signal histograms
+  nmbBins3DPs:       int = 15,  # number of bins for 3D phase-space histograms
+  nmbBins2DSig:      int = 50,  # number of bins for 2D signal histograms
+  nmbBins2DPs:       int = 50,  # number of bins for 2D phase-space histograms
+):
+  """Plot 2D and 3D angular distributions of signal and phase-space data"""
+  title2D = ";cos#it{#theta};#it{#phi} [deg]"
+  title3D = title2D + ";#it{#Phi} [deg]"
+  hists = (
+    dataSignalAcc.Histo3D(
+      ROOT.RDF.TH3DModel("angDistr3D_signalAcc", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+    dataSignalGen.Histo3D(
+      ROOT.RDF.TH3DModel("angDistr3D_signalGen", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+    dataPsAcc.Histo3D(
+      ROOT.RDF.TH3DModel("angDistr3D_psAcc",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+    dataPsGen.Histo3D(
+      ROOT.RDF.TH3DModel("angDistr3D_psGen",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+    dataSignalAcc.Histo2D(
+      ROOT.RDF.TH2DModel("angDistr2D_signalAcc", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
+    dataSignalGen.Histo2D(
+      ROOT.RDF.TH2DModel("angDistr2D_signalGen", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
+    dataPsAcc.Histo2D(
+      ROOT.RDF.TH2DModel("angDistr2D_psAcc",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
+    dataPsGen.Histo2D(
+      ROOT.RDF.TH2DModel("angDistr2D_psGen",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
+  )
+  for hist in hists:
+    canv = ROOT.TCanvas()
+    hist.SetMinimum(0)
+    histType = hist.IsA().GetName()
+    if histType.startswith("TH3"):
+      hist.GetXaxis().SetTitleOffset(1.5)
+      hist.GetYaxis().SetTitleOffset(2)
+      hist.GetZaxis().SetTitleOffset(1.5)
+      hist.Draw("BOX2Z")
+    elif histType.startswith("TH2"):
+      hist.Draw("COLZ")
+    else:
+      raise TypeError(f"Unexpected histogram type '{histType}'")
+    canv.SaveAs(f"{pdfFileNamePrefix}{hist.GetName()}.pdf")
