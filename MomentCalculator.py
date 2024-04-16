@@ -409,14 +409,15 @@ class AcceptanceIntegralMatrix:
     nmbAccEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
+    eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.empty(nmbAccEvents, dtype = npt.Float64)
     if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
       print("Applying weights from 'eventWeight' column in calculation of acceptance integral matrix")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
       eventWeights = self.dataSet.phaseSpaceData.AsNumpy(columns = ["eventWeight"])["eventWeight"]
+      assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
     else:
       # all events have weight 1
       eventWeights = np.ones(nmbAccEvents, dtype = npt.Float64)
-    assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `basisFunctions.C`
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
@@ -795,15 +796,13 @@ class MomentCalculator:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
     dataSet        = None
-    integralMatrix = None
+    integralMatrix = self._integralMatrix
     if dataSource == self.MomentDataSource.DATA:
       # calculate moments of data
-      dataSet        = self.dataSet
-      integralMatrix = self._integralMatrix
+      dataSet = self.dataSet
     elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
       # calculate moments of acceptance-corrected phase space; physical moments should all be 0 except H_0(0, 0)
-      dataSet        = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
-      integralMatrix = self._integralMatrix
+      dataSet = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     else:
       raise ValueError(f"Unknown data source '{dataSource}'")
     # get input data as std::vectors
@@ -814,14 +813,15 @@ class MomentCalculator:
     nmbEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
+    eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = npt.Float64)
     if "eventWeight" in dataSet.data.GetColumnNames():
       print("Applying weights from 'eventWeight' column in calculation of moments")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
       eventWeights = dataSet.data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
+      assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
     else:
       # all events have weight 1
       eventWeights = np.ones(nmbEvents, dtype = npt.Float64)
-    assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
     # calculate basis-function values and values of measured moments
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
@@ -839,7 +839,7 @@ class MomentCalculator:
         eventWeightsBsSample = eventWeights    [bsDataIndices]
         # calculate bootstrap sample
         self._HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
-    #TODO update: calculate covariance matrices for measured moments; Eqs. (88), (180), and (181)
+    # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181) #TODO update eq numbers
     fMeasWeighted = eventWeights * fMeas
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
     self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
