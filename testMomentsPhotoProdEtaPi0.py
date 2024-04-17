@@ -93,13 +93,13 @@ if __name__ == "__main__":
     # set parameters of test case
     outFileDirName       = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
     treeName             = "etaPi0"
-    signalAccFileName    = "./dataPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
-    signalGenFileName    = "./dataPhotoProdEtaPi0/a0a2_signal_gen_flat.root"
-    psAccFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
-    psGenFileName        = "./dataPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
+    signalAccFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
+    signalGenFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_gen_flat.root"
+    psAccFileName        = "./dataMcPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
+    psGenFileName        = "./dataMcPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
     #!Note! partial-wave amplitudes for signal are defined in helicity frame
-    # signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
-    signalPWAmpsFileName = "./dataPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
+    # signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
+    signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
     beamPolarization     = 1.0  #TODO read from tree
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
