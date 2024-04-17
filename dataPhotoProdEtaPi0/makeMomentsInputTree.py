@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import functools
-import os
 from typing import (
   Dict,
   List,
@@ -66,22 +65,25 @@ bigPhi(
 
 
 def defineDataFrameColumns(
-  data:             ROOT.RDataFrame,
-  coordSys:         str  = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
-  weightColumnName: str  = "Weight",
-  thrownData:       bool = False,
+  data:                   ROOT.RDataFrame,
+  coordSys:               str  = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
+  beamPol:                float = 1.0,
+  beamPolAngleColumnName: str  = "BeamAngle",
+  weightColumnName:       str  = "Weight",
+  thrownData:             bool = False,
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moments analysis"""
   columnSuffix = "_thrown" if thrownData else ""
   df = (
     # ensure that quantities used to calculate moments are doubles
     data.Define("beamPol",     f"(double){beamPol}")
-        .Define("beamPolPhi",  f"(double){beamPolAngle}")
+        .Define("beamPolPhi",  f"(double){beamPolAngleColumnName}")
         .Define("cosTheta",    f"(double)cosTheta_eta_{coordSys}{columnSuffix}")
         .Define("theta",       f"(double)acos(cosTheta_eta_{coordSys}{columnSuffix})")
         .Define("mass",        f"(double)Mpi0eta{columnSuffix}")
         .Define("eventWeight", f"(double){weightColumnName}")
   )
+  #TODO check against `Phi{,_thrown}` [deg] in tree
   bigPhiFunc = "bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam)"
   phiVarDef = f"(double)phi_eta_{coordSys}{columnSuffix}"
   if thrownData:
@@ -103,23 +105,12 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
 
   dataSets: List[Dict[str, str]] = [
-    # {"dataSetLabel"         : "signal_acc",
-    #  "inputFileNamePattern" : "a0a2_raw/a0a2_2bw_acc_flat.root"},
-    # {"dataSetLabel"         : "signal_gen",
-    #  "inputFileNamePattern" : "a0a2_raw/a0a2_2bw_gen_data_flat.root"},
-    # {"dataSetLabel"         : "phaseSpace_acc",
-    #  "inputFileNamePattern" : "a0a2_raw/a0a2_flat_acc_flat.root"},
-    # {"dataSetLabel"         : "phaseSpace_gen",
-    #  "inputFileNamePattern" : "a0a2_raw/a0a2_flat_gen_data_flat.root"},
-    #
-    {"dataSetLabel"         : "signal_acc",
-     "inputFileNamePattern" : "SELECTED_a0a2_forBoris/a0a2_bin_10_acc_flat.root"},
-    {"dataSetLabel"         : "signal_gen",
-     "inputFileNamePattern" : "SELECTED_a0a2_forBoris/a0a2_bin10_gen_data_flat.root"},
-    {"dataSetLabel"         : "phaseSpace_acc",
-     "inputFileNamePattern" : "SELECTED_a0a2_forBoris/flat_acc_flat.root"},
+    {"dataSetLabel"         : "data",
+     "inputFileNamePattern" : "t010020_m080250_selectGenTandM_nominal/pol000_t010020_m080250_selectGenTandM_DTOT_selected_nominal_acc_flat.root"},
     {"dataSetLabel"         : "phaseSpace_gen",
-     "inputFileNamePattern" : "SELECTED_a0a2_forBoris/flat_gen_data_flat.root"},
+     "inputFileNamePattern" : "t010020_m080250_selectGenTandM_nominal/pol000_t010020_m080250_selectGenTandM_FTOT_gen_data_flat.root"},
+    {"dataSetLabel"         : "phaseSpace_acc",
+     "inputFileNamePattern" : "t010020_m080250_selectGenTandM_nominal/pol000_t010020_m080250_selectGenTandM_FTOT_selected_nominal_acc_flat.root"},
   ]
   inputTreeName    = "kin"
   outputTreeName   = "etaPi0"
@@ -130,34 +121,36 @@ if __name__ == "__main__":
   for dataSet in dataSets:
     dataSetLabel         = dataSet["dataSetLabel"]
     inputFileNamePattern = dataSet["inputFileNamePattern"]
-    outputFileName       = f"./a0a2_{dataSetLabel}_flat.root"
-    thrownData           = ((dataSetLabel == "signal_gen") or (dataSetLabel == "phaseSpace_gen"))
+    outputFileName       = f"./{dataSetLabel}_flat.root"
+    thrownData           = (dataSetLabel == "phaseSpace_gen")
 
     # apply fiducial cuts
     data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern)
     if not thrownData:
-      data = data.Filter(
+      data = data.Filter(  # see Tab. 3.5 in Lawrences's thesis
               "("
-                "(pVH > 0.5)"
-                "&& (unusedEnergy < 0.01)"  # [GeV]
-                "&& (chiSq < 13.277)"
-                "&& (((2.5 < photonTheta1) && (photonTheta1 < 10.3)) || (photonTheta1 > 11.9))"  # [deg]
-                "&& (((2.5 < photonTheta2) && (photonTheta2 < 10.3)) || (photonTheta2 > 11.9))"  # [deg]
-                "&& (((2.5 < photonTheta3) && (photonTheta3 < 10.3)) || (photonTheta3 > 11.9))"  # [deg]
-                "&& (((2.5 < photonTheta4) && (photonTheta4 < 10.3)) || (photonTheta4 > 11.9))"  # [deg]
+                "((8.2 < E_Beam) && (E_Beam < 8.8))"  # [GeV]
+                "&& (proton_momentum > 0.3)"  # [GeV]
+                "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
+                #??? dE/dx CDC cut; related to pdEdxCDCProton in tree (always 1)?
                 "&& (photonE1 > 0.1)"  # [GeV]
                 "&& (photonE2 > 0.1)"  # [GeV]
                 "&& (photonE3 > 0.1)"  # [GeV]
                 "&& (photonE4 > 0.1)"  # [GeV]
-                "&& (proton_momentum > 0.3)"  # [GeV]
-                "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
+                "&& (((2.5 < photonTheta1) && (photonTheta1 < 10.3)) || (photonTheta1 > 11.9))"  # [deg]
+                "&& (((2.5 < photonTheta2) && (photonTheta2 < 10.3)) || (photonTheta2 > 11.9))"  # [deg]
+                "&& (((2.5 < photonTheta3) && (photonTheta3 < 10.3)) || (photonTheta3 > 11.9))"  # [deg]
+                "&& (((2.5 < photonTheta4) && (photonTheta4 < 10.3)) || (photonTheta4 > 11.9))"  # [deg]
+                "&& (unusedEnergy < 0.01)"  # [GeV]
                 "&& (abs(mmsq) < 0.05)"  # [GeV^2]
-                "&& ((0.8 < Mpi0eta_thrown) && (Mpi0eta_thrown < 2.0))"  # [GeV]
-                # "&& (run < 51400)"  # exclude region were signal and phase-space sample differ signficantly
+                "&& (chiSq < 13.277)"
+                "&& (pVH > 0.5)"  #??? from where? relation to Eq. (4.3) in thesis?
+                # "&& ((0.8 < Mpi0eta_thrown) && (Mpi0eta_thrown < 2.0))"  # [GeV]
               ")"
             )
 
-    data = defineDataFrameColumns(data, coordSys = "hel",  weightColumnName = weightColumnName, thrownData = thrownData)
+    data = defineDataFrameColumns(data, coordSys = "hel", beamPol = beamPol, weightColumnName = weightColumnName, thrownData = thrownData)
+    # data.Describe().Print()
 
     # define background-subtracted histograms
     histDefs = []
@@ -183,7 +176,8 @@ if __name__ == "__main__":
         {"columnName" : "Meta",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
         {"columnName" : "Mpi0eta_thrown", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
         {"columnName" : "rfTime",         "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
-        {"columnName" : "run",            "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (1200, 50600, 51800)},
+        {"columnName" : "run",            "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (2200, 30000, 52000)},
+        {"columnName" : "event",          "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (100000, 0, 500e6)},
       ]
     histDefs += [
       # moment variables
