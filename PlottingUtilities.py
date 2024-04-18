@@ -397,6 +397,7 @@ def plotMoments1D(
   momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
   pdfFileNamePrefix: str                                         = "",    # name prefix for output files
   histTitle:         str                                         = "",    # histogram title
+  plotLegend:        bool                                        = True,
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
@@ -405,7 +406,8 @@ def plotMoments1D(
       truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
       _binCenters = momentsInBin.binCenters,
     ) for binIndex, momentsInBin in enumerate(moments))
-  plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", histTitle = histTitle)
+  plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
+              histTitle = histTitle, plotLegend = plotLegend)
 
 
 def plotMomentsBootstrapDistributions1D(
