@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# performs input-output study for eta pi0 Monte Carlo events
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=4
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName       = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
+    outFileDirName       = Utilities.makeDirPath("./plotsMcPhotoProdEtaPi0")
     treeName             = "etaPi0"
     signalAccFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
     signalGenFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_gen_flat.root"
@@ -122,9 +123,9 @@ if __name__ == "__main__":
     print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
     dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
     # plot total angular distributions
-    plotAngularDistr(dataSignalAcc, dataSignalGen, dataPsAcc, dataPsGen, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
+    plotAngularDistr(dataPsAcc, dataPsGen, dataSignalAcc, dataSignalGen, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
 
-    # loop over mass bins
+    # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
     binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     # massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
