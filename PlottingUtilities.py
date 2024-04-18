@@ -864,37 +864,40 @@ def plotPullParameters(
 
 
 def plotAngularDistr(
-  dataSignalAcc:     ROOT.RDataFrame,  # accepted signal data
-  dataSignalGen:     ROOT.RDataFrame,  # generated signal data
   dataPsAcc:         ROOT.RDataFrame,  # accepted phase-space data
   dataPsGen:         ROOT.RDataFrame,  # generated phase-space data
-  pdfFileNamePrefix: str = "",  # name prefix for output files
-  nmbBins3DSig:      int = 15,  # number of bins for 3D signal histograms
-  nmbBins3DPs:       int = 15,  # number of bins for 3D phase-space histograms
-  nmbBins2DSig:      int = 50,  # number of bins for 2D signal histograms
-  nmbBins2DPs:       int = 50,  # number of bins for 2D phase-space histograms
+  dataSignalAcc:     ROOT.RDataFrame,  # accepted signal data
+  dataSignalGen:     Optional[ROOT.RDataFrame] = None,  # generated signal data
+  pdfFileNamePrefix: str                       = "",    # name prefix for output files
+  nmbBins3DSig:      int                       = 15,    # number of bins for 3D signal histograms
+  nmbBins3DPs:       int                       = 15,    # number of bins for 3D phase-space histograms
+  nmbBins2DSig:      int                       = 50,    # number of bins for 2D signal histograms
+  nmbBins2DPs:       int                       = 50,    # number of bins for 2D phase-space histograms
 ):
   """Plot 2D and 3D angular distributions of signal and phase-space data"""
   title2D = ";cos#it{#theta};#it{#phi} [deg]"
   title3D = title2D + ";#it{#Phi} [deg]"
-  hists = (
+  hists = [
     dataSignalAcc.Histo3D(
       ROOT.RDF.TH3DModel("signalAcc_3D", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
-    dataSignalGen.Histo3D(
-      ROOT.RDF.TH3DModel("signalGen_3D", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataPsAcc.Histo3D(
       ROOT.RDF.TH3DModel("psAcc_3D",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataPsGen.Histo3D(
       ROOT.RDF.TH3DModel("psGen_3D",     title3D, nmbBins3DPs,  -1, +1, nmbBins3DPs,  -180, +180, nmbBins3DPs,  -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
     dataSignalAcc.Histo2D(
       ROOT.RDF.TH2DModel("signalAcc_2D", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
-    dataSignalGen.Histo2D(
-      ROOT.RDF.TH2DModel("signalGen_2D", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
     dataPsAcc.Histo2D(
       ROOT.RDF.TH2DModel("psAcc_2D",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
     dataPsGen.Histo2D(
       ROOT.RDF.TH2DModel("psGen_2D",     title2D, nmbBins2DPs,  -1, +1, nmbBins2DPs,  -180, +180), "cosTheta", "phiDeg"),
-  )
+  ]
+  if dataSignalGen is not None:
+    hists += [
+      dataSignalGen.Histo3D(
+        ROOT.RDF.TH3DModel("signalGen_3D", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
+      dataSignalGen.Histo2D(
+        ROOT.RDF.TH2DModel("signalGen_2D", title2D, nmbBins2DSig, -1, +1, nmbBins2DSig, -180, +180), "cosTheta", "phiDeg"),
+    ]
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
