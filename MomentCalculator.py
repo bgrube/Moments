@@ -405,7 +405,7 @@ class AcceptanceIntegralMatrix:
     thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
     phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
     Phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"  ])["Phi"  ])
-    print(f"Phase-space data column: {type(thetas)}; {thetas.size()}; {thetas.value_type}")
+    print(f"Phase-space data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
     nmbAccEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
@@ -746,13 +746,23 @@ class MomentCalculator:
 
   @property
   def binLabels(self) -> List[str]:
-    """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>_...'"""
+    """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>'"""
     return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
+
+  @property
+  def binLabel(self) -> str:
+    """Returns label for bin; scheme is '<binning var 0>_<bin center 0>_ ...'"""
+    return "_".join(self.binLabels)
 
   @property
   def binTitles(self) -> List[str]:
     """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
     return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in self.binCenters.items()]
+
+  @property
+  def binTitle(self) -> str:
+    """Returns TLatex expressions for kinematic bin centers; scheme is '<binning var 0> = <bin center 0> <unit>, ...'"""
+    return ", ".join(self.binTitles)
 
   @property
   def integralFileName(self) -> str:
@@ -809,7 +819,7 @@ class MomentCalculator:
     thetas = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["theta"])["theta"])
     phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["phi"  ])["phi"  ])
     Phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["Phi"  ])["Phi"  ])
-    print(f"Input data column: {type(thetas)}; {thetas.size()}; {thetas.value_type}")
+    print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
     nmbEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
@@ -917,4 +927,5 @@ class MomentCalculatorsKinematicBinning:
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
     for kinBinIndex, momentsInBin in enumerate(self):
+      print(f"Calculating moments for kinematic bin {momentsInBin.binCenters}")
       momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
