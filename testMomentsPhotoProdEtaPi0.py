@@ -148,20 +148,20 @@ if __name__ == "__main__":
       # load data for mass bin
       binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
       print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}' and applying filter {binMassRangeFilter}")
-      dataSignalAcc = ROOT.RDataFrame(treeName, signalAccFileName).Filter(binMassRangeFilter)
-      nmbSignalAccEvents = dataSignalAcc.Count().GetValue()
+      dataSignalAccInBin = ROOT.RDataFrame(treeName, signalAccFileName).Filter(binMassRangeFilter)
+      nmbSignalAccEvents = dataSignalAccInBin.Count().GetValue()
       print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-      dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
-      nmbPsAccEvents = dataPsAcc.Count().GetValue()
+      dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
+      nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
       print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}' and applying filter {binMassRangeFilter}")
-      dataSignalGen = ROOT.RDataFrame(treeName, signalGenFileName).Filter(binMassRangeFilter)
-      nmbSignalGenEvents.append(dataSignalGen.Count().GetValue())
-      print(f"Signal events: number generated = {nmbSignalGenEvents[-1]}, number accepted = {nmbSignalAccEvents}"
+      dataSignalGenInBin = ROOT.RDataFrame(treeName, signalGenFileName).Filter(binMassRangeFilter)
+      nmbSignalGenEvents.append(dataSignalGenInBin.Count().GetValue())
+      print(f"Loaded signal events: number generated = {nmbSignalGenEvents[-1]}, number accepted = {nmbSignalAccEvents}"
             f" -> efficiency = {nmbSignalAccEvents / nmbSignalGenEvents[-1]:.3f}")
       print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-      dataPsGen = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
-      nmbPsGenEvents.append(dataPsGen.Count().GetValue())
-      print(f"Phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
+      dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
+      nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
+      print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
             f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
       # calculate true moments
@@ -173,13 +173,13 @@ if __name__ == "__main__":
       print(f"True moment values\n{HTrue}")
 
       # setup moment calculator for data
-      dataSet = DataSet(beamPolarization, dataSignalAcc, phaseSpaceData = dataPsAcc, nmbGenEvents = nmbPsGenEvents[-1])
+      dataSet = DataSet(beamPolarization, dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
       momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # setup moment calculator to hold true values
       momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
 
       # plot angular distributions for mass bin
-      plotAngularDistr(dataSignalAcc, dataSignalGen, dataPsAcc, dataPsGen, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{'_'.join(momentsInBins[-1].binLabels)}_")
+      plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{'_'.join(momentsInBins[-1].binLabels)}_")
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
