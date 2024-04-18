@@ -66,11 +66,11 @@ bigPhi(
 
 def defineDataFrameColumns(
   data:                   ROOT.RDataFrame,
-  coordSys:               str  = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
+  coordSys:               str   = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
   beamPol:                float = 1.0,
-  beamPolAngleColumnName: str  = "BeamAngle",
-  weightColumnName:       str  = "Weight",
-  thrownData:             bool = False,
+  beamPolAngleColumnName: str   = "BeamAngle",
+  weightColumnName:       str   = "Weight",
+  thrownData:             bool  = False,
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moments analysis"""
   columnSuffix = "_thrown" if thrownData else ""

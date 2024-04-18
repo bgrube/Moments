@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import functools
-import os
 from typing import (
   Dict,
   List,
@@ -67,9 +66,11 @@ bigPhi(
 
 def defineDataFrameColumns(
   data:             ROOT.RDataFrame,
-  coordSys:         str  = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
-  weightColumnName: str  = "Weight",
-  thrownData:       bool = False,
+  coordSys:         str   = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
+  beamPol:          float = 1.0,
+  beamPolAngle:     float = 0,
+  weightColumnName: str   = "Weight",
+  thrownData:       bool  = False,
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moments analysis"""
   columnSuffix = "_thrown" if thrownData else ""
@@ -157,7 +158,8 @@ if __name__ == "__main__":
               ")"
             )
 
-    data = defineDataFrameColumns(data, coordSys = "hel",  weightColumnName = weightColumnName, thrownData = thrownData)
+    data = defineDataFrameColumns(data, coordSys = "hel",  beamPol = beamPol, beamPolAngle = beamPolAngle,
+                                  weightColumnName = weightColumnName, thrownData = thrownData)
 
     # define background-subtracted histograms
     histDefs = []
