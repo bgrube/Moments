@@ -25,6 +25,7 @@ from PlottingUtilities import (
   plotAngularDistr,
   plotComplexMatrix,
   plotMoments,
+  plotMoments1D,
   plotMomentsInBin,
   setupPlotStyle,
 )
@@ -48,20 +49,22 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of analysis
-    outFileDirName   = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
-    treeName         = "etaPi0"
-    dataFileName     = "./dataPhotoProdEtaPi0/data_flat.root"
-    psAccFileName    = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
-    psGenFileName    = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
-    beamPolarization = 0.4  #TODO get exact number
-    # maxL             = 1  # define maximum L quantum number of moments
-    maxL             = 5  # define maximum L quantum number of moments
-    normalizeMoments = False
-    calcAccPsMoments = True
-    # calcAccPsMoments = False
-    binVarMass       = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning      = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
-    nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
+    outFileDirName          = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
+    treeName                = "etaPi0"
+    dataFileName            = "./dataPhotoProdEtaPi0/data_flat.root"
+    psAccFileName           = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
+    psGenFileName           = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
+    beamPolarization        = 0.4  #TODO get exact number
+    # maxL                    = 1  # define maximum L quantum number of moments
+    maxL                    = 5  # define maximum L quantum number of moments
+    normalizeMoments        = False
+    # plotAccIntegralMatrices = True
+    plotAccIntegralMatrices = False
+    # calcAccPsMoments        = True
+    calcAccPsMoments        = False
+    binVarMass              = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    massBinning             = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
+    nmbOpenMpThreads        = ROOT.getNmbOpenMpThreads()
 
     # load all signal and phase-space data
     print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
@@ -114,14 +117,15 @@ if __name__ == "__main__":
       eigenVals, _ = moments[0].integralMatrix.eigenDecomp
       print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {massBinning[0]} {binVarMass.unit}:\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
-      for momentsInBin in moments:
-        binLabel = momentsInBin.binLabel
-        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
-                          axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
-                          zRangeAbs = 1.5, zRangeImag = 0.25)
-        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}_",
-                          axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
-                          zRangeAbs = 115, zRangeImag = 30)
+      if plotAccIntegralMatrices:
+        for momentsInBin in moments:
+          binLabel = momentsInBin.binLabel
+          plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
+                            axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
+                            zRangeAbs = 1.5, zRangeImag = 0.25)
+          plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}_",
+                            axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
+                            zRangeAbs = 115, zRangeImag = 30)
 
     namePrefix = "norm" if normalizeMoments else "unnorm"
     if calcAccPsMoments:
@@ -148,6 +152,23 @@ if __name__ == "__main__":
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex], _binCenters = momentsInBin.binCenters) for momentsInBin in moments)
           plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
+
+    # calculate and plot moments of real data
+    with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
+      print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
+      moments.calculateMoments(normalize = normalizeMoments)
+      # plot moments in each kinematic bin
+      for massBinIndex, momentsInBin in enumerate(moments):
+        binLabel = momentsInBin.binLabel
+        binTitle = momentsInBin.binTitle
+        print(f"Measured moments of real data for kinematic bin {binTitle}:\n{momentsInBin.HMeas}")
+        print(f"Physical moments of real data for kinematic bin {binTitle}:\n{momentsInBin.HPhys}")
+        plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = None, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", plotLegend = False)
+
+      # plot kinematic dependences of all moments
+      for qnIndex in momentIndices.QnIndices():
+        plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth = None,
+                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title, plotLegend = False)
 
     timer.stop("Total execution time")
     print(timer.summary)
