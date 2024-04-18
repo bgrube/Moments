@@ -91,7 +91,7 @@ if __name__ == "__main__":
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
     timer.start("Total execution time")
 
-    # set parameters of test case
+    # set parameters of analysis
     outFileDirName       = Utilities.makeDirPath("./plotsMcPhotoProdEtaPi0")
     treeName             = "etaPi0"
     signalAccFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
@@ -111,6 +111,15 @@ if __name__ == "__main__":
     # calcAccPsMoments     = False
     # plotPulls            = True
     plotPulls            = False
+    binVarMass           = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    # massBinning          = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
+    # massBinning          = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
+    # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
+    # study with constant amplitude values taken form bin 10 at 1.30 GeV
+    massBinning          = HistAxisBinning(nmbBins = 25, minVal = 0.92, maxVal = 1.92, _var = binVarMass)
+    # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 0.88 , maxVal = 0.92, _var = binVarMass)
+    # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
+    # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 0.92 , maxVal = 1.92, _var = binVarMass)
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # load all signal and phase-space data
@@ -127,74 +136,67 @@ if __name__ == "__main__":
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
-    binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    # massBinning   = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
-    # study with constant amplitude values taken form bin 10 at 1.30 GeV
-    massBinning   = HistAxisBinning(nmbBins = 25, minVal = 0.92, maxVal = 1.92, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 0.88 , maxVal = 0.92, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
-    # massBinning   = HistAxisBinning(nmbBins = 1, minVal = 0.92 , maxVal = 1.92, _var = binVarMass)
     momentsInBins:      List[MomentCalculator] = []
     momentsInBinsTruth: List[MomentCalculator] = []
     nmbSignalGenEvents: List[int]              = []
     nmbPsGenEvents:     List[int]              = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
-    for massBinIndex, massBinCenter in enumerate(massBinning):
-      massBinRange = massBinning.binValueRange(massBinIndex)
-      print(f"Preparing {binVarMass.name} bin at {massBinCenter} {binVarMass.unit} with range {massBinRange} {binVarMass.unit}")
+    with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(massBinning)} bins"):
+      for massBinIndex, massBinCenter in enumerate(massBinning):
+        massBinRange = massBinning.binValueRange(massBinIndex)
+        print(f"Preparing {binVarMass.name} bin [{massBinIndex} of {len(massBinning)}] at {massBinCenter} {binVarMass.unit} with range {massBinRange} {binVarMass.unit}")
 
-      # load data for mass bin
-      binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
-      print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}' and applying filter {binMassRangeFilter}")
-      dataSignalAccInBin = ROOT.RDataFrame(treeName, signalAccFileName).Filter(binMassRangeFilter)
-      nmbSignalAccEvents = dataSignalAccInBin.Count().GetValue()
-      print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-      dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
-      nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
-      print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}' and applying filter {binMassRangeFilter}")
-      dataSignalGenInBin = ROOT.RDataFrame(treeName, signalGenFileName).Filter(binMassRangeFilter)
-      nmbSignalGenEvents.append(dataSignalGenInBin.Count().GetValue())
-      print(f"Loaded signal events: number generated = {nmbSignalGenEvents[-1]}, number accepted = {nmbSignalAccEvents}"
-            f" -> efficiency = {nmbSignalAccEvents / nmbSignalGenEvents[-1]:.3f}")
-      print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-      dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
-      nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
-      print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
-            f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
+        # load data for mass bin
+        binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
+        print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}' and applying filter {binMassRangeFilter}")
+        dataSignalAccInBin = ROOT.RDataFrame(treeName, signalAccFileName).Filter(binMassRangeFilter)
+        nmbSignalAccEvents = dataSignalAccInBin.Count().GetValue()
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
+        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
+        nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
+        print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}' and applying filter {binMassRangeFilter}")
+        dataSignalGenInBin = ROOT.RDataFrame(treeName, signalGenFileName).Filter(binMassRangeFilter)
+        nmbSignalGenEvents.append(dataSignalGenInBin.Count().GetValue())
+        print(f"Loaded signal events: number generated = {nmbSignalGenEvents[-1]}, number accepted = {nmbSignalAccEvents}"
+              f" -> efficiency = {nmbSignalAccEvents / nmbSignalGenEvents[-1]:.3f}")
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
+        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
+        nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
+        print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
+              f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
-      # calculate true moments
-      amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
-      HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
-      # scale true moments such that H_0(0, 0) is number of generated signal events
-      scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]
-      HTrue._valsFlatIndex *= scale
-      print(f"True moment values\n{HTrue}")
+        # calculate true moments
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
+        HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
+        # scale true moments such that H_0(0, 0) is number of generated signal events
+        scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]
+        HTrue._valsFlatIndex *= scale
+        print(f"True moment values\n{HTrue}")
 
-      # setup moment calculator for data
-      dataSet = DataSet(beamPolarization, dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
-      momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
-      # setup moment calculator to hold true values
-      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+        # setup moment calculator for data
+        dataSet = DataSet(beamPolarization, dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
+        momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
+        # setup moment calculator to hold true values
+        momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
 
-      # plot angular distributions for mass bin
-      plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{'_'.join(momentsInBins[-1].binLabels)}_")
+        # plot angular distributions for mass bin
+        plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{'_'.join(momentsInBins[-1].binLabels)}_")
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
-    # calculate integral matrices
+    # calculate and plot integral matrix for all mass bins
     with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       moments.calculateIntegralMatrices(forceCalculation = True)
-      print(f"Acceptance integral matrix for first bin\n{moments[0].integralMatrix}")
+      print(f"Acceptance integral matrix for first bin at {massBinning[0]} {binVarMass.unit}\n{moments[0].integralMatrix}")
       eigenVals, _ = moments[0].integralMatrix.eigenDecomp
-      print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
+      print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {massBinning[0]} {binVarMass.unit}\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
         binLabel = "_".join(momentsInBin.binLabels)
         # binTitle = ", ".join(momentsInBin.binTitles)
         plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
-                          axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ")
+                          axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, "
+                          zRangeAbs = 1.1, zRangeImag = 0.075)
         plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}_",
                           axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
                           zRangeAbs = 100, zRangeImag = 10)
