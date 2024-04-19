@@ -124,8 +124,9 @@ if __name__ == "__main__":
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
-    momentsInBins:  List[MomentCalculator] = []
-    nmbPsGenEvents: List[int]              = []
+    momentsInBins:    List[MomentCalculator] = []
+    momentsInBinsPwa: List[MomentCalculator] = []
+    nmbPsGenEvents:   List[int]              = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
     with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(massBinning)} bins"):
       for massBinIndex, massBinCenter in enumerate(massBinning):
@@ -148,17 +149,20 @@ if __name__ == "__main__":
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
         # calculate moments from PWA fits result
-        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter), tolerance = 1e-11)
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter), tolerance = 1e-9)
         HPwa: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
         print(f"Moment values from partial-wave analysis:\n{HPwa}")
 
-        # setup moment calculator for data
+        # setup moment calculators for data
         dataSet = DataSet(beamPolarization, dataInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
+        # setup moment calculator to hold moment values from PWA result
+        momentsInBinsPwa.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HPwa))
 
         # plot angular distributions for mass bin
         plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataInBin, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{momentsInBins[-1].binLabel}_")
     moments = MomentCalculatorsKinematicBinning(momentsInBins)
+    momentsPwa = MomentCalculatorsKinematicBinning(momentsInBinsPwa)
 
     # calculate and plot integral matrix for all mass bins
     with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
@@ -214,11 +218,12 @@ if __name__ == "__main__":
         binTitle = momentsInBin.binTitle
         print(f"Measured moments of real data for kinematic bin {binTitle}:\n{momentsInBin.HMeas}")
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{momentsInBin.HPhys}")
-        plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = None, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", plotLegend = False)
+        plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsPwa[massBinIndex].HPhys,
+                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", plotLegend = False)
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():
-        plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth = None,
+        plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsPwa,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title, plotLegend = False)
 
     timer.stop("Total execution time")
