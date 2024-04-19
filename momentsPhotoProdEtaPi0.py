@@ -3,6 +3,7 @@
 
 import functools
 import numpy as np
+import pandas as pd
 import threadpoolctl
 from typing import (
   List,
@@ -11,6 +12,8 @@ from typing import (
 import ROOT
 
 from MomentCalculator import (
+  AmplitudeSet,
+  AmplitudeValue,
   DataSet,
   KinematicBinningVariable,
   MomentCalculator,
@@ -18,6 +21,7 @@ from MomentCalculator import (
   MomentIndices,
   MomentResult,
   QnMomentIndex,
+  QnWaveIndex,
 )
 from PlottingUtilities import (
   HistAxisBinning,
@@ -37,6 +41,47 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+def readPartialWaveAmplitudes(
+  csvFileName:   str,
+  massBinCenter: float,  # [GeV]
+) -> List[AmplitudeValue]:
+  """Reads partial-wave amplitudes values for given mass bin from CSV data"""
+  df = pd.read_csv(csvFileName, index_col = [0]).astype({"mass": float})
+  df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])
+  assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
+  # Pandas cannot read-back complex values out of the box
+  # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
+  # have to convert columns by hand
+  ampSeries = df.astype('complex128').loc[df.index[0]]
+  # add amplitudes of a_2(1320) and a_2(1700)
+  a2AmpKeys = sorted([key for key in ampSeries.index if "::D" in key])  # keys of a_2(1320) amplitudes
+  for a2AmpKey in a2AmpKeys:
+    a2PrimeAmpKey = a2AmpKey.replace("::D", "::pD")  # key for a_2(1700) amplitude
+    # print(f"!!! {a2AmpKey}: {ampSeries[a2AmpKey]} + {a2PrimeAmpKey}: {ampSeries[a2PrimeAmpKey]} = {ampSeries[a2AmpKey] + ampSeries[a2PrimeAmpKey]}")
+    ampSeries[a2AmpKey] = ampSeries[a2AmpKey] + ampSeries[a2PrimeAmpKey]
+    ampSeries.drop(a2PrimeAmpKey, inplace = True)
+  # take amplitudes for polarization angle of 0 because their scale factor is 1
+  print(f"Partial-wave amplitudes for mass bin at {massBinCenter} GeV:\n{ampSeries.filter(like = 'EtaPi0_000::')}")
+  partialWaveAmplitudes = [
+    # negative-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries['EtaPi0_000::NegativeRe::S0+-']),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries['EtaPi0_000::NegativeRe::D2--']),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries['EtaPi0_000::NegativeRe::D1--']),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries['EtaPi0_000::NegativeRe::D0+-']),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries['EtaPi0_000::NegativeRe::D1+-']),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries['EtaPi0_000::NegativeRe::D2+-']),  # D_+2^-
+    # positive-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries['EtaPi0_000::PositiveRe::S0++']),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries['EtaPi0_000::PositiveRe::D2-+']),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries['EtaPi0_000::PositiveRe::D1-+']),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries['EtaPi0_000::PositiveRe::D0++']),  # D_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries['EtaPi0_000::PositiveRe::D1++']),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries['EtaPi0_000::PositiveRe::D2++']),  # D_+2^+
+  ]
+  # print(f"!!! {partialWaveAmplitudes=}")
+  return partialWaveAmplitudes
+
+
 if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
@@ -54,7 +99,8 @@ if __name__ == "__main__":
     dataFileName            = "./dataPhotoProdEtaPi0/data_flat.root"
     psAccFileName           = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
     psGenFileName           = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
-    beamPolarization        = 0.4  #TODO get exact number
+    pwAmpsFileName          = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
+    beamPolarization        = 0.35062  # for polarization angle of 0
     # maxL                    = 1  # define maximum L quantum number of moments
     maxL                    = 5  # define maximum L quantum number of moments
     normalizeMoments        = False
@@ -101,7 +147,12 @@ if __name__ == "__main__":
         print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
-        # setup moment calculator
+        # calculate moments from PWA fits result
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter), tolerance = 1e-11)
+        HPwa: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
+        print(f"Moment values from partial-wave analysis:\n{HPwa}")
+
+        # setup moment calculator for data
         dataSet = DataSet(beamPolarization, dataInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
 
