@@ -59,22 +59,22 @@ def readPartialWaveAmplitudes(
   """Reads partial-wave amplitudes values for given mass bin from CSV data"""
   df = pd.read_csv(csvFileName).astype({"mass": float})
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])
-  print(f"Amplitudes for mass bin at {massBinCenter} GeV\n{df}")
+  print(f"Partial-wave amplitudes for mass bin at {massBinCenter} GeV:\n{df}")
   assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
   # Pandas cannot read-back complex values out of the box
   # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
   # have to convert columns by hand
-  s = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
+  ampSeries = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = s['S0-' ]),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = s['D1--']),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = s['D0+-']),  # D_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = s['D1+-']),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries['S0-' ]),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries['D1--']),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries['D0+-']),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries['D1+-']),  # D_+1^-
     # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = s['S0+' ]),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = s['D2-+']),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = s['D2++']),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries['S0+' ]),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries['D2-+']),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries['D2++']),  # D_+2^+
   ]
   # print(f"!!! {partialWaveAmplitudes=}")
   return partialWaveAmplitudes
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     psGenFileName        = "./dataMcPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
     #!Note! partial-wave amplitudes for signal are defined in helicity frame
     # signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
-    signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
+    signalPwAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
     beamPolarization     = 1.0  #TODO read from tree
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
@@ -166,7 +166,7 @@ if __name__ == "__main__":
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
         # calculate true moments
-        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPWAmpsFileName, massBinCenter), tolerance = 1e-11)
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPwAmpsFileName, massBinCenter), tolerance = 1e-11)
         HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
         # scale true moments such that H_0(0, 0) is number of generated signal events
         scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]
@@ -228,8 +228,8 @@ if __name__ == "__main__":
           plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
 
-    # calculate moments of signal data
-    with timer.timeThis(f"Time to calculate moments for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
+    # calculate and plot moments of signal data
+    with timer.timeThis(f"Time to calculate moments of signal data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of signal data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
       moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
       # plot moments in each kinematic bin
