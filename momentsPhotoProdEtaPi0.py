@@ -260,12 +260,12 @@ if __name__ == "__main__":
         print(f"Measured moments of real data for kinematic bin {binTitle}:\n{momentsInBin.HMeas}")
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{momentsInBin.HPhys}")
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsPwa[massBinIndex].HPhys,
-                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", legendLabels = ("Moment", "PWA Result"))
 
       # plot kinematic dependences of all moments
       for qnIndex in momentIndices.QnIndices():
         plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth = momentsPwa,
-                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
+                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title, legendLabels = ("Moment", "PWA Result"))
 
     timer.stop("Total execution time")
     print(timer.summary)

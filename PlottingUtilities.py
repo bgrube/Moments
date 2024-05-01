@@ -241,12 +241,13 @@ def drawTF3(
 
 def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
-  binning:           Optional[HistAxisBinning] = None,  # if not None data are plotted as function of binning variable
-  normalizedMoments: bool                      = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentLabel:       str                       = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
-  pdfFileNamePrefix: str                       = "",  # name prefix for output files
-  histTitle:         str                       = "",  # histogram title
-  plotLegend:        bool                      = True,
+  binning:           Optional[HistAxisBinning]           = None,  # if not None data are plotted as function of binning variable
+  normalizedMoments: bool                                = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  momentLabel:       str                                 = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
+  pdfFileNamePrefix: str                                 = "",  # name prefix for output files
+  histTitle:         str                                 = "",  # histogram title
+  plotLegend:        bool                                = True,
+  legendLabels:      Tuple[Optional[str], Optional[str]] = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -258,7 +259,7 @@ def plotMoments(
     histStack = ROOT.THStack(f"{pdfFileNamePrefix}compare_{momentLabel}_{momentPart}",
                              f"{histTitle};{xAxisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value")
     # create histogram with moments from data
-    histData = ROOT.TH1D(f"Data {legendEntrySuffix}", "", *histBinning.astuple)
+    histData = ROOT.TH1D(f"{legendLabels[0] or 'Data'} {legendEntrySuffix}", "", *histBinning.astuple)
     for index, HVal in enumerate(HVals):
       if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
         continue
@@ -275,7 +276,7 @@ def plotMoments(
     histStack.Add(histData, "PEX0")
     if trueValues:
       # create histogram with true values
-      histTrue = ROOT.TH1D("True values", "", *histBinning.astuple)
+      histTrue = ROOT.TH1D(legendLabels[1] or "True Values", "", *histBinning.astuple)
       for index, HVal in enumerate(HVals):
         if HVal.truth is not None:
           y = HVal.truth.real if momentPart == "Re" else HVal.truth.imag
@@ -375,10 +376,11 @@ def plotMoments(
 
 def plotMomentsInBin(
   HData:             MomentResult,  # moments extracted from data
-  normalizedMoments: bool                   = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str                    = "",    # name prefix for output files
-  plotLegend:        bool                   = True,
+  normalizedMoments: bool                                = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  HTrue:             Optional[MomentResult]              = None,  # true moments
+  pdfFileNamePrefix: str                                 = "",    # name prefix for output files
+  plotLegend:        bool                                = True,
+  legendLabels:      Tuple[Optional[str], Optional[str]] = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -386,7 +388,7 @@ def plotMomentsInBin(
   for momentIndex in range(3):
     HVals = tuple(MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
     plotMoments(HVals, normalizedMoments = normalizedMoments, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
-                pdfFileNamePrefix = pdfFileNamePrefix, plotLegend = plotLegend)
+                pdfFileNamePrefix = pdfFileNamePrefix, plotLegend = plotLegend, legendLabels = legendLabels)
 
 
 def plotMoments1D(
@@ -398,6 +400,7 @@ def plotMoments1D(
   pdfFileNamePrefix: str                                         = "",    # name prefix for output files
   histTitle:         str                                         = "",    # histogram title
   plotLegend:        bool                                        = True,
+  legendLabels:      Tuple[Optional[str], Optional[str]]         = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
@@ -407,7 +410,7 @@ def plotMoments1D(
       _binCenters = momentsInBin.binCenters,
     ) for binIndex, momentsInBin in enumerate(moments))
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
-              histTitle = histTitle, plotLegend = plotLegend)
+              histTitle = histTitle, plotLegend = plotLegend, legendLabels = legendLabels)
 
 
 def plotMomentsBootstrapDistributions1D(
