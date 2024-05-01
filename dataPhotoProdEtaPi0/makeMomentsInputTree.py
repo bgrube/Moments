@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import functools
+import os
 from typing import (
   Dict,
   List,
@@ -80,6 +81,7 @@ def defineDataFrameColumns(
         .Define("beamPolPhi",  f"(double){beamPolAngleColumnName}")
         .Define("cosTheta",    f"(double)cosTheta_eta_{coordSys}{columnSuffix}")
         .Define("theta",       f"(double)acos(cosTheta_eta_{coordSys}{columnSuffix})")
+        .Define("t",           f"(double)mandelstam_t{columnSuffix}")
         .Define("mass",        f"(double)Mpi0eta{columnSuffix}")
         .Define("eventWeight", f"(double){weightColumnName}")
   )
@@ -117,16 +119,17 @@ if __name__ == "__main__":
   weightColumnName = "Weight"
   beamPol          = 1.0
   beamPolAngle     = 0
+  plotDirName      = "./plots"
 
   for dataSet in dataSets:
     dataSetLabel         = dataSet["dataSetLabel"]
     inputFileNamePattern = dataSet["inputFileNamePattern"]
     outputFileName       = f"./{dataSetLabel}_flat.root"
-    thrownData           = (dataSetLabel == "phaseSpace_gen")
+    recoData             = ((dataSetLabel == "data") or (dataSetLabel == "phaseSpace_acc"))
 
     # apply fiducial cuts
     data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern)
-    if not thrownData:
+    if recoData:
       data = data.Filter(  # see Tab. 3.5 in Lawrences's thesis
               "("
                 "((8.2 < E_Beam) && (E_Beam < 8.8))"  # [GeV]
@@ -149,12 +152,12 @@ if __name__ == "__main__":
               ")"
             )
 
-    data = defineDataFrameColumns(data, coordSys = "hel", beamPol = beamPol, weightColumnName = weightColumnName, thrownData = thrownData)
+    data = defineDataFrameColumns(data, coordSys = "hel", beamPol = beamPol, weightColumnName = weightColumnName, thrownData = not recoData)
     # data.Describe().Print()
 
     # define background-subtracted histograms
     histDefs = []
-    if not thrownData:
+    if recoData:
       histDefs += [
         # cut variables
         {"columnName" : "pVH",             "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, -0.5, 1.5)},
@@ -181,15 +184,16 @@ if __name__ == "__main__":
       ]
     histDefs += [
       # moment variables
-      {"columnName" : "beamPol",    "xAxisUnit" : "",    "yAxisTitle" : "Combos",            "binning" : (110, 0, 1.1)},
-      {"columnName" : "beamPolPhi", "xAxisUnit" : "deg", "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
-      {"columnName" : "cosTheta",   "xAxisUnit" : "",    "yAxisTitle" : "Combos",            "binning" : (100, -1, 1)},
-      {"columnName" : "theta",      "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.04 rad", "binning" : (100, 0, 4)},
-      {"columnName" : "phiDeg",     "xAxisUnit" : "deg", "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
-      {"columnName" : "phi",        "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
-      {"columnName" : "PhiDeg",     "xAxisUnit" : "deg", "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
-      {"columnName" : "Phi",        "xAxisUnit" : "rad", "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
-      {"columnName" : "mass",       "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV",   "binning" : (100, 0, 2.5)},
+      {"columnName" : "beamPol",    "xAxisUnit" : "",        "yAxisTitle" : "Combos",            "binning" : (110, 0, 1.1)},
+      {"columnName" : "beamPolPhi", "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
+      {"columnName" : "cosTheta",   "xAxisUnit" : "",        "yAxisTitle" : "Combos",            "binning" : (100, -1, 1)},
+      {"columnName" : "theta",      "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.04 rad", "binning" : (100, 0, 4)},
+      {"columnName" : "phiDeg",     "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
+      {"columnName" : "phi",        "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
+      {"columnName" : "PhiDeg",     "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
+      {"columnName" : "Phi",        "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
+      {"columnName" : "t",          "xAxisUnit" : "GeV^{2}", "yAxisTitle" : "Combos",            "binning" : (120, 0.09, 0.21)},
+      {"columnName" : "mass",       "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 10 MeV",   "binning" : (100, 0, 2.5)},
     ]
     hists = []
     for histDef in histDefs:
@@ -204,9 +208,10 @@ if __name__ == "__main__":
                   ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "mass", "eventWeight"))
 
     # fill and draw histograms
+    os.makedirs(plotDirName, exist_ok = True)
     ROOT.gStyle.SetOptStat(111111)
     for hist in hists:
       canv = ROOT.TCanvas(f"{hist.GetName()}.{dataSetLabel}")
       hist.SetMinimum(0)
       hist.Draw("HIST")
-      canv.SaveAs(".pdf")
+      canv.SaveAs(f"{plotDirName}/{canv.GetName()}.pdf")
