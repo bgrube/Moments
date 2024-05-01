@@ -67,14 +67,14 @@ def readPartialWaveAmplitudes(
   ampSeries = df.astype('complex128').loc[df.index[0]] / 5.0  #TODO clarify why H_0(0, 0) is by a factor of 25 larger than number of generated events
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries['S0-' ]),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries['D1--']),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries['D0+-']),  # D_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries['D1+-']),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries["S0-" ]),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries["D1--"]),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries["D0+-"]),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries["D1+-"]),  # D_+1^-
     # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries['S0+' ]),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries['D2-+']),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries['D2++']),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries["S0+" ]),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries["D2-+"]),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries["D2++"]),  # D_+2^+
   ]
   # print(f"!!! {partialWaveAmplitudes=}")
   return partialWaveAmplitudes
@@ -173,7 +173,7 @@ if __name__ == "__main__":
         HTrue._valsFlatIndex *= scale
         print(f"True moment values:\n{HTrue}")
 
-        # setup moment calculator for data
+        # setup moment calculators for data
         dataSet = DataSet(beamPolarization, dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
         # setup moment calculator to hold true values
