@@ -201,7 +201,8 @@ if __name__ == "__main__":
         momentsInBinsPwa.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HPwa))
 
         # plot angular distributions for mass bin
-        plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataInBin, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{momentsInBins[-1].binLabel}_")
+        if plotAngularDistributions:
+          plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataInBin, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{momentsInBins[-1].binLabel}_")
     moments    = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsPwa = MomentCalculatorsKinematicBinning(momentsInBinsPwa)
 
