@@ -4,7 +4,6 @@
 import functools
 import numpy as np
 import pandas as pd
-import pickle as pkl
 import threadpoolctl
 from typing import (
   Dict,
@@ -45,43 +44,51 @@ print = functools.partial(print, flush = True)
 
 def readPartialWaveAmplitudes(
   csvFileName:       str,    # name of CSV file with partial-wave amplitudes
-  intMatrixFileName: str,    # name of pickle file with (acceptance) integral matrices
   massBinCenter:     float,  # [GeV]
-  tBinLabel:         str = "010020",
-  beamPolDirLabel:   str = "EtaPi0_000",
+  fitResultPlotDir:  str,    # directory with intensity plots generated from PWA fit result
+  beamPolAngleLabel: str = "EtaPi0_000",
 ) -> List[AmplitudeValue]:
   """Reads partial-wave amplitudes values for given mass bin from CSV data"""
   print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV from file '{csvFileName}'")
   df = pd.read_csv(csvFileName, index_col = [0]).astype({"mass": float})
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])  # select row for mass bin center
-  df = df.filter(like = f"{beamPolDirLabel}::")   # select columns for beam polarization direction
+  df = df.filter(like = f"{beamPolAngleLabel}::")   # select columns for beam polarization direction
   assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
   # Pandas cannot read-back complex values out of the box
   # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
   # have to convert columns by hand
   ampSeries = df.astype('complex128').loc[df.index[0]]
   print(f"!!! {massBinCenter=} GeV:\n{ampSeries=}")
-  # load integral matrices from .pkl file
-  print(f"Reading integral matrices for mass bin at {massBinCenter} GeV from file '{intMatrixFileName}'")
-  intMatrices: Dict[str, Dict[str, pd.DataFrame]] = {}
-  with open(intMatrixFileName, "rb") as intMatrixFile:
-    intMatrices = pkl.load(intMatrixFile)
-  # multiply amplitudes with diagonal elements of integral matrices to obtain correct normalization
-  ampScalesFactors = np.array([1, 0.982204395837131, 0.968615883555624, 0.98383623655323])  # scale factors for 0, 45, 90, 135 deg polarization angles
-  datasetScaleFactor = np.sum(ampScalesFactors**2)
-  print(f"!!! {datasetScaleFactor=}")
-  intMatrixDiagElems = {columnName : intMatrices[tBinLabel][beamPolDirLabel].at[columnName, columnName]
-                        for columnName, _ in intMatrices[tBinLabel][beamPolDirLabel].items()}
-  print("!!! diagonal elements of integral matrix")
-  for key, val in sorted(intMatrixDiagElems.items()):
-    print(f"    {key} : {np.real(val)}")
-  plotComplexMatrix(intMatrices[tBinLabel][beamPolDirLabel].values, pdfFileNamePrefix = f"foo_", axisTitles = ("Partial-Wave Index", "Partial-Wave Index"),
-                    zRangeAbs = 4000, zRangeImag = 0.15)
-  print("!!! scaled amplitudes")
+  # normalize amplitudes to number of produced events
+  # ampScalesFactors = np.array([1, 0.982204395837131, 0.968615883555624, 0.98383623655323])  # scale factors for 0, 45, 90, 135 deg polarization angles
+  # datasetScaleFactor = np.sum(ampScalesFactors**2)
+  # !Note! In principle, the normalized amplitude value is given by
+  #   A^norm_i = A_i * ampScaleFactor_i * sqrt(I_{ii})
+  # However, the diagonal elements of the integral matrix from the fit
+  # result cannot be used here because they are valid only for the
+  # whole fitted mass range.  The information for individual mass bins
+  # is lost.  As a workaround, we use extract the normalization
+  # factors from the intensity plots generated from the PWA fit
+  # result.
   for key in ampSeries.index:
-    intFactor = np.real(np.sqrt(intMatrices[tBinLabel][beamPolDirLabel].at[key, key]))
-    print(f"    {key}: {intFactor=}; {np.abs(ampSeries[key])**2 * datasetScaleFactor / 1600=}; {np.abs(ampSeries[key] * intFactor)**2 * datasetScaleFactor=}")
-    ampSeries[key] *= np.sqrt(datasetScaleFactor / 1600)
+    waveName = key.split("::")[-1]
+    plotFileName = f"{fitResultPlotDir}/etapi_plot_{waveName}.root"
+    plotFile = ROOT.TFile.Open(plotFileName, "READ")
+    intensityHistName = f"{beamPolAngleLabel}_Metapi_40MeVBinacc"
+    intensityHist = plotFile.Get(intensityHistName)
+    waveIntensity = intensityHist.GetBinContent(intensityHist.FindBin(massBinCenter))
+    normFactor = np.sqrt(waveIntensity) / np.abs(ampSeries[key])  # normalize amplitude A such that |A|^2 == plotted intensity
+    ampSeries[key] *= normFactor
+    print(f"!!! bin index = {intensityHist.FindBin(massBinCenter)}, {waveName=}, {waveIntensity=}, {normFactor=}, {np.abs(ampSeries[key])**2 - waveIntensity=}")
+    # intensityHistName2 = f"{beamPolAngleLabel}_Metapiacc"
+    # intensityHist2 = plotFile.Get(intensityHistName2)
+    # centerBin = intensityHist2.FindBin(massBinCenter)
+    # waveIntensity2 = 0
+    # for binIndex in range(centerBin - 2, centerBin + 3):
+    #   print(!!! f"{binIndex=}, {intensityHist2.GetBinContent(binIndex)=}")
+    #   waveIntensity2 += intensityHist2.GetBinContent(binIndex)
+    # print(f"!!! {waveIntensity=} vs. {waveIntensity2=}: {waveIntensity - waveIntensity2=}")
+  print(f"!!! scaled amplitudes\n{ampSeries=}")
   # add amplitudes of a_2(1320) and a_2(1700)
   a2AmpKeys = sorted([key for key in ampSeries.index if "::D" in key])  # keys of a_2(1320) amplitudes
   for a2AmpKey in a2AmpKeys:
@@ -93,19 +100,19 @@ def readPartialWaveAmplitudes(
   print(f"Partial-wave amplitudes for mass bin at {massBinCenter} GeV:\n{ampSeries}")
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries[f"{beamPolDirLabel}::NegativeRe::S0+-"]),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries[f"{beamPolDirLabel}::NegativeRe::D2--"]),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries[f"{beamPolDirLabel}::NegativeRe::D1--"]),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries[f"{beamPolDirLabel}::NegativeRe::D0+-"]),  # D_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries[f"{beamPolDirLabel}::NegativeRe::D1+-"]),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries[f"{beamPolDirLabel}::NegativeRe::D2+-"]),  # D_+2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::S0+-"]),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D2--"]),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D1--"]),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D0+-"]),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D1+-"]),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D2+-"]),  # D_+2^-
     # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries[f"{beamPolDirLabel}::PositiveRe::S0++"]),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries[f"{beamPolDirLabel}::PositiveRe::D2-+"]),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries[f"{beamPolDirLabel}::PositiveRe::D1-+"]),  # D_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries[f"{beamPolDirLabel}::PositiveRe::D0++"]),  # D_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries[f"{beamPolDirLabel}::PositiveRe::D1++"]),  # D_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries[f"{beamPolDirLabel}::PositiveRe::D2++"]),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::S0++"]),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D2-+"]),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D1-+"]),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D0++"]),  # D_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D1++"]),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D2++"]),  # D_+2^+
   ]
   # print(f"!!! {partialWaveAmplitudes=}")
   return partialWaveAmplitudes
@@ -123,26 +130,27 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of analysis
-    outFileDirName          = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
-    treeName                = "etaPi0"
-    dataFileName            = "./dataPhotoProdEtaPi0/data_flat.root"
-    psAccFileName           = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
-    psGenFileName           = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
-    pwAmpsFileName          = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
-    # intMatrixFileName       = "./dataPhotoProdEtaPi0/forBoris_normInts/normInts.pkl"
-    intMatrixFileName       = "./dataPhotoProdEtaPi0/forBoris_normInts/ampInts.pkl"
-    beamPolarization        = 0.35062  # for polarization angle of 0
-    # maxL                    = 1  # define maximum L quantum number of moments
-    maxL                    = 5  # define maximum L quantum number of moments
-    normalizeMoments        = False
-    # plotAccIntegralMatrices = True
-    plotAccIntegralMatrices = False
-    # calcAccPsMoments        = True
-    calcAccPsMoments        = False
-    binVarMass              = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning             = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
-    # massBinning             = HistAxisBinning(nmbBins = 1, minVal = 1.28, maxVal = 1.32, _var = binVarMass)
-    nmbOpenMpThreads        = ROOT.getNmbOpenMpThreads()
+    outFileDirName           = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
+    treeName                 = "etaPi0"
+    dataFileName             = "./dataPhotoProdEtaPi0/data_flat.root"
+    psAccFileName            = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
+    psGenFileName            = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
+    pwAmpsFileName           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
+    fitResultPlotDir         = "./dataPhotoProdEtaPi0/fitResult/010020_0"
+    beamPolarization         = 0.35062  # for polarization angle of 0
+    # maxL                     = 1  # define maximum L quantum number of moments
+    maxL                     = 5  # define maximum L quantum number of moments
+    normalizeMoments         = False
+    # plotAngularDistributions = True
+    plotAngularDistributions = False
+    # plotAccIntegralMatrices  = True
+    plotAccIntegralMatrices  = False
+    # calcAccPsMoments         = True
+    calcAccPsMoments         = False
+    binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    massBinning              = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
+    # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.28, maxVal = 1.32, _var = binVarMass)
+    nmbOpenMpThreads         = ROOT.getNmbOpenMpThreads()
 
     # load all signal and phase-space data
     print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
@@ -152,7 +160,8 @@ if __name__ == "__main__":
     print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
     dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
     # plot total angular distributions
-    plotAngularDistr(dataPsAcc, dataPsGen, data, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
+    if plotAngularDistributions:
+      plotAngularDistr(dataPsAcc, dataPsGen, data, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
@@ -181,7 +190,7 @@ if __name__ == "__main__":
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
         # calculate moments from PWA fits result
-        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, intMatrixFileName, massBinCenter), tolerance = 1e-7)
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter, fitResultPlotDir), tolerance = 1e-7)
         HPwa: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
         print(f"Moment values from partial-wave analysis:\n{HPwa}")
 
@@ -234,7 +243,7 @@ if __name__ == "__main__":
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
           plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPs_", plotLegend = False)
           # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
-        # plot kinematic dependences of all measured moments
+        # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.QnIndices():
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex], _binCenters = momentsInBin.binCenters) for momentsInBin in moments)
           plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
