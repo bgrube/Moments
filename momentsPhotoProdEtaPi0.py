@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # performs moments analysis for eta pi0 real-data events
 
+from dataclasses import dataclass
 import functools
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ import threadpoolctl
 from typing import (
   Dict,
   List,
+  Tuple,
 )
 
 import ROOT
@@ -42,26 +44,45 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+@dataclass
+class BeamPolInfo:
+  """Stores info about beam polarization datasets"""
+  datasetLabel:   str    # label used for dataset
+  angle:          int    # beam polarization angle in lab frame [deg]
+  polarization:   float  # average beam polarization
+  ampScaleFactor: float  # fitted amplitude scaling factor for dataset
+
+# see Eqs. (4.22)ff in Lawrence's thesis for polarization values and
+# /w/halld-scshelf2101/malte/final_fullWaveset/nominal_fullWaveset_ReflIndiv_150rnd/010020/etapi_result_samePhaseD.fit
+# for amplitude scaling factors
+BEAM_POL_INFOS: Tuple[BeamPolInfo, ...] = (
+  BeamPolInfo(datasetLabel = "EtaPi0_000", angle =   0, polarization = 0.35062, ampScaleFactor = 1.0),
+  BeamPolInfo(datasetLabel = "EtaPi0_045", angle =  45, polarization = 0.34230, ampScaleFactor = 0.982204395837131),
+  BeamPolInfo(datasetLabel = "EtaPi0_090", angle =  90, polarization = 0.34460, ampScaleFactor = 0.968615883555624),
+  BeamPolInfo(datasetLabel = "EtaPi0_135", angle = 135, polarization = 0.35582, ampScaleFactor = 0.98383623655323),
+)
+
+
 def readPartialWaveAmplitudes(
   csvFileName:       str,    # name of CSV file with partial-wave amplitudes
   massBinCenter:     float,  # [GeV]
   fitResultPlotDir:  str,    # directory with intensity plots generated from PWA fit result
   beamPolAngleLabel: str = "EtaPi0_000",
 ) -> List[AmplitudeValue]:
-  """Reads partial-wave amplitudes values for given mass bin from CSV data"""
+  """Reads partial-wave amplitude values for given mass bin from CSV data"""
   print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV from file '{csvFileName}'")
   df = pd.read_csv(csvFileName, index_col = [0]).astype({"mass": float})
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])  # select row for mass bin center
-  df = df.filter(like = f"{beamPolAngleLabel}::")   # select columns for beam polarization direction
+  # to calculate total amplitudes use amplitude values for 0 deg beam
+  # polarization because for this dataset the scaling factor is 1
+  angleLabel = "EtaPi0_000" if beamPolAngleLabel == "Total" else beamPolAngleLabel
+  df = df.filter(like = f"{angleLabel}::")   # select columns for beam polarization direction
   assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
   # Pandas cannot read-back complex values out of the box
   # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
-  # have to convert columns by hand
+  # have to convert the respective column by hand
   ampSeries = df.astype('complex128').loc[df.index[0]]
-  print(f"!!! {massBinCenter=} GeV:\n{ampSeries=}")
   # normalize amplitudes to number of produced events
-  # ampScalesFactors = np.array([1, 0.982204395837131, 0.968615883555624, 0.98383623655323])  # scale factors for 0, 45, 90, 135 deg polarization angles
-  # datasetScaleFactor = np.sum(ampScalesFactors**2)
   # !Note! In principle, the normalized amplitude value is given by
   #   A^norm_i = A_i * ampScaleFactor_i * sqrt(I_{ii})
   # However, the diagonal elements of the integral matrix from the fit
@@ -74,47 +95,39 @@ def readPartialWaveAmplitudes(
     waveName = key.split("::")[-1]
     plotFileName = f"{fitResultPlotDir}/etapi_plot_{waveName}.root"
     plotFile = ROOT.TFile.Open(plotFileName, "READ")
-    intensityHistName = f"{beamPolAngleLabel}_Metapi_40MeVBinacc"
-    intensityHist = plotFile.Get(intensityHistName)
-    waveIntensity = intensityHist.GetBinContent(intensityHist.FindBin(massBinCenter))
-    normFactor = np.sqrt(waveIntensity) / np.abs(ampSeries[key])  # normalize amplitude A such that |A|^2 == plotted intensity
+    waveIntensity = 0.0
+    # for total intensity sum up intensities of all beam polarization directions
+    for angleLabelInt in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "Total" else [beamPolAngleLabel]:
+      intensityHistName = f"{angleLabelInt}_Metapi_40MeVBingen"  # acceptance-corrected intensity in units of produced events
+      intensityHist = plotFile.Get(intensityHistName)
+      waveIntensity += intensityHist.GetBinContent(intensityHist.FindBin(massBinCenter))
+    #TODO intensity seems to be by a factor of 2 too large; need to check why
+    normFactor = np.sqrt(waveIntensity / 2) / np.abs(ampSeries[key])  # normalize amplitude A such that |A|^2 == plotted intensity
     ampSeries[key] *= normFactor
-    print(f"!!! bin index = {intensityHist.FindBin(massBinCenter)}, {waveName=}, {waveIntensity=}, {normFactor=}, {np.abs(ampSeries[key])**2 - waveIntensity=}")
-    # intensityHistName2 = f"{beamPolAngleLabel}_Metapiacc"
-    # intensityHist2 = plotFile.Get(intensityHistName2)
-    # centerBin = intensityHist2.FindBin(massBinCenter)
-    # waveIntensity2 = 0
-    # for binIndex in range(centerBin - 2, centerBin + 3):
-    #   print(!!! f"{binIndex=}, {intensityHist2.GetBinContent(binIndex)=}")
-    #   waveIntensity2 += intensityHist2.GetBinContent(binIndex)
-    # print(f"!!! {waveIntensity=} vs. {waveIntensity2=}: {waveIntensity - waveIntensity2=}")
-  print(f"!!! scaled amplitudes\n{ampSeries=}")
   # add amplitudes of a_2(1320) and a_2(1700)
   a2AmpKeys = sorted([key for key in ampSeries.index if "::D" in key])  # keys of a_2(1320) amplitudes
   for a2AmpKey in a2AmpKeys:
     a2PrimeAmpKey = a2AmpKey.replace("::D", "::pD")  # key for a_2(1700) amplitude
-    # print(f"!!! {a2AmpKey}: {ampSeries[a2AmpKey]} + {a2PrimeAmpKey}: {ampSeries[a2PrimeAmpKey]} = {ampSeries[a2AmpKey] + ampSeries[a2PrimeAmpKey]}")
     ampSeries[a2AmpKey] = ampSeries[a2AmpKey] + ampSeries[a2PrimeAmpKey]
     ampSeries.drop(a2PrimeAmpKey, inplace = True)
-  # take amplitudes for polarization angle of 0 because their scale factor is 1
   print(f"Partial-wave amplitudes for mass bin at {massBinCenter} GeV:\n{ampSeries}")
+  # construct list of AmplitudeValue objects
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::S0+-"]),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D2--"]),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D1--"]),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D0+-"]),  # D_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D1+-"]),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries[f"{beamPolAngleLabel}::NegativeRe::D2+-"]),  # D_+2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries[f"{angleLabel}::NegativeRe::S0+-"]),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries[f"{angleLabel}::NegativeRe::D2--"]),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries[f"{angleLabel}::NegativeRe::D1--"]),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries[f"{angleLabel}::NegativeRe::D0+-"]),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries[f"{angleLabel}::NegativeRe::D1+-"]),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries[f"{angleLabel}::NegativeRe::D2+-"]),  # D_+2^-
     # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::S0++"]),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D2-+"]),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D1-+"]),  # D_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D0++"]),  # D_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D1++"]),  # D_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries[f"{beamPolAngleLabel}::PositiveRe::D2++"]),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries[f"{angleLabel}::PositiveRe::S0++"]),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries[f"{angleLabel}::PositiveRe::D2-+"]),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries[f"{angleLabel}::PositiveRe::D1-+"]),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries[f"{angleLabel}::PositiveRe::D0++"]),  # D_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries[f"{angleLabel}::PositiveRe::D1++"]),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries[f"{angleLabel}::PositiveRe::D2++"]),  # D_+2^+
   ]
-  # print(f"!!! {partialWaveAmplitudes=}")
   return partialWaveAmplitudes
 
 
@@ -136,7 +149,11 @@ if __name__ == "__main__":
     psAccFileName            = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
     psGenFileName            = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
     pwAmpsFileName           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
-    fitResultPlotDir         = "./dataPhotoProdEtaPi0/fitResult/010020_0"
+    fitResultPlotDir         = "./dataPhotoProdEtaPi0/intensityPlots/010020"
+    # beamPolAngleLabel        = "EtaPi0_000"
+    beamPolAngleLabel        = "EtaPi0_045"
+    # beamPolAngleLabel        = "EtaPi0_090"
+    # beamPolAngleLabel        = "EtaPi0_135"
     beamPolarization         = 0.35062  # for polarization angle of 0
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
@@ -190,7 +207,7 @@ if __name__ == "__main__":
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
         # calculate moments from PWA fits result
-        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter, fitResultPlotDir), tolerance = 1e-7)
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter, fitResultPlotDir, beamPolAngleLabel), tolerance = 1e-7)
         HPwa: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
         print(f"Moment values from partial-wave analysis:\n{HPwa}")
 
