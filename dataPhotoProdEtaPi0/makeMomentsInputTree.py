@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+from dataclasses import dataclass
 import functools
 import os
 from typing import (
   Dict,
   List,
+  Tuple,
 )
 
 import ROOT
@@ -14,9 +16,27 @@ import ROOT
 print = functools.partial(print, flush = True)
 
 
+@dataclass
+class BeamPolInfo:
+  """Stores info about beam polarization datasets"""
+  datasetLabel:   str    # label used for dataset
+  angle:          int    # beam polarization angle in lab frame [deg]
+  polarization:   float  # average beam polarization
+  ampScaleFactor: float  # fitted amplitude scaling factor for dataset
+
+# see Eqs. (4.22)ff in Lawrence's thesis for polarization values and
+# /w/halld-scshelf2101/malte/final_fullWaveset/nominal_fullWaveset_ReflIndiv_150rnd/010020/etapi_result_samePhaseD.fit
+# for amplitude scaling factors
+BEAM_POL_INFOS: Tuple[BeamPolInfo, ...] = (
+  BeamPolInfo(datasetLabel = "000", angle =   0, polarization = 0.35062, ampScaleFactor = 1.0),
+  BeamPolInfo(datasetLabel = "045", angle =  45, polarization = 0.34230, ampScaleFactor = 0.982204395837131),
+  BeamPolInfo(datasetLabel = "090", angle =  90, polarization = 0.34460, ampScaleFactor = 0.968615883555624),
+  BeamPolInfo(datasetLabel = "135", angle = 135, polarization = 0.35582, ampScaleFactor = 0.98383623655323),
+)
+
+
 # delcare C++ function to calculate azimuthal angle of photon polarization vector
-ROOT.gInterpreter.Declare(
-"""
+CPP_CODE = """
 // returns azimuthal angle of photon polarization vector in lab frame [rad]
 // for beam + target -> X + recoil and X -> a + b
 //     D                    C
@@ -24,9 +44,9 @@ ROOT.gInterpreter.Declare(
 double
 bigPhi(
 	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // recoil
-	const double PxPD, const double PyPD, const double PzPD, const double EnPD   // beam
+	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // beam
+	const double polAngle = 0  // polarization angle [deg]
 ) {
-	const double polAngle = 0;  // polarization angle [deg]
 	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
 	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
 	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
@@ -56,19 +76,49 @@ bigPhi(
 			Phi2 += TMath::TwoPi();
 		}
 		const double deltaPhi = Phi2 - Phi;
-		if (std::abs(deltaPhi) > 1e-15) {
-			std::cout << "!!! Phi2 = " << Phi2 << " - Phi = " << Phi << ": " << deltaPhi << std::endl;
+		if (std::abs(deltaPhi) > 1e-14) {
+			std::cout << "Mismatch of Phi values: Phi2 = " << Phi2 << " - Phi = " << Phi << ": " << deltaPhi << std::endl;
 		}
 	}
 	return Phi;
 }
-""")
+"""
+ROOT.gInterpreter.Declare(CPP_CODE)
+
+
+# delcare C++ function to check equality of column values
+CPP_CODE = """
+struct checkValEqual {
+
+  Double_t    _ref;
+  std::string _varName;
+
+  checkValEqual(
+    const Double_t     ref     = 0.0,
+    const std::string& varName = "values"
+  ) : _ref    (ref),
+      _varName(varName)
+  { }
+
+  void
+  operator () (const Double_t v)
+  {
+    if (v != _ref) {
+      std::cout << "Mismatch of " << _varName << ": " << v << " vs. " << _ref << std::endl;
+    }
+    return;
+  }
+
+};
+"""
+ROOT.gInterpreter.Declare(CPP_CODE)
 
 
 def defineDataFrameColumns(
   data:                   ROOT.RDataFrame,
   coordSys:               str   = "hel",  # either "hel" for helicity frame or "gj" for Gottfried-Jackson frame
-  beamPol:                float = 1.0,
+  beamPol:                float = 1.0,    # photon beam polarization
+  beamPolAngle:           float = 0.0,    # photon beam polarization angle in lab [deg]
   beamPolAngleColumnName: str   = "BeamAngle",
   weightColumnName:       str   = "Weight",
   thrownData:             bool  = False,
@@ -85,8 +135,14 @@ def defineDataFrameColumns(
         .Define("mass",        f"(double)Mpi0eta{columnSuffix}")
         .Define("eventWeight", f"(double){weightColumnName}")
   )
-  #TODO check against `Phi{,_thrown}` [deg] in tree
-  bigPhiFunc = "bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam)"
+  # check that beam polarization angle has correct value in tree
+  # checkValsEqual = functools.partial(ROOT.checkValsEqual, flush = True)
+  # df.Foreach(lambda beamPolPhi: None if beamPolPhi == beamPolAngle \
+  #   else print(f"Mismatch of beam polarization angles; tree: {beamPolPhi=} vs. argument: {beamPolAngle=}"),
+  #   ["beamPolPhi"])
+  checkValEqual = ROOT.checkValEqual(beamPolAngle, "beam polarization angles")
+  df.Foreach(checkValEqual, ["beamPolPhi"])
+  bigPhiFunc = f"bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam, beamPolPhi)"
   phiVarDef = f"(double)phi_eta_{coordSys}{columnSuffix}"
   if thrownData:
     df = (
@@ -106,112 +162,122 @@ def defineDataFrameColumns(
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
 
-  dataSets: List[Dict[str, str]] = [
-    {"dataSetLabel"         : "data",
-     "inputFileNamePattern" : "t010020_m080250_selectGenTandM_nominal/pol000_t010020_m080250_selectGenTandM_DTOT_selected_nominal_acc_flat.root"},
-    {"dataSetLabel"         : "phaseSpace_gen",
-     "inputFileNamePattern" : "t010020_m080250_selectGenTandM_nominal/pol000_t010020_m080250_selectGenTandM_FTOT_gen_data_flat.root"},
-    {"dataSetLabel"         : "phaseSpace_acc",
-     "inputFileNamePattern" : "t010020_m080250_selectGenTandM_nominal/pol000_t010020_m080250_selectGenTandM_FTOT_selected_nominal_acc_flat.root"},
-  ]
+  dataSets: Dict[str, List[Dict[str, str]]] = {
+    beamPolInfo.datasetLabel : [
+      {"dataSetLabel"         : "data",
+       "inputFileNamePattern" : f"t010020_m080250_selectGenTandM_nominal/pol{beamPolInfo.datasetLabel}_t010020_m080250_selectGenTandM_DTOT_selected_nominal_acc_flat.root"},
+      {"dataSetLabel"         : "phaseSpace_gen",
+       "inputFileNamePattern" : f"t010020_m080250_selectGenTandM_nominal/pol{beamPolInfo.datasetLabel}_t010020_m080250_selectGenTandM_FTOT_gen_data_flat.root"},
+      {"dataSetLabel"         : "phaseSpace_acc",
+       "inputFileNamePattern" : f"t010020_m080250_selectGenTandM_nominal/pol{beamPolInfo.datasetLabel}_t010020_m080250_selectGenTandM_FTOT_selected_nominal_acc_flat.root"},
+    ] for beamPolInfo in BEAM_POL_INFOS}
   inputTreeName    = "kin"
   outputTreeName   = "etaPi0"
   weightColumnName = "Weight"
-  beamPol          = 1.0
-  beamPolAngle     = 0
-  plotDirName      = "./plots"
+  plotDirBaseName  = "./plots"
 
-  for dataSet in dataSets:
-    dataSetLabel         = dataSet["dataSetLabel"]
-    inputFileNamePattern = dataSet["inputFileNamePattern"]
-    outputFileName       = f"./{dataSetLabel}_flat.root"
-    recoData             = ((dataSetLabel == "data") or (dataSetLabel == "phaseSpace_acc"))
+  for beamPolLabel, beamPolDataSets in dataSets.items():
+    for dataSet in beamPolDataSets:
+      dataSetLabel         = dataSet["dataSetLabel"]
+      inputFileNamePattern = dataSet["inputFileNamePattern"]
+      outputFileName       = f"./{dataSetLabel}_{beamPolLabel}_flat.root"
+      recoData             = ((dataSetLabel == "data") or (dataSetLabel == "phaseSpace_acc"))
 
-    # apply fiducial cuts
-    data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern)
-    if recoData:
-      data = data.Filter(  # see Tab. 3.5 in Lawrences's thesis
-              "("
-                "((8.2 < E_Beam) && (E_Beam < 8.8))"  # [GeV]
-                "&& (proton_momentum > 0.3)"  # [GeV]
-                "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
-                #??? dE/dx CDC cut; related to pdEdxCDCProton in tree (always 1)?
-                "&& (photonE1 > 0.1)"  # [GeV]
-                "&& (photonE2 > 0.1)"  # [GeV]
-                "&& (photonE3 > 0.1)"  # [GeV]
-                "&& (photonE4 > 0.1)"  # [GeV]
-                "&& (((2.5 < photonTheta1) && (photonTheta1 < 10.3)) || (photonTheta1 > 11.9))"  # [deg]
-                "&& (((2.5 < photonTheta2) && (photonTheta2 < 10.3)) || (photonTheta2 > 11.9))"  # [deg]
-                "&& (((2.5 < photonTheta3) && (photonTheta3 < 10.3)) || (photonTheta3 > 11.9))"  # [deg]
-                "&& (((2.5 < photonTheta4) && (photonTheta4 < 10.3)) || (photonTheta4 > 11.9))"  # [deg]
-                "&& (unusedEnergy < 0.01)"  # [GeV]
-                "&& (abs(mmsq) < 0.05)"  # [GeV^2]
-                "&& (chiSq < 13.277)"
-                "&& (pVH > 0.5)"  #??? from where? relation to Eq. (4.3) in thesis?
-                # "&& ((0.8 < Mpi0eta_thrown) && (Mpi0eta_thrown < 2.0))"  # [GeV]
-              ")"
-            )
+      # apply fiducial cuts
+      data = ROOT.RDataFrame(inputTreeName, inputFileNamePattern)
+      if recoData:
+        data = data.Filter(  # see Tab. 3.5 in Lawrences's thesis
+                "("
+                  "((8.2 < E_Beam) && (E_Beam < 8.8))"  # [GeV]
+                  "&& (proton_momentum > 0.3)"  # [GeV]
+                  "&& ((52 < proton_z) && (proton_z < 78))"  # [cm]
+                  #??? dE/dx CDC cut; related to pdEdxCDCProton in tree (always 1)?
+                  "&& (photonE1 > 0.1)"  # [GeV]
+                  "&& (photonE2 > 0.1)"  # [GeV]
+                  "&& (photonE3 > 0.1)"  # [GeV]
+                  "&& (photonE4 > 0.1)"  # [GeV]
+                  "&& (((2.5 < photonTheta1) && (photonTheta1 < 10.3)) || (photonTheta1 > 11.9))"  # [deg]
+                  "&& (((2.5 < photonTheta2) && (photonTheta2 < 10.3)) || (photonTheta2 > 11.9))"  # [deg]
+                  "&& (((2.5 < photonTheta3) && (photonTheta3 < 10.3)) || (photonTheta3 > 11.9))"  # [deg]
+                  "&& (((2.5 < photonTheta4) && (photonTheta4 < 10.3)) || (photonTheta4 > 11.9))"  # [deg]
+                  "&& (unusedEnergy < 0.01)"  # [GeV]
+                  "&& (abs(mmsq) < 0.05)"  # [GeV^2]
+                  "&& (chiSq < 13.277)"
+                  "&& (pVH > 0.5)"  #??? from where? relation to Eq. (4.3) in thesis?
+                  # "&& ((0.8 < Mpi0eta_thrown) && (Mpi0eta_thrown < 2.0))"  # [GeV]
+                ")"
+              )
 
-    data = defineDataFrameColumns(data, coordSys = "hel", beamPol = beamPol, weightColumnName = weightColumnName, thrownData = not recoData)
-    # data.Describe().Print()
+      # get BeamPolInfo for beamPolLabel
+      beamPolInfo = next(info for info in BEAM_POL_INFOS if info.datasetLabel == beamPolLabel)
+      data = defineDataFrameColumns(
+        data,
+        coordSys         = "hel",
+        beamPol          = beamPolInfo.polarization,
+        beamPolAngle     = beamPolInfo.angle,
+        weightColumnName = weightColumnName,
+        thrownData       = not recoData
+      )
+      # data.Describe().Print()
 
-    # define background-subtracted histograms
-    histDefs = []
-    if recoData:
+      # define background-subtracted histograms
+      histDefs = []
+      if recoData:
+        histDefs += [
+          # cut variables
+          {"columnName" : "pVH",             "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, -0.5, 1.5)},
+          {"columnName" : "unusedEnergy",    "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 1 MeV",         "binning" : (100, 0, 0.1)},
+          {"columnName" : "chiSq",           "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, 0, 15)},
+          {"columnName" : "photonTheta1",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
+          {"columnName" : "photonTheta2",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
+          {"columnName" : "photonTheta3",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
+          {"columnName" : "photonTheta4",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
+          {"columnName" : "photonE1",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
+          {"columnName" : "photonE2",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
+          {"columnName" : "photonE3",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
+          {"columnName" : "photonE4",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
+          {"columnName" : "proton_momentum", "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 2 MeV",         "binning" : (100, 0.2, 1.2)},
+          {"columnName" : "proton_z",        "xAxisUnit" : "cm",      "yAxisTitle" : "Combos / 0.4 cm",        "binning" : (100, 40, 80)},
+          {"columnName" : "mmsq",            "xAxisUnit" : "GeV^{2}", "yAxisTitle" : "Combos / 0.002 GeV^{2}", "binning" : (100, -0.1, 0.1)},
+          # other kinematic variables
+          {"columnName" : "Mpi0",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 2 MeV",  "binning" : (100, 0, 0.2)},
+          {"columnName" : "Meta",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
+          {"columnName" : "Mpi0eta_thrown", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
+          {"columnName" : "rfTime",         "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
+          {"columnName" : "run",            "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (2200, 30000, 52000)},
+          {"columnName" : "event",          "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (100000, 0, 500e6)},
+        ]
       histDefs += [
-        # cut variables
-        {"columnName" : "pVH",             "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, -0.5, 1.5)},
-        {"columnName" : "unusedEnergy",    "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 1 MeV",         "binning" : (100, 0, 0.1)},
-        {"columnName" : "chiSq",           "xAxisUnit" : "",        "yAxisTitle" : "Combos",                 "binning" : (100, 0, 15)},
-        {"columnName" : "photonTheta1",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
-        {"columnName" : "photonTheta2",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
-        {"columnName" : "photonTheta3",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
-        {"columnName" : "photonTheta4",    "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 0.1 deg",       "binning" : (200, 0, 20)},
-        {"columnName" : "photonE1",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
-        {"columnName" : "photonE2",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
-        {"columnName" : "photonE3",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
-        {"columnName" : "photonE4",        "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 0.1 GeV",       "binning" : (90, 0, 9)},
-        {"columnName" : "proton_momentum", "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 2 MeV",         "binning" : (100, 0.2, 1.2)},
-        {"columnName" : "proton_z",        "xAxisUnit" : "cm",      "yAxisTitle" : "Combos / 0.4 cm",        "binning" : (100, 40, 80)},
-        {"columnName" : "mmsq",            "xAxisUnit" : "GeV^{2}", "yAxisTitle" : "Combos / 0.002 GeV^{2}", "binning" : (100, -0.1, 0.1)},
-        # other kinematic variables
-        {"columnName" : "Mpi0",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 2 MeV",  "binning" : (100, 0, 0.2)},
-        {"columnName" : "Meta",           "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 3 MeV",  "binning" : (100, 0.4, 0.7)},
-        {"columnName" : "Mpi0eta_thrown", "xAxisUnit" : "GeV", "yAxisTitle" : "Combos / 10 MeV", "binning" : (100, 0, 2.5)},
-        {"columnName" : "rfTime",         "xAxisUnit" : "ns",  "yAxisTitle" : "Combos / 0.5 ns", "binning" : (100, -25, 25)},
-        {"columnName" : "run",            "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (2200, 30000, 52000)},
-        {"columnName" : "event",          "xAxisUnit" : "",    "yAxisTitle" : "Combos",          "binning" : (100000, 0, 500e6)},
+        # moment variables
+        {"columnName" : "beamPol",    "xAxisUnit" : "",        "yAxisTitle" : "Combos",            "binning" : (110, 0, 1.1)},
+        {"columnName" : "beamPolPhi", "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
+        {"columnName" : "cosTheta",   "xAxisUnit" : "",        "yAxisTitle" : "Combos",            "binning" : (100, -1, 1)},
+        {"columnName" : "theta",      "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.04 rad", "binning" : (100, 0, 4)},
+        {"columnName" : "phiDeg",     "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
+        {"columnName" : "phi",        "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
+        {"columnName" : "PhiDeg",     "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
+        {"columnName" : "Phi",        "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
+        {"columnName" : "t",          "xAxisUnit" : "GeV^{2}", "yAxisTitle" : "Combos",            "binning" : (120, 0.09, 0.21)},
+        {"columnName" : "mass",       "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 10 MeV",   "binning" : (100, 0, 2.5)},
       ]
-    histDefs += [
-      # moment variables
-      {"columnName" : "beamPol",    "xAxisUnit" : "",        "yAxisTitle" : "Combos",            "binning" : (110, 0, 1.1)},
-      {"columnName" : "beamPolPhi", "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
-      {"columnName" : "cosTheta",   "xAxisUnit" : "",        "yAxisTitle" : "Combos",            "binning" : (100, -1, 1)},
-      {"columnName" : "theta",      "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.04 rad", "binning" : (100, 0, 4)},
-      {"columnName" : "phiDeg",     "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
-      {"columnName" : "phi",        "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
-      {"columnName" : "PhiDeg",     "xAxisUnit" : "deg",     "yAxisTitle" : "Combos / 1 deg",    "binning" : (360, -180, 180)},
-      {"columnName" : "Phi",        "xAxisUnit" : "rad",     "yAxisTitle" : "Combos / 0.08 rad", "binning" : (100, -4, 4)},
-      {"columnName" : "t",          "xAxisUnit" : "GeV^{2}", "yAxisTitle" : "Combos",            "binning" : (120, 0.09, 0.21)},
-      {"columnName" : "mass",       "xAxisUnit" : "GeV",     "yAxisTitle" : "Combos / 10 MeV",   "binning" : (100, 0, 2.5)},
-    ]
-    hists = []
-    for histDef in histDefs:
-      cName = histDef["columnName"]
-      unit  = histDef["xAxisUnit"]
-      hists.append(data.Histo1D((f"h_{cName}", f";{cName}" + (f" [{unit}]" if unit else "") + f";{histDef['yAxisTitle']}",
-                                *histDef["binning"]), (cName,), weightColumnName))
+      hists = []
+      for histDef in histDefs:
+        cName = histDef["columnName"]
+        unit  = histDef["xAxisUnit"]
+        hists.append(data.Histo1D((f"h_{cName}", f";{cName}" + (f" [{unit}]" if unit else "") + f";{histDef['yAxisTitle']}",
+                                  *histDef["binning"]), (cName,), weightColumnName))
 
-    # write root tree for moments analysis
-    print(f"Writing skimmed tree to file '{outputFileName}'")
-    data.Snapshot(outputTreeName, outputFileName,
-                  ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "mass", "eventWeight"))
+      # write root tree for moments analysis
+      print(f"Writing skimmed tree to file '{outputFileName}'")
+      data.Snapshot(outputTreeName, outputFileName,
+                    ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "mass", "eventWeight"))
 
-    # fill and draw histograms
-    os.makedirs(plotDirName, exist_ok = True)
-    ROOT.gStyle.SetOptStat(111111)
-    for hist in hists:
-      canv = ROOT.TCanvas(f"{hist.GetName()}.{dataSetLabel}")
-      hist.SetMinimum(0)
-      hist.Draw("HIST")
-      canv.SaveAs(f"{plotDirName}/{canv.GetName()}.pdf")
+      # fill and draw histograms
+      plotDirName = f"{plotDirBaseName}_{beamPolLabel}"
+      os.makedirs(plotDirName, exist_ok = True)
+      ROOT.gStyle.SetOptStat(111111)
+      for hist in hists:
+        canv = ROOT.TCanvas(f"{hist.GetName()}.{dataSetLabel}")
+        hist.SetMinimum(0)
+        hist.Draw("HIST")
+        canv.SaveAs(f"{plotDirName}/{canv.GetName()}.pdf")
