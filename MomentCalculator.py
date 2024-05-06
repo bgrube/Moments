@@ -302,10 +302,10 @@ class MomentIndices:
 @dataclass
 class DataSet:
   """Container class that stores information about a single dataset"""
-  polarization:   float  # photon-beam polarization
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: Optional[ROOT.RDataFrame]  # (accepted) phase-space data; None corresponds to perfect acceptance
   nmbGenEvents:   int  # number of generated events
+  polarization:   Optional[float] = None  # photon-beam polarization; None = read from tree
 
 
 @dataclass(frozen = True)  # immutable
@@ -409,6 +409,18 @@ class AcceptanceIntegralMatrix:
     nmbAccEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
+    # get beam polarization
+    beamPol: Optional[Union[float, ROOT.std.vector["double"]]] = None
+    if self.dataSet.polarization is None:
+      # read polarization value from tree
+      assert "beamPol" in self.dataSet.phaseSpaceData.GetColumnNames(), "No 'beamPol' column found in phase-space data"
+      print("Reading beam polarization from 'beamPol' column when calculating the acceptance integral matrix")
+      beamPol = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["beamPol"])["beamPol"])
+    else:
+      # use polarization value defined for data set
+      beamPol = self.dataSet.polarization
+      print(f"Using beam polarization of {beamPol} when calculating the acceptance integral matrix")
+    # get event weights
     eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.empty(nmbAccEvents, dtype = npt.Float64)
     if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
       print("Applying weights from 'eventWeight' column in calculation of acceptance integral matrix")
@@ -424,8 +436,8 @@ class AcceptanceIntegralMatrix:
     fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
-      fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, self.dataSet.polarization))
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
+      fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
     # calculate integral-matrix elements; Eq. (178)
     self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = npt.Complex128)
     for flatIndexMeas in self.indices.flatIndices():
@@ -823,6 +835,18 @@ class MomentCalculator:
     nmbEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
+    # get beam polarization
+    beamPol: Optional[Union[float, ROOT.std.vector["double"]]] = None
+    if dataSet.polarization is None:
+      # read polarization value from tree
+      assert "beamPol" in dataSet.data.GetColumnNames(), "No 'beamPol' column found in data"
+      print("Reading beam polarization from 'beamPol' column when calculating the moments")
+      beamPol = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["beamPol"])["beamPol"])
+    else:
+      # use polarization value defined for data set
+      beamPol = dataSet.polarization
+      print(f"Using beam polarization of {beamPol} when calculating the moments")
+    # get event weights
     eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = npt.Float64)
     if "eventWeight" in dataSet.data.GetColumnNames():
       print("Applying weights from 'eventWeight' column in calculation of moments")
@@ -839,7 +863,7 @@ class MomentCalculator:
     self._HMeas = MomentResult(self.indices, label = "meas", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, dataSet.polarization))  # Eq. (176)
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))  # Eq. (176)
       weightedSum = eventWeights.dot(fMeas[flatIndex])
       self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
