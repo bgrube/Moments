@@ -67,7 +67,7 @@ def readPartialWaveAmplitudes(
   csvFileName:       str,    # name of CSV file with partial-wave amplitudes
   massBinCenter:     float,  # [GeV]
   fitResultPlotDir:  str,    # directory with intensity plots generated from PWA fit result
-  beamPolAngleLabel: str = "EtaPi0_000",
+  beamPolAngleLabel: str = "000",  # "???" for total data sample summed over polarization directions
 ) -> List[AmplitudeValue]:
   """Reads partial-wave amplitude values for given mass bin from CSV data"""
   print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV from file '{csvFileName}'")
@@ -75,8 +75,8 @@ def readPartialWaveAmplitudes(
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])  # select row for mass bin center
   # to calculate total amplitudes use amplitude values for 0 deg beam
   # polarization because for this dataset the scaling factor is 1
-  angleLabel = "EtaPi0_000" if beamPolAngleLabel == "Total" else beamPolAngleLabel
-  df = df.filter(like = f"{angleLabel}::")   # select columns for beam polarization direction
+  angleLabel = "000" if beamPolAngleLabel == "???" else beamPolAngleLabel
+  df = df.filter(like = f"EtaPi0_{angleLabel}::")   # select columns for beam polarization direction
   assert len(df) == 1, f"Expected exactly 1 row for mass-bin center {massBinCenter} GeV, but found {len(df)}"
   # Pandas cannot read-back complex values out of the box
   # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
@@ -97,8 +97,8 @@ def readPartialWaveAmplitudes(
     plotFile = ROOT.TFile.Open(plotFileName, "READ")
     waveIntensity = 0.0
     # for total intensity sum up intensities of all beam polarization directions
-    for angleLabelInt in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "Total" else [beamPolAngleLabel]:
-      intensityHistName = f"{angleLabelInt}_Metapi_40MeVBingen"  # acceptance-corrected intensity in units of produced events
+    for angleLabelInt in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "???" else [beamPolAngleLabel]:
+      intensityHistName = f"EtaPi0_{angleLabelInt}_Metapi_40MeVBingen"  # acceptance-corrected intensity in units of produced events
       intensityHist = plotFile.Get(intensityHistName)
       waveIntensity += intensityHist.GetBinContent(intensityHist.FindBin(massBinCenter))
     #TODO intensity seems to be by a factor of 2 too large; need to check why
@@ -114,19 +114,19 @@ def readPartialWaveAmplitudes(
   # construct list of AmplitudeValue objects
   partialWaveAmplitudes = [
     # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries[f"{angleLabel}::NegativeRe::S0+-"]),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries[f"{angleLabel}::NegativeRe::D2--"]),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries[f"{angleLabel}::NegativeRe::D1--"]),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries[f"{angleLabel}::NegativeRe::D0+-"]),  # D_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries[f"{angleLabel}::NegativeRe::D1+-"]),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries[f"{angleLabel}::NegativeRe::D2+-"]),  # D_+2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val = ampSeries[f"EtaPi0_{angleLabel}::NegativeRe::S0+-"]),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = ampSeries[f"EtaPi0_{angleLabel}::NegativeRe::D2--"]),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = ampSeries[f"EtaPi0_{angleLabel}::NegativeRe::D1--"]),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = ampSeries[f"EtaPi0_{angleLabel}::NegativeRe::D0+-"]),  # D_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = ampSeries[f"EtaPi0_{angleLabel}::NegativeRe::D1+-"]),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = ampSeries[f"EtaPi0_{angleLabel}::NegativeRe::D2+-"]),  # D_+2^-
     # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries[f"{angleLabel}::PositiveRe::S0++"]),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries[f"{angleLabel}::PositiveRe::D2-+"]),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries[f"{angleLabel}::PositiveRe::D1-+"]),  # D_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries[f"{angleLabel}::PositiveRe::D0++"]),  # D_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries[f"{angleLabel}::PositiveRe::D1++"]),  # D_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries[f"{angleLabel}::PositiveRe::D2++"]),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val = ampSeries[f"EtaPi0_{angleLabel}::PositiveRe::S0++"]),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val = ampSeries[f"EtaPi0_{angleLabel}::PositiveRe::D2-+"]),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = ampSeries[f"EtaPi0_{angleLabel}::PositiveRe::D1-+"]),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = ampSeries[f"EtaPi0_{angleLabel}::PositiveRe::D0++"]),  # D_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = ampSeries[f"EtaPi0_{angleLabel}::PositiveRe::D1++"]),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = ampSeries[f"EtaPi0_{angleLabel}::PositiveRe::D2++"]),  # D_+2^+
   ]
   return partialWaveAmplitudes
 
@@ -143,17 +143,18 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of analysis
-    outFileDirName           = Utilities.makeDirPath("./plotsPhotoProdEtaPi0")
     treeName                 = "etaPi0"
-    dataFileName             = "./dataPhotoProdEtaPi0/data_flat.root"
-    psAccFileName            = "./dataPhotoProdEtaPi0/phaseSpace_acc_flat.root"
-    psGenFileName            = "./dataPhotoProdEtaPi0/phaseSpace_gen_flat.root"
+    beamPolAngleLabel        = "000"
+    # beamPolAngleLabel        = "045"
+    # beamPolAngleLabel        = "090"
+    # beamPolAngleLabel        = "135"
+    # beamPolAngleLabel        = "???"
+    dataFileName             = f"./dataPhotoProdEtaPi0/data_{beamPolAngleLabel}_flat.root"
+    psAccFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_acc_{beamPolAngleLabel}_flat.root"
+    psGenFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_gen_{beamPolAngleLabel}_flat.root"
     pwAmpsFileName           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
     fitResultPlotDir         = "./dataPhotoProdEtaPi0/intensityPlots/010020"
-    # beamPolAngleLabel        = "EtaPi0_000"
-    beamPolAngleLabel        = "EtaPi0_045"
-    # beamPolAngleLabel        = "EtaPi0_090"
-    # beamPolAngleLabel        = "EtaPi0_135"
+    outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdEtaPi0_{beamPolAngleLabel if beamPolAngleLabel != '???' else 'total'}")
     beamPolarization         = 0.35062  # for polarization angle of 0
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
