@@ -210,6 +210,7 @@ ImYlm(
 // see https://stackoverflow.com/a/58043564 for an example of implementing a NumPy function in C++
 
 // basis functions for physical moments; Eq. (175)
+// scalar version that calculates function value for a single event
 std::complex<double>
 f_phys(
 	const int    momentIndex,  // 0, 1, or 2
@@ -233,8 +234,8 @@ f_phys(
 	}
 }
 
-// vector version that calculates function value for each entry in the input vectors
-// loop over events is multi-threaded using OpenMP
+// vector version that calculates basis-function value for each entry
+// in the input vectors for a constant polarization value
 std::vector<std::complex<double>>
 f_phys(
 	const int                  momentIndex,  // 0, 1, or 2
@@ -248,6 +249,7 @@ f_phys(
 	// assume that theta, phi, and Phi have the same length
 	const size_t nmbEvents = theta.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
 		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
@@ -255,8 +257,32 @@ f_phys(
 	return fcnValues;
 }
 
+// vector version that calculates basis-function value for each entry
+// in the input vectors for event-dependent polarization values
+std::vector<std::complex<double>>
+f_phys(
+	const int                  momentIndex,  // 0, 1, or 2
+	const int                  L,
+	const int                  M,
+	const std::vector<double>& theta,  // [rad]
+	const std::vector<double>& phi,    // [rad]
+	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& polarizations
+) {
+	// assume that theta, phi, and Phi have the same length
+	const size_t nmbEvents = theta.size();
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	// multi-threaded loop over events using OpenMP
+	#pragma omp parallel for
+	for (size_t i = 0; i < nmbEvents; ++i) {
+		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarizations[i]);
+	}
+	return fcnValues;
+}
+
 
 // basis functions for measured moments; Eq. (176)
+// scalar version that calculates function value for a single event
 std::complex<double>
 f_meas(
 	const int    momentIndex,  // 0, 1, or 2
@@ -280,8 +306,8 @@ f_meas(
 	}
 }
 
-// vector version that calculates function value for each entry in the input vectors; OpenMP version
-// loop over events is multi-threaded using OpenMP
+// vector version that calculates basis-function value for each entry
+// in the input vectors for a constant polarization value
 std::vector<std::complex<double>>
 f_meas(
 	const int                  momentIndex,  // 0, 1, or 2
@@ -295,9 +321,33 @@ f_meas(
 	// assume that theta, phi, and Phi have the same length
 	const size_t nmbEvents = theta.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
 		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+	}
+	return fcnValues;
+}
+
+// vector version that calculates basis-function value for each entry
+// in the input vectors for event-dependent polarization values
+std::vector<std::complex<double>>
+f_meas(
+	const int                  momentIndex,  // 0, 1, or 2
+	const int                  L,
+	const int                  M,
+	const std::vector<double>& theta,  // [rad]
+	const std::vector<double>& phi,    // [rad]
+	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& polarizations
+) {
+	// assume that theta, phi, and Phi have the same length
+	const size_t nmbEvents = theta.size();
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
+	// multi-threaded loop over events using OpenMP
+	#pragma omp parallel for
+	for (size_t i = 0; i < nmbEvents; ++i) {
+		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarizations[i]);
 	}
 	return fcnValues;
 }
