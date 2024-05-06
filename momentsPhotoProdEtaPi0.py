@@ -155,7 +155,6 @@ if __name__ == "__main__":
     pwAmpsFileName           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
     fitResultPlotDir         = "./dataPhotoProdEtaPi0/intensityPlots/010020"
     outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdEtaPi0_{beamPolAngleLabel if beamPolAngleLabel != '???' else 'total'}")
-    beamPolarization         = 0.35062  # for polarization angle of 0
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
     normalizeMoments         = False
@@ -213,7 +212,11 @@ if __name__ == "__main__":
         print(f"Moment values from partial-wave analysis:\n{HPwa}")
 
         # setup moment calculators for data
-        dataSet = DataSet(beamPolarization, dataInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
+        dataSet = DataSet(
+          data           = dataInBin,
+          phaseSpaceData = dataPsAccInBin,
+          nmbGenEvents   = nmbPsGenEvents[-1],
+        )
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
         # setup moment calculator to hold moment values from PWA result
         momentsInBinsPwa.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HPwa))
