@@ -724,21 +724,60 @@ class MomentResult:
     """Returns whether bootstrap samples exist"""
     return self._bsSamplesFlatIndex.size > 0
 
-  def write(
+  def save(
     self,
     pickleFileName: str,
   ) -> None:
-    """Writes MomentResult to pickle file"""
+    """Saves MomentResult to pickle file"""
     with open(pickleFileName, "wb") as file:
       pickle.dump(self, file)
 
+  @classmethod
   def load(
+    cls,
+    pickleFileName: str,
+  ) -> MomentResult:
+    """Loads MomentResult from pickle file"""
+    with open(pickleFileName, "rb") as file:
+      return pickle.load(file)
+
+
+@dataclass
+class MomentResultsKinematicBinning:
+  """Container class that stores and provides access to moment values for several kinematic bins"""
+  moments: List[MomentResult]  # data for all bins of the kinematic binning
+
+  def __len__(self) -> int:
+    """Returns number of kinematic bins"""
+    return len(self.moments)
+
+  def __getitem__(
+    self,
+    subscript: int,
+  ) -> MomentResult:
+    """Returns MomentResult that correspond to given bin index"""
+    return self.moments[subscript]
+
+  def __iter__(self) -> Iterator[MomentResult]:
+    """Iterates over MomentResults in kinematic bins"""
+    return iter(self.moments)
+
+  def save(
     self,
     pickleFileName: str,
   ) -> None:
-    """Loads MomentResult from pickle file"""
+    """Saves MomentResultsKinematicBinning to pickle file"""
+    with open(pickleFileName, "wb") as file:
+      pickle.dump(self, file)
+
+  @classmethod
+  def load(
+    cls,
+    pickleFileName: str,
+  ) -> MomentResultsKinematicBinning:
+    """Loads MomentResultsKinematicBinning from pickle file"""
     with open(pickleFileName, "rb") as file:
-      self = pickle.load(file)
+      return pickle.load(file)
 
 
 @dataclass
@@ -994,3 +1033,13 @@ class MomentCalculatorsKinematicBinning:
     for kinBinIndex, momentsInBin in enumerate(self):
       print(f"Calculating moments for kinematic bin {momentsInBin.binCenters}")
       momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
+
+  @property
+  def momentResultsMeas(self) -> MomentResultsKinematicBinning:
+    """Returns MomentResultsKinematicBinning with all measured moments"""
+    return MomentResultsKinematicBinning([momentsInBin.HMeas for momentsInBin in self])
+
+  @property
+  def momentResultsPhys(self) -> MomentResultsKinematicBinning:
+    """Returns MomentResultsKinematicBinning with all physical moments"""
+    return MomentResultsKinematicBinning([momentsInBin.HPhys for momentsInBin in self])
