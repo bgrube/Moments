@@ -97,8 +97,8 @@ def readPartialWaveAmplitudes(
     plotFile = ROOT.TFile.Open(plotFileName, "READ")
     waveIntensity = 0.0
     # for total intensity sum up intensities of all beam polarization directions
-    for angleLabelInt in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "total" else [beamPolAngleLabel]:
-      intensityHistName = f"{angleLabelInt}_Metapi_40MeVBingen"  # acceptance-corrected intensity in units of produced events
+    for angleLabelHist in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "total" else [angleLabel]:
+      intensityHistName = f"{angleLabelHist}_Metapi_40MeVBingen"  # acceptance-corrected intensity in units of produced events
       intensityHist = plotFile.Get(intensityHistName)
       waveIntensity += intensityHist.GetBinContent(intensityHist.FindBin(massBinCenter))
     #TODO intensity seems to be by a factor of 2 too large; need to check why
@@ -145,12 +145,12 @@ if __name__ == "__main__":
 
     # set parameters of analysis
     treeName                 = "etaPi0"
-    # beamPolAngleLabel        = "000"
+    beamPolAngleLabel        = "000"
     # beamPolAngleLabel        = "045"
     # beamPolAngleLabel        = "090"
     # beamPolAngleLabel        = "135"
-    beamPolAngleLabel        = "total"
-    fileNamePattern          = "*" if beamPolAngleLabel else beamPolAngleLabel
+    # beamPolAngleLabel        = "total"
+    fileNamePattern          = "*" if beamPolAngleLabel == "total" else beamPolAngleLabel
     dataFileName             = f"./dataPhotoProdEtaPi0/data_{fileNamePattern}_flat.root"
     psAccFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_acc_{fileNamePattern}_flat.root"
     psGenFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_gen_{fileNamePattern}_flat.root"
