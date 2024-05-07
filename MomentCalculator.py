@@ -16,6 +16,7 @@ from enum import Enum
 import functools
 import numpy as np
 import nptyping as npt
+import pickle
 from typing import (
   Any,
   ClassVar,
@@ -643,8 +644,10 @@ class MomentResult:
     """Returns 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndexPair: Tuple[int, int] = tuple(self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
-                                           for momentIndex in momentIndexPair)
+    flatIndexPair: Tuple[int, int] = tuple(
+      self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
+      for momentIndex in momentIndexPair
+    )
     if realParts == (True, True):
       return np.array([
         [self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
@@ -676,8 +679,10 @@ class MomentResult:
     """Returns bootstrap estimate of 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts      ) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndexPair: Tuple[int, int] = tuple(self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
-                                           for momentIndex in momentIndexPair)
+    flatIndexPair: Tuple[int, int] = tuple(
+      self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
+      for momentIndex in momentIndexPair
+    )
     # get bootstrap samples of moments
     HVals = (self[flatIndexPair[0]], self[flatIndexPair[1]])
     assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
@@ -718,6 +723,22 @@ class MomentResult:
   def hasBootstrapSamples(self) -> bool:
     """Returns whether bootstrap samples exist"""
     return self._bsSamplesFlatIndex.size > 0
+
+  def write(
+    self,
+    pickleFileName: str,
+  ) -> None:
+    """Writes MomentResult to pickle file"""
+    with open(pickleFileName, "wb") as file:
+      pickle.dump(self, file)
+
+  def load(
+    self,
+    pickleFileName: str,
+  ) -> None:
+    """Loads MomentResult from pickle file"""
+    with open(pickleFileName, "rb") as file:
+      self = pickle.load(file)
 
 
 @dataclass
