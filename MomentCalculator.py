@@ -825,29 +825,9 @@ class MomentCalculator:
     return self._HPhys
 
   @property
-  def binLabels(self) -> List[str]:
-    """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>'"""
-    return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in self.binCenters.items()]
-
-  @property
-  def binLabel(self) -> str:
-    """Returns label for bin; scheme is '<binning var 0>_<bin center 0>_ ...'"""
-    return "_".join(self.binLabels)
-
-  @property
-  def binTitles(self) -> List[str]:
-    """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
-    return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in self.binCenters.items()]
-
-  @property
-  def binTitle(self) -> str:
-    """Returns TLatex expressions for kinematic bin centers; scheme is '<binning var 0> = <bin center 0> <unit>, ...'"""
-    return ", ".join(self.binTitles)
-
-  @property
   def integralFileName(self) -> str:
     """Returns file name used to save acceptance integral matrix; naming scheme is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'"""
-    return "_".join([self.integralFileBaseName, ] + self.binLabels) + ".npy"
+    return "_".join([self.integralFileBaseName, ] + binLabels(self)) + ".npy"
 
   def calculateIntegralMatrix(
     self,
@@ -991,6 +971,24 @@ class MomentCalculator:
         norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
         self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
     self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
+
+
+# functions that read bin labels and titles from MomentCalculator or MomentResult
+def binLabels(obj: Union[MomentCalculator, MomentResult]) -> List[str]:
+  """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>'"""
+  return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in obj.binCenters.items()]
+
+def binLabel(obj: Union[MomentCalculator, MomentResult]) -> str:
+  """Returns label for bin; scheme is '<binning var 0>_<bin center 0>_ ...'"""
+  return "_".join(binLabels(obj))
+
+def binTitles(obj: Union[MomentCalculator, MomentResult]) -> List[str]:
+  """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
+  return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in obj.binCenters.items()]
+
+def binTitle(obj: Union[MomentCalculator, MomentResult]) -> str:
+  """Returns TLatex expressions for kinematic bin centers; scheme is '<binning var 0> = <bin center 0> <unit>, ...'"""
+  return ", ".join(binTitles(obj))
 
 
 @dataclass
