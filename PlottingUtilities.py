@@ -24,8 +24,8 @@ import ROOT
 
 from  MomentCalculator import (
   KinematicBinningVariable,
-  MomentCalculatorsKinematicBinning,
   MomentResult,
+  MomentResultsKinematicBinning,
   MomentValue,
   QnMomentIndex,
 )
@@ -389,23 +389,23 @@ def plotMomentsInBin(
 
 
 def plotMoments1D(
-  moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
+  momentResults:     MomentResultsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
-  normalizedMoments: bool                                        = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
-  pdfFileNamePrefix: str                                         = "",    # name prefix for output files
-  histTitle:         str                                         = "",    # histogram title
-  plotLegend:        bool                                        = True,
-  legendLabels:      Tuple[Optional[str], Optional[str]]         = (None, None),  # labels for legend entries; None = use defaults
+  normalizedMoments: bool                                    = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  momentResultsTrue: Optional[MomentResultsKinematicBinning] = None,  # true moments
+  pdfFileNamePrefix: str                                     = "",    # name prefix for output files
+  histTitle:         str                                     = "",    # histogram title
+  plotLegend:        bool                                    = True,
+  legendLabels:      Tuple[Optional[str], Optional[str]]     = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
   HVals = tuple(
     MomentValueAndTruth(
-      *momentsInBin.HPhys[qnIndex],
-      truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
-    ) for binIndex, momentsInBin in enumerate(moments)
+      *HPhys[qnIndex],
+      truth = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val,
+    ) for binIndex, HPhys in enumerate(momentResults)
   )
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
               histTitle = histTitle, plotLegend = plotLegend, legendLabels = legendLabels)
@@ -745,7 +745,7 @@ def plotMomentsBootstrapDiff(
 
 
 def plotMomentsBootstrapDiff1D(
-  moments:           MomentCalculatorsKinematicBinning,  # moment values extracted from data
+  momentResults:     MomentResultsKinematicBinning,  # moment values extracted from data
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
   pdfFileNamePrefix: str = "",  # name prefix for output files
@@ -755,9 +755,9 @@ def plotMomentsBootstrapDiff1D(
   # get values of moment that corresponds to the given qnIndex in all kinematic bins
   HVals = tuple(
     MomentValueAndTruth(
-      *HData.HPhys[qnIndex],
+      *HPhys[qnIndex],
       truth = None,
-    ) for HData in moments
+    ) for HPhys in momentResults
   )
   plotMomentsBootstrapDiff(HVals, momentLabel = qnIndex.label, binning = binning, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", graphTitle = graphTitle)
 
@@ -781,19 +781,19 @@ def plotMomentsBootstrapDiffInBin(
 
 
 def plotPullsForMoment(
-  moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
+  momentResults:     MomentResultsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,  # defines specific moment
-  momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
-  pdfFileNamePrefix: str                                         = "",    # name prefix for output files
-  histTitle:         str                                         = "",    # histogram title
+  momentResultsTrue: Optional[MomentResultsKinematicBinning] = None,  # true moments
+  pdfFileNamePrefix: str                                     = "",    # name prefix for output files
+  histTitle:         str                                     = "",    # histogram title
 ) -> Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]:  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   """Plots pulls of moment with given qnIndex estimated from moment values in kinematic bins"""
   # filter out specific moment given by qnIndex
   HVals = tuple(
     MomentValueAndTruth(
-      *momentsInBin.HPhys[qnIndex],
-      truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
-    ) for binIndex, momentsInBin in enumerate(moments)
+      *HPhys[qnIndex],
+      truth = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val,
+    ) for binIndex, HPhys in enumerate(momentResults)
   )
   histStack = ROOT.THStack(f"{pdfFileNamePrefix}pulls_{qnIndex.label}", f"{histTitle};""(#it{#hat{H}} - #it{H}_{true}) / #it{#hat{#sigma}};Count")
   gaussPars: Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]] = {}  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
