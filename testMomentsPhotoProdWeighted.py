@@ -9,7 +9,18 @@ from typing import List
 
 import ROOT
 
-import MomentCalculator
+from MomentCalculator import (
+  AmplitudeSet,
+  AmplitudeValue,
+  binLabel,
+  DataSet,
+  KinematicBinningVariable,
+  MomentCalculator,
+  MomentCalculatorsKinematicBinning,
+  MomentIndices,
+  MomentResult,
+  QnWaveIndex,
+)
 from PlottingUtilities import (
   HistAxisBinning,
   plotComplexMatrix,
@@ -56,51 +67,51 @@ if __name__ == "__main__":
     # define angular distribution of signal
     partialWaveAmplitudesSig = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
       # positive-reflectivity waves
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
     ]
-    amplitudeSetSig = MomentCalculator.AmplitudeSet(partialWaveAmplitudesSig)
+    amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
     # define angular distribution of background
     partialWaveAmplitudesBkg = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
+      AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
       # positive-reflectivity waves
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
-      MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
+      AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
     ]
-    amplitudeSetBkg = MomentCalculator.AmplitudeSet(partialWaveAmplitudesBkg)
+    amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
     # formulas for detection efficiency
     # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
     # efficiencyFormula = "1"  # acc_perfect
@@ -110,7 +121,7 @@ if __name__ == "__main__":
     # calculate true moment values and generate data from partial-wave amplitudes
     with timer.timeThis("Time to generate MC data from partial waves"):
       # generate signal distribution
-      HTrueSig: MomentCalculator.MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
+      HTrueSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
       print(f"True moment values for signal:\n{HTrueSig}")
       dataPwaModelSig: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
         nmbPwaMcEventsSig, beamPolarization, amplitudeSetSig, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", nameSuffix = "Sig", regenerateData = True)
@@ -121,7 +132,7 @@ if __name__ == "__main__":
       dataPwaModelSig = ROOT.RDataFrame(treeName, fileNameSig)
       histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
       # generate background distribution
-      HTrueBkg: MomentCalculator.MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
+      HTrueBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
       print(f"True moment values for signal:\n{HTrueBkg}")
       dataPwaModelBkg: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
         nmbPwaMcEventsBkg, beamPolarization, amplitudeSetBkg, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", nameSuffix = "Bkg", regenerateData = True)
@@ -205,19 +216,19 @@ if __name__ == "__main__":
     # HTrue = HTrueBkg
 
     # setup moment calculator
-    momentIndices = MomentCalculator.MomentIndices(maxL)
-    binVarMass    = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    momentIndices = MomentIndices(maxL)
+    binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
-    momentsInBins:      List[MomentCalculator.MomentCalculator] = []
-    momentsInBinsTruth: List[MomentCalculator.MomentCalculator] = []
+    momentsInBins:      List[MomentCalculator] = []
+    momentsInBinsTruth: List[MomentCalculator] = []
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
-      dataSet = MomentCalculator.DataSet(beamPolarization, data, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsMcEvents)  #TODO nmbAcceptedPsMcEvents is not correct number to normalize integral matrix
-      momentsInBins.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
+      dataSet = DataSet(beamPolarization, data, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsMcEvents)  #TODO nmbAcceptedPsMcEvents is not correct number to normalize integral matrix
+      momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # dummy truth values; identical for all bins
-      momentsInBinsTruth.append(MomentCalculator.MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
-    moments      = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBins)
-    momentsTruth = MomentCalculator.MomentCalculatorsKinematicBinning(momentsInBinsTruth)
+      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+    moments      = MomentCalculatorsKinematicBinning(momentsInBins)
+    momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
     # calculate integral matrix
     with timer.timeThis(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads"):
@@ -228,9 +239,9 @@ if __name__ == "__main__":
       print(f"Eigenvalues of acceptance integral matrix\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
-        binLabel = "_".join(momentsInBin.binLabels)
-        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{binLabel}")
-        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{binLabel}")
+        label = binLabel(momentsInBin)
+        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{label}")
 
     # calculate moments of data generated from partial-wave amplitudes
     with timer.timeThis(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads"):
@@ -240,11 +251,11 @@ if __name__ == "__main__":
       print(f"Physical moments of data generated according to partial-wave amplitudes\n{moments[0].HPhys}")
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
-      binLabel = "_".join(moments[0].binLabels)
-      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+      label = binLabel(moments[0])
+      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
       if nmbBootstrapSamples > 0:
-        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
-        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
 
     timer.stop("Total execution time")
     print(timer.summary)

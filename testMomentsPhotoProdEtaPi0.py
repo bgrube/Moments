@@ -18,6 +18,8 @@ import ROOT
 from MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
+  binLabel,
+  binTitle,
   DataSet,
   KinematicBinningVariable,
   MomentCalculator,
@@ -180,7 +182,7 @@ if __name__ == "__main__":
         momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
 
         # plot angular distributions for mass bin
-        plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{momentsInBins[-1].binLabel}_")
+        plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_")
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
@@ -193,13 +195,13 @@ if __name__ == "__main__":
       print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {massBinning[0]} {binVarMass.unit}:\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
-        binLabel = momentsInBin.binLabel
-        # binTitle = momentsInBin.binTitle
-        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{binLabel}_",
-                          axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
+        label = binLabel(momentsInBin)
+        # title = binTitle(momentsInBin)
+        plotComplexMatrix(momentsInBin.integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{label}_",
+                          axisTitles = ("Physical Moment Index", "Measured Moment Index"), plotTitle = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
                           zRangeAbs = 1.1, zRangeImag = 0.075)
-        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{binLabel}_",
-                          axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
+        plotComplexMatrix(momentsInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{label}_",
+                          axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
                           zRangeAbs = 100, zRangeImag = 10)
 
     namePrefix = "norm" if normalizeMoments else "unnorm"
@@ -210,17 +212,17 @@ if __name__ == "__main__":
         moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
         # plot accepted phase-space moments in each kinematic bin
         for massBinIndex, momentsInBin in enumerate(moments):
-          binLabel = momentsInBin.binLabel
-          binTitle = momentsInBin.binTitle
-          print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{momentsInBin.HMeas}")
-          print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{momentsInBin.HPhys}")
+          label = binLabel(momentsInBin)
+          title = binTitle(momentsInBin)
+          print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentsInBin.HMeas}")
+          print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentsInBin.HPhys}")
           # construct true moments for phase-space data
           HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
           HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
           # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
           momentsInBin.HMeas._valsFlatIndex[0] = 0
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
-          plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPs_", plotLegend = False)
+          plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_", plotLegend = False)
           # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
         # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.QnIndices():
@@ -234,22 +236,22 @@ if __name__ == "__main__":
       moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
       # plot moments in each kinematic bin
       for massBinIndex, momentsInBin in enumerate(moments):
-        binLabel = momentsInBin.binLabel
-        binTitle = momentsInBin.binTitle
-        print(f"Measured moments of signal data for kinematic bin {binTitle}:\n{momentsInBin.HMeas}")
-        print(f"Physical moments of signal data for kinematic bin {binTitle}:\n{momentsInBin.HPhys}")
+        label = binLabel(momentsInBin)
+        title = binTitle(momentsInBin)
+        print(f"Measured moments of signal data for kinematic bin {title}:\n{momentsInBin.HMeas}")
+        print(f"Physical moments of signal data for kinematic bin {title}:\n{momentsInBin.HPhys}")
         plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, momentsTruth[massBinIndex].HPhys,
-                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_")
+                         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
         #TODO also plot correlation matrices
-        plotMomentsCovMatrices(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{binLabel}_",
-                               axisTitles = ("Physical Moment Index", "Physical Moment Index"), plotTitle = f"{binLabel}: ")
+        plotMomentsCovMatrices(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{label}_",
+                               axisTitles = ("Physical Moment Index", "Physical Moment Index"), plotTitle = f"{label}: ")
         if nmbBootstrapSamples > 0:
-          graphTitle = f"({binLabel})"
+          graphTitle = f"({label})"
           plotMomentsBootstrapDistributions1D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
-                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
+                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", histTitle = title)
           # plotMomentsBootstrapDistributions2D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
           #                                     pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
-          plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", graphTitle = binTitle)
+          plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", graphTitle = title)
 
       # plot kinematic dependences of all moments
       pullParameters: Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
