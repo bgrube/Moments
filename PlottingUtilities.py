@@ -47,15 +47,7 @@ print = functools.partial(print, flush = True)
 @dataclass
 class MomentValueAndTruth(MomentValue):
   """Stores and provides access to single moment value and provides truth value"""
-  truth:       Optional[complex] = None  # true moment value
-  _binCenters: Optional[Dict[KinematicBinningVariable, float]] = None  # dictionary with center values of kinematic variables that define bin
-
-  # accessor that guarantees existence of optional field
-  @property
-  def binCenters(self) -> Dict[KinematicBinningVariable, float]:
-    """Returns center values of kinematic variables that define bin"""
-    assert self._binCenters is not None, "self._binCenters must not be None"
-    return self._binCenters
+  truth: Optional[complex] = None  # true moment value
 
   def truthRealPart(
     self,
@@ -386,14 +378,19 @@ def plotMomentsInBin(
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for momentIndex in range(3):
-    HVals = tuple(MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
+    HVals = tuple(
+      MomentValueAndTruth(
+        *HData[qnIndex],
+        truth = HTrue[qnIndex].val if HTrue else None
+      ) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex
+    )
     plotMoments(HVals, normalizedMoments = normalizedMoments, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
                 pdfFileNamePrefix = pdfFileNamePrefix, plotLegend = plotLegend, legendLabels = legendLabels)
 
 
 def plotMoments1D(
   moments:           MomentCalculatorsKinematicBinning,  # moments extracted from data
-  qnIndex:           QnMomentIndex,  # defines specific moment
+  qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
   normalizedMoments: bool                                        = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentsTruth:      Optional[MomentCalculatorsKinematicBinning] = None,  # true moments
@@ -404,11 +401,12 @@ def plotMoments1D(
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
-  HVals = tuple(MomentValueAndTruth(
+  HVals = tuple(
+    MomentValueAndTruth(
       *momentsInBin.HPhys[qnIndex],
       truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
-      _binCenters = momentsInBin.binCenters,
-    ) for binIndex, momentsInBin in enumerate(moments))
+    ) for binIndex, momentsInBin in enumerate(moments)
+  )
   plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
               histTitle = histTitle, plotLegend = plotLegend, legendLabels = legendLabels)
 
@@ -424,7 +422,10 @@ def plotMomentsBootstrapDistributions1D(
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
   for qnIndex in HData.indices.QnIndices():
-    HVal = MomentValueAndTruth(*HData[qnIndex], HTrue[qnIndex].val if HTrue else None)  # type: ignore
+    HVal = MomentValueAndTruth(
+      *HData[qnIndex],
+      truth = HTrue[qnIndex].val if HTrue else None
+    )
     assert HVal.hasBootstrapSamples, "Bootstrap samples must be present"
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # create histogram with bootstrap samples
@@ -506,8 +507,8 @@ def plotMomentPairBootstrapDistributions2D(
   nmbBins:           int                    = 20,    # number of bins for bootstrap histograms
 ) -> None:
   """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
-  HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], HTrue[momentIndexPair[0]].val if HTrue else None),  # type: ignore
-           MomentValueAndTruth(*HData[momentIndexPair[1]], HTrue[momentIndexPair[1]].val if HTrue else None))  # type: ignore
+  HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], truth = HTrue[momentIndexPair[0]].val if HTrue else None),
+           MomentValueAndTruth(*HData[momentIndexPair[1]], truth = HTrue[momentIndexPair[1]].val if HTrue else None))
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
   assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
   # loop over combinations of real and imag parts
@@ -745,14 +746,19 @@ def plotMomentsBootstrapDiff(
 
 def plotMomentsBootstrapDiff1D(
   moments:           MomentCalculatorsKinematicBinning,  # moment values extracted from data
-  qnIndex:           QnMomentIndex,  # defines specific moment
+  qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
   pdfFileNamePrefix: str = "",  # name prefix for output files
   graphTitle:        str = "",  # graph title
 ) -> None:
   """Plots relative differences of estimates for moments and their uncertainties as a function of binning variable"""
   # get values of moment that corresponds to the given qnIndex in all kinematic bins
-  HVals = tuple(MomentValueAndTruth(*HData.HPhys[qnIndex], truth = None, _binCenters = HData.binCenters) for HData in moments)
+  HVals = tuple(
+    MomentValueAndTruth(
+      *HData.HPhys[qnIndex],
+      truth = None,
+    ) for HData in moments
+  )
   plotMomentsBootstrapDiff(HVals, momentLabel = qnIndex.label, binning = binning, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", graphTitle = graphTitle)
 
 
@@ -764,7 +770,12 @@ def plotMomentsBootstrapDiffInBin(
   """Plots relative differences of estimates and their uncertainties for all moments"""
   for momentIndex in range(3):
     # get moments with index momentIndex
-    HVals = tuple(MomentValueAndTruth(*HData[qnIndex], truth = None) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex)  # type: ignore
+    HVals = tuple(
+      MomentValueAndTruth(
+        *HData[qnIndex],
+        truth = None,
+      ) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex
+    )
     plotMomentsBootstrapDiff(HVals, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
                              pdfFileNamePrefix = pdfFileNamePrefix, graphTitle = graphTitle)
 
@@ -778,11 +789,12 @@ def plotPullsForMoment(
 ) -> Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]:  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   """Plots pulls of moment with given qnIndex estimated from moment values in kinematic bins"""
   # filter out specific moment given by qnIndex
-  HVals = tuple(MomentValueAndTruth(
+  HVals = tuple(
+    MomentValueAndTruth(
       *momentsInBin.HPhys[qnIndex],
       truth = None if momentsTruth is None else momentsTruth[binIndex].HPhys[qnIndex].val,
-      _binCenters = momentsInBin.binCenters,
-    ) for binIndex, momentsInBin in enumerate(moments))
+    ) for binIndex, momentsInBin in enumerate(moments)
+  )
   histStack = ROOT.THStack(f"{pdfFileNamePrefix}pulls_{qnIndex.label}", f"{histTitle};""(#it{#hat{H}} - #it{H}_{true}) / #it{#hat{#sigma}};Count")
   gaussPars: Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]] = {}  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   for realPart in (False, True):

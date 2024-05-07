@@ -218,7 +218,10 @@ class AmplitudeSet:
           qnIndex   = QnMomentIndex(momentIndex, L, M)
           flatIndex = momentIndices[qnIndex]
           momentsFlatIndex[flatIndex] = moment / norm
-    HTrue = MomentResult(momentIndices, label = "true")
+    HTrue = MomentResult(
+      indices = momentIndices,
+      label   = "true",
+    )
     HTrue._valsFlatIndex = momentsFlatIndex
     return HTrue
 
@@ -487,12 +490,13 @@ class AcceptanceIntegralMatrix:
 @dataclass
 class MomentValue:
   """Container class that stores and provides access to single moment value"""
-  qn:        QnMomentIndex  # quantum numbers
-  val:       complex   # moment value
-  uncertRe:  float     # uncertainty of real part
-  uncertIm:  float     # uncertainty of imaginary part
-  label:     str = ""  # label used for printing
-  bsSamples: npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
+  qn:         QnMomentIndex  # quantum numbers
+  val:        complex  # moment value
+  uncertRe:   float    # uncertainty of real part
+  uncertIm:   float    # uncertainty of imaginary part
+  binCenters: Dict[KinematicBinningVariable, float]                         = field(default_factory = dict)  # center values of variables that define kinematic bin
+  label:      str                                                           = ""  # label used for printing
+  bsSamples:  npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __iter__(self):
     """Returns iterator over shallow copy of fields"""
@@ -545,9 +549,10 @@ class MomentValue:
 class MomentResult:
   """Container class that stores and provides access to moment values"""
   indices:             MomentIndices  # index mapping and iterators
-  label:               str = ""  # label used for printing
-  nmbBootstrapSamples: int = 0   # number of bootstrap samples
-  bootstrapSeed:       int = 0   # seed for random number generator used for bootstrap samples
+  binCenters:          Dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
+  label:               str                                                                       = ""  # label used for printing
+  nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
+  bootstrapSeed:       int                                                                       = 0   # seed for random number generator used for bootstrap samples
   _valsFlatIndex:      npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
   _covReReFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
   _covImImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
@@ -571,6 +576,7 @@ class MomentResult:
       return NotImplemented
     return (
       (self.indices == other.indices)
+      and (self.binCenters == other.binCenters)
       and (self._valsFlatIndex.shape    == other._valsFlatIndex.shape   )
       and (self._covReReFlatIndex.shape == other._covReReFlatIndex.shape)
       and (self._covImImFlatIndex.shape == other._covImImFlatIndex.shape)
@@ -603,22 +609,24 @@ class MomentResult:
     if isinstance(flatIndex, slice):
       return [
         MomentValue(
-          qn        = self.indices[i],
-          val       = self._valsFlatIndex[i],
-          uncertRe  = np.sqrt(self._covReReFlatIndex[i, i]),
-          uncertIm  = np.sqrt(self._covImImFlatIndex[i, i]),
-          bsSamples = self._bsSamplesFlatIndex[i],
-          label     = self.label,
+          qn         = self.indices[i],
+          val        = self._valsFlatIndex[i],
+          uncertRe   = np.sqrt(self._covReReFlatIndex[i, i]),
+          uncertIm   = np.sqrt(self._covImImFlatIndex[i, i]),
+          binCenters = self.binCenters,
+          label      = self.label,
+          bsSamples  = self._bsSamplesFlatIndex[i],
         ) for i in range(*flatIndex.indices(len(self.indices)))
       ]
     elif isinstance(flatIndex, int):
       return MomentValue(
-        qn        = self.indices[flatIndex],
-        val       = self._valsFlatIndex[flatIndex],
-        uncertRe  = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
-        uncertIm  = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
-        bsSamples = self._bsSamplesFlatIndex[flatIndex],
-        label     = self.label,
+        qn         = self.indices[flatIndex],
+        val        = self._valsFlatIndex[flatIndex],
+        uncertRe   = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
+        uncertIm   = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
+        binCenters = self.binCenters,
+        label      = self.label,
+        bsSamples  = self._bsSamplesFlatIndex[flatIndex],
       )
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
@@ -860,7 +868,13 @@ class MomentCalculator:
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
     bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
-    self._HMeas = MomentResult(self.indices, label = "meas", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
+    self._HMeas = MomentResult(
+      indices             = self.indices,
+      binCenters          = self.binCenters,
+      label               = "meas",
+      nmbBootstrapSamples = nmbBootstrapSamples,
+      bootstrapSeed       = bootstrapSeed,
+    )
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))  # Eq. (176)
@@ -878,7 +892,13 @@ class MomentCalculator:
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
     self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
     # calculate physical moments and propagate uncertainty
-    self._HPhys = MomentResult(self.indices, label = "phys", nmbBootstrapSamples = nmbBootstrapSamples, bootstrapSeed = bootstrapSeed)
+    self._HPhys = MomentResult(
+      indices             = self.indices,
+      binCenters          = self.binCenters,
+      label               = "phys",
+      nmbBootstrapSamples = nmbBootstrapSamples,
+      bootstrapSeed       = bootstrapSeed,
+    )
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
