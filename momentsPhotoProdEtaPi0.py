@@ -291,9 +291,6 @@ if __name__ == "__main__":
       momentResultsTrue = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
       momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
       momentResultsPhys = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
-      # with open(f"{outFileDirName}/{namePrefix}_moments_phys.pkl", "rb") as file:
-      #   print(f"!!! {pickle.load(file)[0]=}")
-      # raise ValueError("stop here")
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
@@ -301,7 +298,7 @@ if __name__ == "__main__":
         HMeas = momentResultsMeas[massBinIndex]
         label = binLabel(HPhys)
         title = binTitle(HPhys)
-        print(f"True moments for kinematic bin {title}:\n{HTrue}")
+        # print(f"True moments for kinematic bin {title}:\n{HTrue}")
         print(f"Measured moments of real data for kinematic bin {title}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {title}:\n{HPhys}")
         plotMomentsInBin(
@@ -324,6 +321,42 @@ if __name__ == "__main__":
           histTitle         = qnIndex.title,
           legendLabels      = ("Moment", "PWA Result"),
         )
+        plotMoments1D(
+          momentResults     = momentResultsMeas,
+          qnIndex           = qnIndex,
+          binning           = massBinning,
+          normalizedMoments = normalizeMoments,
+          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
+          histTitle         = qnIndex.title,
+          legendLabels      = ("Moment", "PWA Result"),
+        )
+
+      # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
+      H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+      H000s = (
+        tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
+        tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
+      )
+      hists = (
+        ROOT.TH1D(f"H000Meas", "", *massBinning.astuple),
+        ROOT.TH1D(f"H000Phys", "", *massBinning.astuple),
+      )
+      for indexMeasPhys, H000 in enumerate(H000s):
+        hist = hists[indexMeasPhys]
+        for indexKinBin, HVal in enumerate(H000):
+          if (massBinning._var not in HVal.binCenters.keys()):
+            continue
+          y, yErr = HVal.realPart(True)
+          binIndex = hist.GetXaxis().FindBin(HVal.binCenters[massBinning.var])
+          hist.SetBinContent(binIndex, y)
+          hist.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
+      histRatio = hists[0].Clone("H000Ratio")
+      histRatio.Divide(hists[1])
+      canv = ROOT.TCanvas()
+      histRatio.SetMarkerStyle(ROOT.kFullCircle)
+      histRatio.SetMarkerSize(0.75)
+      histRatio.Draw("PEX0")
+      canv.SaveAs(f"{outFileDirName}/{histRatio.GetName()}.pdf")
 
     timer.stop("Total execution time")
     print(timer.summary)
