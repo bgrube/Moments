@@ -148,11 +148,11 @@ if __name__ == "__main__":
 
     # set parameters of analysis
     treeName                 = "etaPi0"
-    beamPolAngleLabel        = "000"
+    # beamPolAngleLabel        = "000"
     # beamPolAngleLabel        = "045"
     # beamPolAngleLabel        = "090"
     # beamPolAngleLabel        = "135"
-    # beamPolAngleLabel        = "total"
+    beamPolAngleLabel        = "total"
     fileNamePattern          = "*" if beamPolAngleLabel == "total" else beamPolAngleLabel
     dataFileName             = f"./dataPhotoProdEtaPi0/data_{fileNamePattern}_flat.root"
     psAccFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_acc_{fileNamePattern}_flat.root"
@@ -328,7 +328,7 @@ if __name__ == "__main__":
           normalizedMoments = normalizeMoments,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
           histTitle         = qnIndex.title,
-          legendLabels      = ("Moment", "PWA Result"),
+          plotLegend        = False,
         )
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
@@ -355,8 +355,24 @@ if __name__ == "__main__":
       canv = ROOT.TCanvas()
       histRatio.SetMarkerStyle(ROOT.kFullCircle)
       histRatio.SetMarkerSize(0.75)
+      histRatio.SetXTitle(massBinning.axisTitle)
+      histRatio.SetYTitle("#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
       histRatio.Draw("PEX0")
       canv.SaveAs(f"{outFileDirName}/{histRatio.GetName()}.pdf")
+      # overlay H_0^meas(0, 0) and accepted intensity distribution
+      histIntMeas = data.Histo1D(
+        ROOT.RDF.TH1DModel("intensity_meas", f";{massBinning.axisTitle};Events", *massBinning.astuple), "mass", "eventWeight").GetValue()
+      for binIndex, HMeas in enumerate(H000s[0]):
+        HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)
+      plotMoments(
+        HVals             = H000s[0],
+        binning           = massBinning,
+        normalizedMoments = normalizeMoments,
+        momentLabel       = H000Index.label,
+        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
+        histTitle         = H000Index.title,
+        legendLabels      = ("Measured Moment", "Measured Intensity"),
+      )
 
     timer.stop("Total execution time")
     print(timer.summary)
