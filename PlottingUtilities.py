@@ -894,6 +894,7 @@ def plotAngularDistr(
   """Plot 2D and 3D angular distributions of signal and phase-space data"""
   title2D = ";cos#it{#theta};#it{#phi} [deg]"
   title3D = title2D + ";#it{#Phi} [deg]"
+  #TODO apply weights if column is in the dataframe
   hists = [
     dataSignalAcc.Histo3D(
       ROOT.RDF.TH3DModel("signalAcc_3D", title3D, nmbBins3DSig, -1, +1, nmbBins3DSig, -180, +180, nmbBins3DSig, -180, +180), "cosTheta", "phiDeg", "PhiDeg"),
