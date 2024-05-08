@@ -253,7 +253,7 @@ def plotMoments(
     # create histogram with moments from data
     histData = ROOT.TH1D(f"{legendLabels[0] or 'Data'} {legendEntrySuffix}", "", *histBinning.astuple)
     for index, HVal in enumerate(HVals):
-      if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
+      if (binning is not None) and (binning._var not in HVal.binCenters.keys()):  #TODO why not use .var?
         continue
       y, yErr = HVal.realPart(momentPart == "Re")
       binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
