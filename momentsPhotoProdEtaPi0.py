@@ -174,6 +174,8 @@ if __name__ == "__main__":
     # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.28, maxVal = 1.32, _var = binVarMass)
     nmbOpenMpThreads         = ROOT.getNmbOpenMpThreads()
 
+    namePrefix = "norm" if normalizeMoments else "unnorm"
+
     # load all signal and phase-space data
     print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
     data = ROOT.RDataFrame(treeName, dataFileName)
@@ -250,7 +252,6 @@ if __name__ == "__main__":
                             axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
                             zRangeAbs = 115, zRangeImag = 30)
 
-    namePrefix = "norm" if normalizeMoments else "unnorm"
     if calcAccPsMoments:
       # calculate moments of accepted phase-space data
       with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
@@ -342,14 +343,14 @@ if __name__ == "__main__":
         ROOT.TH1D(f"H000Phys", "", *massBinning.astuple),
       )
       for indexMeasPhys, H000 in enumerate(H000s):
-        hist = hists[indexMeasPhys]
+        histIntensity = hists[indexMeasPhys]
         for indexKinBin, HVal in enumerate(H000):
           if (massBinning._var not in HVal.binCenters.keys()):
             continue
           y, yErr = HVal.realPart(True)
-          binIndex = hist.GetXaxis().FindBin(HVal.binCenters[massBinning.var])
-          hist.SetBinContent(binIndex, y)
-          hist.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
+          binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[massBinning.var])
+          histIntensity.SetBinContent(binIndex, y)
+          histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
       histRatio = hists[0].Clone("H000Ratio")
       histRatio.Divide(hists[1])
       canv = ROOT.TCanvas()
@@ -359,7 +360,8 @@ if __name__ == "__main__":
       histRatio.SetYTitle("#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
       histRatio.Draw("PEX0")
       canv.SaveAs(f"{outFileDirName}/{histRatio.GetName()}.pdf")
-      # overlay H_0^meas(0, 0) and accepted intensity distribution
+
+      # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
       histIntMeas = data.Histo1D(
         ROOT.RDF.TH1DModel("intensity_meas", f";{massBinning.axisTitle};Events", *massBinning.astuple), "mass", "eventWeight").GetValue()
       for binIndex, HMeas in enumerate(H000s[0]):
@@ -372,6 +374,66 @@ if __name__ == "__main__":
         pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
         histTitle         = H000Index.title,
         legendLabels      = ("Measured Moment", "Measured Intensity"),
+      )
+
+      # plot ratio of measured and produced intensity; estimates efficiency
+      plotFile = ROOT.TFile.Open(f"{fitResultPlotDir}/etapi_plot_S0+-_S0++_D2--_D1--_D0+-_D1+-_D2+-_D2-+_D1-+_D0++_D1++_D2++_pD2--_pD1--_pD0+-_pD1+-_pD2+-_pD2-+_pD1-+_pD0++_pD1++_pD2++.root", "READ")
+      # sum up intensity distributions for all beam polarization directions
+      angleLabel = "EtaPi0_000" if beamPolAngleLabel == "total" else f"EtaPi0_{beamPolAngleLabel}"
+      histsIntensity = [None, None]  # 0 = acc, 1 = gen
+      for angleLabelHist in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "total" else [angleLabel]:
+        for labelIndex, label in enumerate(("acc", "gen")):
+          histName = f"{angleLabelHist}_Metapi_40MeVBin{label}"
+          if histsIntensity[labelIndex] is None:
+            print(f"Reading histogram '{histName}'")
+            histsIntensity[labelIndex] = plotFile.Get(histName)
+          else:
+            print(f"Adding histogram '{histName}'")
+            histsIntensity[labelIndex].Add(plotFile.Get(histName))
+      histRatio = histsIntensity[0].Clone("PwaIntRatio")
+      histRatio.Divide(histsIntensity[1])
+      canv = ROOT.TCanvas()
+      histRatio.SetMarkerStyle(ROOT.kFullCircle)
+      histRatio.SetMarkerSize(0.75)
+      histRatio.SetXTitle(massBinning.axisTitle)
+      histRatio.GetXaxis().SetRangeUser(1.04, 1.72)
+      histRatio.SetYTitle("Ratio of Measured and Produced Intensity")
+      histRatio.Draw("PEX0")
+      canv.SaveAs(f"{outFileDirName}/{histRatio.GetName()}.pdf")
+      for histIntensity in histsIntensity:
+        canv = ROOT.TCanvas()
+        histIntensity.SetMarkerStyle(ROOT.kFullCircle)
+        histIntensity.SetMarkerSize(0.75)
+        histIntensity.SetXTitle(massBinning.axisTitle)
+        histIntensity.GetXaxis().SetRangeUser(1.04, 1.72)
+        histIntensity.SetYTitle("Intensity")
+        histIntensity.Draw("PEX0")
+        canv.SaveAs(f"{outFileDirName}/{histIntensity.GetName()}.pdf")
+
+      # overlay intensity from partial-wave amplitudes and the total intensity from AmpTools; must be identical
+      HVals = []
+      for binIndex, HTrue in enumerate(momentResultsTrue):
+        H000True = HTrue[H000Index]
+        #FIXME binCenters is not set for momentResultsTrue
+        # print(f"??? {H000True=}")
+        HVal = MomentValueAndTruth(*H000True)
+        HVal.binCenters = H000s[0][binIndex].binCenters  # workaround
+        hist = histsIntensity[1]
+        histBinIndex = hist.FindBin(HVal.binCenters[massBinning.var])
+        HVal.label    = "phys"
+        HVal.val      = hist.GetBinContent(histBinIndex)
+        HVal.uncertRe = hist.GetBinError  (histBinIndex)
+        HVal.truth    = H000True.val
+        print(f"!!! {HVal=}")
+        HVals.append(HVal)
+      plotMoments(
+        HVals             = HVals,
+        binning           = massBinning,
+        normalizedMoments = normalizeMoments,
+        momentLabel       = H000Index.label,
+        pdfFileNamePrefix = f"{outFileDirName}/amptools_intensity_",
+        histTitle         = H000Index.title,
+        legendLabels      = ("AmpTools Intensity", "My Intensity"),
       )
 
     timer.stop("Total execution time")
