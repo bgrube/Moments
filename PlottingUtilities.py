@@ -281,6 +281,7 @@ def plotMoments(
       histStack.Add(histTrue, "PE")
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
+    histStack.GetXaxis().LabelsOption("V")
     # adjust y-range
     canv.Update()
     actualYRange = canv.GetUymax() - canv.GetUymin()
@@ -342,6 +343,7 @@ def plotMoments(
         if binning is None:
           for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
             histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
+        histResidual.LabelsOption("V", "X")
         histResidual.SetMarkerColor(ROOT.kBlue + 1)
         histResidual.SetLineColor(ROOT.kBlue + 1)
         histResidual.SetLineWidth(2)
@@ -720,6 +722,7 @@ def plotMomentsBootstrapDiff(
     if binning is None:
       for binIndex, HVal in enumerate(HVals):
         xAxis.SetBinLabel(binIndex + 1, HVal.qn.title)
+    histDummy.LabelsOption("V", "X")
     histDummy.SetTitle(graph.GetTitle())
     histDummy.SetXTitle(graph.GetXaxis().GetTitle())
     histDummy.SetYTitle(graph.GetYaxis().GetTitle())
@@ -867,6 +870,7 @@ def plotPullParameters(
     histStack.SetMinimum(-1)
     histStack.SetMaximum(+2)
     histStack.Draw("NOSTACK,E1P")
+    histStack.GetXaxis().LabelsOption("V")
     # draw legend
     canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
     canv.Update()
