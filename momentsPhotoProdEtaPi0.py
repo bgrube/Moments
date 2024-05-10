@@ -176,17 +176,6 @@ if __name__ == "__main__":
 
     namePrefix = "norm" if normalizeMoments else "unnorm"
 
-    # load all signal and phase-space data
-    print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
-    data = ROOT.RDataFrame(treeName, dataFileName)
-    print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
-    dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
-    print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
-    dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
-    # plot total angular distributions
-    if plotAngularDistributions:
-      plotAngularDistr(dataPsAcc, dataPsGen, data, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
-
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
     momentsInBins:    List[MomentCalculator] = []
@@ -288,6 +277,17 @@ if __name__ == "__main__":
 
     #TODO move into separate plotting script
     with timer.timeThis(f"Time to plot moments of real data"):
+      # load all signal and phase-space data
+      print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
+      data = ROOT.RDataFrame(treeName, dataFileName)
+      print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
+      dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
+      print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
+      dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
+      # plot total angular distributions
+      if plotAngularDistributions:
+        plotAngularDistr(dataPsAcc, dataPsGen, data, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
+
       # load moment results from file
       momentResultsTrue = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
       momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
