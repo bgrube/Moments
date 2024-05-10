@@ -191,15 +191,17 @@ if __name__ == "__main__":
         binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
         print(f"Loading real data from tree '{treeName}' in file '{dataFileName}' and applying filter {binMassRangeFilter}")
         dataInBin = ROOT.RDataFrame(treeName, dataFileName).Filter(binMassRangeFilter)
-        nmbDataEvents = dataInBin.Count().GetValue()
-        print(f"Loaded {nmbDataEvents} data events")
+        print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
         print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
         dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
-        nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
         print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
         dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
         nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
-        print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
+        assert nmbPsGenEvents[-1] == dataPsGenInBin.Sum("eventWeight").GetValue(), f"Event number mismatch: {nmbPsGenEvents[-1]=} vs. {dataPsGenInBin.Sum('eventWeight').GetValue()=}"
+        nmbPsAccEvents = dataPsAccInBin.Sum("eventWeight").GetValue()
+        print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}; "
+              f"number accepted = {dataPsAccInBin.Count().GetValue()}, "
+              f"{nmbPsAccEvents} events after background subtraction"
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
         # calculate moments from PWA fits result
