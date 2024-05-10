@@ -309,6 +309,12 @@ if __name__ == "__main__":
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "PWA Result"),
         )
+        plotMomentsInBin(
+          HData             = HMeas,
+          normalizedMoments = normalizeMoments,
+          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
+          plotLegend        = False,
+        )
 
       # plot kinematic dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.QnIndices():
