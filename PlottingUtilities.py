@@ -289,7 +289,7 @@ def plotMoments(
     histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
     histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     if plotLegend:
-      canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+      canv.BuildLegend(0.7, 0.85, 0.99, 0.99)
     # adjust style of automatic zero line
     # does not work
     # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
@@ -487,7 +487,7 @@ def plotMomentsBootstrapDistributions1D(
         lineTrue.SetLineStyle(ROOT.kDashed)
         lineTrue.Draw()
       # add legend
-      legend = ROOT.TLegend(0.7, 0.75, 0.99, 0.99)
+      legend = ROOT.TLegend(0.7, 0.85, 0.99, 0.99)
       legend.AddEntry(histBs, "Bootstrap samples", "LE")
       entry = legend.AddEntry(markerBs, "Bootstrap estimate", "LP")
       entry.SetLineColor(ROOT.kBlue + 1)
