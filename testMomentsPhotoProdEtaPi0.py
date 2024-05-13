@@ -250,7 +250,7 @@ if __name__ == "__main__":
           plotMomentsBootstrapDistributions1D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
                                               pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", histTitle = title)
           # plotMomentsBootstrapDistributions2D(momentsInBin.HPhys, momentsTruth[massBinIndex].HPhys,
-          #                                     pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_", histTitle = binTitle)
+          #                                     pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", histTitle = title)
           plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", graphTitle = title)
 
       # plot kinematic dependences of all moments
