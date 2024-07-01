@@ -12,17 +12,15 @@
 	// note that png export does write alpha channel
 	// convert, for example, using
 	// mutool draw -A 8 -r <dpi, e.g. 600> -c rgba -o <out.png> <in.pdf>
-	TColor* newColor = new TColor((Float_t)1, 1, 1, 1);
-	newColor->SetName("white_background");
-	int fillColor = newColor->GetNumber();  // cannot use kWhite here
+	TColor* newColor = new TColor(TColor::GetFreeColorIndex(), 1, 1, 1, "white_background", 1);
+	int fillColor = newColor->GetNumber();  // if type is const int, ROOT 6.28+ crashes with 'cling::InvalidDerefException'
 	gStyle->SetFillColor      (fillColor);
 	gStyle->SetFrameFillColor (fillColor);
 	gStyle->SetTitleColor     (fillColor);
 	gStyle->SetTitleFillColor (fillColor);
 	gStyle->SetStatColor      (fillColor);
 	gStyle->SetLegendFillColor(fillColor);
-	newColor = new TColor((Float_t)1, 1, 1, 0);  // cannot use TColor::GetColorTransparent as it checks for existing colors
-	newColor->SetName("transparent_background");
+	newColor = new TColor(TColor::GetFreeColorIndex(), 1, 1, 1, "transparent_background", 0);
 	int fullyTransparentColor = newColor->GetNumber();
 	gStyle->SetPadColor       (fullyTransparentColor);
 	gStyle->SetCanvasColor    (fullyTransparentColor);
