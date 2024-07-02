@@ -176,7 +176,7 @@ if __name__ == "__main__":
         print(f"True moment values:\n{HTrue}")
 
         # setup moment calculators for data
-        dataSet = DataSet(beamPolarization, dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1])
+        dataSet = DataSet(dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1], polarization = beamPolarization)
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
         # setup moment calculator to hold true values
         momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
