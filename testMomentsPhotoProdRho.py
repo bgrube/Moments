@@ -232,8 +232,8 @@ if __name__ == "__main__":
 
     # setup moment calculator
     momentIndices = MomentCalculator.MomentIndices(maxL)
-    dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents)
-    # dataSet = MomentCalculator.DataSet(beamPolarization, dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents)
+    dataSet = MomentCalculator.DataSet(dataSignal, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsEvents, polarization = beamPolarization)
+    # dataSet = MomentCalculator.DataSet(dataSignal, phaseSpaceData = None, nmbGenEvents = nmbAcceptedPsEvents, polarization = beamPolarization)
     binVarMass = MomentCalculator.KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     momentCalculator = MomentCalculator.MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : 0.77})
 

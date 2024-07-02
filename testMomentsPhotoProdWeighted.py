@@ -223,7 +223,7 @@ if __name__ == "__main__":
     momentsInBinsTruth: List[MomentCalculator] = []
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
-      dataSet = DataSet(beamPolarization, data, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsMcEvents)  #TODO nmbAcceptedPsMcEvents is not correct number to normalize integral matrix
+      dataSet = DataSet(data, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbAcceptedPsMcEvents, polarization = beamPolarization)  #TODO nmbAcceptedPsMcEvents is not correct number to normalize integral matrix
       momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # dummy truth values; identical for all bins
       momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
