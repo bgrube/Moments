@@ -266,7 +266,7 @@ def generateDataSphHarmLC(
 
 
 # C++ implementation of RDataFrame custom action that calculates covariance between two columns
-ROOT.gROOT.LoadMacro("./Covariance.C++")
+ROOT.gROOT.LoadMacro("./Covariance.C+")
 
 def calculateSphHarmMoments(
   dataFrame:         Any,
@@ -329,7 +329,6 @@ def calculateSphHarmMoments(
   # print(f"V_meas_ReIm =\n{V_meas_ReIm}")
   # print(f"vs.\n{V_meas_ReIm_np}")
   # print(f"ratio\n{np.real_if_close(V_meas_ReIm / V_meas_ReIm_np)}")
-  # raise ValueError
   # V_meas_Hermit = V_meas_ReRe + V_meas_ImIm + 1j * (V_meas_ReIm.T - V_meas_ReIm)  # Hermitian covariance matrix
   # V_meas_pseudo = V_meas_ReRe - V_meas_ImIm + 1j * (V_meas_ReIm.T + V_meas_ReIm)  # pseudo-covariance matrix
   # V_meas_aug = np.block([
@@ -364,26 +363,26 @@ def calculateSphHarmMoments(
     print(f"I_acc eigenvalues = {eigenVals}")
     # print(f"I_acc eigenvectors = {eigenVecs}")
     # print(f"I_acc determinant = {np.linalg.det(I_acc)}")
-    plt.figure().colorbar(plt.matshow(I_acc.real))
-    plt.savefig(f"{pdfFileNamePrefix}I_acc_real.pdf")
-    plt.figure().colorbar(plt.matshow(I_acc.imag))
-    plt.savefig(f"{pdfFileNamePrefix}I_acc_imag.pdf")
-    plt.figure().colorbar(plt.matshow(np.absolute(I_acc)))
-    plt.savefig(f"{pdfFileNamePrefix}I_acc_abs.pdf")
-    plt.figure().colorbar(plt.matshow(np.angle(I_acc)))
-    plt.savefig(f"{pdfFileNamePrefix}I_acc_arg.pdf")
+    # plot integral matrix and its inverse
     I_inv = np.linalg.inv(I_acc)
     # eigenVals, eigenVecs = np.linalg.eig(I_inv)
     # print(f"I^-1 eigenvalues = {eigenVals}")
     print(f"I^-1 = \n{np.array2string(I_inv, precision = 3, suppress_small = True, max_line_width = 150)}")
-    plt.figure().colorbar(plt.matshow(I_inv.real))
-    plt.savefig(f"{pdfFileNamePrefix}I_inv_real.pdf")
-    plt.figure().colorbar(plt.matshow(I_inv.imag))
-    plt.savefig(f"{pdfFileNamePrefix}I_inv_imag.pdf")
-    plt.figure().colorbar(plt.matshow(np.absolute(I_inv)))
-    plt.savefig(f"{pdfFileNamePrefix}I_inv_abs.pdf")
-    plt.figure().colorbar(plt.matshow(np.angle(I_inv)))
-    plt.savefig(f"{pdfFileNamePrefix}I_inv_arg.pdf")
+    matricesToPlot = [
+      (I_acc.real,         f"{pdfFileNamePrefix}I_acc_real.pdf"),
+      (I_acc.imag,         f"{pdfFileNamePrefix}I_acc_imag.pdf"),
+      (np.absolute(I_acc), f"{pdfFileNamePrefix}I_acc_abs.pdf"),
+      (np.angle(I_acc),    f"{pdfFileNamePrefix}I_acc_arg.pdf"),
+      (I_inv.real,         f"{pdfFileNamePrefix}I_inv_real.pdf"),
+      (I_inv.imag,         f"{pdfFileNamePrefix}I_inv_imag.pdf"),
+      (np.absolute(I_inv), f"{pdfFileNamePrefix}I_inv_abs.pdf"),
+      (np.angle(I_inv),    f"{pdfFileNamePrefix}I_inv_arg.pdf"),
+    ]
+    for matrix, pdfFileName in matricesToPlot:
+      fig, ax = plt.subplots()
+      fig.colorbar(ax.matshow(matrix), ax = ax)
+      plt.savefig(pdfFileName)
+    plt.close("all")
     H_phys = I_inv @ H_meas
     # linear uncertainty propagation
     J = I_inv  # Jacobian of efficiency correction
@@ -654,7 +653,6 @@ def calcIntegralMatrix(
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()
           # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
   # phaseSpaceDataFrame.Snapshot("foo", "foo.root", ["I_0_0_1_0", "I_1_0_0_0", "Re_Y_0_0", "Re_Y_1_0", "Y_0_0", "Y_1_0"])
-  # raise ValueError
   return I
 
 
@@ -676,11 +674,11 @@ if __name__ == "__main__":
     nmbEvents         = 1000
     nmbMcEvents       = 1000000
     # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
-    efficiencyFormula = "1"  # acc_perfect
+    # efficiencyFormula = "1"  # acc_perfect
     # efficiencyFormula = "2 - x * x"  # acc_1
     # efficiencyFormula = "1 - x * x"  # acc_2
     # efficiencyFormula = "180 * 180 - y * y"  # acc_3
-    # efficiencyFormula = "0.25 + (1 - x * x) * (180 * 180 - y * y) / (180 * 180)"  # acc_4
+    efficiencyFormula = "0.25 + (1 - x * x) * (1 - y * y / (180 * 180))"  # acc_4
     # efficiencyFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # Mathematica: PiecewiseExpand[BernsteinBasis[4,3,x]]
     # efficiencyFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
 

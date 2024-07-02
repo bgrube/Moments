@@ -2,7 +2,10 @@
 // from https://root-forum.cern.ch/t/help-to-extend-covariance-functor-for-rdataframe-functionality/45335
 // see also https://root.cern/doc/master/df018__customActions_8C.html
 
+#include <array>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "ROOT/RDataFrame.hxx"
 
