@@ -117,7 +117,7 @@ if __name__ == "__main__":
     # massBinning          = HistAxisBinning(nmbBins = 28, minVal = 0.88, maxVal = 2.00, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
-    # study with constant amplitude values taken form bin 10 at 1.30 GeV
+    # study with constant amplitude values taken from bin 10 at 1.30 GeV
     massBinning          = HistAxisBinning(nmbBins = 25, minVal = 0.92, maxVal = 1.92, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 0.88 , maxVal = 0.92, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
@@ -256,12 +256,31 @@ if __name__ == "__main__":
       # plot kinematic dependences of all moments
       pullParameters: Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
       for qnIndex in momentIndices.QnIndices():
-        plotMoments1D(moments, qnIndex, massBinning, normalizeMoments, momentsTruth,
-                      pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
+        plotMoments1D(
+          momentResults     = moments.momentResultsPhys,
+          qnIndex           = qnIndex,
+          binning           = massBinning,
+          normalizedMoments = normalizeMoments,
+          momentResultsTrue = momentsTruth.momentResultsPhys,
+          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
+          histTitle         = qnIndex.title,
+        )
         if plotPulls:
-          pullParameters[qnIndex] = plotPullsForMoment(moments, qnIndex, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", histTitle = qnIndex.title)
+          pullParameters[qnIndex] = plotPullsForMoment(
+            momentResults     = moments.momentResultsPhys,
+            qnIndex           = qnIndex,
+            momentResultsTrue = momentsTruth.momentResultsPhys,
+            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
+            histTitle         = qnIndex.title,
+          )
         if nmbBootstrapSamples > 0:
-          plotMomentsBootstrapDiff1D(moments, qnIndex, massBinning, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_", graphTitle = qnIndex.title)
+          plotMomentsBootstrapDiff1D(
+            momentResults     = moments.momentResultsPhys,
+            qnIndex           = qnIndex,
+            binning           = massBinning,
+            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
+            graphTitle        = qnIndex.title,
+          )
       if plotPulls:
         plotPullParameters(pullParameters, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_")
 
@@ -274,8 +293,15 @@ if __name__ == "__main__":
               f" vs. Truth = {HTruth.val.real} +- {HTruth.uncertRe}"
               f" vs. # gen = {nmbSignalGenEvents[binIndex]}")
         momentsTruth[binIndex].HPhys._valsFlatIndex[0] = complex(nmbSignalGenEvents[binIndex])
-      plotMoments1D(moments, H000Index, massBinning, normalizeMoments, momentsTruth,
-                    pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_gen_", histTitle = H000Index.title)
+      plotMoments1D(
+        momentResults     = moments.momentResultsPhys,
+        qnIndex           = H000Index,
+        binning           = massBinning,
+        normalizedMoments = normalizeMoments,
+        momentResultsTrue = momentsTruth.momentResultsPhys,
+        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_gen_",
+        histTitle         = H000Index.title,
+      )
 
     timer.stop("Total execution time")
     print(timer.summary)
