@@ -313,7 +313,15 @@ if __name__ == "__main__":
       plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h{label}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.QnIndices():
-      plotMoments1D(moments, qnIndex, massBinning, momentsTruth, pdfFileNamePrefix = f"{outFileDirName}/h", histTitle = qnIndex.title)
+      plotMoments1D(
+        momentResults     = moments.momentResultsPhys,
+        qnIndex           = qnIndex,
+        binning           = massBinning,
+        normalizedMoments = True,
+        momentResultsTrue = momentsTruth.momentResultsPhys,
+        pdfFileNamePrefix = f"{outFileDirName}/h",
+        histTitle         = qnIndex.title,
+      )
     t.stop()
 
     timer.stop("Total execution time")
