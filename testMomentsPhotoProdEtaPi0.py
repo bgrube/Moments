@@ -94,7 +94,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of analysis
-    outFileDirName       = Utilities.makeDirPath("./plotsMcPhotoProdEtaPi0")
+    outFileDirName       = Utilities.makeDirPath("./plotsTestPhotoProdEtaPi0")
     treeName             = "etaPi0"
     signalAccFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_acc_flat.root"
     signalGenFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_gen_flat.root"

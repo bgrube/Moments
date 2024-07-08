@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # set parameters of test case
     # !Note! the SDMEs and hence the partial-wave amplitudes are defined in the rho helicity frame
     #        the rho decay angles need to be calculated in this frame
-    outFileDirName      = Utilities.makeDirPath("./plotsPhotoProdRho")
+    outFileDirName      = Utilities.makeDirPath("./plotsTestPhotoProdRho")
     treeName            = "ntFSGlueX_100_110_angles"
     signalFileName      = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.signal.root.angles"
     nmbSignalEvents     = 218240

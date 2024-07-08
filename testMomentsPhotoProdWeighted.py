@@ -51,7 +51,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName        = Utilities.makeDirPath("./plotsPhotoProdWeighted")
+    outFileDirName        = Utilities.makeDirPath("./plotsTestPhotoProdWeighted")
     nmbPwaMcEventsSig     = 1000
     nmbPwaMcEventsBkg     = 1000
     # nmbPwaMcEventsSig     = 10000000

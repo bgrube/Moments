@@ -199,7 +199,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName   = Utilities.makeDirPath("./plotsPhotoProd")
+    outFileDirName   = Utilities.makeDirPath("./plotsTestPhotoProd")
     nmbPwaMcEvents   = 1000
     nmbPsMcEvents    = 1000000
     beamPolarization = 1.0
