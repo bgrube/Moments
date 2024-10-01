@@ -20,15 +20,10 @@ import pickle
 from typing import (
   Any,
   ClassVar,
-  Dict,
   Generator,
   Iterator,
-  List,
-  Optional,
   overload,
   Sequence,
-  Tuple,
-  Union,
 )
 #TODO switch from int for indices to SupportsIndex; requires Python 3.8+
 
@@ -70,7 +65,7 @@ class AmplitudeSet:
   """Container class that stores partial-wave amplitudes, makes them accessible by quantum numbers, and calculates spin-density matrix elements and moments"""
   amps:      InitVar[Sequence[AmplitudeValue]]
   tolerance: float = 1e-15  # used when checking whether that moments are either real-valued or purely imaginary
-  _amps:     Tuple[Dict[Tuple[int, int], complex], Dict[Tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
+  _amps:     tuple[dict[tuple[int, int], complex], dict[tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
 
   def __post_init__(
     self,
@@ -102,11 +97,11 @@ class AmplitudeSet:
 
   def amplitudes(
     self,
-    onlyRefl: Optional[int] = None,  # if set to +-1 only waves with the corresponding reflectivities
+    onlyRefl: int | None = None,  # if set to +-1 only waves with the corresponding reflectivities
   ) -> Generator[AmplitudeValue, None, None]:
     """Returns all amplitude values up maximum spin; optionally filtered by reflectivity"""
     assert onlyRefl is None or abs(onlyRefl) == 1, f"Invalid reflectivity value f{onlyRefl}; expect +1, -1, or None"
-    reflIndices: Tuple[int, ...] = (0, 1)
+    reflIndices: tuple[int, ...] = (0, 1)
     if onlyRefl == +1:
       reflIndices = (0, )
     elif onlyRefl == -1:
@@ -133,13 +128,13 @@ class AmplitudeSet:
     l2:   int,  # l'
     m1:   int,  # m
     m2:   int,  # m'
-  ) -> Tuple[complex, complex, complex]:
+  ) -> tuple[complex, complex, complex]:
     """Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
     qn1     = QnWaveIndex(refl, l1,  m1)
     qn1NegM = QnWaveIndex(refl, l1, -m1)
     qn2     = QnWaveIndex(refl, l2,  m2)
     qn2NegM = QnWaveIndex(refl, l2, -m2)
-    rhos: List[complex] = 3 * [0 + 0j]
+    rhos: list[complex] = 3 * [0 + 0j]
     rhos[0] =                    (           self[qn1    ].val * self[qn2].val.conjugate() + (-1)**(m1 - m2) * self[qn1NegM].val * self[qn2NegM].val.conjugate())  # Eq. (150)
     rhos[1] =            -refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() + (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (151)
     rhos[2] = -(0 + 1j) * refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() - (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (152)
@@ -150,12 +145,12 @@ class AmplitudeSet:
     L: int,  # angular momentum
     M: int,  # projection quantum number of L
     printMoments: bool = False,
-  ) -> Tuple[complex, complex, complex]:
+  ) -> tuple[complex, complex, complex]:
     """Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
     #TODO this function seems to be extremely slow; check
     # Eqs. (154) to (156) assuming that rank is 1
-    moments:        List[complex] = 3 * [0 + 0j]
-    momentFormulas: List[str]     = [f"H_{i}({L}, {M}) =" for i in range(3)]
+    moments:        list[complex] = 3 * [0 + 0j]
+    momentFormulas: list[str]     = [f"H_{i}({L}, {M}) =" for i in range(3)]
     for refl in (-1, +1):
       for amp1 in self.amplitudes(onlyRefl = refl):
         l1 = amp1.qn.l
@@ -169,7 +164,7 @@ class AmplitudeSet:
           )
           if term == 0:  # unphysical Clebsch-Gordan
             continue
-          rhos: Tuple[complex, complex, complex] = self.photoProdSpinDensElements(refl, l1, l2, m1, m2)
+          rhos: tuple[complex, complex, complex] = self.photoProdSpinDensElements(refl, l1, l2, m1, m2)
           moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
           moments[1] += -term * rhos[1]  # H_1; Eq. (125)
           moments[2] += -term * rhos[2]  # H_2; Eq. (125)
@@ -187,8 +182,8 @@ class AmplitudeSet:
   def photoProdMomentSet(
     self,
     maxL:         int,  # maximum L quantum number of moments
-    normalize:    Union[bool, int] = True,  # if set to true, moment values are normalized to H_0(0, 0)
-                                            # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
+    normalize:    bool | int = True,  # if set to true, moment values are normalized to H_0(0, 0)
+                                      # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
     printMoments: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
@@ -198,7 +193,7 @@ class AmplitudeSet:
     for L in range(maxL + 1):
       for M in range(L + 1):
         # get all moments for given (L, M)
-        moments: List[complex] = list(self.photoProdMoments(L, M, printMoments))
+        moments: list[complex] = list(self.photoProdMoments(L, M, printMoments))
         # ensure that moments are either real-valued or purely imaginary
         assert (abs(moments[0].imag) < self.tolerance) and (abs(moments[1].imag) < self.tolerance) and (abs(moments[2].real) < self.tolerance), (
           f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
@@ -282,8 +277,8 @@ class MomentIndices:
 
   def __getitem__(
     self,
-    subscript: Union[int, QnMomentIndex],
-  ) -> Union[QnMomentIndex, int]:
+    subscript: int | QnMomentIndex,
+  ) -> QnMomentIndex | int:
     """Returns QnIndex that correspond to given flat index and vice versa"""
     if isinstance(subscript, int):
       return self._QnIndexByFlatIndex[subscript]
@@ -307,9 +302,9 @@ class MomentIndices:
 class DataSet:
   """Container class that stores information about a single dataset"""
   data:           ROOT.RDataFrame  # data from which to calculate moments
-  phaseSpaceData: Optional[ROOT.RDataFrame]  # (accepted) phase-space data; None corresponds to perfect acceptance
+  phaseSpaceData: ROOT.RDataFrame | None  # (accepted) phase-space data; None corresponds to perfect acceptance
   nmbGenEvents:   int  # number of generated events
-  polarization:   Optional[float] = None  # photon-beam polarization; None = read from tree
+  polarization:   float | None = None  # photon-beam polarization; None = read from tree
 
 
 @dataclass(frozen = True)  # immutable
@@ -318,7 +313,7 @@ class KinematicBinningVariable:
   name:      str  # name of variable; used e.g. for filenames
   label:     str  # TLatex expression used for plotting
   unit:      str  # TLatex expression used for plotting
-  nmbDigits: Optional[int] = None  # number of digits after decimal point to use when converting value to string
+  nmbDigits: int | None = None  # number of digits after decimal point to use when converting value to string
 
   @property
   def axisTitle(self) -> str:
@@ -331,7 +326,7 @@ class AcceptanceIntegralMatrix:
   """Container class that calculates, stores, and provides access to acceptance integral matrix"""
   indices:     MomentIndices  # index mapping and iterators
   dataSet:     DataSet        # info on data samples
-  _IFlatIndex: Optional[npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]] = None  # acceptance integral matrix with flat indices; first index is for measured moments, second index is for physical moments; must either be given or set be calling load() or calculate()
+  _IFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] | None = None  # acceptance integral matrix with flat indices; first index is for measured moments, second index is for physical moments; must either be given or set be calling load() or calculate()
 
   # accessor that guarantees existence of optional field
   @property
@@ -352,45 +347,45 @@ class AcceptanceIntegralMatrix:
     return np.linalg.inv(self.matrix)
 
   @property
-  def eigenDecomp(self) -> Tuple[npt.NDArray[npt.Shape["Dim"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
+  def eigenDecomp(self) -> tuple[npt.NDArray[npt.Shape["Dim"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
     """Returns eigenvalues and eigenvectors of acceptance integral matrix"""
     return np.linalg.eig(self.matrix)
 
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],
-  ) -> Optional[complex]: ...
+    subscript: tuple[int | QnMomentIndex, int | QnMomentIndex],
+  ) -> complex | None: ...
 
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[slice, Union[int, QnMomentIndex]],
-  ) -> Optional[npt.NDArray[npt.Shape["Slice"], npt.Complex128]]: ...
+    subscript: tuple[slice, int | QnMomentIndex],
+  ) -> npt.NDArray[npt.Shape["Slice"], npt.Complex128] | None: ...
 
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[Union[int, QnMomentIndex], slice],
-  ) -> Optional[npt.NDArray[npt.Shape["Slice"], npt.Complex128]]: ...
+    subscript: tuple[int | QnMomentIndex, slice],
+  ) -> npt.NDArray[npt.Shape["Slice"], npt.Complex128] | None: ...
 
   @overload
   def __getitem__(
     self,
-    subscript: Tuple[slice, slice],
-  ) -> Optional[npt.NDArray[npt.Shape["Slice1, Slice2"], npt.Complex128]]: ...
+    subscript: tuple[slice, slice],
+  ) -> npt.NDArray[npt.Shape["Slice1, Slice2"], npt.Complex128] | None: ...
 
   def __getitem__(
     self,
-    subscript: Tuple[Union[int, QnMomentIndex, slice], Union[int, QnMomentIndex, slice]],
-  ) -> Optional[Union[complex, npt.NDArray[npt.Shape["Slice"], npt.Complex128], npt.NDArray[npt.Shape["Slice1, Slice2"], npt.Complex128]]]:
+    subscript: tuple[int | QnMomentIndex | slice, int | QnMomentIndex | slice],
+  ) -> complex | npt.NDArray[npt.Shape["Slice"], npt.Complex128] | npt.NDArray[npt.Shape["Slice1, Slice2"], npt.Complex128] | None:
     """Returns acceptance integral matrix elements for any combination of flat and quantum-number indices"""
     if self._IFlatIndex is None:
       return None
     else:
       # turn quantum-number indices to flat indices
-      flatIndexMeas: Union[int, slice] = self.indices[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
-      flatIndexPhys: Union[int, slice] = self.indices[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
+      flatIndexMeas: int | slice = self.indices[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
+      flatIndexPhys: int | slice = self.indices[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
       return self._IFlatIndex[flatIndexMeas, flatIndexPhys]
 
   def __str__(self) -> str:
@@ -414,7 +409,7 @@ class AcceptanceIntegralMatrix:
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     # get beam polarization
-    beamPol: Optional[Union[float, ROOT.std.vector["double"]]] = None
+    beamPol: float | ROOT.std.vector["double"] | None = None
     if self.dataSet.polarization is None:
       # read polarization value from tree
       assert "beamPol" in self.dataSet.phaseSpaceData.GetColumnNames(), "No 'beamPol' column found in phase-space data"
@@ -495,7 +490,7 @@ class MomentValue:
   val:        complex  # moment value
   uncertRe:   float    # uncertainty of real part
   uncertIm:   float    # uncertainty of imaginary part
-  binCenters: Dict[KinematicBinningVariable, float]                         = field(default_factory = dict)  # center values of variables that define kinematic bin
+  binCenters: dict[KinematicBinningVariable, float]                         = field(default_factory = dict)  # center values of variables that define kinematic bin
   label:      str                                                           = ""  # label used for printing
   bsSamples:  npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
@@ -510,19 +505,19 @@ class MomentValue:
     return result
 
   @property
-  def real(self) -> Tuple[float, float]:
+  def real(self) -> tuple[float, float]:
     """Returns real part with uncertainty"""
     return (self.val.real, self.uncertRe)
 
   @property
-  def imag(self) -> Tuple[float, float]:
+  def imag(self) -> tuple[float, float]:
     """Returns imaginary part with uncertainty"""
     return (self.val.imag, self.uncertIm)
 
   def realPart(
     self,
     realPart: bool,  # switches between real part (True) and imaginary part (False)
-  ) -> Tuple[float, float]:
+  ) -> tuple[float, float]:
     """Returns real or imaginary part with corresponding uncertainty according to given flag"""
     if realPart:
       return self.real
@@ -537,7 +532,7 @@ class MomentValue:
   def bootstrapEstimate(
     self,
     realPart: bool,  # switches between real part (True) and imaginary part (False)
-  ) -> Tuple[float, float]:
+  ) -> tuple[float, float]:
     """Returns bootstrap estimate and its uncertainty for real or imaginary part"""
     assert self.hasBootstrapSamples, "No bootstrap samples available"
     bsSamples = self.bsSamples.real if realPart else self.bsSamples.imag
@@ -550,7 +545,7 @@ class MomentValue:
 class MomentResult:
   """Container class that stores and provides access to moment values for single kinematic bin"""
   indices:             MomentIndices  # index mapping and iterators
-  binCenters:          Dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
+  binCenters:          dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
   label:               str                                                                       = ""  # label used for printing
   nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
   bootstrapSeed:       int                                                                       = 0   # seed for random number generator used for bootstrap samples
@@ -595,22 +590,22 @@ class MomentResult:
   @overload
   def __getitem__(
     self,
-    subscript: Union[int, QnMomentIndex],
+    subscript: int | QnMomentIndex,
   ) -> MomentValue: ...
 
   @overload
   def __getitem__(
     self,
     subscript: slice,
-  ) -> List[MomentValue]: ...
+  ) -> list[MomentValue]: ...
 
   def __getitem__(
     self,
-    subscript: Union[int, QnMomentIndex, slice],
-  ) -> Union[MomentValue, List[MomentValue]]:
+    subscript: int | QnMomentIndex | slice,
+  ) -> MomentValue | list[MomentValue]:
     """Returns moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
     # turn quantum-number index to flat index
-    flatIndex: Union[int, slice] = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
+    flatIndex: int | slice = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     if isinstance(flatIndex, slice):
       return [
         MomentValue(
@@ -647,13 +642,13 @@ class MomentResult:
 
   def covariance(
     self,
-    momentIndexPair: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
-    realParts:       Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
+    momentIndexPair: tuple[int | QnMomentIndex, int | QnMomentIndex],  # indices of the two moments
+    realParts:       tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
   ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
     """Returns 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndexPair: Tuple[int, int] = tuple(
+    flatIndexPair: tuple[int, int] = tuple(
       self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
       for momentIndex in momentIndexPair
     )
@@ -682,13 +677,13 @@ class MomentResult:
 
   def covarianceBootstrap(
     self,
-    momentIndexPair: Tuple[Union[int, QnMomentIndex], Union[int, QnMomentIndex]],  # indices of the two moments
-    realParts:       Tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
+    momentIndexPair: tuple[int | QnMomentIndex, int | QnMomentIndex],  # indices of the two moments
+    realParts:       tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
   ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
     """Returns bootstrap estimate of 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts      ) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
-    flatIndexPair: Tuple[int, int] = tuple(
+    flatIndexPair: tuple[int, int] = tuple(
       self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
       for momentIndex in momentIndexPair
     )
@@ -711,7 +706,7 @@ class MomentResult:
 
   @property
   def hermitianAndPseudoCovarianceMatrix(self) \
-    -> Tuple[npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128],
+    -> tuple[npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128],
              npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128]]:
     """Returns tuple with complex-valued Hermitian covariance matrix and pseudo-covariance matrix for all moments"""
     # Eqs. (101) and (102)
@@ -754,7 +749,7 @@ class MomentResult:
 @dataclass
 class MomentResultsKinematicBinning:
   """Container class that stores and provides access to moment values for several kinematic bins"""
-  moments: List[MomentResult]  # data for all bins of the kinematic binning
+  moments: list[MomentResult]  # data for all bins of the kinematic binning
 
   # make MomentResultsKinematicBinning behave like a list of MomentResults
   def __len__(self) -> int:
@@ -809,11 +804,11 @@ class MomentCalculator:
   """Container class that holds all information needed to calculate moments for a single kinematic bin"""
   indices:              MomentIndices  # index mapping and iterators
   dataSet:              DataSet  # info on data samples
-  binCenters:           Dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
+  binCenters:           dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
   integralFileBaseName: str = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  _integralMatrix:      Optional[AcceptanceIntegralMatrix] = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
-  _HMeas:               Optional[MomentResult] = None  # measured moments; must either be given or calculated by calling calculateMoments()
-  _HPhys:               Optional[MomentResult] = None  # physical moments; must either be given or calculated by calling calculateMoments()
+  _integralMatrix:      AcceptanceIntegralMatrix | None = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
+  _HMeas:               MomentResult | None = None  # measured moments; must either be given or calculated by calling calculateMoments()
+  _HPhys:               MomentResult | None = None  # physical moments; must either be given or calculated by calling calculateMoments()
 
   # accessors that guarantee existence of optional fields
   @property
@@ -854,7 +849,7 @@ class MomentCalculator:
   def _calcReImCovMatrices(
     self,
     V_aug: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128],  # augmented covariance matrix
-  ) -> Tuple[npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]]:
+  ) -> tuple[npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]]:
     """Calculates covariance matrices for real parts, for imaginary parts, and for real and imaginary parts from augmented covariance matrix"""
     nmbMoments = len(self.indices)
     V_Hermit = V_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
@@ -894,7 +889,7 @@ class MomentCalculator:
     assert thetas.size() == phis.size() == Phis.size(), (
       f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     # get beam polarization
-    beamPol: Optional[Union[float, ROOT.std.vector["double"]]] = None
+    beamPol: float | ROOT.std.vector["double"] | None = None
     if dataSet.polarization is None:
       # read polarization value from tree
       assert "beamPol" in dataSet.data.GetColumnNames(), "No 'beamPol' column found in data"
@@ -984,19 +979,19 @@ class MomentCalculator:
 
 
 # functions that read bin labels and titles from MomentCalculator or MomentResult
-def binLabels(obj: Union[MomentCalculator, MomentResult]) -> List[str]:
+def binLabels(obj: MomentCalculator | MomentResult) -> list[str]:
   """Returns list of bin labels; naming scheme of entries is '<binning var>_<bin center>'"""
   return [f"{var.name}_" + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") for var, center in obj.binCenters.items()]
 
-def binLabel(obj: Union[MomentCalculator, MomentResult]) -> str:
+def binLabel(obj: MomentCalculator | MomentResult) -> str:
   """Returns label for bin; scheme is '<binning var 0>_<bin center 0>_ ...'"""
   return "_".join(binLabels(obj))
 
-def binTitles(obj: Union[MomentCalculator, MomentResult]) -> List[str]:
+def binTitles(obj: MomentCalculator | MomentResult) -> list[str]:
   """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
   return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in obj.binCenters.items()]
 
-def binTitle(obj: Union[MomentCalculator, MomentResult]) -> str:
+def binTitle(obj: MomentCalculator | MomentResult) -> str:
   """Returns TLatex expressions for kinematic bin centers; scheme is '<binning var 0> = <bin center 0> <unit>, ...'"""
   return ", ".join(binTitles(obj))
 
@@ -1004,7 +999,7 @@ def binTitle(obj: Union[MomentCalculator, MomentResult]) -> str:
 @dataclass
 class MomentCalculatorsKinematicBinning:
   """Container class that holds all information needed to calculate moments for several kinematic bins"""
-  moments: List[MomentCalculator]  # data for all bins of the kinematic binning
+  moments: list[MomentCalculator]  # data for all bins of the kinematic binning
 
   # make MomentCalculatorsKinematicBinning behave like a list of MomentCalculators
   def __len__(self) -> int:
