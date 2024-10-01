@@ -91,9 +91,8 @@ def readPartialWaveAmplitudes(
   # However, the diagonal elements of the integral matrix from the fit
   # result cannot be used here because they are valid only for the
   # whole fitted mass range.  The information for individual mass bins
-  # is lost.  As a workaround, we use extract the normalization
-  # factors from the intensity plots generated from the PWA fit
-  # result.
+  # is lost.  As a workaround, we extract the normalization factors
+  # from the intensity plots generated from the PWA fit result.
   for key in ampSeries.index:
     waveName = key.split("::")[-1]
     plotFileName = f"{fitResultPlotDir}/etapi_plot_{waveName}.root"
@@ -142,7 +141,7 @@ if __name__ == "__main__":
   setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-  with threadController.limit(limits = 3):
+  with threadController.limit(limits = 4):
     print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
     timer.start("Total execution time")
 
@@ -206,7 +205,7 @@ if __name__ == "__main__":
 
         # calculate moments from PWA fits result
         amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter, fitResultPlotDir, beamPolAngleLabel), tolerance = 1e-7)
-        HPwa: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
+        HPwa: MomentResult = amplitudeSet.photoProdMomentSet(maxL, normalize = normalizeMoments, printMomentFormulas = False)
         print(f"Moment values from partial-wave analysis:\n{HPwa}")
 
         # setup moment calculators for data
@@ -269,7 +268,7 @@ if __name__ == "__main__":
           plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
 
-    # calculate and write moments of real data
+    # calculate moments of real data and write them to files
     with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
       moments.calculateMoments(normalize = normalizeMoments)
@@ -279,18 +278,18 @@ if __name__ == "__main__":
 
     #TODO move into separate plotting script
     with timer.timeThis(f"Time to plot moments of real data"):
-      # load all signal and phase-space data
-      print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
-      data = ROOT.RDataFrame(treeName, dataFileName)
-      print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
-      dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
-      print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
-      dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
-      # plot total angular distributions
       if plotAngularDistributions:
+        print("Plotting total angular distributions")
+        # load all signal and phase-space data
+        print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
+        data = ROOT.RDataFrame(treeName, dataFileName)
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
+        dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
+        dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
         plotAngularDistr(dataPsAcc, dataPsGen, data, dataSignalGen = None, pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_")
 
-      # load moment results from file
+      # load moment results from files
       momentResultsTrue = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
       momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
       momentResultsPhys = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")

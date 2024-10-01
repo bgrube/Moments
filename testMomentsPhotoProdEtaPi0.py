@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
         # calculate true moments
         amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPwAmpsFileName, massBinCenter), tolerance = 1e-11)
-        HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, printMoments = False, normalize = normalizeMoments)
+        HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, normalize = normalizeMoments, printMomentFormulas = False)
         # scale true moments such that H_0(0, 0) is number of generated signal events
         scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]
         HTrue._valsFlatIndex *= scale

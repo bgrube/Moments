@@ -35,7 +35,7 @@ from PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-import RootUtilities
+import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
 import Utilities
 
 
@@ -163,7 +163,7 @@ def genAccepted2BodyPsPhotoProd(
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating accepted phase-space MC data and writing them to '{fileName}'")
   #TODO avoid code doubling with genDataFromWaves() and corresponding function in testMomentsAlex
-  RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
+  RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)  # use Python object in C++
   pointFunc = """
     double cosTheta, phiDeg, PhiDeg;
     PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);

@@ -85,8 +85,8 @@ if __name__ == "__main__":
 
   # H:  MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, printMoments = True,  normalize = True)
   print("Calculating moments...")
-  H:  MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, printMoments = False, normalize = True)
-  H2: MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, printMoments = False, normalize = True)
+  H:  MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, normalize = True, printMomentFormulas = False)
+  H2: MomentCalculator.MomentResult = ampSet.photoProdMomentSet(maxL = 4, normalize = True, printMomentFormulas = False)
 
   print(f"equality: {H == H2=}, {H2._valsFlatIndex[0]=}")
   H2._valsFlatIndex[0] = H2._valsFlatIndex[0] + 1e-6

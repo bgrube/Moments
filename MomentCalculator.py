@@ -142,9 +142,9 @@ class AmplitudeSet:
 
   def photoProdMoments(
     self,
-    L: int,  # angular momentum
-    M: int,  # projection quantum number of L
-    printMoments: bool = False,
+    L:                   int,  # angular momentum
+    M:                   int,  # projection quantum number of L
+    printMomentFormulas: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> tuple[complex, complex, complex]:
     """Returns moments (H_0, H_1, H_2) with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
     #TODO this function seems to be extremely slow; check
@@ -168,11 +168,11 @@ class AmplitudeSet:
           moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
           moments[1] += -term * rhos[1]  # H_1; Eq. (125)
           moments[2] += -term * rhos[2]  # H_2; Eq. (125)
-          if printMoments:
+          if printMomentFormulas:
             momentFormulas[0] += "" if np.isclose(rhos[0], 0) else f" + {term} * rho_0(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[0]}"
             momentFormulas[1] += "" if np.isclose(rhos[1], 0) else f" - {term} * rho_1(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[1]}"
             momentFormulas[2] += "" if np.isclose(rhos[2], 0) else f" - {term} * rho_2(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[2]}"
-    if printMoments:
+    if printMomentFormulas:
       print(f"Moment formulas:"
             + ("" if np.isclose(moments[0], 0) else f"\n    {momentFormulas[0]} = {moments[0]}")
             + ("" if np.isclose(moments[1], 0) else f"\n    {momentFormulas[1]} = {moments[1]}")
@@ -181,10 +181,10 @@ class AmplitudeSet:
 
   def photoProdMomentSet(
     self,
-    maxL:         int,  # maximum L quantum number of moments
-    normalize:    bool | int = True,  # if set to true, moment values are normalized to H_0(0, 0)
-                                      # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
-    printMoments: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
+    maxL:                int,  # maximum L quantum number of moments
+    normalize:           bool | int = True,  # if set to true, moment values are normalized to H_0(0, 0)
+                                             # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
+    printMomentFormulas: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL)
@@ -193,7 +193,7 @@ class AmplitudeSet:
     for L in range(maxL + 1):
       for M in range(L + 1):
         # get all moments for given (L, M)
-        moments: list[complex] = list(self.photoProdMoments(L, M, printMoments))
+        moments: list[complex] = list(self.photoProdMoments(L, M, printMomentFormulas))
         # ensure that moments are either real-valued or purely imaginary
         assert (abs(moments[0].imag) < self.tolerance) and (abs(moments[1].imag) < self.tolerance) and (abs(moments[2].real) < self.tolerance), (
           f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
