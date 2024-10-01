@@ -499,7 +499,7 @@ class MomentValue:
   label:      str                                                           = ""  # label used for printing
   bsSamples:  npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[Any]:
     """Returns iterator over shallow copy of fields"""
     return iter(tuple(getattr(self, field.name) for field in fields(self)))
 
@@ -548,7 +548,7 @@ class MomentValue:
 
 @dataclass(eq = False)
 class MomentResult:
-  """Container class that stores and provides access to moment values"""
+  """Container class that stores and provides access to moment values for single kinematic bin"""
   indices:             MomentIndices  # index mapping and iterators
   binCenters:          Dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
   label:               str                                                                       = ""  # label used for printing
@@ -561,8 +561,8 @@ class MomentResult:
   _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __post_init__(self) -> None:
-    nmbMoments = len(self.indices)
-    self._valsFlatIndex      = np.zeros((nmbMoments, ),                         dtype = npt.Complex128)
+    nmbMoments = len(self)
+    self._valsFlatIndex      = np.zeros((nmbMoments,),                          dtype = npt.Complex128)
     self._covReReFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
     self._covImImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
     self._covReImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
@@ -587,6 +587,10 @@ class MomentResult:
       and np.allclose(self._covImImFlatIndex, other._covImImFlatIndex)
       and np.allclose(self._covReImFlatIndex, other._covReImFlatIndex)
     )
+
+  def __len__(self) -> int:
+    """Returns total number of moments"""
+    return len(self.indices)
 
   @overload
   def __getitem__(
@@ -632,8 +636,13 @@ class MomentResult:
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
 
+  def values(self) -> Generator[MomentValue, None, None]:
+    """Generator that yields moment values"""
+    for flatIndex in self.indices.flatIndices():
+      yield self[flatIndex]
+
   def __str__(self) -> str:
-    result = (str(self[flatIndex]) for flatIndex in self.indices.flatIndices())
+    result = (str(moment) for moment in self.values())
     return "\n".join(result)
 
   def covariance(
@@ -747,6 +756,7 @@ class MomentResultsKinematicBinning:
   """Container class that stores and provides access to moment values for several kinematic bins"""
   moments: List[MomentResult]  # data for all bins of the kinematic binning
 
+  # make MomentResultsKinematicBinning behave like a list of MomentResults
   def __len__(self) -> int:
     """Returns number of kinematic bins"""
     return len(self.moments)
@@ -996,6 +1006,7 @@ class MomentCalculatorsKinematicBinning:
   """Container class that holds all information needed to calculate moments for several kinematic bins"""
   moments: List[MomentCalculator]  # data for all bins of the kinematic binning
 
+  # make MomentCalculatorsKinematicBinning behave like a list of MomentCalculators
   def __len__(self) -> int:
     """Returns number of kinematic bins"""
     return len(self.moments)
