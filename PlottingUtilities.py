@@ -69,6 +69,7 @@ class HistAxisBinning:
   maxVal:  float  # upper limit
   _var:    Optional[KinematicBinningVariable] = None  # optional info about bin variable
 
+  # make HistAxisBinning behave like a list of bin centers
   def __len__(self) -> int:
     """Returns number of bins"""
     return self.nmbBins
@@ -493,7 +494,7 @@ def plotMomentsBootstrapDistributions1D(
       entry.SetLineColor(ROOT.kBlue + 1)
       entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
       entry.SetLineColor(ROOT.kGreen + 2)
-      legend.AddEntry(gaussian,  "Nominal estimate Gaussian", "LP")
+      legend.AddEntry(gaussian, "Nominal estimate Gaussian", "LP")
       if HVal.truth is not None:
         legend.AddEntry(lineTrue, "True value", "L")
       legend.Draw()
