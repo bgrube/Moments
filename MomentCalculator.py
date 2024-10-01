@@ -188,7 +188,7 @@ class AmplitudeSet:
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL)
-    momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = npt.Complex128)
+    momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = np.complex128)
     norm: float = 1.0
     for L in range(maxL + 1):
       for M in range(L + 1):
@@ -398,7 +398,7 @@ class AcceptanceIntegralMatrix:
     """Calculates integral matrix of basis functions from (accepted) phase-space data"""
     if self.dataSet.phaseSpaceData is None:
       print("Warning: no phase-space data; using perfect acceptance")
-      self._IFlatIndex = np.eye(len(self.indices), dtype = npt.Complex128)
+      self._IFlatIndex = np.eye(len(self.indices), dtype = np.complex128)
       return
     # get phase-space data data as std::vectors
     thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
@@ -420,7 +420,7 @@ class AcceptanceIntegralMatrix:
       beamPol = self.dataSet.polarization
       print(f"Using beam polarization of {beamPol} when calculating the acceptance integral matrix")
     # get event weights
-    eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.empty(nmbAccEvents, dtype = npt.Float64)
+    eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.empty(nmbAccEvents, dtype = np.float64)
     if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
       print("Applying weights from 'eventWeight' column in calculation of acceptance integral matrix")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
@@ -428,17 +428,17 @@ class AcceptanceIntegralMatrix:
       assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
     else:
       # all events have weight 1
-      eventWeights = np.ones(nmbAccEvents, dtype = npt.Float64)
+      eventWeights = np.ones(nmbAccEvents, dtype = np.float64)
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `basisFunctions.C`
     nmbMoments = len(self.indices)
-    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
-    fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = npt.Complex128)
+    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
+    fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.indices.flatIndices():
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
       fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
     # calculate integral-matrix elements; Eq. (178)
-    self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = npt.Complex128)
+    self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.indices.flatIndices():
       for flatIndexPhys in self.indices.flatIndices():
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = ((8 * np.pi**2 / self.dataSet.nmbGenEvents)
@@ -492,7 +492,7 @@ class MomentValue:
   uncertIm:   float    # uncertainty of imaginary part
   binCenters: dict[KinematicBinningVariable, float]                         = field(default_factory = dict)  # center values of variables that define kinematic bin
   label:      str                                                           = ""  # label used for printing
-  bsSamples:  npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = npt.Complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
+  bsSamples:  npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Complex128] = np.zeros((0, ), dtype = np.complex128)  # array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __iter__(self) -> Iterator[Any]:
     """Returns iterator over shallow copy of fields"""
@@ -557,11 +557,11 @@ class MomentResult:
 
   def __post_init__(self) -> None:
     nmbMoments = len(self)
-    self._valsFlatIndex      = np.zeros((nmbMoments,),                          dtype = npt.Complex128)
-    self._covReReFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
-    self._covImImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
-    self._covReImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = npt.Float64)
-    self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = npt.Complex128)
+    self._valsFlatIndex      = np.zeros((nmbMoments,),                          dtype = np.complex128)
+    self._covReReFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
+    self._covImImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
+    self._covReImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
+    self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = np.complex128)
 
   def __eq__(
     self,
@@ -900,7 +900,7 @@ class MomentCalculator:
       beamPol = dataSet.polarization
       print(f"Using beam polarization of {beamPol} when calculating the moments")
     # get event weights
-    eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = npt.Float64)
+    eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
     if "eventWeight" in dataSet.data.GetColumnNames():
       print("Applying weights from 'eventWeight' column in calculation of moments")
       # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
@@ -908,10 +908,10 @@ class MomentCalculator:
       assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
     else:
       # all events have weight 1
-      eventWeights = np.ones(nmbEvents, dtype = npt.Float64)
+      eventWeights = np.ones(nmbEvents, dtype = np.float64)
     # calculate basis-function values and values of measured moments
     nmbMoments = len(self.indices)
-    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = npt.Complex128)
+    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = np.complex128)
     bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
     self._HMeas = MomentResult(
       indices             = self.indices,
@@ -944,7 +944,7 @@ class MomentCalculator:
       nmbBootstrapSamples = nmbBootstrapSamples,
       bootstrapSeed       = bootstrapSeed,
     )
-    V_phys_aug = np.empty(V_meas_aug.shape, dtype = npt.Complex128)
+    V_phys_aug = np.empty(V_meas_aug.shape, dtype = np.complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
       np.copyto(self._HPhys._valsFlatIndex, self._HMeas._valsFlatIndex)
@@ -960,7 +960,7 @@ class MomentCalculator:
         self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = I_inv @ self._HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
       J = I_inv  # Jacobian of efficiency correction; Eq. (101)
-      J_conj = np.zeros((nmbMoments, nmbMoments), dtype = npt.Complex128)  # conjugate Jacobian; Eq. (101)
+      J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
       J_aug = np.block([
         [J,                    J_conj],
         [np.conjugate(J_conj), np.conjugate(J)],
