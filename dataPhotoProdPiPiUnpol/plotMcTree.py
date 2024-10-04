@@ -2,12 +2,8 @@
 
 
 import os
-import sys
 
 import ROOT
-
-sys.path.append('../')  # quick hack; should make a module
-import PlottingUtilities
 
 
 if __name__ == "__main__":
@@ -24,15 +20,16 @@ if __name__ == "__main__":
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
 
-  # ampToolsFileName = "./amptools_tree_thrown_tbin1_ebin4.root"
-  ampToolsFileName = "./amptools_tree_accepted_tbin1_ebin4.root"
-  ampToolsTreeName = "kin"
+  # read MC data in AmpTools format
+  # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4.root"
+  mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4.root"
+  treeName = "kin"
 
   lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"
   lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
   lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
   lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
-  df = ROOT.RDataFrame(ampToolsTreeName, ampToolsFileName) \
+  df = ROOT.RDataFrame(treeName, mcDataFileName) \
            .Define("FsMassRecoil", f"mass({lvRecoil})") \
            .Define("FsMassPip",    f"mass({lvPip})") \
            .Define("FsMassPim",    f"mass({lvPim})") \
