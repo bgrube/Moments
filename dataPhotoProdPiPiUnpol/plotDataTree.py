@@ -63,10 +63,10 @@ if __name__ == "__main__":
            .Define("HfPhi",      f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
            .Define("HfPhiDeg",   "HfPhi * TMath::RadToDeg()")
   hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",    ";E_{beam} [GeV]",    50, 3.55, 3.80), "E_Beam", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi", ";m_{#pi#pi} [GeV]", 100, 0, 2), "MassPiPi", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP", ";m_{#pi#pi} [GeV]", 100, 1, 3), "MassPipP", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP", ";m_{#pi#pi} [GeV]", 100, 1, 3), "MassPimP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",    ";E_{beam} [GeV]",           50, 3.55, 3.80), "E_Beam",   "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi", ";m_{#pi#pi} [GeV]",        100, 0,    2),    "MassPiPi", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP", ";m_{p#pi^{#plus}} [GeV]",  100, 1,    3),    "MassPipP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP", ";m_{p#pi^{#minus}} [GeV]", 100, 1,    3),    "MassPimP", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGj", ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjCosTheta", "GjPhiDeg", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHf", ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfCosTheta", "HfPhiDeg", "eventWeight"),
   )
