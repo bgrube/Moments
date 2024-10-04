@@ -64,14 +64,38 @@ if __name__ == "__main__":
            .Define("HfPhiDeg",   "HfPhi * TMath::RadToDeg()")
   hists = (
     df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",    ";E_{beam} [GeV]",           50, 3.55, 3.80), "E_Beam",   "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi", ";m_{#pi#pi} [GeV]",        100, 0,    2),    "MassPiPi", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP", ";m_{p#pi^{#plus}} [GeV]",  100, 1,    3),    "MassPipP", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP", ";m_{p#pi^{#minus}} [GeV]", 100, 1,    3),    "MassPimP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi", ";m_{#pi#pi} [GeV]",        400, 0.28, 2.28), "MassPiPi", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP", ";m_{p#pi^{#plus}} [GeV]",  400, 1,    5),    "MassPipP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP", ";m_{p#pi^{#minus}} [GeV]", 400, 1,    5),    "MassPimP", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGj", ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjCosTheta", "GjPhiDeg", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHf", ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfCosTheta", "HfPhiDeg", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}", 100, 0.28, 2.28, 72,   -1,   +1), "MassPiPi", "HfCosTheta", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{HF}",      100, 0.28, 2.28, 72, -180, +180), "MassPiPi", "HfPhiDeg",   "eventWeight"),
   )
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
     hist.Draw("COLZ")
     canv.SaveAs(f"{hist.GetName()}.pdf")
+
+  # check against Alex' RF-sideband subtracted histograms
+  histFileNameAlex = "./plots_tbin1_ebin4.root"
+  histNamesAlex = {
+    "hDataMassPiPi"         : "M",
+    "hDataMassPipP"         : "Deltapp",
+    "hDataMassPimP"         : "Deltaz",
+    "hDataMassVsHfCosTheta" : "MassVsCosth",
+    "hDataMassVsHfPhiDeg"   : "MassVsphi",
+  }
+  histFileAlex = ROOT.TFile.Open(histFileNameAlex, "READ")
+  for hist in hists:
+    if not hist.GetName() in histNamesAlex:
+      continue
+    histAlex = histFileAlex.Get(histNamesAlex[hist.GetName()])
+    histDiff = hist.Clone(f"{hist.GetName()}_diff")
+    histDiff.Add(histAlex, -1)
+    canv = ROOT.TCanvas()
+    histDiff.SetMinimum(0)
+    histDiff.Draw("COLZ")
+    canv.SaveAs(f"{hist.GetName()}_diff.pdf")
+  histFileAlex.Close()
