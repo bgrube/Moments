@@ -12,6 +12,7 @@ import PlottingUtilities
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  ROOT.gStyle.SetOptStat("")
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   CPP_CODE = """
   double
