@@ -45,11 +45,11 @@ if __name__ == "__main__":
            .Define("HfPhi",        f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
            .Define("HfPhiDeg",     "HfPhi * TMath::RadToDeg()")
   hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hFsMassRecoil", ";m_{Recoil} [GeV]",       100, 0, 2), "FsMassRecoil"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hFsMassPip",    ";m_{#pi^{#plus}} [GeV]",  100, 0, 2), "FsMassPip"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hFsMassPim",    ";m_{#pi^{#minus}} [GeV]", 100, 0, 2), "FsMassPim"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hGenAmpGj",     ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjCosTheta", "GjPhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hGenAmpHf",     ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfCosTheta", "HfPhiDeg"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV]",       100, 0, 2), "FsMassRecoil"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV]",  100, 0, 2), "FsMassPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV]", 100, 0, 2), "FsMassPim"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGj",     ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjCosTheta", "GjPhiDeg"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHf",     ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfCosTheta", "HfPhiDeg"),
   )
   for hist in hists:
     canv = ROOT.TCanvas()
