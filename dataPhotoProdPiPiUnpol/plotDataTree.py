@@ -95,7 +95,6 @@ if __name__ == "__main__":
     histDiff = hist.Clone(f"{hist.GetName()}_diff")
     histDiff.Add(histAlex, -1)
     canv = ROOT.TCanvas()
-    histDiff.SetMinimum(0)
     histDiff.Draw("COLZ")
     canv.SaveAs(f"{hist.GetName()}_diff.pdf")
   histFileAlex.Close()
