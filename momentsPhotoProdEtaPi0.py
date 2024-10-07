@@ -10,7 +10,7 @@ from typing import (
   Dict,
   List,
   Tuple,
-)
+)  #TODO Python 3.9 allows standard collections to be used in type annotations
 
 import ROOT
 
@@ -36,6 +36,10 @@ from PlottingUtilities import (
   plotComplexMatrix,
   plotMoments,
   plotMoments1D,
+  plotMomentsBootstrapDiffInBin,
+  plotMomentsBootstrapDistributions1D,
+  plotMomentsBootstrapDistributions2D,
+  plotMomentsCovMatrices,
   plotMomentsInBin,
   setupPlotStyle,
 )
@@ -162,6 +166,8 @@ if __name__ == "__main__":
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
     normalizeMoments         = False
+    # nmbBootstrapSamples  = 0
+    nmbBootstrapSamples  = 10000
     # plotAngularDistributions = True
     plotAngularDistributions = False
     # plotAccIntegralMatrices  = True
@@ -169,8 +175,9 @@ if __name__ == "__main__":
     # calcAccPsMoments         = True
     calcAccPsMoments         = False
     binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#eta#pi}^{0}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning              = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
-    # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.28, maxVal = 1.32, _var = binVarMass)
+    # massBinning              = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
+    # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.36, maxVal = 1.40, _var = binVarMass)
+    massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.04, maxVal = 1.72, _var = binVarMass)
     nmbOpenMpThreads         = ROOT.getNmbOpenMpThreads()
 
     namePrefix = "norm" if normalizeMoments else "unnorm"
@@ -241,6 +248,7 @@ if __name__ == "__main__":
           plotComplexMatrix(momentResultInBin.integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{label}_",
                             axisTitles = ("Measured Moment Index", "Physical Moment Index"), plotTitle = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
                             zRangeAbs = 115, zRangeImag = 30)
+                            # zRangeAbs = 800, zRangeImag = 30)
 
     if calcAccPsMoments:
       # calculate moments of accepted phase-space data
@@ -271,7 +279,7 @@ if __name__ == "__main__":
     # calculate moments of real data and write them to files
     with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
-      moments.calculateMoments(normalize = normalizeMoments)
+      moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
       momentsPwa.momentResultsPhys.save(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
       moments.momentResultsMeas.save   (f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
       moments.momentResultsPhys.save   (f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
@@ -316,6 +324,19 @@ if __name__ == "__main__":
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
           plotLegend        = False,
         )
+        #TODO also plot correlation matrices
+        plotMomentsCovMatrices(HPhys, pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{label}_",
+                               axisTitles = ("Physical Moment Index", "Physical Moment Index"), plotTitle = f"{label}: ")
+        if nmbBootstrapSamples > 0:
+          graphTitle = f"({label})"
+          plotMomentsBootstrapDistributions1D(
+            HData             = HPhys,
+            HTrue             = HTrue,
+            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            histTitle         = title)
+          plotMomentsBootstrapDistributions2D(HPhys, HTrue,
+                                              pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", histTitle = title)
+          plotMomentsBootstrapDiffInBin(HPhys, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", graphTitle = title)
 
       # plot kinematic dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.QnIndices():
@@ -450,7 +471,7 @@ if __name__ == "__main__":
         HVal.val      = hist.GetBinContent(histBinIndex)
         HVal.uncertRe = hist.GetBinError  (histBinIndex)
         HVal.truth    = H000True.val
-        print(f"!!! {HVal=}")
+        # print(f"!!! {HVal=}")
         HVals.append(HVal)
       plotMoments(
         HVals             = HVals,
