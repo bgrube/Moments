@@ -10,6 +10,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("")
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
   double
 	mass(const double Px, const double Py, const double Pz, const double E)
