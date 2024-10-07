@@ -9,16 +9,82 @@ import ROOT
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("i")
+  # ROOT.gStyle.SetOptStat(1111111)
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  # declare C++ function to calculate invariant mass of a pair of particles
   CPP_CODE = """
-  double
+	double
 	massPair(
-   const double Px1, const double Py1, const double Pz1, const double E1,
-   const double Px2, const double Py2, const double Pz2, const double E2
-  )	{
+		const double Px1, const double Py1, const double Pz1, const double E1,
+		const double Px2, const double Py2, const double Pz2, const double E2
+	)	{
 		const TLorentzVector p1(Px1, Py1, Pz1, E1);
 		const TLorentzVector p2(Px2, Py2, Pz2, E2);
 		return (p1 + p2).M();
+	}
+  """
+  ROOT.gInterpreter.Declare(CPP_CODE)
+  # Alex' code to calculate helicity angles
+  CPP_CODE = """
+	TVector3
+	helPiPlusVector(
+		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
+		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
+		const double PxProton, const double PyProton, const double PzProton, const double EProton,
+		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+	) {
+		// boost all 4-vectors into the resonance rest frame
+		TLorentzVector locPiPlusP4_Resonance (PxPip,    PyPip,    PzPip,    EPip);
+		TLorentzVector locPiMinusP4_Resonance(PxPim,    PyPim,    PzPim,    EPim);
+		TLorentzVector locProtonP4_Resonance (PxProton, PyProton, PzProton, EProton);
+		TLorentzVector locBeamP4_Resonance   (PxBeam,   PyBeam,   PzBeam,   EBeam);
+		const TLorentzVector resonanceP4 = locPiPlusP4_Resonance + locPiMinusP4_Resonance;
+		const TVector3 boostP3 = -resonanceP4.BoostVector();
+		locPiPlusP4_Resonance.Boost (boostP3);
+		locPiMinusP4_Resonance.Boost(boostP3);
+		locProtonP4_Resonance.Boost (boostP3);
+		locBeamP4_Resonance.Boost   (boostP3);
+
+		// COORDINATE SYSTEM:
+		// Normal to the production plane
+		const TVector3 y = (locBeamP4_Resonance.Vect().Unit().Cross(-locProtonP4_Resonance.Vect().Unit())).Unit();
+		// Helicity: z-axis opposite proton in rho rest frame
+		const TVector3 z = -locProtonP4_Resonance.Vect().Unit();
+		const TVector3 x = y.Cross(z).Unit();
+		const TVector3 v(locPiPlusP4_Resonance.Vect() * x, locPiPlusP4_Resonance.Vect() * y, locPiPlusP4_Resonance.Vect() * z);
+		return v;
+	}
+
+	double
+	helcostheta_Alex(
+		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
+		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
+		const double PxProton, const double PyProton, const double PzProton, const double EProton,
+		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+	) {
+		const TVector3 v = helPiPlusVector(
+			PxPip,    PyPip,    PzPip,    EPip,
+			PxPim,    PyPim,    PzPim,    EPim,
+			PxProton, PyProton, PzProton, EProton,
+			PxBeam,   PyBeam,   PzBeam,   EBeam
+		);
+		return v.CosTheta();
+	}
+
+	double
+	helphideg_Alex(
+		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
+		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
+		const double PxProton, const double PyProton, const double PzProton, const double EProton,
+		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+	) {
+		const TVector3 v = helPiPlusVector(
+			PxPip,    PyPip,    PzPip,    EPip,
+			PxPim,    PyPim,    PzPim,    EPim,
+			PxProton, PyProton, PzProton, EProton,
+			PxBeam,   PyBeam,   PzBeam,   EBeam
+		);
+		return v.Phi() * TMath::RadToDeg();
 	}
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
@@ -51,22 +117,26 @@ if __name__ == "__main__":
   lvPip    = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"
   lvPim    = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"
   df = ROOT.RDataFrame(dataTChain) \
-           .Define("MassPiPi",   f"massPair({lvPip}, {lvPim})") \
-           .Define("MassPipP",   f"massPair({lvPip}, {lvRecoil})") \
-           .Define("MassPimP",   f"massPair({lvPim}, {lvRecoil})") \
-           .Define("GjCosTheta", f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})") \
-           .Define("GjTheta",    "std::acos(GjCosTheta)") \
-           .Define("GjPhi",      f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
-           .Define("GjPhiDeg",   "GjPhi * TMath::RadToDeg()") \
-           .Define("HfCosTheta", f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
-           .Define("HfTheta",    "std::acos(HfCosTheta)") \
-           .Define("HfPhi",      f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
-           .Define("HfPhiDeg",   "HfPhi * TMath::RadToDeg()")
+           .Define("MassPiPi",       f"massPair({lvPip}, {lvPim})") \
+           .Define("MassPipP",       f"massPair({lvPip}, {lvRecoil})") \
+           .Define("MassPimP",       f"massPair({lvPim}, {lvRecoil})") \
+           .Define("GjCosTheta",     f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})") \
+           .Define("GjTheta",        "std::acos(GjCosTheta)") \
+           .Define("GjPhi",          f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
+           .Define("GjPhiDeg",       "GjPhi * TMath::RadToDeg()") \
+           .Define("HfCosTheta",     f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
+           .Define("HfCosThetaDiff", f"HfCosTheta - helcostheta_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
+           .Define("HfTheta",        "std::acos(HfCosTheta)") \
+           .Define("HfPhi",          f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})") \
+           .Define("HfPhiDeg",       "HfPhi * TMath::RadToDeg()") \
+           .Define("HfPhiDegDiff",   f"HfPhiDeg - helphideg_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
   hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",    ";E_{beam} [GeV]",           50, 3.55, 3.80), "E_Beam",   "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi", ";m_{#pi#pi} [GeV]",        400, 0.28, 2.28), "MassPiPi", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP", ";m_{p#pi^{#plus}} [GeV]",  400, 1,    5),    "MassPipP", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP", ";m_{p#pi^{#minus}} [GeV]", 400, 1,    5),    "MassPimP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",           ";E_{beam} [GeV]",           50, 3.55, 3.80), "E_Beam",         "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi",        ";m_{#pi#pi} [GeV]",        400, 0.28, 2.28), "MassPiPi",       "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP",        ";m_{p#pi^{#plus}} [GeV]",  400, 1,    5),    "MassPipP",       "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP",        ";m_{p#pi^{#minus}} [GeV]", 400, 1,    5),    "MassPimP",       "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataHfCosTheta_diff", ";#Delta cos#theta_{HF}",  1000, -3e-13, +3e-13), "HfCosThetaDiff", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataHfPhiDeg_diff",   ";#Delta #phi_{HF} [deg]", 1000, -1e-11, +1e-11), "HfPhiDegDiff",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGj", ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjCosTheta", "GjPhiDeg", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHf", ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfCosTheta", "HfPhiDeg", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}", 100, 0.28, 2.28, 72,   -1,   +1), "MassPiPi", "HfCosTheta", "eventWeight"),
