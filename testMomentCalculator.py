@@ -12,7 +12,7 @@ print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
-  momentIndices = MomentCalculator.MomentIndices(maxL = 5, photoProd = True)
+  momentIndices = MomentCalculator.MomentIndices(maxL = 5, polarized = True)
   for i in momentIndices.flatIndices():
     print(f"{i} : {momentIndices[i]}")
   for i in momentIndices.QnIndices():
@@ -20,7 +20,7 @@ if __name__ == "__main__":
   qnIndex = MomentCalculator.QnMomentIndex(0, 0, 0)
   print(f"{type(momentIndices._QnIndexByFlatIndex[0])=}, {momentIndices[0]=} vs. {momentIndices[qnIndex]=}")
   print(f"__str__ = '{momentIndices}' vs. __repr__ = '{repr(momentIndices)}'")
-  momentIndices2 = MomentCalculator.MomentIndices(maxL = 5, photoProd = True)
+  momentIndices2 = MomentCalculator.MomentIndices(maxL = 5, polarized = True)
   print(f"equality: {momentIndices == momentIndices2=}")
   if TYPE_CHECKING:
     a = bd.bidict({0 : qnIndex})

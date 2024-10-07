@@ -187,7 +187,7 @@ class AmplitudeSet:
     printMomentFormulas: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
-    momentIndices = MomentIndices(maxL)
+    momentIndices = MomentIndices(maxL, polarized = True)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = np.complex128)
     norm: float = 1.0
     for L in range(maxL + 1):
@@ -245,13 +245,13 @@ class QnMomentIndex:
 class MomentIndices:
   """Provides mapping between moment index schemes and iterators for moment indices"""
   maxL:                int  # maximum L quantum number of moments
-  photoProd:           bool = True  # switches between diffraction and photoproduction mode
+  polarized:           bool = False  # switches between unpolarized production and polarized photoproduction mode
   _QnIndexByFlatIndex: bd.bidict[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
 
   def __post_init__(self) -> None:
     self._QnIndexByFlatIndex = bd.bidict()
     flatIndex = 0
-    for momentIndex in range(3 if self.photoProd else 1):
+    for momentIndex in range(3 if self.polarized else 1):
       for L in range(self.maxL + 1):
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
@@ -304,7 +304,7 @@ class DataSet:
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: ROOT.RDataFrame | None  # (accepted) phase-space data; None corresponds to perfect acceptance
   nmbGenEvents:   int  # number of generated events
-  polarization:   float | None = None  # photon-beam polarization; 0 = read from tree
+  polarization:   float | None = None  # photon-beam polarization; 0.0 = read from tree
 
 
 @dataclass(frozen = True)  # immutable
