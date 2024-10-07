@@ -40,7 +40,7 @@ if __name__ == "__main__":
            .Define("GjPhiDeg",     "GjPhi * TMath::RadToDeg()") \
            .Define("HfCosTheta",   f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
            .Define("HfTheta",      "std::acos(HfCosTheta)") \
-           .Define("HfPhi",        f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
+           .Define("HfPhi",        f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})") \
            .Define("HfPhiDeg",     "HfPhi * TMath::RadToDeg()")
   hists = (
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV]",       100, 0, 2), "FsMassRecoil"),
