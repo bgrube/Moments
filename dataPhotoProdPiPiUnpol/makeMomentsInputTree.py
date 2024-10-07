@@ -72,5 +72,4 @@ if __name__ == "__main__":
       .Define("theta",       "std::acos(cosTheta)") \
       .Define("phi",         f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})") \
       .Define("phiDeg",      "phi * TMath::RadToDeg()") \
-      .Define("eventWeight", "Weight") \
-      .Snapshot(outputTreeName, "acc_phase_space_flat.root", ("mass", "cosTheta", "theta", "phi", "phiDeg", "eventWeight"))
+      .Snapshot(outputTreeName, "acc_phase_space_flat.root", ("mass", "cosTheta", "theta", "phi", "phiDeg"))
