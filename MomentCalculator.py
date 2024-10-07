@@ -304,7 +304,7 @@ class DataSet:
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: ROOT.RDataFrame | None  # (accepted) phase-space data; None corresponds to perfect acceptance
   nmbGenEvents:   int  # number of generated events
-  polarization:   float | None = None  # photon-beam polarization; None = read from tree
+  polarization:   float | None = None  # photon-beam polarization; 0 = read from tree
 
 
 @dataclass(frozen = True)  # immutable
@@ -411,12 +411,15 @@ class AcceptanceIntegralMatrix:
     # get beam polarization
     beamPol: float | ROOT.std.vector["double"] | None = None
     if self.dataSet.polarization is None:
-      # read polarization value from tree
+      # unpolarized case
+      raise NotImplementedError("Unpolarized case not implemented yet")
+    elif self.dataSet.polarization == 0:
+      # polarized case: read polarization value from tree
       assert "beamPol" in self.dataSet.phaseSpaceData.GetColumnNames(), "No 'beamPol' column found in phase-space data"
       print("Reading beam polarization from 'beamPol' column when calculating the acceptance integral matrix")
       beamPol = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["beamPol"])["beamPol"])
     else:
-      # use polarization value defined for data set
+      # polarized case: use polarization value defined for data set
       beamPol = self.dataSet.polarization
       print(f"Using beam polarization of {beamPol} when calculating the acceptance integral matrix")
     # get event weights
@@ -891,12 +894,15 @@ class MomentCalculator:
     # get beam polarization
     beamPol: float | ROOT.std.vector["double"] | None = None
     if dataSet.polarization is None:
-      # read polarization value from tree
+      # unpolarized case
+      raise NotImplementedError("Unpolarized case not implemented yet")
+    elif self.dataSet.polarization == 0:
+      # polarized case: read polarization value from tree
       assert "beamPol" in dataSet.data.GetColumnNames(), "No 'beamPol' column found in data"
       print("Reading beam polarization from 'beamPol' column when calculating the moments")
       beamPol = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["beamPol"])["beamPol"])
     else:
-      # use polarization value defined for data set
+      # polarized case: use polarization value defined for data set
       beamPol = dataSet.polarization
       print(f"Using beam polarization of {beamPol} when calculating the moments")
     # get event weights
