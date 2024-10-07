@@ -328,6 +328,13 @@ class AcceptanceIntegralMatrix:
   dataSet:     DataSet        # info on data samples
   _IFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] | None = None  # acceptance integral matrix with flat indices; first index is for measured moments, second index is for physical moments; must either be given or set be calling load() or calculate()
 
+  def __post_init__(self) -> None:
+    # set polarized moments case of `indices` according to info provided by `dataSet`
+    if self.dataSet.polarization is None:
+      self.indices.polarized = False
+    else:
+      self.indices.polarized = True
+
   # accessor that guarantees existence of optional field
   @property
   def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
@@ -812,6 +819,13 @@ class MomentCalculator:
   _integralMatrix:      AcceptanceIntegralMatrix | None = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
   _HMeas:               MomentResult | None = None  # measured moments; must either be given or calculated by calling calculateMoments()
   _HPhys:               MomentResult | None = None  # physical moments; must either be given or calculated by calling calculateMoments()
+
+  def __post_init__(self) -> None:
+    # set polarized moments case of `indices` according to info provided by `dataSet`
+    if self.dataSet.polarization is None:
+      self.indices.polarized = False
+    else:
+      self.indices.polarized = True
 
   # accessors that guarantee existence of optional fields
   @property
