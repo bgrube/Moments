@@ -407,15 +407,7 @@ class AcceptanceIntegralMatrix:
       print("Warning: no phase-space data; using perfect acceptance")
       self._IFlatIndex = np.eye(len(self.indices), dtype = np.complex128)
       return
-    # get phase-space data data as std::vectors
-    thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
-    phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
-    Phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"  ])["Phi"  ])
-    print(f"Phase-space data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
-    nmbAccEvents = thetas.size()
-    assert thetas.size() == phis.size() == Phis.size(), (
-      f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
-    # get beam polarization
+    # get photon-beam polarization
     beamPol: float | ROOT.std.vector["double"] | None = None
     if self.dataSet.polarization is None:
       # unpolarized case
@@ -430,6 +422,15 @@ class AcceptanceIntegralMatrix:
       # polarized case: use polarization value defined for data set
       beamPol = self.dataSet.polarization
       print(f"Using photon-beam polarization of {beamPol} when calculating the acceptance integral matrix")
+    # get phase-space data data as std::vectors
+    thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
+    phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
+    Phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"  ])["Phi"  ]) if self.dataSet.polarization is not None else \
+             ROOT.std.vector["double"](np.zeros(len(thetas)))  # for unpolarized production the basis functions are independent of Phi; set values to zero
+    print(f"Phase-space data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
+    nmbAccEvents = thetas.size()
+    assert thetas.size() == phis.size() == Phis.size(), (
+      f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     # get event weights
     eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.empty(nmbAccEvents, dtype = np.float64)
     if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
@@ -898,15 +899,7 @@ class MomentCalculator:
       dataSet = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     else:
       raise ValueError(f"Unknown data source '{dataSource}'")
-    # get input data as std::vectors
-    thetas = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["theta"])["theta"])
-    phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["phi"  ])["phi"  ])
-    Phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["Phi"  ])["Phi"  ])
-    print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
-    nmbEvents = thetas.size()
-    assert thetas.size() == phis.size() == Phis.size(), (
-      f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
-    # get beam polarization
+    # get photon-beam polarization
     beamPol: float | ROOT.std.vector["double"] | None = None
     if dataSet.polarization is None:
       # unpolarized case
@@ -921,6 +914,15 @@ class MomentCalculator:
       # polarized case: use polarization value defined for data set
       beamPol = dataSet.polarization
       print(f"Using photon-beam polarization of {beamPol} when calculating the moments")
+    # get input data as std::vectors
+    thetas = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["theta"])["theta"])
+    phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["phi"  ])["phi"  ])
+    Phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["Phi"  ])["Phi"  ]) if dataSet.polarization is not None else \
+             ROOT.std.vector["double"](np.zeros(len(thetas)))  # for unpolarized production the basis functions are independent of Phi; set values to zero
+    print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
+    nmbEvents = thetas.size()
+    assert thetas.size() == phis.size() == Phis.size(), (
+      f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
     # get event weights
     eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
     if "eventWeight" in dataSet.data.GetColumnNames():
