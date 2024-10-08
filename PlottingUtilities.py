@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import functools
 import matplotlib as mpl
@@ -377,8 +378,18 @@ def plotMomentsInBin(
   plotLegend:        bool                                = True,
   legendLabels:      Tuple[Optional[str], Optional[str]] = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
-  """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
-  assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
+  """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
+  # ensure that indices of HData and HTrue are compatible
+  # allow case where HTrue contains unpolarized as well as polarized moments but HData only unpolarized moments
+  indicesTrueMoments = None
+  if HTrue:
+    if (HTrue.indices.polarized and not HData.indices.polarized):
+      indicesTrueMoments = copy.deepcopy(HTrue.indices)
+      indicesTrueMoments.polarized = False
+      indicesTrueMoments.regenerateIndexMaps()
+    else:
+      indicesTrueMoments = HTrue.indices
+  assert not HTrue or HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
   # generate separate plots for each moment index
   for momentIndex in range(HData.indices.momentIndexRange):
     HVals = tuple(
