@@ -387,8 +387,15 @@ def plotMomentsInBin(
         truth = HTrue[qnIndex].val if HTrue else None
       ) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex
     )
-    plotMoments(HVals, normalizedMoments = normalizedMoments, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
-                pdfFileNamePrefix = pdfFileNamePrefix, plotLegend = plotLegend, legendLabels = legendLabels)
+    plotMoments(
+      HVals             = HVals,
+      binning           = None,
+      normalizedMoments = normalizedMoments,
+      momentLabel       = f"{QnMomentIndex.momentSymbol}{momentIndex}",
+      pdfFileNamePrefix = pdfFileNamePrefix,
+      plotLegend        = plotLegend,
+      legendLabels      = legendLabels,
+    )
 
 
 def plotMoments1D(
@@ -410,8 +417,16 @@ def plotMoments1D(
       truth = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val,
     ) for binIndex, HPhys in enumerate(momentResults)
   )
-  plotMoments(HVals, binning, normalizedMoments, momentLabel = qnIndex.label, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
-              histTitle = histTitle, plotLegend = plotLegend, legendLabels = legendLabels)
+  plotMoments(
+    HVals             = HVals,
+    binning           = binning,
+    normalizedMoments = normalizedMoments,
+    momentLabel       = qnIndex.label,
+    pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
+    histTitle         = histTitle,
+    plotLegend        = plotLegend,
+    legendLabels      = legendLabels,
+  )
 
 
 def plotMomentsBootstrapDistributions1D(
@@ -612,7 +627,14 @@ def plotMomentsBootstrapDistributions2D(
                       for flatIndex1 in HData.indices.flatIndices()
                       if flatIndex0 < flatIndex1)
   for momentIndexPair in momentIndexPairs:
-    plotMomentPairBootstrapDistributions2D(momentIndexPair, HData, HTrue, pdfFileNamePrefix, histTitle, nmbBins)
+    plotMomentPairBootstrapDistributions2D(
+      momentIndexPair   = momentIndexPair,
+      HData             = HData,
+      HTrue             = HTrue,
+      pdfFileNamePrefix = pdfFileNamePrefix,
+      histTitle         = histTitle,
+      nmbBins           = nmbBins,
+    )
 
 
 def plotMomentsCovMatrices(
@@ -763,7 +785,13 @@ def plotMomentsBootstrapDiff1D(
       truth = None,
     ) for HPhys in momentResults
   )
-  plotMomentsBootstrapDiff(HVals, momentLabel = qnIndex.label, binning = binning, pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_", graphTitle = graphTitle)
+  plotMomentsBootstrapDiff(
+    HVals             = HVals,
+    momentLabel       = qnIndex.label,
+    binning           = binning,
+    pdfFileNamePrefix = f"{pdfFileNamePrefix}{binning.var.name}_",
+    graphTitle        = graphTitle,
+  )
 
 
 def plotMomentsBootstrapDiffInBin(
@@ -780,8 +808,13 @@ def plotMomentsBootstrapDiffInBin(
         truth = None,
       ) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex
     )
-    plotMomentsBootstrapDiff(HVals, momentLabel = f"{QnMomentIndex.momentSymbol}{momentIndex}",
-                             pdfFileNamePrefix = pdfFileNamePrefix, graphTitle = graphTitle)
+    plotMomentsBootstrapDiff(
+      HVals             = HVals,
+      momentLabel       = f"{QnMomentIndex.momentSymbol}{momentIndex}",
+      binning           = None,
+      pdfFileNamePrefix = pdfFileNamePrefix,
+      graphTitle        = graphTitle,
+    )
 
 
 def plotPullsForMoment(
