@@ -380,7 +380,7 @@ def plotMomentsInBin(
   """Plots H_0, H_1, and H_2 extracted from data along categorical axis and overlays the corresponding true values if given"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
-  for momentIndex in range(3):
+  for momentIndex in range(HData.indices.momentIndexRange):
     HVals = tuple(
       MomentValueAndTruth(
         *HData[qnIndex],
@@ -800,7 +800,7 @@ def plotMomentsBootstrapDiffInBin(
   graphTitle:        str = "",      # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all moments"""
-  for momentIndex in range(3):
+  for momentIndex in range(HData.indices.momentIndexRange):
     # get moments with index momentIndex
     HVals = tuple(
       MomentValueAndTruth(
@@ -880,7 +880,7 @@ def plotPullParameters(
 ) -> None:
   """Plots Gaussian means and sigmas of pull distributions for each moment"""
   # generate separate plots for each moment index
-  for momentIndex in range(3):
+  for momentIndex in range(3):  #TODO pass number of moment indices to function
     # get pull parameters for moment with given momentIndex
     pullPars = {qnIndex : pars for qnIndex, pars in pullParameters.items() if qnIndex.momentIndex == momentIndex}
     # create a histograms with the moments as the categorical axis and the Gaussian parameters as the y-axis
