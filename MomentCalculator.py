@@ -248,16 +248,19 @@ class MomentIndices:
   polarized:           bool = False  # switches between unpolarized production and polarized photoproduction mode
   _QnIndexByFlatIndex: bd.bidict[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
 
-  def __post_init__(self) -> None:
+  def regenerateIndexMaps(self) -> None:
     self._QnIndexByFlatIndex = bd.bidict()
     flatIndex = 0
-    for momentIndex in range(3 if self.polarized else 1):
+    for momentIndex in range(self.momentIndexRange):
       for L in range(self.maxL + 1):
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
             continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
           self._QnIndexByFlatIndex[flatIndex] = QnMomentIndex(momentIndex, L, M)
           flatIndex += 1
+
+  def __post_init__(self) -> None:
+    self.regenerateIndexMaps()
 
   def __len__(self) -> int:
     """Returns total number of moments"""
