@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 
+from __future__ import annotations
+
 import functools
 import math
 import matplotlib.pyplot as plt
@@ -10,10 +12,6 @@ import threadpoolctl
 from typing import (
   Any,
   Collection,
-  Dict,
-  List,
-  Optional,
-  Tuple,
 )
 
 import py3nj
@@ -33,8 +31,8 @@ print = functools.partial(print, flush = True)
 
 
 def plotComparison(
-  measVals:           Tuple[Tuple[float, float, Tuple[int, int, int]], ...],  # Tuple[Tuple[value, uncertainty, indices], ...]
-  trueVals:           Tuple[float, ...],
+  measVals:           tuple[tuple[float, float, tuple[int, int, int]], ...],  # tuple(tuple(value, uncertainty, indices), ...)
+  trueVals:           tuple[float, ...],
   realPart:           bool,
   useMomentSubscript: bool,
   dataLabel:          str = "",
@@ -122,9 +120,9 @@ def plotComparison(
 
 
 def printAndPlotMoments(
-  physMoments:       List[Tuple[Tuple[int, int, int], complex]],  # List[Tuple[indices, value]]
-  physMomentsCov:    Dict[Tuple[int, int, int, int, int, int], Tuple[float, float, float]],  # Dict[Tuple[(indicesA, indicesB), (cov[ReRe], cov[ImIm], cov[ReIm])]]
-  trueMoments:       Optional[List[Tuple[Tuple[int, int, int], complex]]],  # List[Tuple[indices, value]]; if None true values are 1 for H_0(0, 0) and 0 for all other moments
+  physMoments:       list[tuple[tuple[int, int, int], complex]],  # list(tuple(indices, value))
+  physMomentsCov:    dict[tuple[int, int, int, int, int, int], tuple[float, float, float]],  # dict(tuple((indicesA, indicesB), (cov[ReRe], cov[ImIm], cov[ReIm])))
+  trueMoments:       list[tuple[tuple[int, int, int], complex]] | None,  # list(tuple(indices, value)); if None true values are 1 for H_0(0, 0) and 0 for all other moments
   dataLabel:         str = "",
   pdfFileNamePrefix: str = "",
 ) -> None:
@@ -189,10 +187,10 @@ def generateDataLegPolLC(
 def calculateLegMoments(
   dataFrame: Any,
   maxDegree: int,
-) -> Dict[Tuple[int, ...], UFloat]:
+) -> dict[tuple[int, ...], UFloat]:
   """Calculates moments of Legendre polynomials"""
   nmbEvents = dataFrame.Count().GetValue()
-  moments: Dict[Tuple[int], UFloat] = {}
+  moments: dict[tuple[int], UFloat] = {}
   for degree in range(maxDegree + 5):
     # unnormalized moments
     dfMoment = dataFrame.Define("legendrePol", f"ROOT::Math::legendre({degree}, CosTheta)")
@@ -215,12 +213,12 @@ def calculateLegMoments(
 #     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataSphHarmLC(
   nmbEvents:         int,
-  maxL:              int,  # maximum spin of decaying object
+  maxEll:            int,  # maximum spin of decaying object
   parameters:        Collection[float],  # make sure that resulting linear combination is positive definite
   outFileNamePrefix: str = "",
 ) -> Any:
   """Generates data according to linear combination of spherical harmonics"""
-  nmbTerms = 6 * maxL  # Eq. (17)
+  nmbTerms = 6 * maxEll  # Eq. (17)
   assert len(parameters) >= nmbTerms, f"Need {nmbTerms} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of spherical harmonics up to given maximum orbital angular momentum
   # using Eq. (12) in Eq. (6): I = sum_L (2 L + 1 ) / (4pi)  H(L 0) (D_00^L)^* + sum_{M = 1}^L H(L M) 2 Re[D_M0^L]
@@ -229,7 +227,7 @@ def generateDataSphHarmLC(
   # i.e. Eq. (13) becomes: I = sum_L sqrt((2 L + 1 ) / (4pi)) sum_{M = 0}^L tau(M) H(L M) Re[Y_L^M]
   terms = []
   termIndex = 0
-  for L in range(2 * maxL + 1):
+  for L in range(2 * maxEll + 1):
     termsM = []
     for M in range(min(L, 2) + 1):
       termsM.append(f"[{termIndex}] * {1 if M == 0 else 2} * ROOT::Math::sph_legendre({L}, {M}, std::acos(x)) * std::cos({M} * TMath::DegToRad() * y)")  # ROOT defines this as function of theta (not cos(theta)!); sigh
@@ -270,14 +268,14 @@ ROOT.gROOT.LoadMacro("./Covariance.C+")
 
 def calculateSphHarmMoments(
   dataFrame:         Any,
-  maxL:              int,  # maximum spin of decaying object
-  integralMatrix:    Optional[Dict[Tuple[int, ...], complex]] = None,  # acceptance integral matrix
+  maxEll:            int,  # maximum spin of decaying object
+  integralMatrix:    dict[tuple[int, ...], complex] | None = None,  # acceptance integral matrix
   pdfFileNamePrefix: str = "",
-) -> Tuple[List[Tuple[Tuple[int, int], complex]], Dict[Tuple[int, ...], Tuple[float, ...]]]:  # moment values and covariances
+) -> tuple[list[tuple[tuple[int, int], complex]], dict[tuple[int, ...], tuple[float, ...]]]:  # moment values and covariances
   """Calculates moments of spherical harmonics"""
   # define moments
   dfMoment = dataFrame
-  for L in range(2 * maxL + 2):
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       # unnormalized moments
       dfMoment = dfMoment.Define(f"Re_f_{L}_{M}", f"std::sqrt((4 * TMath::Pi()) / (2 * {L} + 1)) * ReYlm({L}, {M}, Theta, Phi)")
@@ -286,14 +284,14 @@ def calculateSphHarmMoments(
   # since we have iid events, Var[sum_i^N f(x_i)] = sum_i^N Var[f] = N * Var[f]; see https://www.wikiwand.com/en/Monte_Carlo_integration
   # similarly for the covariances
   nmbEvents = dataFrame.Count().GetValue()
-  nmbMoments = (2 * maxL + 2) * (2 * maxL + 3) // 2
+  nmbMoments = (2 * maxEll + 2) * (2 * maxEll + 3) // 2
   H_meas = np.zeros((nmbMoments), dtype = np.complex128)
   # V_meas_ReRe = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
   # V_meas_ImIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
   # V_meas_ReIm = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
   Re_f = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
   Im_f = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
-  for L in range(2 * maxL + 2):
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
       # calculate value
@@ -306,14 +304,14 @@ def calculateSphHarmMoments(
       Im_f[iMoment, :] = dfMoment.AsNumpy(columns = [f"Im_f_{L}_{M}"])[f"Im_f_{L}_{M}"]
       # # calculate value covariances
       # #TODO optimize by exploiting symmetry
-      # for L_p in range(2 * maxL + 2):
+      # for L_p in range(2 * maxEll + 2):
       #   for M_p in range(L_p + 1):
       #     iMoment_p = L_p * (L_p + 1) // 2 + M_p
       #     V_meas_ReRe[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Re_f_{L_p}_{M_p}"]).GetValue()
       #     V_meas_ImIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Im_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()
       #     V_meas_ReIm[iMoment, iMoment_p] = nmbEvents * dfMoment.Book(ROOT.std.move(ROOT.Covariance["double"]()), [f"Re_f_{L}_{M}", f"Im_f_{L_p}_{M_p}"]).GetValue()
   # V_meas_ReRe_np = nmbEvents * np.cov(Re_f)
-  # for L in range(2 * maxL + 2):
+  # for L in range(2 * maxEll + 2):
   #   for M in range(L + 1):
   #     iMoment = L * (L + 1) // 2 + M
   #     momentErr = math.sqrt(nmbEvents) * dfMoment.StdDev(f"Re_f_{L}_{M}").GetValue()
@@ -341,7 +339,7 @@ def calculateSphHarmMoments(
   # print(f"V_meas_aug =\n{V_meas_aug}")
   # print(f"vs.\n{V_meas_aug_np}")
   # print(f"ratio\n{np.real_if_close(V_meas_aug / V_meas_aug_np)}")
-  for L in range(2 * maxL + 2):
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
       print(f"H_meas(L = {L}, M = {M}) = {H_meas[iMoment]}")
@@ -353,9 +351,9 @@ def calculateSphHarmMoments(
     V_phys_aug = V_meas_aug
   else:
     I_acc = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)
-    for L in range(2 * maxL + 2):
+    for L in range(2 * maxEll + 2):
       for M in range(L + 1):
-        for Lp in range(2 * maxL + 2):
+        for Lp in range(2 * maxEll + 2):
           for Mp in range(Lp + 1):
             I_acc[L * (L + 1) // 2 + M, Lp * (Lp + 1) // 2 + Mp] = integralMatrix[(L, M, Lp, Mp)]
     print(f"I_acc = \n{np.array2string(I_acc, precision = 3, suppress_small = True, max_line_width = 150)}")
@@ -403,14 +401,14 @@ def calculateSphHarmMoments(
   V_phys_ImIm = (np.real(V_phys_Hermit) - np.real(V_phys_pseudo)) / 2
   V_phys_ReIm = (np.imag(V_phys_pseudo) - np.imag(V_phys_Hermit)) / 2
   # reformat output
-  momentsPhys:    List[Tuple[Tuple[int, int], complex]]    = []
-  momentsPhysCov: Dict[Tuple[int, ...], Tuple[float, ...]] = {}  # cov[(L, M, L', M')] = (ReRe, ImIm, ReIm)
-  for L in range(2 * maxL + 2):
+  momentsPhys:    list[tuple[tuple[int, int], complex]]    = []
+  momentsPhysCov: dict[tuple[int, ...], tuple[float, ...]] = {}  # cov[(L, M, L', M')] = (ReRe, ImIm, ReIm)
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       iMoment = L * (L + 1) // 2 + M
       print(f"H_phys(L = {L}, M = {M}) = {H_phys[iMoment]}")
       momentsPhys.append(((L, M), H_phys[iMoment]))
-      for L_p in range(2 * maxL + 2):
+      for L_p in range(2 * maxEll + 2):
         for M_p in range(L_p + 1):
           iMoment_p = L_p * (L_p + 1) // 2 + M_p
           momentsPhysCov[(L, M, L_p, M_p)] = (V_phys_ReRe[iMoment, iMoment_p], V_phys_ImIm[iMoment, iMoment_p], V_phys_ReIm[iMoment, iMoment_p])
@@ -419,7 +417,7 @@ def calculateSphHarmMoments(
   return momentsPhys, momentsPhysCov
 
 
-WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
+WAVE_SET: dict[int, list[tuple[int, int]]] = {
   # negative-reflectivity waves
   -1 : [  # J, M, refl; see Eq. (41)
     (0, 0),  # S_0
@@ -442,8 +440,8 @@ WAVE_SET: Dict[int, List[Tuple[int, int]]] = {
 #     https://en.wikipedia.org/wiki/Spherical_harmonics#Spherical_harmonics_expansion
 def generateDataPwd(
   nmbEvents:         int,
-  prodAmps:          Dict[int, Tuple[complex, ...]],
-  efficiencyFormula: Optional[str] = None,
+  prodAmps:          dict[int, tuple[complex, ...]],
+  efficiencyFormula: str | None = None,
   outFileNamePrefix: str = "",
 ) -> Any:
   """Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \\ell = 2 and |m| = 1"""
@@ -504,7 +502,7 @@ def theta(m: int) -> float:
 
 
 def calculateInputPwdMoment(
-  prodAmps: Dict[int, Tuple[complex, ...]],
+  prodAmps: dict[int, tuple[complex, ...]],
   L: int,
   M: int,
 ) -> complex:
@@ -530,12 +528,12 @@ def calculateInputPwdMoment(
 
 
 def calculateInputPwdMoments(
-  prodAmps: Dict[int, Tuple[complex, ...]],
-  maxL:     int,  # maximum spin of decaying object
-) -> List[float]:
+  prodAmps: dict[int, tuple[complex, ...]],
+  maxEll:   int,  # maximum spin of decaying object
+) -> list[float]:
   """Calculates moments for given production amplitudes"""
-  moments: List[float] = []
-  for L in range(2 * maxL + 2):
+  moments: list[float] = []
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       moment: complex = calculateInputPwdMoment(prodAmps, L, M)
       if (abs(moment.imag) > 1e-15):
@@ -544,7 +542,7 @@ def calculateInputPwdMoments(
   # normalize to first moment
   moments = [moment / moments[0] for moment in moments]
   index = 0
-  for L in range(2 * maxL + 2):
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       print(f"H_input(L = {L}, M = {M}) = {moments[index]}")
       index += 1
@@ -556,7 +554,7 @@ def calculateWignerDMoment(
   dataFrame: Any,
   L:         int,
   M:         int,
-) -> Tuple[UFloat, UFloat]:  # real and imag part with uncertainty
+) -> tuple[UFloat, UFloat]:  # real and imag part with uncertainty
   """Calculates unnormalized moment of Wigner-D function D^L_{M 0}"""
   # unnormalized moment
   dfMoment = dataFrame.Define("WignerD",  f"wignerD({2 * L}, {2 * M}, 0, Phi, Theta)") \
@@ -571,12 +569,12 @@ def calculateWignerDMoment(
 
 def calculateWignerDMoments(
   dataFrame: Any,
-  maxL:      int,  # maximum spin of decaying object
+  maxEll:    int,  # maximum spin of decaying object
 ) -> None:
   """Calculates moments of Wigner-D function D^L_{M 0}"""
   nmbEvents = dataFrame.Count().GetValue()
-  # moments: List[Tuple[Tuple[int, int], UFloat]] = []
-  for L in range(2 * maxL + 2):
+  # moments: list[tuple[tuple[int, int], UFloat]] = []
+  for L in range(2 * maxEll + 2):
     for M in range(-L, +L + 1):
       # unnormalized moments
       momentRe, momentIm = calculateWignerDMoment(dataFrame, L, M)
@@ -591,7 +589,7 @@ def calculateWignerDMoments(
 
 def generateData2BodyPS(
   nmbEvents:         int,  # number of events to generate
-  efficiencyFormula: Optional[str] = None,
+  efficiencyFormula: str | None = None,
   outFileNamePrefix: str = "",
 ) -> Any:
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
@@ -626,29 +624,29 @@ def generateData2BodyPS(
 
 def calcIntegralMatrix(
   phaseSpaceDataFrame: Any,
-  maxL:                int,  # maximum orbital angular momentum
+  maxEll:              int,  # maximum orbital angular momentum
   nmbEvents:           int,  # number of events in RDataFrame
-) -> Dict[Tuple[int, ...], complex]:
+) -> dict[tuple[int, ...], complex]:
   """Calculates integral matrix of spherical harmonics from provided phase-space data"""
   # define spherical harmonics
-  for L in range(2 * maxL + 2):
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
       phaseSpaceDataFrame = phaseSpaceDataFrame.Define(   f"Y_{L}_{M}",   f"Ylm({L}, {M}, Theta, Phi)")
       phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Re_Y_{L}_{M}", f"ReYlm({L}, {M}, Theta, Phi)")
       phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"Im_Y_{L}_{M}", f"ImYlm({L}, {M}, Theta, Phi)")
   # define integral matrix
-  for L in range(2 * maxL + 2):
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
-      for Lp in range(2 * maxL + 2):
+      for Lp in range(2 * maxEll + 2):
         for Mp in range(Lp + 1):
           # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
           phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * Re_Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
           # phaseSpaceDataFrame = phaseSpaceDataFrame.Define(f"I_{L}_{M}_{Lp}_{Mp}", f"(4 * TMath::Pi() / {nmbEvents}) * std::sqrt((double)(2 * {Lp} + 1) / (2 * {L} + 1)) * (2 - ({Mp} == 0)) * Im_Y_{Lp}_{Mp} * std::conj(Y_{L}_{M})")
   # calculate integral matrix
-  I: Dict[Tuple[int, ...], complex] = {}
-  for L in range(2 * maxL + 2):
+  I: dict[tuple[int, ...], complex] = {}
+  for L in range(2 * maxEll + 2):
     for M in range(L + 1):
-      for Lp in range(2 * maxL + 2):
+      for Lp in range(2 * maxEll + 2):
         for Mp in range(Lp + 1):
           I[(L, M, Lp, Mp)] = phaseSpaceDataFrame.Sum[ROOT.std.complex["double"]](f"I_{L}_{M}_{Lp}_{Mp}").GetValue()
           # print(f"I_{L}_{M}_{Lp}_{Mp} = {I[(L, M, Lp, Mp)]}")
@@ -674,11 +672,11 @@ if __name__ == "__main__":
     nmbEvents         = 1000
     nmbMcEvents       = 1000000
     # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
-    # efficiencyFormula = "1"  # acc_perfect
+    efficiencyFormula = "1"  # acc_perfect
     # efficiencyFormula = "2 - x * x"  # acc_1
     # efficiencyFormula = "1 - x * x"  # acc_2
     # efficiencyFormula = "180 * 180 - y * y"  # acc_3
-    efficiencyFormula = "0.25 + (1 - x * x) * (1 - y * y / (180 * 180))"  # acc_4
+    # efficiencyFormula = "0.25 + (1 - x * x) * (1 - y * y / (180 * 180))"  # acc_4
     # efficiencyFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # Mathematica: PiecewiseExpand[BernsteinBasis[4,3,x]]
     # efficiencyFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
 
@@ -693,7 +691,7 @@ if __name__ == "__main__":
     # maxOrder = 2
     # # parameters = (1, 0.025, 0.02, 0.015, 0.01, -0.02, 0.025, -0.03, -0.035, 0.04, 0.045, 0.05)
     # parameters = (2, 0.05, 0.04, 0.03, 0.02, -0.04, 0.05, -0.06, -0.07, 0.08, 0.09, 0.10)
-    # dataModel = generateDataSphHarmLC(nmbEvents, maxL = maxOrder, parameters = parameters)
+    # dataModel = generateDataSphHarmLC(nmbEvents, maxEll = maxOrder, parameters = parameters)
 
     # normalize parameters 0th moment and pad with 0
     # inputMoments = [par / parameters[0] for par in parameters]
@@ -701,8 +699,8 @@ if __name__ == "__main__":
     #   inputMoments += [0] * (len(moments) - len(inputMoments))
 
     # partial-wave decomposition
-    maxOrder = 2
-    prodAmps: Dict[int, Tuple[complex, ...]] = {
+    maxEll = 2
+    prodAmps: dict[int, tuple[complex, ...]] = {
       # negative-reflectivity waves
       -1 : (
          1   + 0j,    # S_0
@@ -717,7 +715,7 @@ if __name__ == "__main__":
         -0.1 + 0.3j,  # D_+
       ),
     }
-    inputMoments: List[float] = calculateInputPwdMoments(prodAmps, maxL = maxOrder)
+    inputMoments: list[float] = calculateInputPwdMoments(prodAmps, maxEll = maxEll)
     dataPwaModel = generateDataPwd(nmbEvents, prodAmps, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/")
     # print("!!!", dataModel.AsNumpy())
 
@@ -735,15 +733,15 @@ if __name__ == "__main__":
 
     # calculate moments
     dataAcceptedPS = generateData2BodyPS(nmbMcEvents, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/")
-    integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxL = maxOrder, nmbEvents = nmbMcEvents)
+    integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxEll = maxEll, nmbEvents = nmbMcEvents)
     print("Moments of accepted phase-space data")
-    calculateSphHarmMoments(dataAcceptedPS, maxL = maxOrder, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
+    calculateSphHarmMoments(dataAcceptedPS, maxEll = maxEll, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
     # calculateLegMoments(dataModel, maxDegree = maxOrder)
     print("Moments of data generated according to model")
-    moments:    List[Tuple[Tuple[int, int], complex]]
-    momentsCov: Dict[Tuple[int, ...], Tuple[float, ...]]
-    moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxL = maxOrder, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
-    # calculateWignerDMoments(dataModel, maxL = maxOrder)
+    moments:    list[tuple[tuple[int, int], complex]]
+    momentsCov: dict[tuple[int, ...], tuple[float, ...]]
+    moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxEll = maxEll, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
+    # calculateWignerDMoments(dataModel, maxEll = maxOrder)
     #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
     # Re[H_i]
