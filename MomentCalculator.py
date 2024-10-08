@@ -287,6 +287,11 @@ class MomentIndices:
     else:
       raise TypeError(f"Invalid subscript type {type(subscript)}.")
 
+  @property
+  def momentIndexRange(self) -> int:
+    """Returns range of moment indices"""
+    return 3 if self.polarized else 1
+
   def flatIndices(self) -> Generator[int, None, None]:
     """Generates flat indices"""
     for flatIndex in range(len(self)):
