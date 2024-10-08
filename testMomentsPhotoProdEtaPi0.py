@@ -89,7 +89,7 @@ if __name__ == "__main__":
   setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-  with threadController.limit(limits = 3):
+  with threadController.limit(limits = 5):
     print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
     timer.start("Total execution time")
 
@@ -103,7 +103,8 @@ if __name__ == "__main__":
     #!Note! partial-wave amplitudes for signal are defined in helicity frame
     # signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
     signalPwAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
-    beamPolarization     = 1.0  #TODO read from tree
+    beamPolarization     = None  # unpolarized case
+    # beamPolarization     = 0.0  # read from data
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
     normalizeMoments     = False
@@ -118,11 +119,11 @@ if __name__ == "__main__":
     # massBinning          = HistAxisBinning(nmbBins = 2, minVal = 1.28, maxVal = 1.36, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.12, maxVal = 1.16, _var = binVarMass)
     # study with constant amplitude values taken from bin 10 at 1.30 GeV
-    massBinning          = HistAxisBinning(nmbBins = 25, minVal = 0.92, maxVal = 1.92, _var = binVarMass)
+    # massBinning          = HistAxisBinning(nmbBins = 25, minVal = 0.92, maxVal = 1.92, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 0.88 , maxVal = 0.92, _var = binVarMass)
-    # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
+    massBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.28 , maxVal = 1.32, _var = binVarMass)
     # massBinning          = HistAxisBinning(nmbBins = 1, minVal = 0.92 , maxVal = 1.92, _var = binVarMass)
-    nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
+    nmbOpenMpThreads     = ROOT.getNmbOpenMpThreads()
 
     # load all signal and phase-space data
     print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}'")
@@ -171,7 +172,7 @@ if __name__ == "__main__":
         amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPwAmpsFileName, massBinCenter), tolerance = 1e-11)
         HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, normalize = normalizeMoments, printMomentFormulas = False)
         # scale true moments such that H_0(0, 0) is number of generated signal events
-        scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]
+        scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]  #TODO get moment value using QnMomentIndex
         HTrue._valsFlatIndex *= scale
         print(f"True moment values:\n{HTrue}")
 
