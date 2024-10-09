@@ -13,12 +13,8 @@ import os
 from scipy import stats
 from typing import (
   Any,
-  Dict,
   Iterator,
-  List,
-  Optional,
   Sequence,
-  Tuple,
 )
 
 import ROOT
@@ -48,7 +44,7 @@ print = functools.partial(print, flush = True)
 @dataclass
 class MomentValueAndTruth(MomentValue):
   """Stores and provides access to single moment value and provides truth value"""
-  truth: Optional[complex] = None  # true moment value
+  truth: complex | None = None  # true moment value
 
   def truthRealPart(
     self,
@@ -68,7 +64,7 @@ class HistAxisBinning:
   nmbBins: int    # number of bins
   minVal:  float  # lower limit
   maxVal:  float  # upper limit
-  _var:    Optional[KinematicBinningVariable] = None  # optional info about bin variable
+  _var:    KinematicBinningVariable | None = None  # optional info about bin variable
 
   # make HistAxisBinning behave like a list of bin centers
   def __len__(self) -> int:
@@ -97,7 +93,7 @@ class HistAxisBinning:
     return self._var
 
   @property
-  def astuple(self) -> Tuple[int, float, float]:
+  def astuple(self) -> tuple[int, float, float]:
     """Returns tuple with binning info that can be directly used in ROOT.THX() constructor"""
     return (self.nmbBins, self.minVal, self.maxVal)
 
@@ -123,13 +119,13 @@ class HistAxisBinning:
   def binValueRange(
     self,
     binIndex: int,
-  ) -> Tuple[float, float]:
+  ) -> tuple[float, float]:
     """Returns value range for bin with given index"""
     binCenter = self[binIndex]
     return (binCenter - 0.5 * self.binWidth, binCenter + 0.5 * self.binWidth)
 
   @property
-  def binValueRanges(self) -> Tuple[Tuple[float, float], ...]:
+  def binValueRanges(self) -> tuple[tuple[float, float], ...]:
     """Returns value ranges for all bins"""
     return tuple((binCenter - 0.5 * self.binWidth, binCenter + 0.5 * self.binWidth) for binCenter in self)
 
@@ -155,9 +151,9 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
 def plotRealMatrix(
   matrix:      npt.NDArray[npt.Shape["*, *"], npt.Float64],  # matrix to plot
   pdfFileName: str,  # name of output file
-  axisTitles:  Tuple[str, str]                         = ("", ""),      # titles for x and y axes
-  plotTitle:   str                                     = "",            # title for plot
-  zRange:      Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+  axisTitles:  tuple[str, str]                   = ("", ""),      # titles for x and y axes
+  plotTitle:   str                               = "",            # title for plot
+  zRange:      tuple[float | None, float | None] = (None, None),  # range for z-axis
   **kwargs:    Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
   """Plots given matrix into PDF file with given name"""
@@ -176,10 +172,10 @@ def plotRealMatrix(
 def plotComplexMatrix(
   complexMatrix:     npt.NDArray[npt.Shape["*, *"], npt.Complex128],  # matrix to plot
   pdfFileNamePrefix: str,  # name prefix for output files
-  axisTitles:        Tuple[str, str] = ("", ""),  # titles for x and y axes
-  plotTitle:         str             = "",   # title for plot
-  zRangeAbs:         float           = 1.1,  # range for absolute value and for abs(real part)
-  zRangeImag:        float           = 0.075,  # range for abs(imag part)
+  axisTitles:        tuple[str, str] = ("", ""),  # titles for x and y axes
+  plotTitle:         str             = "",        # title for plot
+  zRangeAbs:         float           = 1.1,       # range for absolute value and for abs(real part)
+  zRangeImag:        float           = 0.075,     # range for abs(imag part)
   **kwargs:          Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
   """Plots real and imaginary parts, absolute value and phase of given complex-valued matrix"""
@@ -195,12 +191,12 @@ def plotComplexMatrix(
 
 
 def drawTF3(
-  fcn:         ROOT.TF3,                # function to plot
-  binnings:    Tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
-  pdfFileName: str,                     # name of PDF file to write
-  histTitle:   str = "",                # histogram title
-  nmbPoints:   Optional[int]   = None,  # number of function points; used in numeric integration performed by GetRandom()
-  maxVal:      Optional[float] = None,  # maximum plot range
+  fcn:         ROOT.TF3,  # function to plot
+  binnings:    tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
+  pdfFileName: str,                  # name of PDF file to write
+  histTitle:   str          = "",    # histogram title
+  nmbPoints:   int | None   = None,  # number of function points; used in numeric integration performed by GetRandom()
+  maxVal:      float | None = None,  # maximum plot range
 ) -> None:
   """Draws given TF3 into histogram"""
   if nmbPoints:
@@ -235,13 +231,13 @@ def drawTF3(
 
 def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
-  binning:           Optional[HistAxisBinning]           = None,  # if not None data are plotted as function of binning variable
-  normalizedMoments: bool                                = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentLabel:       str                                 = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
-  pdfFileNamePrefix: str                                 = "",  # name prefix for output files
-  histTitle:         str                                 = "",  # histogram title
-  plotLegend:        bool                                = True,
-  legendLabels:      Tuple[Optional[str], Optional[str]] = (None, None),  # labels for legend entries; None = use defaults
+  binning:           HistAxisBinning | None        = None,  # if not None data are plotted as function of binning variable
+  normalizedMoments: bool                          = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  momentLabel:       str                           = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
+  pdfFileNamePrefix: str                           = "",  # name prefix for output files
+  histTitle:         str                           = "",  # histogram title
+  plotLegend:        bool                          = True,
+  legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -314,7 +310,7 @@ def plotMoments(
         *histBinning.astuple)
       # calculate residuals; NaN flags histogram bins, for which truth info is missing
       residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
-      indicesToMask: List[int] = []
+      indicesToMask: list[int] = []
       for index, HVal in enumerate(HVals):
         if (binning is not None) and (binning._var not in HVal.binCenters.keys()):
           continue
@@ -372,11 +368,11 @@ def plotMoments(
 
 def plotMomentsInBin(
   HData:             MomentResult,  # moments extracted from data
-  normalizedMoments: bool                                = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  HTrue:             Optional[MomentResult]              = None,  # true moments
-  pdfFileNamePrefix: str                                 = "",    # name prefix for output files
-  plotLegend:        bool                                = True,
-  legendLabels:      Tuple[Optional[str], Optional[str]] = (None, None),  # labels for legend entries; None = use defaults
+  normalizedMoments: bool                          = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  HTrue:             MomentResult | None           = None,  # true moments
+  pdfFileNamePrefix: str                           = "",    # name prefix for output files
+  plotLegend:        bool                          = True,
+  legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
   # ensure that indices of HData and HTrue are compatible
@@ -413,12 +409,12 @@ def plotMoments1D(
   momentResults:     MomentResultsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
-  normalizedMoments: bool                                    = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentResultsTrue: Optional[MomentResultsKinematicBinning] = None,  # true moments
-  pdfFileNamePrefix: str                                     = "",    # name prefix for output files
-  histTitle:         str                                     = "",    # histogram title
-  plotLegend:        bool                                    = True,
-  legendLabels:      Tuple[Optional[str], Optional[str]]     = (None, None),  # labels for legend entries; None = use defaults
+  normalizedMoments: bool                                 = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  momentResultsTrue: MomentResultsKinematicBinning | None = None,  # true moments
+  pdfFileNamePrefix: str                                  = "",    # name prefix for output files
+  histTitle:         str                                  = "",    # histogram title
+  plotLegend:        bool                                 = True,
+  legendLabels:      tuple[str | None, str | None]        = (None, None),  # labels for legend entries; None = use defaults
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
@@ -442,10 +438,10 @@ def plotMoments1D(
 
 def plotMomentsBootstrapDistributions1D(
   HData:             MomentResult,  # moments extracted from data
-  HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str                    = "",    # name prefix for output files
-  histTitle:         str                    = "",    # histogram title
-  nmbBins:           int                    = 100,   # number of bins for bootstrap histograms
+  HTrue:             MomentResult | None = None,  # true moments
+  pdfFileNamePrefix: str                 = "",    # name prefix for output files
+  histTitle:         str                 = "",    # histogram title
+  nmbBins:           int                 = 100,   # number of bins for bootstrap histograms
 ) -> None:
   """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -528,12 +524,12 @@ def plotMomentsBootstrapDistributions1D(
 
 
 def plotMomentPairBootstrapDistributions2D(
-  momentIndexPair:   Tuple[QnMomentIndex, QnMomentIndex],  # indices of moments to plot
+  momentIndexPair:   tuple[QnMomentIndex, QnMomentIndex],  # indices of moments to plot
   HData:             MomentResult,  # moments extracted from data
-  HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str                    = "",    # name prefix for output files
-  histTitle:         str                    = "",    # histogram title
-  nmbBins:           int                    = 20,    # number of bins for bootstrap histograms
+  HTrue:             MomentResult | None = None,  # true moments
+  pdfFileNamePrefix: str                 = "",    # name prefix for output files
+  histTitle:         str                 = "",    # histogram title
+  nmbBins:           int                 = 20,    # number of bins for bootstrap histograms
 ) -> None:
   """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
   HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], truth = HTrue[momentIndexPair[0]].val if HTrue else None),
@@ -627,10 +623,10 @@ def plotMomentPairBootstrapDistributions2D(
 
 def plotMomentsBootstrapDistributions2D(
   HData:             MomentResult,  # moments extracted from data
-  HTrue:             Optional[MomentResult] = None,  # true moments
-  pdfFileNamePrefix: str                    = "",    # name prefix for output files
-  histTitle:         str                    = "",    # histogram title
-  nmbBins:           int                    = 20,    # number of bins for bootstrap histograms
+  HTrue:             MomentResult | None = None,  # true moments
+  pdfFileNamePrefix: str                 = "",    # name prefix for output files
+  histTitle:         str                 = "",    # histogram title
+  nmbBins:           int                 = 20,    # number of bins for bootstrap histograms
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
   momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
@@ -651,9 +647,9 @@ def plotMomentsBootstrapDistributions2D(
 def plotMomentsCovMatrices(
   HData:             MomentResult,  # moments extracted from data
   pdfFileNamePrefix: str,  # name prefix for output files
-  axisTitles:        Tuple[str, str]                         = ("", ""),      # titles for x and y axes
-  plotTitle:         str                                     = "",            # title for plot
-  zRange:            Tuple[Optional[float], Optional[float]] = (None, None),  # range for z-axis
+  axisTitles:        tuple[str, str]                   = ("", ""),      # titles for x and y axes
+  plotTitle:         str                               = "",            # title for plot
+  zRange:            tuple[float | None, float | None] = (None, None),  # range for z-axis
 ):
   """Plots covariance matrices of moments and the difference w.r.t. the bootstrap estimates"""
   # get full composite covariance matrix from nominal estimate
@@ -715,9 +711,9 @@ def plotMomentsCovMatrices(
 def plotMomentsBootstrapDiff(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data
   momentLabel:       str,  # label used in graph names and output file name
-  binning:           Optional[HistAxisBinning] = None,  # binning to use for plot; if None moment index is used as x-axis
-  pdfFileNamePrefix: str                       = "",    # name prefix for output files
-  graphTitle:        str                       = "",    # graph title
+  binning:           HistAxisBinning | None = None,  # binning to use for plot; if None moment index is used as x-axis
+  pdfFileNamePrefix: str                    = "",    # name prefix for output files
+  graphTitle:        str                    = "",    # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all given moments as function of moment index or binning variable"""
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for all moments"
@@ -831,10 +827,10 @@ def plotMomentsBootstrapDiffInBin(
 def plotPullsForMoment(
   momentResults:     MomentResultsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,  # defines specific moment
-  momentResultsTrue: Optional[MomentResultsKinematicBinning] = None,  # true moments
-  pdfFileNamePrefix: str                                     = "",    # name prefix for output files
-  histTitle:         str                                     = "",    # histogram title
-) -> Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]:  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
+  momentResultsTrue: MomentResultsKinematicBinning | None = None,  # true moments
+  pdfFileNamePrefix: str                                  = "",    # name prefix for output files
+  histTitle:         str                                  = "",    # histogram title
+) -> dict[bool, tuple[tuple[float, float], tuple[float, float]]]:  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   """Plots pulls of moment with given qnIndex estimated from moment values in kinematic bins"""
   # filter out specific moment given by qnIndex
   HVals = tuple(
@@ -844,7 +840,7 @@ def plotPullsForMoment(
     ) for binIndex, HPhys in enumerate(momentResults)
   )
   histStack = ROOT.THStack(f"{pdfFileNamePrefix}pulls_{qnIndex.label}", f"{histTitle};""(#it{#hat{H}} - #it{H}_{true}) / #it{#hat{#sigma}};Count")
-  gaussPars: Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]] = {}  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
+  gaussPars: dict[bool, tuple[tuple[float, float], tuple[float, float]]] = {}  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   for realPart in (False, True):
     # loop over kinematic bins and fill histogram with pulls
     histPull = ROOT.TH1D(f"{histStack.GetName()}_{'Re' if realPart else 'Im'}", "Real Part" if realPart else "Imag Part", 25, -5, +5)
@@ -885,7 +881,7 @@ def plotPullsForMoment(
 
 
 def plotPullParameters(
-  pullParameters:    Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]],  # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
+  pullParameters:    dict[QnMomentIndex, dict[bool, tuple[tuple[float, float], tuple[float, float]]]],  # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
   pdfFileNamePrefix: str = "",  # name prefix for output files
   histTitle:         str = "",  # histogram title
 ) -> None:
@@ -933,10 +929,10 @@ def plotAngularDistr(
   dataPsAcc:         ROOT.RDataFrame,  # accepted phase-space data
   dataPsGen:         ROOT.RDataFrame,  # generated phase-space data
   dataSignalAcc:     ROOT.RDataFrame,  # accepted signal data
-  dataSignalGen:     Optional[ROOT.RDataFrame] = None,  # generated signal data
-  pdfFileNamePrefix: str                       = "",    # name prefix for output files
-  nmbBins3D:         int                       = 15,    # number of bins for 3D histograms
-  nmbBins2D:         int                       = 40,    # number of bins for 2D histograms
+  dataSignalGen:     ROOT.RDataFrame | None = None,  # generated signal data
+  pdfFileNamePrefix: str                    = "",    # name prefix for output files
+  nmbBins3D:         int                    = 15,    # number of bins for 3D histograms
+  nmbBins2D:         int                    = 40,    # number of bins for 2D histograms
 ):
   """Plot 2D and 3D angular distributions of signal and phase-space data"""
   @dataclass
@@ -947,7 +943,7 @@ def plotAngularDistr(
       self,
       columns: Sequence[str],
       weightColName: str = "eventWeight",
-    ) -> List[str]:
+    ) -> list[str]:
       cols = list(columns)
       if weightColName in self.dataFrame.GetColumnNames():
         cols += [weightColName]
