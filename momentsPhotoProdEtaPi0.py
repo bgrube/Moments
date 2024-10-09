@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # performs moments analysis for eta pi0 real-data events
 
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 import functools
 import numpy as np
 import pandas as pd
 import threadpoolctl
-from typing import (
-  Dict,
-  List,
-  Tuple,
-)  #TODO Python 3.9 allows standard collections to be used in type annotations
 
 import ROOT
 
@@ -62,7 +60,7 @@ class BeamPolInfo:
 # see Eqs. (4.22)ff in Lawrence's thesis for polarization values and
 # /w/halld-scshelf2101/malte/final_fullWaveset/nominal_fullWaveset_ReflIndiv_150rnd/010020/etapi_result_samePhaseD.fit
 # for amplitude scaling factors
-BEAM_POL_INFOS: Tuple[BeamPolInfo, ...] = (
+BEAM_POL_INFOS: tuple[BeamPolInfo, ...] = (
   BeamPolInfo(datasetLabel = "EtaPi0_000", angle =   0, polarization = 0.35062, ampScaleFactor = 1.0),
   BeamPolInfo(datasetLabel = "EtaPi0_045", angle =  45, polarization = 0.34230, ampScaleFactor = 0.982204395837131),
   BeamPolInfo(datasetLabel = "EtaPi0_090", angle =  90, polarization = 0.34460, ampScaleFactor = 0.968615883555624),
@@ -75,7 +73,7 @@ def readPartialWaveAmplitudes(
   massBinCenter:     float,  # [GeV]
   fitResultPlotDir:  str,    # directory with intensity plots generated from PWA fit result
   beamPolAngleLabel: str = "000",  # "total" for total data sample summed over polarization directions
-) -> List[AmplitudeValue]:
+) -> list[AmplitudeValue]:
   """Reads partial-wave amplitude values for given mass bin from CSV data"""
   print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV from file '{csvFileName}'")
   df = pd.read_csv(csvFileName, index_col = [0]).astype({"mass": float})
@@ -184,9 +182,9 @@ if __name__ == "__main__":
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
-    momentsInBins:    List[MomentCalculator] = []
-    momentsInBinsPwa: List[MomentCalculator] = []
-    nmbPsGenEvents:   List[int]              = []
+    momentsInBins:    list[MomentCalculator] = []
+    momentsInBinsPwa: list[MomentCalculator] = []
+    nmbPsGenEvents:   list[int]              = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
     with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(massBinning)} bins"):
       for massBinIndex, massBinCenter in enumerate(massBinning):
