@@ -103,7 +103,8 @@ if __name__ == "__main__":
     #!Note! partial-wave amplitudes for signal are defined in helicity frame
     # signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
     signalPwAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
-    beamPolarization     = None  # unpolarized case
+    beamPolarization     = None  # unpolarized case; note that the data are still polarized we only extract the unpolarized moments neglecting the polarized ones
+                                 # neglecting the polarized moments leads to a bias in the estimated unpolarized moments, because the acceptance correction is slightly off
     # beamPolarization     = 0.0  # read from data
     # maxL                 = 1  # define maximum L quantum number of moments
     maxL                 = 5  # define maximum L quantum number of moments
