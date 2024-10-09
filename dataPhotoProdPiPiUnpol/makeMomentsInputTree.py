@@ -26,7 +26,8 @@ if __name__ == "__main__":
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
   dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
-  mcDataFileName        = "./amptools_tree_accepted_tbin1_ebin4.root"
+  phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4.root"
+  phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4.root"
   treeName              = "kin"
   outputTreeName        = "PiPi"
 
@@ -61,15 +62,16 @@ if __name__ == "__main__":
       .Snapshot(outputTreeName, "data_flat.root", ("mass", "cosTheta", "theta", "phi", "phiDeg", "eventWeight"))
   #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
-  # convert MC data
-  lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"
-  lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
-  lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  #TODO not clear whether correct index is 1 or 2
-  lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  #TODO not clear whether correct index is 1 or 2
-  ROOT.RDataFrame(treeName, mcDataFileName) \
-      .Define("mass",        f"massPair({lvPip}, {lvPim})") \
-      .Define("cosTheta",    f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
-      .Define("theta",       "std::acos(cosTheta)") \
-      .Define("phi",         f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})") \
-      .Define("phiDeg",      "phi * TMath::RadToDeg()") \
-      .Snapshot(outputTreeName, "acc_phase_space_flat.root", ("mass", "cosTheta", "theta", "phi", "phiDeg"))
+  for inFileName, outFileName in [(phaseSpaceAccFileName, "phaseSpace_acc_flat.root"), (phaseSpaceGenFileName, "phaseSpace_gen_flat.root")]:
+    # convert MC data
+    lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"
+    lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
+    lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  #TODO not clear whether correct index is 1 or 2
+    lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  #TODO not clear whether correct index is 1 or 2
+    ROOT.RDataFrame(treeName, inFileName) \
+        .Define("mass",        f"massPair({lvPip}, {lvPim})") \
+        .Define("cosTheta",    f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
+        .Define("theta",       "std::acos(cosTheta)") \
+        .Define("phi",         f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})") \
+        .Define("phiDeg",      "phi * TMath::RadToDeg()") \
+        .Snapshot(outputTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg"))
