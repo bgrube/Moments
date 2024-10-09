@@ -952,6 +952,8 @@ def plotAngularDistr(
       if weightColName in self.dataFrame.GetColumnNames():
         cols += [weightColName]
       return cols
+    def hasPhiColumn(self) -> bool:
+      return "PhiDeg" in self.dataFrame.GetColumnNames()
   dataInfos = [
     DataInfo(dataSignalAcc, "signalAcc"),
     DataInfo(dataPsAcc,     "psAcc"),
@@ -970,11 +972,14 @@ def plotAngularDistr(
         ROOT.RDF.TH2DModel(f"{dataInfo.label}_2D", title2D, nmbBins2D, -1, +1, nmbBins2D, -180, +180),
         *dataInfo.useColumns(columns2D)
       ),
-      dataInfo.dataFrame.Histo3D(
-        ROOT.RDF.TH3DModel(f"{dataInfo.label}_3D", title3D, nmbBins3D, -1, +1, nmbBins3D, -180, +180, nmbBins3D, -180, +180),
-        *dataInfo.useColumns(columns3D)
-      ),
     ]
+    if dataInfo.hasPhiColumn():
+      hists += [
+        dataInfo.dataFrame.Histo3D(
+          ROOT.RDF.TH3DModel(f"{dataInfo.label}_3D", title3D, nmbBins3D, -1, +1, nmbBins3D, -180, +180, nmbBins3D, -180, +180),
+          *dataInfo.useColumns(columns3D)
+        ),
+      ]
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
