@@ -672,11 +672,11 @@ if __name__ == "__main__":
     nmbEvents         = 1000
     nmbMcEvents       = 1000000
     # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
-    efficiencyFormula = "1"  # acc_perfect
+    # efficiencyFormula = "1"  # acc_perfect
     # efficiencyFormula = "2 - x * x"  # acc_1
     # efficiencyFormula = "1 - x * x"  # acc_2
     # efficiencyFormula = "180 * 180 - y * y"  # acc_3
-    # efficiencyFormula = "0.25 + (1 - x * x) * (1 - y * y / (180 * 180))"  # acc_4
+    efficiencyFormula = "0.25 + (1 - x * x) * (1 - y * y / (180 * 180))"  # acc_4
     # efficiencyFormula = "(-4 * ((x + 1) / 2 - 1) * ((x + 1) / 2) * ((x + 1) / 2) * ((x + 1) / 2))"  # Mathematica: PiecewiseExpand[BernsteinBasis[4,3,x]]
     # efficiencyFormula += " * ((((y + 180) / 360) / 3) * (2 * ((y + 180) / 360) * (5 * ((y + 180) / 360) - 9) + 9))"  # PiecewiseExpand[BernsteinBasis[3,1,x]+BernsteinBasis[3,3,x]/3]; acc_5
 
