@@ -388,16 +388,18 @@ if __name__ == "__main__":
       canv.SaveAs(f"{outFileDirName}/{histRatio.GetName()}.pdf")
 
       # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-      histIntMeas = data.Histo1D(
-        ROOT.RDF.TH1DModel("intensity_meas", f";{massBinning.axisTitle};Events", *massBinning.astuple), "mass", "eventWeight").GetValue()
+      histIntMeas = ROOT.RDataFrame(treeName, dataFileName) \
+                        .Histo1D(
+                          ROOT.RDF.TH1DModel("intensity_meas", f";{massBinning.axisTitle};Events", *massBinning.astuple), "mass", "eventWeight"
+                        ).GetValue()
       for binIndex, HMeas in enumerate(H000s[0]):
-        HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)
+        HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
       plotMoments(
         HVals             = H000s[0],
         binning           = massBinning,
         normalizedMoments = normalizeMoments,
         momentLabel       = H000Index.label,
-        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
+        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_intensity_",
         histTitle         = H000Index.title,
         legendLabels      = ("Measured Moment", "Measured Intensity"),
       )
