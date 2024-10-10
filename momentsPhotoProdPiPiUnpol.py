@@ -76,15 +76,16 @@ def readMomentResultsClas(
           assert tableStartPos >= 0, f"Could not find table for beam energy bin '{beamEnergyBinLabel}' in file '{csvFileName}'"
           tableEndPos = csvData.find("\n\n", tableStartPos)  # tables are separated by an empty line
           csvData = csvData[tableStartPos:tableEndPos if tableEndPos >= 0 else None]
-          # print(f"!!! {qnMomentIndex=}\n{csvData=}")
-          momentDfs[qnMomentIndex] = pd.read_csv(
+          momentDf = pd.read_csv(
             StringIO(csvData),
             skiprows = 3,  # 2 rows with comments and 1 row with column names; the latter cannot be parsed by pandas
             names    = ["mass", "massLow", "massHigh", "moment", "uncertPlus", "uncertMinus"],
           )
-          # print(f"!!! {qnMomentIndex=}\n{momentDfs[qnMomentIndex]}")
+          # scale moment values and their uncertainties by 1 / sqrt(2L + 1) to match normalization used in this analysis
+          momentDf["moment", "uncertPlus", "uncertMinus"] /= np.sqrt(2 * qnMomentIndex.L + 1)
+          momentDfs[qnMomentIndex] = momentDf
           break
-  # check that mass bins are the same in all data frames
+  # ensure that mass bins are the same in all data frames
   dfs = list(momentDfs.values())
   massColunm = dfs[0]["mass"]
   for df in dfs[1:]:
