@@ -442,6 +442,7 @@ def plotMomentsBootstrapDistributions1D(
   pdfFileNamePrefix: str                 = "",    # name prefix for output files
   histTitle:         str                 = "",    # histogram title
   nmbBins:           int                 = 100,   # number of bins for bootstrap histograms
+  HTrueLabel:        str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
@@ -518,7 +519,7 @@ def plotMomentsBootstrapDistributions1D(
       entry.SetLineColor(ROOT.kGreen + 2)
       legend.AddEntry(gaussian, "Nominal estimate Gaussian", "LP")
       if HVal.truth is not None:
-        legend.AddEntry(lineTrue, "True value", "L")
+        legend.AddEntry(lineTrue, HTrueLabel, "L")
       legend.Draw()
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
@@ -530,6 +531,7 @@ def plotMomentPairBootstrapDistributions2D(
   pdfFileNamePrefix: str                 = "",    # name prefix for output files
   histTitle:         str                 = "",    # histogram title
   nmbBins:           int                 = 20,    # number of bins for bootstrap histograms
+  HTrueLabel:        str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
   HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], truth = HTrue[momentIndexPair[0]].val if HTrue else None),
@@ -616,7 +618,7 @@ def plotMomentPairBootstrapDistributions2D(
     entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
     entry.SetLineColor(ROOT.kGreen + 2)
     if plotTruth:
-      entry = legend.AddEntry(markerTruth, "True value", "P")
+      entry = legend.AddEntry(markerTruth, HTrueLabel, "P")
     legend.Draw()
     canv.SaveAs(f"{histBs.GetName()}.pdf")
 
@@ -627,6 +629,7 @@ def plotMomentsBootstrapDistributions2D(
   pdfFileNamePrefix: str                 = "",    # name prefix for output files
   histTitle:         str                 = "",    # histogram title
   nmbBins:           int                 = 20,    # number of bins for bootstrap histograms
+  HTrueLabel:        str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
   momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
@@ -641,6 +644,7 @@ def plotMomentsBootstrapDistributions2D(
       pdfFileNamePrefix = pdfFileNamePrefix,
       histTitle         = histTitle,
       nmbBins           = nmbBins,
+      HTrueLabel        = HTrueLabel,
     )
 
 
