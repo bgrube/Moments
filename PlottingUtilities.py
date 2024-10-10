@@ -392,7 +392,7 @@ def plotMomentsInBin(
       MomentValueAndTruth(
         *HData[qnIndex],
         truth = HTrue[qnIndex].val if HTrue else None
-      ) for qnIndex in HData.indices.QnIndices if qnIndex.momentIndex == momentIndex
+      ) for qnIndex in HData.indices.qnIndices if qnIndex.momentIndex == momentIndex
     )
     plotMoments(
       HVals             = HVals,
@@ -446,7 +446,7 @@ def plotMomentsBootstrapDistributions1D(
   """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
-  for qnIndex in HData.indices.QnIndices:
+  for qnIndex in HData.indices.qnIndices:
     HVal = MomentValueAndTruth(
       *HData[qnIndex],
       truth = HTrue[qnIndex].val if HTrue else None
@@ -813,7 +813,7 @@ def plotMomentsBootstrapDiffInBin(
       MomentValueAndTruth(
         *HData[qnIndex],
         truth = None,
-      ) for qnIndex in HData.indices.QnIndices if qnIndex.momentIndex == momentIndex
+      ) for qnIndex in HData.indices.qnIndices if qnIndex.momentIndex == momentIndex
     )
     plotMomentsBootstrapDiff(
       HVals             = HVals,

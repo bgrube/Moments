@@ -227,7 +227,7 @@ if __name__ == "__main__":
           plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_", plotLegend = False)
           # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
         # plot kinematic dependences of all phase-space moments
-        for qnIndex in momentIndices.QnIndices:
+        for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
           plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
                       pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
       # plot kinematic dependences of all moments
       pullParameters: Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
-      for qnIndex in momentIndices.QnIndices:
+      for qnIndex in momentIndices.qnIndices:
         plotMoments1D(
           momentResults     = moments.momentResultsPhys,
           qnIndex           = qnIndex,

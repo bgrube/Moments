@@ -109,7 +109,7 @@ class AmplitudeSet:
     for reflIndex in reflIndices:
       for l in range(self.maxSpin + 1):
         for m in range(-l, l + 1):
-          yield self[QnWaveIndex(+1 if reflIndex == 0 else -1, l, m)]
+          yield self[QnWaveIndex(refl = (+1 if reflIndex == 0 else -1), l, m)]
 
   @property
   def maxSpin(self) -> int:
@@ -246,17 +246,17 @@ class MomentIndices:
   """Provides mapping between moment index schemes and iterators for moment indices"""
   maxL:                int  # maximum L quantum number of moments
   polarized:           bool = False  # switches between unpolarized production and polarized photoproduction mode
-  _QnIndexByFlatIndex: bd.bidict[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
+  _qnIndexByFlatIndex: bd.bidict[int, QnMomentIndex] = field(init = False)  # bidirectional map for flat index <-> quantum-number index conversion
 
   def regenerateIndexMaps(self) -> None:
-    self._QnIndexByFlatIndex = bd.bidict()
+    self._qnIndexByFlatIndex = bd.bidict()
     flatIndex = 0
     for momentIndex in range(self.momentIndexRange):
       for L in range(self.maxL + 1):
         for M in range(L + 1):
           if momentIndex == 2 and M == 0:
             continue  # H_2(L, 0) are always zero and would lead to a singular acceptance integral matrix
-          self._QnIndexByFlatIndex[flatIndex] = QnMomentIndex(momentIndex, L, M)
+          self._qnIndexByFlatIndex[flatIndex] = QnMomentIndex(momentIndex, L, M)
           flatIndex += 1
 
   def __post_init__(self) -> None:
@@ -264,7 +264,7 @@ class MomentIndices:
 
   def __len__(self) -> int:
     """Returns total number of moments"""
-    return len(self._QnIndexByFlatIndex)
+    return len(self._qnIndexByFlatIndex)
 
   @overload
   def __getitem__(
@@ -284,9 +284,9 @@ class MomentIndices:
   ) -> QnMomentIndex | int:
     """Returns QnIndex that correspond to given flat index and vice versa"""
     if isinstance(subscript, int):
-      return self._QnIndexByFlatIndex[subscript]
+      return self._qnIndexByFlatIndex[subscript]
     elif isinstance(subscript, QnMomentIndex):
-      return self._QnIndexByFlatIndex.inverse[subscript]
+      return self._qnIndexByFlatIndex.inverse[subscript]
     else:
       raise TypeError(f"Invalid subscript type {type(subscript)}.")
 
@@ -302,7 +302,7 @@ class MomentIndices:
       yield flatIndex
 
   @property
-  def QnIndices(self) -> Generator[QnMomentIndex, None, None]:
+  def qnIndices(self) -> Generator[QnMomentIndex, None, None]:
     """Generates quantum-number indices of the form QnIndex(moment index, L, M)"""
     for flatIndex in range(len(self)):
       yield self[flatIndex]
