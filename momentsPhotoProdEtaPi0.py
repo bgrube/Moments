@@ -373,6 +373,7 @@ if __name__ == "__main__":
         plotMomentsInBin(
           HData             = HMeas,
           normalizedMoments = normalizeMoments,
+          HTrue             = None,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
           plotLegend        = False,
         )
@@ -419,6 +420,7 @@ if __name__ == "__main__":
           qnIndex           = qnIndex,
           binning           = massBinning,
           normalizedMoments = normalizeMoments,
+          momentResultsTrue = None,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
           histTitle         = qnIndex.title,
           plotLegend        = False,
