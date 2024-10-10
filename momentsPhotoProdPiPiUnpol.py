@@ -82,7 +82,7 @@ def readMomentResultsClas(
             skiprows = 3,  # 2 rows with comments and 1 row with column names; the latter cannot be parsed by pandas
             names    = ["mass", "massLow", "massHigh", "moment", "uncertPlus", "uncertMinus"],
           )
-          print(f"!!! {qnMomentIndex=}\n{momentDfs[qnMomentIndex]}")
+          # print(f"!!! {qnMomentIndex=}\n{momentDfs[qnMomentIndex]}")
           break
   # check that mass bins are the same in all data frames
   dfs = list(momentDfs.values())
@@ -302,6 +302,13 @@ if __name__ == "__main__":
       momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
       momentResultsPhys = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
       momentResultsClas = readMomentResultsClas(momentIndices, binVarMass)
+      # normalize CLAS moments
+      H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+      normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
+      scaleFactor =   momentResultsPhys[normMassBinIndex][H000Index].val.real \
+                    / momentResultsClas[normMassBinIndex][H000Index].val.real
+      momentResultsClas.scaleBy(scaleFactor)
+      print(f"!!!\n{momentResultsPhys[36]}\n!!! vs.\n{momentResultsClas[36]}")
       #TODO add comparison of moments with CLAS results
 
       # plot moments in each kinematic bin
@@ -376,7 +383,6 @@ if __name__ == "__main__":
         )
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
-      H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
       H000s = (
         tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
         tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
