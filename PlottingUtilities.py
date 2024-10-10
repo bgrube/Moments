@@ -251,6 +251,7 @@ def plotMoments(
   histTitle:         str                           = "",  # histogram title
   plotLegend:        bool                          = True,
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
+  plotHTrueUncert:   bool                          = False,  # plot uncertainty of true moments
 ) -> None:
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -282,10 +283,13 @@ def plotMoments(
       histTrue = ROOT.TH1D(legendLabels[1] or "True Values", "", *histBinning.astuple)
       for index, HVal in enumerate(HVals):
         if HVal.truth is not None:
-          y = HVal.truth.real if momentPart == "Re" else HVal.truth.imag
+          y, yErr = HVal.truthRealPart(momentPart == "Re")
           binIndex = index + 1
           histTrue.SetBinContent(binIndex, y)
-          histTrue.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+          if plotHTrueUncert and (yErr is not None) and (yErr > 1e-100):  # yErr must not be zero, otherwise ROOT does not draw x error bars; sigh
+            histTrue.SetBinError(binIndex, yErr)
+          else:
+            histTrue.SetBinError(binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
       histTrue.SetMarkerColor(ROOT.kBlue + 1)
       histTrue.SetLineColor(ROOT.kBlue + 1)
       histTrue.SetLineWidth(2)
@@ -307,6 +311,9 @@ def plotMoments(
     # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
     canv.Update()
+    if plotHTrueUncert:
+      # draw data on top of "truth"
+      histData.Draw("PEX0 SAME")
     if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
       zeroLine = ROOT.TLine()
       zeroLine.SetLineColor(ROOT.kBlack)
@@ -386,6 +393,7 @@ def plotMomentsInBin(
   pdfFileNamePrefix: str                           = "",    # name prefix for output files
   plotLegend:        bool                          = True,
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
+  plotHTrueUncert:   bool                          = False,  # plot uncertainty of true moments
 ) -> None:
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
   # ensure that indices of HData and HTrue are compatible
@@ -404,7 +412,9 @@ def plotMomentsInBin(
     HVals = tuple(
       MomentValueAndTruth(
         *HData[qnIndex],
-        truth = HTrue[qnIndex].val if HTrue else None
+        truth         = HTrue[qnIndex].val      if HTrue else None,
+        truthUncertRe = HTrue[qnIndex].uncertRe if HTrue else None,
+        truthUncertIm = HTrue[qnIndex].uncertIm if HTrue else None,
       ) for qnIndex in HData.indices.qnIndices if qnIndex.momentIndex == momentIndex
     )
     plotMoments(
@@ -415,6 +425,7 @@ def plotMomentsInBin(
       pdfFileNamePrefix = pdfFileNamePrefix,
       plotLegend        = plotLegend,
       legendLabels      = legendLabels,
+      plotHTrueUncert   = plotHTrueUncert,
     )
 
 
@@ -428,13 +439,16 @@ def plotMoments1D(
   histTitle:         str                                  = "",    # histogram title
   plotLegend:        bool                                 = True,
   legendLabels:      tuple[str | None, str | None]        = (None, None),  # labels for legend entries; None = use defaults
+  plotHTrueUncert:   bool                                 = False,  # plot uncertainty of true moments
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
   HVals = tuple(
     MomentValueAndTruth(
       *HPhys[qnIndex],
-      truth = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val,
+      truth         = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val,
+      truthUncertRe = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertRe,
+      truthUncertIm = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertIm,
     ) for binIndex, HPhys in enumerate(momentResults)
   )
   plotMoments(
@@ -446,6 +460,7 @@ def plotMoments1D(
     histTitle         = histTitle,
     plotLegend        = plotLegend,
     legendLabels      = legendLabels,
+    plotHTrueUncert   = plotHTrueUncert,
   )
 
 
