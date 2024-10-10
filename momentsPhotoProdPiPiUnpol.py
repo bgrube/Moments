@@ -308,7 +308,6 @@ if __name__ == "__main__":
       scaleFactor =   momentResultsPhys[normMassBinIndex][H000Index].val.real \
                     / momentResultsClas[normMassBinIndex][H000Index].val.real
       momentResultsClas.scaleBy(scaleFactor)
-      # print(f"!!!\n{momentResultsPhys[36]}\n!!! vs.\n{momentResultsClas[36]}")
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
@@ -325,6 +324,7 @@ if __name__ == "__main__":
           HTrue             = HClas,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "CLAS"),
+          plotHTrueUncert   = True,
         )
         plotMomentsInBin(
           HData             = HMeas,
@@ -373,6 +373,7 @@ if __name__ == "__main__":
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
           histTitle         = qnIndex.title,
           legendLabels      = ("Moment", "CLAS"),
+          plotHTrueUncert   = True,
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,
