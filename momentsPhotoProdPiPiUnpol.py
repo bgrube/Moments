@@ -97,9 +97,7 @@ def readMomentResultsClas(
     momentValues: list[MomentValue] = []
     for qnMomentIndex, momentDf in momentDfs.items():
       mask = momentDf["mass"] == massBinCenter
-      moment      = momentDf[mask]["moment"     ].values[0]
-      uncertPlus  = momentDf[mask]["uncertPlus" ].values[0]
-      uncertMinus = momentDf[mask]["uncertMinus"].values[0]
+      moment, uncertPlus, uncertMinus = momentDf[mask][["moment", "uncertPlus", "uncertMinus"]].values[0]
       assert uncertPlus == -uncertMinus, f"Uncertainties are not symmetric: {uncertPlus} vs. {uncertMinus}"
       momentValues.append(
         MomentValue(
