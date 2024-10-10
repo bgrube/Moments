@@ -82,7 +82,7 @@ def readMomentResultsClas(
             names    = ["mass", "massLow", "massHigh", "moment", "uncertPlus", "uncertMinus"],
           )
           # scale moment values and their uncertainties by 1 / sqrt(2L + 1) to match normalization used in this analysis
-          momentDf["moment", "uncertPlus", "uncertMinus"] /= np.sqrt(2 * qnMomentIndex.L + 1)
+          momentDf[["moment", "uncertPlus", "uncertMinus"]] /= np.sqrt(2 * qnMomentIndex.L + 1)
           momentDfs[qnMomentIndex] = momentDf
           break
   # ensure that mass bins are the same in all data frames
