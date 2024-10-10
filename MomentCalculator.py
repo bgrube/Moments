@@ -751,6 +751,18 @@ class MomentResult:
     """Returns whether bootstrap samples exist"""
     return self._bsSamplesFlatIndex.size > 0
 
+  def scaleBy(
+    self,
+    factor: float,
+  ) -> None:
+    """Scales moment values and uncertainties by given factor"""
+    self._valsFlatIndex    *= factor
+    self._covReReFlatIndex *= factor**2
+    self._covImImFlatIndex *= factor**2
+    self._covReImFlatIndex *= factor**2
+    if self.hasBootstrapSamples:
+      self._bsSamplesFlatIndex *= factor
+
   def save(
     self,
     pickleFileName: str,
@@ -824,6 +836,14 @@ class MomentResultsKinematicBinning:
   def __iter__(self) -> Iterator[MomentResult]:
     """Iterates over MomentResults in kinematic bins"""
     return iter(self.moments)
+
+  def scaleBy(
+    self,
+    factor: float,
+  ) -> None:
+    """Scales MomentResults by given factor"""
+    for moment in self:
+      moment.scaleBy(factor)
 
   def save(
     self,
