@@ -131,7 +131,7 @@ if __name__ == "__main__":
     psAccFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
     psGenFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
     outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol")
-    maxL                     = 4  # define maximum L quantum number of moments
+    maxL                     = 5  # define maximum L quantum number of moments
     normalizeMoments         = False
     nmbBootstrapSamples      = 0
     # nmbBootstrapSamples      = 10000
