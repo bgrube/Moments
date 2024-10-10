@@ -6,14 +6,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
+import glob
+from io import StringIO
 import numpy as np
+import pandas as pd
 import threadpoolctl
+from typing import Sequence
 
 import ROOT
 
 from MomentCalculator import (
   binLabel,
   binTitle,
+  constructMomentResultFrom,
   DataSet,
   KinematicBinningVariable,
   MomentCalculator,
@@ -21,6 +26,7 @@ from MomentCalculator import (
   MomentIndices,
   MomentResult,
   MomentResultsKinematicBinning,
+  MomentValue,
   QnMomentIndex,
 )
 from PlottingUtilities import (
@@ -45,6 +51,68 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+def readMomentResultsClas(
+    momentIndices:      MomentIndices,  # moment indices to read
+    binVarMass:         KinematicBinningVariable,  # binning variable for mass bins
+    tBinLabel:          str = "#: -T [GeV^2],,,0.4-0.5",
+    # beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.4-3.6",
+    beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.6-3.8",
+    csvDirName:         str = "./dataPhotoProdPiPiUnpol/HEPData-ins825040-v1-csv",
+  ) -> MomentResultsKinematicBinning:
+  """Reads the moment values in the for the given moment indices and from the CLAS analysis in PRD 80 (2009) 072005 published at https://www.hepdata.net/record/ins825040"""
+  csvFileNames = sorted(glob.glob(f"{csvDirName}/Table*.csv"))
+  # each file contains the values for a given H(L, M) moment and a given t bin for all 4 beam-energy bins and all mass bins
+  momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas data frame with moment values in mass bins
+  for qnMomentIndex in momentIndices.qnIndices:
+    for csvFileName in csvFileNames:
+      # first step: open file, read whole contents, and filter pick the file that contain the desired moment an the t bin
+      with open(csvFileName, "r") as csvFile:
+        csvData = csvFile.read()
+        momentLabel = f"YLM(LM={qnMomentIndex.L}{qnMomentIndex.M},P=3_4) [MUB/GEV**3]"
+        if (momentLabel in csvData) and (tBinLabel in csvData):
+          # within each file there are sub-tables for the 4 beam-energy bins
+          # second step: extract sub-table for the desired beam-energy bin
+          tableStartPos = csvData.find(beamEnergyBinLabel)
+          assert tableStartPos >= 0, f"Could not find table for beam energy bin '{beamEnergyBinLabel}' in file '{csvFileName}'"
+          tableEndPos = csvData.find("\n\n", tableStartPos)  # tables are separated by an empty line
+          csvData = csvData[tableStartPos:tableEndPos if tableEndPos >= 0 else None]
+          # print(f"!!! {qnMomentIndex=}\n{csvData=}")
+          momentDfs[qnMomentIndex] = pd.read_csv(
+            StringIO(csvData),
+            skiprows = 3,  # 2 rows with comments and 1 row with column names; the latter cannot be parsed by pandas
+            names    = ["mass", "massLow", "massHigh", "moment", "uncertPlus", "uncertMinus"],
+          )
+          print(f"!!! {qnMomentIndex=}\n{momentDfs[qnMomentIndex]}")
+          break
+  # check that mass bins are the same in all data frames
+  dfs = list(momentDfs.values())
+  massColunm = dfs[0]["mass"]
+  for df in dfs[1:]:
+    assert df["mass"].equals(massColunm), f"Mass bins in data frames differ"
+  # convert data frames to MomentResultsKinematicBinning
+  momentResults: list[MomentResult] = []
+  for massBinCenter in massColunm:
+    # loop over momentDfs and extract moment values for the given mass bin
+    momentValues: list[MomentValue] = []
+    for qnMomentIndex, momentDf in momentDfs.items():
+      mask = momentDf["mass"] == massBinCenter
+      moment      = momentDf[mask]["moment"     ].values[0]
+      uncertPlus  = momentDf[mask]["uncertPlus" ].values[0]
+      uncertMinus = momentDf[mask]["uncertMinus"].values[0]
+      assert uncertPlus == -uncertMinus, f"Uncertainties are not symmetric: {uncertPlus} vs. {uncertMinus}"
+      momentValues.append(
+        MomentValue(
+          qn         = qnMomentIndex,
+          val        = moment,
+          uncertRe   = uncertPlus,
+          uncertIm   = 0,
+          binCenters = {binVarMass: massBinCenter},
+        )
+      )
+    momentResults.append(constructMomentResultFrom(momentIndices, momentValues))
+  return MomentResultsKinematicBinning(momentResults)
+
+
 if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
@@ -62,7 +130,7 @@ if __name__ == "__main__":
     psAccFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
     psGenFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
     outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol")
-    maxL                     = 5  # define maximum L quantum number of moments
+    maxL                     = 4  # define maximum L quantum number of moments
     normalizeMoments         = False
     nmbBootstrapSamples      = 0
     # nmbBootstrapSamples      = 10000
@@ -72,12 +140,13 @@ if __name__ == "__main__":
     plotAccIntegralMatrices  = False
     # calcAccPsMoments         = True
     calcAccPsMoments         = False
-    binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
     massBinning              = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
     # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
     nmbOpenMpThreads         = ROOT.getNmbOpenMpThreads()
 
     namePrefix = "norm" if normalizeMoments else "unnorm"
+
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
@@ -232,6 +301,8 @@ if __name__ == "__main__":
       # load moment results from files
       momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
       momentResultsPhys = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      momentResultsClas = readMomentResultsClas(momentIndices, binVarMass)
+      #TODO add comparison of moments with CLAS results
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
