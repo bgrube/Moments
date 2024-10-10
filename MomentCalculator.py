@@ -653,13 +653,14 @@ class MomentResult:
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
 
+  @property
   def values(self) -> Generator[MomentValue, None, None]:
     """Generator that yields moment values"""
     for flatIndex in self.indices.flatIndices:
       yield self[flatIndex]
 
   def __str__(self) -> str:
-    result = (str(moment) for moment in self.values())
+    result = (str(moment) for moment in self.values)
     return "\n".join(result)
 
   def covariance(
