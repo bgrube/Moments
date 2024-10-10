@@ -13,9 +13,9 @@ print = functools.partial(print, flush = True)
 
 if __name__ == "__main__":
   momentIndices = MomentCalculator.MomentIndices(maxL = 5, polarized = True)
-  for i in momentIndices.flatIndices():
+  for i in momentIndices.flatIndices:
     print(f"{i} : {momentIndices[i]}")
-  for i in momentIndices.QnIndices():
+  for i in momentIndices.QnIndices:
     print(f"{i} : {momentIndices[i]}")
   qnIndex = MomentCalculator.QnMomentIndex(0, 0, 0)
   print(f"{type(momentIndices._QnIndexByFlatIndex[0])=}, {momentIndices[0]=} vs. {momentIndices[qnIndex]=}")

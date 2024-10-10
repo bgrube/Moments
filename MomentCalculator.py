@@ -295,11 +295,13 @@ class MomentIndices:
     """Returns range of moment indices"""
     return 3 if self.polarized else 1
 
+  @property
   def flatIndices(self) -> Generator[int, None, None]:
     """Generates flat indices"""
     for flatIndex in range(len(self)):
       yield flatIndex
 
+  @property
   def QnIndices(self) -> Generator[QnMomentIndex, None, None]:
     """Generates quantum-number indices of the form QnIndex(moment index, L, M)"""
     for flatIndex in range(len(self)):
@@ -453,14 +455,14 @@ class AcceptanceIntegralMatrix:
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
-    for flatIndex in self.indices.flatIndices():
+    for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
       fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
     # calculate integral-matrix elements; Eq. (178)
     self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
-    for flatIndexMeas in self.indices.flatIndices():
-      for flatIndexPhys in self.indices.flatIndices():
+    for flatIndexMeas in self.indices.flatIndices:
+      for flatIndexPhys in self.indices.flatIndices:
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = ((8 * np.pi**2 / self.dataSet.nmbGenEvents)
           * np.dot(np.multiply(eventWeights, fMeas[flatIndexMeas]), fPhys[flatIndexPhys]))
     assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
@@ -653,7 +655,7 @@ class MomentResult:
 
   def values(self) -> Generator[MomentValue, None, None]:
     """Generator that yields moment values"""
-    for flatIndex in self.indices.flatIndices():
+    for flatIndex in self.indices.flatIndices:
       yield self[flatIndex]
 
   def __str__(self) -> str:
@@ -952,7 +954,7 @@ class MomentCalculator:
       nmbBootstrapSamples = nmbBootstrapSamples,
       bootstrapSeed       = bootstrapSeed,
     )
-    for flatIndex in self.indices.flatIndices():
+    for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))  # Eq. (176)
       weightedSum = eventWeights.dot(fMeas[flatIndex])
