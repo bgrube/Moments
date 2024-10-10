@@ -44,18 +44,31 @@ print = functools.partial(print, flush = True)
 @dataclass
 class MomentValueAndTruth(MomentValue):
   """Stores and provides access to single moment value and provides truth value"""
-  truth: complex | None = None  # true moment value
+  truth:         complex | None = None  # true moment value
+  truthUncertRe: float | None   = None  # uncertainty of real part of true moment value
+  truthUncertIm: float | None   = None  # uncertainty of imaginary part of true moment value
+
+  @property
+  def truthReal(self) -> tuple[float, float | None]:
+    """Returns real part of true moment value with uncertainty"""
+    assert self.truth is not None, "self.truth must not be None"
+    return (self.truth.real, self.truthUncertRe)
+
+  @property
+  def truthImag(self) -> tuple[float, float | None]:
+    """Returns imaginary part of true moment value with uncertainty"""
+    assert self.truth is not None, "self.truth must not be None"
+    return (self.truth.imag, self.truthUncertIm)
 
   def truthRealPart(
     self,
-    realPart: bool,  # switched between real part (True) and imaginary part (False)
-  ) -> float:
-    """Returns real or imaginary part with corresponding uncertainty according to given flag"""
-    assert self.truth is not None, "self.truth must not be None"
+    realPart: bool,  # switches between real part (True) and imaginary part (False)
+  ) -> tuple[float, float | None]:
+    """Returns real or imaginary part of true moment value with corresponding uncertainty according to given flag"""
     if realPart:
-      return self.truth.real
+      return self.truthReal
     else:
-      return self.truth.imag
+      return self.truthImag
 
 
 @dataclass
@@ -316,7 +329,7 @@ def plotMoments(
           continue
         if HVal.truth is not None:
           dataVal, dataValErr = HVal.realPart     (momentPart == "Re")
-          trueVal             = HVal.truthRealPart(momentPart == "Re")
+          trueVal, _          = HVal.truthRealPart(momentPart == "Re")
           binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
           if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
@@ -606,7 +619,7 @@ def plotMomentPairBootstrapDistributions2D(
     # indicate true value
     plotTruth = all(HVal.truth is not None for HVal in HVals)
     if plotTruth:
-      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(realParts[0]), HVals[1].truthRealPart(realParts[1]), 31)
+      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(realParts[0])[0], HVals[1].truthRealPart(realParts[1])[0], 31)
       markerTruth.SetMarkerColor(ROOT.kRed + 1)
       markerTruth.SetMarkerSize(1.25)
       markerTruth.Draw()
@@ -851,7 +864,7 @@ def plotPullsForMoment(
     for HVal in HVals:
       if HVal.truth is not None:
         moment, momentErr = HVal.realPart(realPart)
-        pull = (moment - HVal.truthRealPart(realPart)) / momentErr
+        pull = (moment - HVal.truthRealPart(realPart)[0]) / momentErr
         histPull.Fill(pull)
     color = ROOT.kRed + 1 if realPart else ROOT.kBlue + 1
     histPull.SetLineColor(color)
