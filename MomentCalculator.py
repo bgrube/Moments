@@ -109,7 +109,7 @@ class AmplitudeSet:
     for reflIndex in reflIndices:
       for l in range(self.maxSpin + 1):
         for m in range(-l, l + 1):
-          yield self[QnWaveIndex(refl = (+1 if reflIndex == 0 else -1), l, m)]
+          yield self[QnWaveIndex(refl = (+1 if reflIndex == 0 else -1), l = l, m = m)]
 
   @property
   def maxSpin(self) -> int:
