@@ -191,7 +191,7 @@ if __name__ == "__main__":
           #   pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_"
           # )
         # plot kinematic dependences of all phase-space moments
-        for qnIndex in momentIndices.QnIndices():
+        for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
           plotMoments(
             HVals             = HVals,
@@ -282,7 +282,7 @@ if __name__ == "__main__":
           )
 
       # plot kinematic dependences of all moments
-      for qnIndex in momentResultsPhys[0].indices.QnIndices():
+      for qnIndex in momentResultsPhys[0].indices.qnIndices:
         plotMoments1D(
           momentResults     = momentResultsPhys,
           qnIndex           = qnIndex,
