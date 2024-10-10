@@ -392,7 +392,7 @@ def plotMomentsInBin(
       MomentValueAndTruth(
         *HData[qnIndex],
         truth = HTrue[qnIndex].val if HTrue else None
-      ) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex
+      ) for qnIndex in HData.indices.QnIndices if qnIndex.momentIndex == momentIndex
     )
     plotMoments(
       HVals             = HVals,
@@ -446,7 +446,7 @@ def plotMomentsBootstrapDistributions1D(
   """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
   assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
   # generate separate plots for each moment index
-  for qnIndex in HData.indices.QnIndices():
+  for qnIndex in HData.indices.QnIndices:
     HVal = MomentValueAndTruth(
       *HData[qnIndex],
       truth = HTrue[qnIndex].val if HTrue else None
@@ -630,8 +630,8 @@ def plotMomentsBootstrapDistributions2D(
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
   momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
-                      for flatIndex0 in HData.indices.flatIndices()
-                      for flatIndex1 in HData.indices.flatIndices()
+                      for flatIndex0 in HData.indices.flatIndices
+                      for flatIndex1 in HData.indices.flatIndices
                       if flatIndex0 < flatIndex1)
   for momentIndexPair in momentIndexPairs:
     plotMomentPairBootstrapDistributions2D(
@@ -669,8 +669,8 @@ def plotMomentsCovMatrices(
       # of the covariance matrix including the diagonal
       # !Note! the ReIm matrix is _not_ symmetric, so we need all indices
       momentIndexPairs = ((flatIndex0, flatIndex1)
-                          for flatIndex0 in HData.indices.flatIndices()
-                          for flatIndex1 in HData.indices.flatIndices()
+                          for flatIndex0 in HData.indices.flatIndices
+                          for flatIndex1 in HData.indices.flatIndices
                           if (realParts[0] != realParts[1]) or (flatIndex0 <= flatIndex1))
       for momentIndexPair in momentIndexPairs:
         # covariance = off-diagonal element of the 2 x 2 covariance matrix returned by np.cov():
@@ -813,7 +813,7 @@ def plotMomentsBootstrapDiffInBin(
       MomentValueAndTruth(
         *HData[qnIndex],
         truth = None,
-      ) for qnIndex in HData.indices.QnIndices() if qnIndex.momentIndex == momentIndex
+      ) for qnIndex in HData.indices.QnIndices if qnIndex.momentIndex == momentIndex
     )
     plotMomentsBootstrapDiff(
       HVals             = HVals,

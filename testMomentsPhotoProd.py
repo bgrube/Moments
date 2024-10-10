@@ -313,7 +313,7 @@ if __name__ == "__main__":
       label = binLabel(HData)
       plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h{label}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
-    for qnIndex in momentIndices.QnIndices():
+    for qnIndex in momentIndices.QnIndices:
       plotMoments1D(
         momentResults     = moments.momentResultsPhys,
         qnIndex           = qnIndex,
