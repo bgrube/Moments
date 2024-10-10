@@ -308,12 +308,12 @@ if __name__ == "__main__":
       scaleFactor =   momentResultsPhys[normMassBinIndex][H000Index].val.real \
                     / momentResultsClas[normMassBinIndex][H000Index].val.real
       momentResultsClas.scaleBy(scaleFactor)
-      print(f"!!!\n{momentResultsPhys[36]}\n!!! vs.\n{momentResultsClas[36]}")
-      #TODO add comparison of moments with CLAS results
+      # print(f"!!!\n{momentResultsPhys[36]}\n!!! vs.\n{momentResultsClas[36]}")
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         HMeas = momentResultsMeas[massBinIndex]
+        HClas = momentResultsClas[massBinIndex]
         label = binLabel(HPhys)
         title = binTitle(HPhys)
         # print(f"True moments for kinematic bin {title}:\n{HTrue}")
@@ -322,9 +322,9 @@ if __name__ == "__main__":
         plotMomentsInBin(
           HData             = HPhys,
           normalizedMoments = normalizeMoments,
-          HTrue             = None,
+          HTrue             = HClas,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
-          legendLabels      = ("Moment", "PWA Result"),
+          legendLabels      = ("Moment", "CLAS"),
         )
         plotMomentsInBin(
           HData             = HMeas,
@@ -344,14 +344,17 @@ if __name__ == "__main__":
           graphTitle = f"({label})"
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
-            HTrue             = None,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
-            histTitle         = title)
-          plotMomentsBootstrapDistributions2D(
-            HData             = HPhys,
-            HTrue             = None,
+            HTrue             = HClas,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title,
+            HTrueLabel        = "CLAS",
+          )
+          plotMomentsBootstrapDistributions2D(
+            HData             = HPhys,
+            HTrue             = HClas,
+            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            histTitle         = title,
+            HTrueLabel        = "CLAS",
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
@@ -366,10 +369,10 @@ if __name__ == "__main__":
           qnIndex           = qnIndex,
           binning           = massBinning,
           normalizedMoments = normalizeMoments,
-          momentResultsTrue = None,
+          momentResultsTrue = momentResultsClas,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
           histTitle         = qnIndex.title,
-          legendLabels      = ("Moment", "PWA Result"),
+          legendLabels      = ("Moment", "CLAS"),
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,
