@@ -769,6 +769,41 @@ class MomentResult:
       return pickle.load(file)
 
 
+def constructMomentResultFrom(
+  indices:      MomentIndices,  # index mapping and iterators
+  momentValues: Sequence[MomentValue],
+) -> MomentResult:
+  # ensure that all moment values have the same bin centers, labels, and number of bootstrap samples
+  assert all(momentValues[0].binCenters         == momentValue.binCenters         for momentValue in momentValues[1:]), "Moment values must have the same bin centers"
+  assert all(momentValues[0].label              == momentValue.label              for momentValue in momentValues[1:]), "Moment values must have the same label"
+  assert all(momentValues[0].bsSamples.shape[0] == momentValue.bsSamples.shape[0] for momentValue in momentValues[1:]), "Moment values must have the same number of boostrap samples"
+  # ensure that quantum numbers of moment values are unique
+  assert len(set(momentValue.qn for momentValue in momentValues)) == len(momentValues), "Moment values must have unique quantum numbers"
+  momentResult = MomentResult(
+    indices             = indices,
+    binCenters          = momentValues[0].binCenters,
+    label               = momentValues[0].label,
+    nmbBootstrapSamples = momentValues[0].bsSamples.shape[0],
+  )
+  # loop over moment quantum numbers
+  for qnIndex in indices.qnIndices:
+    # find MomentValue with same qnIndex
+    foundMomentValue = False
+    for momentValue in momentValues:
+      if momentValue.qn == qnIndex:
+        foundMomentValue = True
+        # copy values to MomentResult
+        flatIndex = indices[qnIndex]
+        momentResult._valsFlatIndex[flatIndex]               = momentValue.val
+        momentResult._covReReFlatIndex[flatIndex, flatIndex] = momentValue.uncertRe**2
+        momentResult._covImImFlatIndex[flatIndex, flatIndex] = momentValue.uncertIm**2
+        if momentResult.nmbBootstrapSamples:
+          momentResult._bsSamplesFlatIndex[flatIndex] = momentValue.bsSamples
+        break
+    if not foundMomentValue:
+      print(f"Warning: no moment value found for {qnIndex}. Assuming value of 0.")
+  return momentResult
+
 @dataclass
 class MomentResultsKinematicBinning:
   """Container class that stores and provides access to moment values for several kinematic bins"""
