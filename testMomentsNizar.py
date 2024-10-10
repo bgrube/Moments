@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # convert MomentResult objects to tuple of dictionaries and write to JSON file
     momentMemberVarsToRemove = ("binCenters", "label", "bsSamples", "uncertRe", "uncertIm")
     HTrueDicts: list[dict[str, Any]] = []
-    for moment in HTrue.values():
+    for moment in HTrue.values:
       HTrueDict = {}
       for key, value in asdict(moment).items():
         if key not in momentMemberVarsToRemove:
