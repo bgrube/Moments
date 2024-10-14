@@ -2,10 +2,12 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
+
+from __future__ import annotations
+
 import functools
 import numpy as np
 import threadpoolctl
-from typing import List
 
 import ROOT
 
@@ -219,8 +221,8 @@ if __name__ == "__main__":
     momentIndices = MomentIndices(maxL)
     binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
-    momentsInBins:      List[MomentCalculator] = []
-    momentsInBinsTruth: List[MomentCalculator] = []
+    momentsInBins:      list[MomentCalculator] = []
+    momentsInBinsTruth: list[MomentCalculator] = []
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
       dataSet = DataSet(
