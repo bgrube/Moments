@@ -221,6 +221,46 @@ class AmplitudeSet:
     HTrue._valsFlatIndex = momentsFlatIndex
     return HTrue
 
+  def intensityFormula(
+    self,
+    polarization: float,         # photon-beam polarization
+    thetaFormula: str,           # formula for polar angle theta [rad]
+    phiFormula:   str,           # formula for azimuthal angle phi [rad]
+    PhiFormula:   str,           # formula for angle Phi between photon polarization and production plane[rad]
+    printFormula: bool = False,  # if set formula for calculation of intensity is printed
+  ) -> str:
+    """Returns formula for intensity calculated from partial-wave amplitudes assuming rank-1 spin-density matrix"""
+    # constructed formula uses functions defined in `basisFunctions.C
+    intensityComponentTerms: list[tuple[str, str, str]] = []  # summands in Eq. (161) separated by intensity component
+    for refl in (-1, +1):
+      for amp1 in self.amplitudes(onlyRefl = refl):
+        l1 = amp1.qn.l
+        m1 = amp1.qn.m
+        decayAmp1 = f"Ylm({l1}, {m1}, {thetaFormula}, {phiFormula})"
+        for amp2 in self.amplitudes(onlyRefl = refl):
+          l2 = amp2.qn.l
+          m2 = amp2.qn.m
+          decayAmp2 = f"Ylm({l2}, {m2}, {thetaFormula}, {phiFormula})"
+          rhos: tuple[complex, complex, complex] = self.photoProdSpinDensElements(refl, l1, l2, m1, m2)
+          terms = tuple(
+            f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})"  # summand in Eq. (161)
+            if rho != 0 else "" for rho in rhos
+          )
+          intensityComponentTerms.append((terms[0], terms[1], terms[2]))
+    # sum all terms for each intensity component
+    intensityComponentsFormula = []
+    for iComponent in range(3):
+      intensityComponentsFormula.append(f"({' + '.join(filter(None, (term[iComponent] for term in intensityComponentTerms)))})")
+    # sum intensity components
+    intensityFormula = (
+      f"std::real({intensityComponentsFormula[0]} "
+      f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula}) "
+      f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula}))"
+    )  # Eq. (120)
+    if printFormula:
+      print(f"Intensity formula = {intensityFormula}")
+    return intensityFormula
+
 
 @dataclass(frozen = True)  # immutable
 class QnMomentIndex:
