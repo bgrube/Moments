@@ -35,54 +35,15 @@ def genDataFromWaves(
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency histogram {efficiencyHist}")
 
-  # construct TF3 for intensity distribution in Eq. (153)
+  # construct TF3 for intensity distribution in Eq. (171)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
-  intensityComponentTerms: List[Tuple[str, str, str]] = []  # terms in sum of each intensity component
-  for refl in (-1, +1):
-    for amp1 in amplitudeSet.amplitudes(onlyRefl = refl):
-      l1 = amp1.qn.l
-      m1 = amp1.qn.m
-      decayAmp1 = f"Ylm({l1}, {m1}, std::acos(x), TMath::DegToRad() * y)"
-      for amp2 in amplitudeSet.amplitudes(onlyRefl = refl):
-        l2 = amp2.qn.l
-        m2 = amp2.qn.m
-        decayAmp2 = f"Ylm({l2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
-        rhos: Tuple[complex, complex, complex] = amplitudeSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
-        terms = tuple(
-          f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})"  # Eq. (153)
-          if rho != 0 else "" for rho in rhos
-        )
-        intensityComponentTerms.append((terms[0], terms[1], terms[2]))
-  # sum terms for each intensity component
-  intensityComponentsFormula = []
-  for iComponent in range(3):
-    intensityComponentsFormula.append(f"({' + '.join(filter(None, (term[iComponent] for term in intensityComponentTerms)))})")
-  # sum intensity components
-  intensityFormula = (
-    f"std::real({intensityComponentsFormula[0]} "
-    f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * TMath::DegToRad() * z) "
-    f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * TMath::DegToRad() * z))")  # Eq. (163)
-  print(f"Intensity formula = {intensityFormula}")
-  # print(f"!!! I_0 = {intensityComponentsFormula[0]}")
-  # I_1_formula = f"std::real({intensityComponentsFormula[1]} * {polarization})"
-  # print(f"!!! I_1 = {I_1_formula}")
-  # I_1 = ROOT.TF2("I_1", I_1_formula, -1, +1, -180, +180)
-  # I_1.SetTitle(";cos#theta;#phi [deg]")
-  # I_1.SetNpx(100)  # used in numeric integration performed by GetRandom()
-  # I_1.SetNpy(100)
-  # canv = ROOT.TCanvas()
-  # I_1.Draw("COLZ")
-  # canv.Print("I_1.pdf", "pdf")
-  # I_2_formula = f"std::real({intensityComponentsFormula[2]} * {polarization})"
-  # print(f"!!! I_2 = {I_2_formula}")
-  # I_2 = ROOT.TF2("I_2", I_2_formula, -1, +1, -180, +180)
-  # I_2.SetTitle(";cos#theta;#phi [deg]")
-  # I_2.SetNpx(100)  # used in numeric integration performed by GetRandom()
-  # I_2.SetNpy(100)
-  # canv = ROOT.TCanvas()
-  # I_2.Draw("COLZ")
-  # canv.Print("I_2.pdf", "pdf")
-
+  intensityFormula = amplitudeSet.intensityFormula(
+    polarization = polarization,
+    thetaFormula = "std::acos(x)",
+    phiFormula   = "TMath::DegToRad() * y",
+    PhiFormula   = "TMath::DegToRad() * z",
+    printFormula = True,
+  )
   intensityFcn = ROOT.TF3("intensity", intensityFormula, -1, +1, -180, +180, -180, +180)
   intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
