@@ -2,15 +2,14 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
+
+from __future__ import annotations
+
 import functools
 import numpy as np
 import os
 import threadpoolctl
-from typing import (
-  List,
-  Optional,
-  Tuple,
-  TypedDict,
+from typing import TypedDict
 )
 
 import ROOT
@@ -52,19 +51,19 @@ TH3_BINNINGS = (
 )
 TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
 class Th3PlotKwargsType(TypedDict):
-  binnings:  Tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning]
+  binnings:  tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning]
   histTitle: str
 TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
 
 
 def genDataFromWaves(
-  nmbEvents:         int,                   # number of events to generate
-  polarization:      float,                 # photon-beam polarization
-  amplitudeSet:      AmplitudeSet,          # partial-wave amplitudes
-  efficiencyFormula: Optional[str] = None,  # detection efficiency used to generate data
-  regenerateData:    bool = False,          # if set data are regenerated although .root file exists
-  outFileNamePrefix: str = "./",            # name prefix for output files
-  nameSuffix:        str = "",              # suffix for functions and file names
+  nmbEvents:         int,                 # number of events to generate
+  polarization:      float,               # photon-beam polarization
+  amplitudeSet:      AmplitudeSet,        # partial-wave amplitudes
+  efficiencyFormula: str | None = None,   # detection efficiency used to generate data
+  regenerateData:    bool       = False,  # if set data are regenerated although .root file exists
+  outFileNamePrefix: str        = "./",   # name prefix for output files
+  nameSuffix:        str        = "",     # suffix for functions and file names
 ) -> ROOT.RDataFrame:
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency {efficiencyFormula}")
@@ -75,7 +74,7 @@ def genDataFromWaves(
 
   # construct TF3 for intensity distribution in Eq. (153)
   # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
-  intensityComponentTerms: List[Tuple[str, str, str]] = []  # terms in sum of each intensity component
+  intensityComponentTerms: list[tuple[str, str, str]] = []  # terms in sum of each intensity component
   for refl in (-1, +1):
     for amp1 in amplitudeSet.amplitudes(onlyRefl = refl):
       l1 = amp1.qn.l
@@ -85,7 +84,7 @@ def genDataFromWaves(
         l2 = amp2.qn.l
         m2 = amp2.qn.m
         decayAmp2 = f"Ylm({l2}, {m2}, std::acos(x), TMath::DegToRad() * y)"
-        rhos: Tuple[complex, complex, complex] = amplitudeSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
+        rhos: tuple[complex, complex, complex] = amplitudeSet.photoProdSpinDensElements(refl, l1, l2, m1, m2)
         terms = tuple(
           f"{decayAmp1} * complexT({rho.real}, {rho.imag}) * std::conj({decayAmp2})"  # Eq. (153)
           if rho != 0 else "" for rho in rhos
@@ -144,10 +143,10 @@ def genDataFromWaves(
 
 
 def genAccepted2BodyPsPhotoProd(
-  nmbEvents:         int,                   # number of events to generate
-  efficiencyFormula: Optional[str] = None,  # detection efficiency used for acceptance correction
-  regenerateData:    bool = False,          # if set data are regenerated although .root file exists
-  outFileNamePrefix: str = "./",            # name prefix for output files
+  nmbEvents:         int,                 # number of events to generate
+  efficiencyFormula: str | None = None,   # detection efficiency used for acceptance correction
+  regenerateData:    bool       = False,  # if set data are regenerated although .root file exists
+  outFileNamePrefix: str        = "./",   # name prefix for output files
 ) -> ROOT.RDataFrame:
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   print(f"Generating {nmbEvents} events distributed according to two-body phase-space weighted by efficiency {efficiencyFormula}")
@@ -277,8 +276,8 @@ if __name__ == "__main__":
     momentIndices = MomentIndices(maxL)
     binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
     massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
-    momentsInBins:      List[MomentCalculator] = []
-    momentsInBinsTruth: List[MomentCalculator] = []
+    momentsInBins:      list[MomentCalculator] = []
+    momentsInBinsTruth: list[MomentCalculator] = []
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
       dataSet = DataSet(dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents, polarization = beamPolarization)  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
