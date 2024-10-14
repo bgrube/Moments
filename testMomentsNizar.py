@@ -33,6 +33,41 @@ from Utilities import (
 print = functools.partial(print, flush = True)
 
 
+def weightAccPhaseSpaceWithIntensity(
+  polarization:          float,         # photon-beam polarization
+  partialWaveAmplitudes: AmplitudeSet,  # partial-wave amplitudes
+  accPhaseSpaceFileName: str,           # name of file with accepted phase-space MC data
+  accPhaseSpaceTreeName: str = "kin",   # name of tree with accepted phase-space MC data
+):
+  """Weight accepted phase-space MC data with intensity calculated from partial-wave amplitudes"""
+  # read accepted phase-space MC data
+  accPhaseSpaceData = ROOT.RDataFrame(accPhaseSpaceTreeName, accPhaseSpaceFileName)
+  nmbAccPhaseSpaceEvents = accPhaseSpaceData.Count().GetValue()
+  # construct formula for intensity calculation
+  intensityFormula = partialWaveAmplitudes.intensityFormula(
+    polarization = polarization,
+    thetaFormula = "std::acos(cosTheta_eta_hel)",
+    phiFormula   = "phi_eta_hel * TMath::DegToRad()",
+    PhiFormula   = "Phi * TMath::DegToRad()",
+    printFormula = True,
+  )
+  # calculate intensity weight and random number in [0, 1] for each event
+  accPhaseSpaceData = accPhaseSpaceData.Define("intensityWeight", f"(double){intensityFormula}") \
+                                       .Define("rndNmb",          "(double)gRandom->Rndm()")
+  # determine maximum weight
+  maxIntensityWeight = accPhaseSpaceData.Max("intensityWeight").GetValue()
+  print(f"Maximum intensity is {maxIntensityWeight}")
+  # accept each event with probability intensityWeight / maxIntensityWeight
+  accPhaseSpaceData = accPhaseSpaceData.Define("acceptEvent", f"(bool)(rndNmb < (intensityWeight / {maxIntensityWeight}))") \
+                                       .Filter("acceptEvent == true")
+  nmbWeightedEvents = accPhaseSpaceData.Count().GetValue()
+  print(f"Sample contains {nmbWeightedEvents} events after intensity weighting; efficiency is {nmbWeightedEvents / nmbAccPhaseSpaceEvents}")
+  # write weighted data to file
+  outFileName = f"{accPhaseSpaceFileName}.intensityWeighted"
+  print(f"Writing accepted phase-space data that were weighted with intensity function to file {outFileName}")
+  accPhaseSpaceData.Snapshot(accPhaseSpaceTreeName, f"{outFileName}")
+
+
 if __name__ == "__main__":
   printGitInfo()
   timer = Timer()
@@ -46,11 +81,12 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName   = makeDirPath("./plotsTestNizar")
-    nmbPwaMcEvents   = 10000    # number of "data" events to generate from partial-wave amplitudes
-    nmbPsMcEvents    = 1000000  # number of phase-space events to generate
-    beamPolarization = 1.0      # polarization of photon beam
-    maxL             = 5        # maximum L quantum number of moments
+    accPhaseSpaceFileName = "./dataTestNizar/F2017_1_selected_TestMomentFit_data_flat.root"
+    outFileDirName        = makeDirPath("./plotsTestNizar")
+    nmbPwaMcEvents        = 10000    # number of "data" events to generate from partial-wave amplitudes
+    nmbPsMcEvents         = 1000000  # number of phase-space events to generate
+    beamPolarization      = 1.0      # polarization of photon beam
+    maxL                  = 5        # maximum L quantum number of moments
     partialWaveAmplitudes: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
       # negative-reflectivity waves
       AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
@@ -128,6 +164,15 @@ if __name__ == "__main__":
       efficiencyFormula = None,
       outFileNamePrefix = f"{outFileDirName}/",
       regenerateData    = True
+    )
+    t.stop()
+
+    # weight accepted phase-space MC data with intensity calculated from partial-wave amplitudes
+    t = timer.start("Time to weight accepted phase-space MC data")
+    weightAccPhaseSpaceWithIntensity(
+      polarization          = beamPolarization,
+      partialWaveAmplitudes = amplitudeSet,
+      accPhaseSpaceFileName = accPhaseSpaceFileName,
     )
     t.stop()
 
