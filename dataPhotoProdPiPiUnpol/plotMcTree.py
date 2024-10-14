@@ -35,8 +35,10 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE)
 
   # read MC data in AmpTools format
-  # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4.root"
-  mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4.root"
+  # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4_rho.root"
+  # mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4_rho.root"
+  # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
+  mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
   treeName = "kin"
 
   lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"

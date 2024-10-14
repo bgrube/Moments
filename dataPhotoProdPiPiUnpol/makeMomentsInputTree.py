@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
   dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
-  phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4.root"
-  phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4.root"
+  phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
+  phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
   treeName              = "kin"
   outputTreeName        = "PiPi"
 
