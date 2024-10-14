@@ -32,7 +32,12 @@ from PlottingUtilities import (
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
-import testMomentsPhotoProd
+from testMomentsPhotoProd import (
+  genAccepted2BodyPsPhotoProd,
+  genDataFromWaves,
+  TH3_NMB_BINS,
+  TH3_TITLE,
+)
 import Utilities
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -125,8 +130,15 @@ if __name__ == "__main__":
       # generate signal distribution
       HTrueSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
       print(f"True moment values for signal:\n{HTrueSig}")
-      dataPwaModelSig: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
-        nmbPwaMcEventsSig, beamPolarization, amplitudeSetSig, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", nameSuffix = "Sig", regenerateData = True)
+      dataPwaModelSig: ROOT.RDataFrame = genDataFromWaves(
+        nmbEvents         = nmbPwaMcEventsSig,
+        polarization      = beamPolarization,
+        amplitudeSet      = amplitudeSetSig,
+        efficiencyFormula = efficiencyFormula,
+        outFileNamePrefix = f"{outFileDirName}/",
+        nameSuffix        = "Sig",
+        regenerateData    = True,
+      )
       dataPwaModelSig = dataPwaModelSig.Define("discrVariable", "gRandom->Gaus(0, 0.1)")
       treeName = "data"
       fileNameSig = f"{outFileDirName}/intensitySig.photoProd.root"
@@ -136,8 +148,15 @@ if __name__ == "__main__":
       # generate background distribution
       HTrueBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
       print(f"True moment values for signal:\n{HTrueBkg}")
-      dataPwaModelBkg: ROOT.RDataFrame = testMomentsPhotoProd.genDataFromWaves(
-        nmbPwaMcEventsBkg, beamPolarization, amplitudeSetBkg, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", nameSuffix = "Bkg", regenerateData = True)
+      dataPwaModelBkg: ROOT.RDataFrame = genDataFromWaves(
+        nmbEvents         = nmbPwaMcEventsBkg,
+        polarization      = beamPolarization,
+        amplitudeSet      = amplitudeSetBkg,
+        efficiencyFormula = efficiencyFormula,
+        outFileNamePrefix = f"{outFileDirName}/",
+        nameSuffix        = "Bkg",
+        regenerateData    = True,
+      )
       dataPwaModelBkg = dataPwaModelBkg.Define("discrVariable", "gRandom->Uniform(0, 2) - 1")
       fileNameBkg = f"{outFileDirName}/intensityBkg.photoProd.root"
       dataPwaModelBkg.Snapshot(treeName, fileNameBkg)
@@ -184,16 +203,15 @@ if __name__ == "__main__":
       canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
     # plot angular distributions of data generated from partial-wave amplitudes
-    nmbBins = testMomentsPhotoProd.TH3_NMB_BINS
-    histBinning = (nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180)
+    histBinning = (TH3_NMB_BINS, -1, +1, TH3_NMB_BINS, -180, +180, TH3_NMB_BINS, -180, +180)
     hists = (
       (dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})")
-                      .Histo3D(ROOT.RDF.TH3DModel("dataSig", testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
+                      .Histo3D(ROOT.RDF.TH3DModel("dataSig", TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
       (dataPwaModelBkg.Filter(f"(({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))"
                            f"or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]}))")
-                      .Histo3D(ROOT.RDF.TH3DModel("dataBkg", testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
-      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
-      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", testMomentsPhotoProd.TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
+                      .Histo3D(ROOT.RDF.TH3DModel("dataBkg", TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
+      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
     )
     for hist in hists:
       hist.SetMinimum(0)
@@ -207,8 +225,12 @@ if __name__ == "__main__":
 
     # generate accepted phase-space data
     with timer.timeThis("Time to generate phase-space MC data"):
-      dataAcceptedPs = testMomentsPhotoProd.genAccepted2BodyPsPhotoProd(
-        nmbAcceptedPsMcEvents, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
+      dataAcceptedPs = genAccepted2BodyPsPhotoProd(
+        nmbEvents         = nmbAcceptedPsMcEvents,
+        efficiencyFormula = efficiencyFormula,
+        outFileNamePrefix = f"{outFileDirName}/",
+        regenerateData    = True,
+      )
 
     # define input data
     data = dataPwaModel
