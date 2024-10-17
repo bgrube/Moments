@@ -78,7 +78,7 @@ def weightAccPhaseSpaceWithIntensity(
     data = data.Define("massPi0", f"gRandom->Uniform({massPi0Mean - 5.5 * massPi0Sigma}, {massPi0Mean + 5.5 * massPi0Sigma})") \
                .Define("massEta", f"gRandom->Uniform({massEtaMean - 6.0 * massEtaSigma}, {massEtaMean + 6.0 * massEtaSigma})")
   # write weighted data to file
-  outFileName = f"{accPhaseSpaceFileName}.intensityWeighted.{'sig' if isSignal else 'bkg'}.root"
+  outFileName = f"{accPhaseSpaceFileName}.intensityWeighted.{'sig' if isSignal else 'bkg'}"
   print(f"Writing accepted phase-space data that were weighted with intensity function to file {outFileName}")
   data.Snapshot(accPhaseSpaceTreeName, f"{outFileName}")
 
