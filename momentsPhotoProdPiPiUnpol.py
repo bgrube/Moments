@@ -4,14 +4,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import functools
 import glob
 from io import StringIO
 import numpy as np
 import pandas as pd
 import threadpoolctl
-from typing import Sequence
 
 import ROOT
 
