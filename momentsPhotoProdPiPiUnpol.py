@@ -126,8 +126,8 @@ if __name__ == "__main__":
     dataFileName             = f"./dataPhotoProdPiPiUnpol/data_flat.root"
     psAccFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
     psGenFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
-    outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol")
     maxL                     = 5  # define maximum L quantum number of moments
+    outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{maxL}")
     normalizeMoments         = False
     nmbBootstrapSamples      = 0
     # nmbBootstrapSamples      = 10000
@@ -270,11 +270,13 @@ if __name__ == "__main__":
           )
 
     # calculate moments of real data and write them to files
+    momentResultsFileBaseName = f"{outFileDirName}/{namePrefix}_moments"
     with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
       moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
-      moments.momentResultsMeas.save(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
-      moments.momentResultsPhys.save(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      moments.momentResultsMeas.save(f"{momentResultsFileBaseName}_meas.pkl")
+      moments.momentResultsPhys.save(f"{momentResultsFileBaseName}_phys.pkl")
+
 
     #TODO move into separate plotting script
     with timer.timeThis(f"Time to plot moments of real data"):
@@ -296,8 +298,8 @@ if __name__ == "__main__":
         )
 
       # load moment results from files
-      momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
-      momentResultsPhys = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
+      momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
       momentResultsClas = readMomentResultsClas(momentIndices, binVarMass)
       # normalize CLAS moments
       H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
