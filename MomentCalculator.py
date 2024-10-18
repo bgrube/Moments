@@ -699,6 +699,21 @@ class MomentResult:
     for flatIndex in self.indices.flatIndices:
       yield self[flatIndex]
 
+  def __contains__(
+    self,
+    subscript: int | QnMomentIndex
+  ) -> bool:
+    """Returns whether moment with given flat index or quantum-number index exists"""
+    try:
+      flatIndex: int = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
+    except KeyError:
+      return False
+    try:
+      self._valsFlatIndex[flatIndex]
+      return True
+    except IndexError:
+      return False
+
   def __str__(self) -> str:
     result = (str(moment) for moment in self.values)
     return "\n".join(result)
