@@ -892,6 +892,11 @@ class MomentResultsKinematicBinning:
     """Iterates over MomentResults in kinematic bins"""
     return iter(self.moments)
 
+  @property
+  def binCenters(self) -> tuple[dict[KinematicBinningVariable, float], ...]:
+    """Returns tuple with bin centers of all moments"""
+    return tuple(momentResult.binCenters for momentResult in self)
+
   def scaleBy(
     self,
     factor: float,
