@@ -54,7 +54,7 @@ def overlayMoments1D(
         histData.SetBinContent(binIndex, y)
         histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
       setCbFriendlyStyle(histData, index)
-      histStack.Add(histData, "PEX0")
+      histStack.Add(histData, "PE1X0")
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
     # adjust y-range
@@ -82,7 +82,15 @@ if __name__ == "__main__":
   timer.start("Total execution time")
 
   # # set parameters of analysis
-  momentsFileDirNamePattern = "./plotsPhotoProdPiPiUnpol.maxL_*"
+  # momentsFileDirNamePattern = "./plotsPhotoProdPiPiUnpol.maxL_*"
+  # fitResultDirNames         = sorted(tuple(found for found in glob.glob(momentsFileDirNamePattern) if os.path.isdir(found)))
+  fitResultDirNames         = (
+    "./plotsPhotoProdPiPiUnpol.maxL_3",
+    "./plotsPhotoProdPiPiUnpol.maxL_4",
+    "./plotsPhotoProdPiPiUnpol.maxL_5",
+    "./plotsPhotoProdPiPiUnpol.maxL_8",
+    "./plotsPhotoProdPiPiUnpol.maxL_10",
+  )
   outFileDirName            = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
   normalizeMoments          = False
   binVarMass                = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
@@ -92,7 +100,7 @@ if __name__ == "__main__":
 
   # load moment results
   momentResultsToOverlay: dict[int, MomentResultsKinematicBinning] = {}  # key: L_max moment results, value: moment results
-  for fitResultDirName in sorted(tuple(found for found in glob.glob(momentsFileDirNamePattern) if os.path.isdir(found))):
+  for fitResultDirName in fitResultDirNames:
     print(f"Loading moment results from directory {fitResultDirName}")
     maxL = int(fitResultDirName.split("_")[-1])
     momentResultsPhysFileName = f"{fitResultDirName}/{namePrefix}_moments_phys.pkl"
