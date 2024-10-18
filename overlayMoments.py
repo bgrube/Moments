@@ -10,31 +10,14 @@ import os
 import ROOT
 
 from MomentCalculator import (
-  # binLabel,
-  # binTitle,
-  # constructMomentResultFrom,
-  # DataSet,
   KinematicBinningVariable,
-  # MomentCalculator,
-  # MomentCalculatorsKinematicBinning,
-  # MomentIndices,
-  # MomentResult,
   MomentResultsKinematicBinning,
-  # MomentValue,
   QnMomentIndex,
 )
 from PlottingUtilities import (
   HistAxisBinning,
   MomentValue,
-  # plotAngularDistr,
-  # plotComplexMatrix,
-  # plotMoments,
-  # plotMoments1D,
-  # plotMomentsBootstrapDiffInBin,
-  # plotMomentsBootstrapDistributions1D,
-  # plotMomentsBootstrapDistributions2D,
-  # plotMomentsCovMatrices,
-  # plotMomentsInBin,
+  setCbFriendlyStyle,
   setupPlotStyle,
 )
 # import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
@@ -58,7 +41,7 @@ def overlayMoments1D(
       f"{pdfFileNamePrefix}overlay_{qnIndex.label}_{momentPart}",
       f"{qnIndex.title} {momentPartLabel};{binning.axisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value",
     )
-    for maxL, momentResults in momentResultsToOverlay.items():
+    for index, (maxL, momentResults) in enumerate(momentResultsToOverlay.items()):
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(HPhys[qnIndex] for HPhys in momentResults if qnIndex in HPhys)
       # create histogram with moments
@@ -70,10 +53,7 @@ def overlayMoments1D(
         binIndex = histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
         histData.SetBinContent(binIndex, y)
         histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
-      histData.SetLineColor(ROOT.kRed + 1)
-      histData.SetMarkerColor(ROOT.kRed + 1)
-      histData.SetMarkerStyle(ROOT.kFullCircle)
-      histData.SetMarkerSize(0.75)
+      setCbFriendlyStyle(histData, index)
       histStack.Add(histData, "PEX0")
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
