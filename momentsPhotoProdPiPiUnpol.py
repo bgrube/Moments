@@ -126,7 +126,7 @@ if __name__ == "__main__":
     dataFileName             = f"./dataPhotoProdPiPiUnpol/data_flat.root"
     psAccFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
     psGenFileName            = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
-    maxL                     = 5  # define maximum L quantum number of moments
+    maxL                     = 20  # define maximum L quantum number of moments
     outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{maxL}")
     normalizeMoments         = False
     nmbBootstrapSamples      = 0
@@ -135,8 +135,8 @@ if __name__ == "__main__":
     plotAngularDistributions = False
     # plotAccIntegralMatrices  = True
     plotAccIntegralMatrices  = False
-    # calcAccPsMoments         = True
-    calcAccPsMoments         = False
+    calcAccPsMoments         = True
+    # calcAccPsMoments         = False
     binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
     massBinning              = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
     # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
@@ -230,8 +230,20 @@ if __name__ == "__main__":
       with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
         print(f"Calculating moments of phase-space MC data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
         moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
-        # plot accepted phase-space moments in each kinematic bin
         #TODO move into separate plotting script
+        # plot kinematic dependences of all phase-space moments
+        for qnIndex in momentIndices.qnIndices:
+          HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
+          plotMoments(
+            HVals             = HVals,
+            binning           = massBinning,
+            normalizedMoments = normalizeMoments,
+            momentLabel       = qnIndex.label,
+            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_",
+            histTitle         = qnIndex.title,
+            plotLegend        = False,
+          )
+        # plot accepted phase-space moments in each kinematic bin
         for massBinIndex, momentResultInBin in enumerate(moments):
           label = binLabel(momentResultInBin)
           title = binTitle(momentResultInBin)
@@ -250,23 +262,11 @@ if __name__ == "__main__":
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_",
             plotLegend        = False,
           )
-          # plotMomentsInBin(
-          #   HData             = momentResultInBin.HPhys,
-          #   normalizedMoments = normalizeMoments,
-          #   HTrue             = HTruePs,
-          #   pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_"
-          # )
-        # plot kinematic dependences of all phase-space moments
-        for qnIndex in momentIndices.qnIndices:
-          HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
-          plotMoments(
-            HVals             = HVals,
-            binning           = massBinning,
+          plotMomentsInBin(
+            HData             = momentResultInBin.HPhys,
             normalizedMoments = normalizeMoments,
-            momentLabel       = qnIndex.label,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_",
-            histTitle         = qnIndex.title,
-            plotLegend        = False,
+            HTrue             = HTruePs,
+            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_"
           )
 
     # calculate moments of real data and write them to files
