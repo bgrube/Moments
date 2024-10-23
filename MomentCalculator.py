@@ -576,12 +576,12 @@ class MomentValue:
     """Returns imaginary part with uncertainty"""
     return (self.val.imag, self.uncertIm)
 
-  def realPart(
+  def part(
     self,
-    realPart: bool,  # switches between real part (True) and imaginary part (False)
+    real: bool,  # switches between real part (True) and imaginary part (False)
   ) -> tuple[float, float]:
     """Returns real or imaginary part with corresponding uncertainty according to given flag"""
-    if realPart:
+    if real:
       return self.real
     else:
       return self.imag
@@ -591,13 +591,23 @@ class MomentValue:
     """Returns whether bootstrap samples exist"""
     return self.bsSamples.size > 0
 
-  def bootstrapEstimate(
+  def bootstrapSamplesPart(
     self,
-    realPart: bool,  # switches between real part (True) and imaginary part (False)
+    real: bool,  # switches between real part (True) and imaginary part (False)
+  ) -> npt.NDArray[npt.Shape["nmbBootstrapSamples"], npt.Float64]:
+    """Returns real or imaginary part of bootstrap samples according to given flag"""
+    assert self.hasBootstrapSamples, "No bootstrap samples available"
+    if real:
+      return self.bsSamples.real
+    else:
+      return self.bsSamples.imag
+
+  def bootstrapEstimatePart(
+    self,
+    real: bool,  # switches between real part (True) and imaginary part (False)
   ) -> tuple[float, float]:
     """Returns bootstrap estimate and its uncertainty for real or imaginary part"""
-    assert self.hasBootstrapSamples, "No bootstrap samples available"
-    bsSamples = self.bsSamples.real if realPart else self.bsSamples.imag
+    bsSamples = self.bootstrapSamplesPart(real)
     bsVal     = float(np.mean(bsSamples))
     bsUncert  = float(np.std(bsSamples, ddof = 1))
     return (bsVal, bsUncert)

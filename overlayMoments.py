@@ -50,7 +50,7 @@ def overlayMoments1D(
       for HVal in HVals:
         if binning.var not in HVal.binCenters.keys():
           continue
-        y, yErr = HVal.realPart(momentPart == "Re")
+        y, yErr = HVal.part(real = (momentPart == "Re"))
         binIndex = histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
         histData.SetBinContent(binIndex, y)
         histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh

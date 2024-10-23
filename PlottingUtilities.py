@@ -139,12 +139,12 @@ class MomentValueAndTruth(MomentValue):
     assert self.truth is not None, "self.truth must not be None"
     return (self.truth.imag, self.truthUncertIm)
 
-  def truthRealPart(
+  def truthPart(
     self,
-    realPart: bool,  # switches between real part (True) and imaginary part (False)
+    real: bool,  # switches between real part (True) and imaginary part (False)
   ) -> tuple[float, float | None]:
     """Returns real or imaginary part of true moment value with corresponding uncertainty according to given flag"""
-    if realPart:
+    if real:
       return self.truthReal
     else:
       return self.truthImag
@@ -333,7 +333,7 @@ def plotMoments(
   plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
   truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
 ) -> None:
-  """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
+  """Plots moments extracted from data along categorical axis or along given binning and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
   xAxisTitle = "" if binning is None else binning.axisTitle
   trueValues = any((HVal.truth is not None for HVal in HVals))
@@ -347,7 +347,7 @@ def plotMoments(
     for index, HVal in enumerate(HVals):
       if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
         continue
-      y, yErr = HVal.realPart(momentPart == "Re")
+      y, yErr = HVal.part(real = (momentPart == "Re"))
       binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
       histData.SetBinContent(binIndex, y)
       histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
@@ -363,7 +363,7 @@ def plotMoments(
       histTrue = ROOT.TH1D(legendLabels[1] or "True Values", "", *histBinning.astuple)
       for index, HVal in enumerate(HVals):
         if HVal.truth is not None:
-          y, yErr = HVal.truthRealPart(momentPart == "Re")
+          y, yErr = HVal.truthPart(real = (momentPart == "Re"))
           binIndex = index + 1
           histTrue.SetBinContent(binIndex, y)
           if plotTruthUncert and (yErr is not None) and (yErr > 1e-100):  # yErr must not be zero, otherwise ROOT does not draw x error bars; sigh
@@ -415,8 +415,8 @@ def plotMoments(
         if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
           continue
         if HVal.truth is not None:
-          dataVal, dataValErr = HVal.realPart     (momentPart == "Re")
-          trueVal, _          = HVal.truthRealPart(momentPart == "Re")
+          dataVal, dataValErr = HVal.part     (real = (momentPart == "Re"))
+          trueVal, _          = HVal.truthPart(real = (momentPart == "Re"))
           binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
           residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
           if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
@@ -567,7 +567,7 @@ def plotMomentsBootstrapDistributions1D(
     assert HVal.hasBootstrapSamples, "Bootstrap samples must be present"
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
       # create histogram with bootstrap samples
-      momentSamplesBs = HVal.bsSamples.real if momentPart == "Re" else HVal.bsSamples.imag
+      momentSamplesBs = HVal.bootstrapSamplesPart(real = (momentPart == "Re"))
       min = np.min(momentSamplesBs)
       max = np.max(momentSamplesBs)
       halfRange = (max - min) * 1.1 / 2.0
@@ -593,7 +593,7 @@ def plotMomentsBootstrapDistributions1D(
       lineBs.SetLineColor(ROOT.kBlue + 1)
       lineBs.Draw()
       # indicate estimate from uncertainty propagation
-      meanEst, stdDevEst = HVal.realPart(momentPart == "Re")
+      meanEst, stdDevEst = HVal.part(real = (momentPart == "Re"))
       markerEst = ROOT.TMarker(meanEst,  yCoord / 2, ROOT.kFullCircle)
       markerEst.SetMarkerColor(ROOT.kGreen + 2)
       markerEst.SetMarkerSize(0.75)
@@ -617,7 +617,7 @@ def plotMomentsBootstrapDistributions1D(
       label.DrawLatex(0.13, 0.85, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{nmbBins}, prob = {chi2Prob * 100:.0f}%")
       # indicate true value
       if HVal.truth is not None:
-        truth = HVal.truth.real if momentPart == "Re" else HVal.truth.imag
+        truth = HVal.truthPart(real = (momentPart == "Re"))
         lineTrue = ROOT.TLine(truth, 0, truth, histBs.GetMaximum())
         lineTrue.SetLineColor(ROOT.kRed + 1)
         lineTrue.SetLineStyle(ROOT.kDashed)
@@ -695,7 +695,7 @@ def plotMomentPairBootstrapDistributions2D(
     ellipseBs.Draw()
 
     # indicate estimate from uncertainty propagation
-    meansEst  = (HVals[0].realPart(realParts[0])[0], HVals[1].realPart(realParts[1])[0])
+    meansEst  = (HVals[0].part(realParts[0])[0], HVals[1].part(realParts[1])[0])
     markerEst = ROOT.TMarker(meansEst[0], meansEst[1], ROOT.kFullCircle)
     markerEst.SetMarkerColor(ROOT.kGreen + 2)
     markerEst.SetMarkerSize(0.75)
@@ -718,7 +718,7 @@ def plotMomentPairBootstrapDistributions2D(
     # indicate true value
     plotTruth = all(HVal.truth is not None for HVal in HVals)
     if plotTruth:
-      markerTruth = ROOT.TMarker(HVals[0].truthRealPart(realParts[0])[0], HVals[1].truthRealPart(realParts[1])[0], 31)
+      markerTruth = ROOT.TMarker(HVals[0].truthPart(realParts[0])[0], HVals[1].truthPart(realParts[1])[0], 31)
       markerTruth.SetMarkerColor(ROOT.kRed + 1)
       markerTruth.SetMarkerSize(1.25)
       markerTruth.Draw()
@@ -842,10 +842,10 @@ def plotMomentsBootstrapDiff(
   xVals  = np.arange(len(HVals), dtype = npt.Float64) if binning is None else np.array([HVal.binCenters[binning.var] for HVal in HVals], dtype = npt.Float64)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     # get nominal estimates and uncertainties
-    momentValsEst   = np.array([HVal.realPart(momentPart == "Re")[0] for HVal in HVals], dtype = npt.Float64)
-    momentUncertEst = np.array([HVal.realPart(momentPart == "Re")[1] for HVal in HVals], dtype = npt.Float64)
+    momentValsEst   = np.array([HVal.part(real = (momentPart == "Re"))[0] for HVal in HVals], dtype = npt.Float64)
+    momentUncertEst = np.array([HVal.part(real = (momentPart == "Re"))[1] for HVal in HVals], dtype = npt.Float64)
     # get bootstrap estimates and uncertainties
-    momentsBs       = tuple(HVal.bootstrapEstimate(momentPart == "Re") for HVal in HVals)
+    momentsBs       = tuple(HVal.bootstrapEstimatePart(real = (momentPart == "Re")) for HVal in HVals)
     momentValsBs    = np.array([momentBs[0] for momentBs in momentsBs], dtype = npt.Float64)
     momentUncertBs  = np.array([momentBs[1] for momentBs in momentsBs], dtype = npt.Float64)
     # create graphs with relative differences
@@ -962,8 +962,8 @@ def plotPullsForMoment(
     histPull = ROOT.TH1D(f"{histStack.GetName()}_{'Re' if realPart else 'Im'}", "Real Part" if realPart else "Imag Part", 25, -5, +5)
     for HVal in HVals:
       if HVal.truth is not None:
-        moment, momentErr = HVal.realPart(realPart)
-        pull = (moment - HVal.truthRealPart(realPart)[0]) / momentErr
+        moment, momentErr = HVal.part(realPart)
+        pull = (moment - HVal.truthPart(realPart)[0]) / momentErr
         histPull.Fill(pull)
     color = ROOT.kRed + 1 if realPart else ROOT.kBlue + 1
     histPull.SetLineColor(color)

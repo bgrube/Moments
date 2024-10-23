@@ -441,7 +441,7 @@ if __name__ == "__main__":
         for indexKinBin, HVal in enumerate(H000):
           if (massBinning._var not in HVal.binCenters.keys()):
             continue
-          y, yErr = HVal.realPart(True)
+          y, yErr = HVal.part(real = True)
           binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[massBinning.var])
           histIntensity.SetBinContent(binIndex, y)
           histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
