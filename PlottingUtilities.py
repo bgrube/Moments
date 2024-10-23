@@ -417,16 +417,15 @@ def plotMoments(
       # draw data on top of "truth"
       histData.Draw("PE1X0 SAME")
     # adjust style of automatic zero line
-    # does not work
-    # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
-    # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
+    histStack.GetHistogram().SetLineColor(ROOT.kBlack)
+    histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
-    if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-      zeroLine = ROOT.TLine()
-      zeroLine.SetLineColor(ROOT.kBlack)
-      zeroLine.SetLineStyle(ROOT.kDashed)
-      xAxis = histStack.GetXaxis()
-      zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    # if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
+    #   zeroLine = ROOT.TLine()
+    #   zeroLine.SetLineColor(ROOT.kBlack)
+    #   zeroLine.SetLineStyle(ROOT.kDashed)
+    #   xAxis = histStack.GetXaxis()
+    #   zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
     canv.SaveAs(f"{histStack.GetName()}.pdf")
 
     # (ii) plot residuals
