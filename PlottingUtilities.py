@@ -321,6 +321,34 @@ def drawTF3(
   canv.Print(pdfFileName, "pdf")
 
 
+def makeMomentHistogram(
+  HVals:      Sequence[MomentValueAndTruth],  # moment values with (optional) true values
+  momentPart: str,  # "Re" or "Im"
+  histName:   str,  # histogram name
+  histTitle:  str                    = "",     # histogram title
+  binning:    HistAxisBinning | None = None,   # if not None data are plotted as function of binning variable
+  plotTruth:  bool                   = False,  # plot true moments
+  plotUncert: bool                   = True,   # plot uncertainty of true moments
+) -> ROOT.TH1D:
+  """Returns histogram with moment values along categorical axis or along given binning"""
+  assert momentPart in ("Re", "Im"), f"Invalid moment part '{momentPart}'"
+  histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
+  hist = ROOT.TH1D(histName, histTitle, *histBinning.astuple)
+  for index, HVal in enumerate(HVals):
+    if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
+      continue
+    y, yErr = HVal.truthPart(real = (momentPart == "Re")) if plotTruth and HVal.truth is not None else HVal.part(real = (momentPart == "Re"))
+    binIndex = index + 1 if binning is None else hist.GetXaxis().FindBin(HVal.binCenters[binning.var])
+    hist.SetBinContent(binIndex, y)
+    if plotUncert and (yErr is not None) and (yErr > 1e-100):  # yErr must not be zero, otherwise ROOT does not draw x error bars; sigh
+      hist.SetBinError(binIndex, yErr)
+    else:
+      hist.SetBinError(binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+    if binning is None:
+      hist.GetXaxis().SetBinLabel(binIndex, HVal.qn.title)  # categorical x axis with moment labels
+  return hist
+
+
 def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
   binning:           HistAxisBinning | None        = None,  # if not None data are plotted as function of binning variable
@@ -343,37 +371,36 @@ def plotMoments(
     histStack = ROOT.THStack(f"{pdfFileNamePrefix}compare_{momentLabel}_{momentPart}",
                              f"{histTitle};{xAxisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value")
     # create histogram with moments from data
-    histData = ROOT.TH1D(f"{legendLabels[0] or 'Data'} {legendEntrySuffix}", "", *histBinning.astuple)
-    for index, HVal in enumerate(HVals):
-      if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
-        continue
-      y, yErr = HVal.part(real = (momentPart == "Re"))
-      binIndex = index + 1 if binning is None else histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
-      histData.SetBinContent(binIndex, y)
-      histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
-      if binning is None:
-        histData.GetXaxis().SetBinLabel(binIndex, HVal.qn.title)  # categorical x axis with moment labels
+    histData = makeMomentHistogram(
+      HVals      = HVals,
+      momentPart = momentPart,
+      histName   = f"{legendLabels[0] or 'Data'} {legendEntrySuffix}",
+      histTitle  = "",
+      binning    = binning,
+      plotTruth  = False,
+      plotUncert = True,
+    )
     histData.SetLineColor(ROOT.kRed + 1)
     histData.SetMarkerColor(ROOT.kRed + 1)
     histData.SetMarkerStyle(ROOT.kFullCircle)
     histData.SetMarkerSize(0.75)
     histStack.Add(histData, "PE1X0")
+    histTruth = None
     if trueValues:
       # create histogram with true values
-      histTrue = ROOT.TH1D(legendLabels[1] or "True Values", "", *histBinning.astuple)
-      for index, HVal in enumerate(HVals):
-        if HVal.truth is not None:
-          y, yErr = HVal.truthPart(real = (momentPart == "Re"))
-          binIndex = index + 1
-          histTrue.SetBinContent(binIndex, y)
-          if plotTruthUncert and (yErr is not None) and (yErr > 1e-100):  # yErr must not be zero, otherwise ROOT does not draw x error bars; sigh
-            histTrue.SetBinError(binIndex, yErr)
-          else:
-            histTrue.SetBinError(binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-      histTrue.SetMarkerColor(truthColor)
-      histTrue.SetLineColor(truthColor)
-      histTrue.SetLineWidth(2)
-      histStack.Add(histTrue, "PE")
+      histTruth = makeMomentHistogram(
+        HVals      = HVals,
+        momentPart = momentPart,
+        histName   = legendLabels[1] or "True Values",
+        histTitle  = "",
+        binning    = binning,
+        plotTruth  = True,
+        plotUncert = plotTruthUncert,
+      )
+      histTruth.SetMarkerColor(truthColor)
+      histTruth.SetLineColor(truthColor)
+      histTruth.SetLineWidth(2)
+      histStack.Add(histTruth, "PE")
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
     histStack.GetXaxis().LabelsOption("V")
