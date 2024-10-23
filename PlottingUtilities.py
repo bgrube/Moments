@@ -411,7 +411,11 @@ def plotMoments(
     histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
     histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     if plotLegend:
-      canv.BuildLegend(0.7, 0.85, 0.99, 0.99)
+      legend = ROOT.TLegend(0.7, 0.85, 0.99, 0.99)
+      legend.AddEntry(histData, histData.GetName(), "LP")
+      if histTruth is not None:
+        legend.AddEntry(histTruth, histTruth.GetName(), "LP")
+      legend.Draw()
     canv.Update()
     if plotTruthUncert:
       # draw data on top of "truth"
