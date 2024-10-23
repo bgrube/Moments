@@ -128,8 +128,8 @@ if __name__ == "__main__":
     # calculate true moment values and generate data from partial-wave amplitudes
     with timer.timeThis("Time to generate MC data from partial waves"):
       # generate signal distribution
-      HTrueSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
-      print(f"True moment values for signal:\n{HTrueSig}")
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
+      print(f"True moment values for signal:\n{HTruthSig}")
       dataPwaModelSig: ROOT.RDataFrame = genDataFromWaves(
         nmbEvents         = nmbPwaMcEventsSig,
         polarization      = beamPolarization,
@@ -146,8 +146,8 @@ if __name__ == "__main__":
       dataPwaModelSig = ROOT.RDataFrame(treeName, fileNameSig)
       histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
       # generate background distribution
-      HTrueBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
-      print(f"True moment values for signal:\n{HTrueBkg}")
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
+      print(f"True moment values for signal:\n{HTruthBkg}")
       dataPwaModelBkg: ROOT.RDataFrame = genDataFromWaves(
         nmbEvents         = nmbPwaMcEventsBkg,
         polarization      = beamPolarization,
@@ -235,9 +235,9 @@ if __name__ == "__main__":
     # define input data
     data = dataPwaModel
     # data = dataPwaModelSig
-    HTrue = HTrueSig
+    HTruth = HTruthSig
     # data = dataPwaModelBkg
-    # HTrue = HTrueBkg
+    # HTruth = HTruthBkg
 
     # setup moment calculator
     momentIndices = MomentIndices(maxL)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
           indices    = momentIndices,
           dataSet    = dataSet,
           binCenters = {binVarMass : massBinCenter},
-          _HPhys     = HTrue,
+          _HPhys     = HTruth,
         )
       )
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
@@ -295,9 +295,9 @@ if __name__ == "__main__":
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
       label = binLabel(moments[0])
-      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
       if nmbBootstrapSamples > 0:
-        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTrue, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
         plotMomentsBootstrapDiffInBin      (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
 
     timer.stop("Total execution time")

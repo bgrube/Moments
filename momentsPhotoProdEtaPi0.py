@@ -291,22 +291,22 @@ if __name__ == "__main__":
           print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentResultInBin.HMeas}")
           print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentResultInBin.HPhys}")
           # construct true moments for phase-space data
-          HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-          HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+          HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
           # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
           momentResultInBin.HMeas._valsFlatIndex[0] = 0
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
           plotMomentsInBin(
             HData             = momentResultInBin.HMeas,
             normalizedMoments = normalizeMoments,
-            HTrue             = None,
+            HTruth            = None,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_",
             plotLegend        = False,
           )
           # plotMomentsInBin(
           #   HData             = momentResultInBin.HPhys,
           #   normalizedMoments = normalizeMoments,
-          #   HTrue             = HTruePs,
+          #   HTruth            = HTruthPs,
           #   pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_",
           # )
         # plot kinematic dependences of all phase-space moments
@@ -356,24 +356,24 @@ if __name__ == "__main__":
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
-        HTrue = momentResultsTrue[massBinIndex]
-        HMeas = momentResultsMeas[massBinIndex]
+        HTruth = momentResultsTrue[massBinIndex]
+        HMeas  = momentResultsMeas[massBinIndex]
         label = binLabel(HPhys)
         title = binTitle(HPhys)
-        # print(f"True moments for kinematic bin {title}:\n{HTrue}")
+        # print(f"True moments for kinematic bin {title}:\n{HTruth}")
         print(f"Measured moments of real data for kinematic bin {title}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {title}:\n{HPhys}")
         plotMomentsInBin(
           HData             = HPhys,
           normalizedMoments = normalizeMoments,
-          HTrue             = HTrue,
+          HTruth            = HTruth,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "PWA Result"),
         )
         plotMomentsInBin(
           HData             = HMeas,
           normalizedMoments = normalizeMoments,
-          HTrue             = None,
+          HTruth            = None,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
           plotLegend        = False,
         )
@@ -388,12 +388,12 @@ if __name__ == "__main__":
           graphTitle = f"({label})"
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
-            HTrue             = HTrue,
+            HTruth            = HTruth,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title)
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
-            HTrue             = HTrue,
+            HTruth            = HTruth,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title,
           )
@@ -527,8 +527,8 @@ if __name__ == "__main__":
 
       # overlay intensity from partial-wave amplitudes and the total intensity from AmpTools; must be identical
       HVals = []
-      for binIndex, HTrue in enumerate(momentResultsTrue):
-        H000True = HTrue[H000Index]
+      for binIndex, HTruth in enumerate(momentResultsTrue):
+        H000True = HTruth[H000Index]
         #FIXME binCenters is not set for momentResultsTrue
         # print(f"??? {H000True=}")
         HVal = MomentValueAndTruth(*H000True)

@@ -171,17 +171,17 @@ if __name__ == "__main__":
 
         # calculate true moments
         amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPwAmpsFileName, massBinCenter), tolerance = 1e-11)
-        HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL, normalize = normalizeMoments, printMomentFormulas = False)
+        HTruth: MomentResult = amplitudeSet.photoProdMomentSet(maxL, normalize = normalizeMoments, printMomentFormulas = False)
         # scale true moments such that H_0(0, 0) is number of generated signal events
-        scale = nmbSignalGenEvents[-1] / HTrue._valsFlatIndex[0]  #TODO get moment value using QnMomentIndex
-        HTrue._valsFlatIndex *= scale
-        print(f"True moment values:\n{HTrue}")
+        scale = nmbSignalGenEvents[-1] / HTruth._valsFlatIndex[0]  #TODO get moment value using QnMomentIndex
+        HTruth._valsFlatIndex *= scale
+        print(f"True moment values:\n{HTruth}")
 
         # setup moment calculators for data
         dataSet = DataSet(dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1], polarization = beamPolarization)
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
         # setup moment calculator to hold true values
-        momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+        momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTruth))
 
         # plot angular distributions for mass bin
         plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, pdfFileNamePrefix = f"{outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_")
@@ -219,13 +219,13 @@ if __name__ == "__main__":
           print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentsInBin.HMeas}")
           print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentsInBin.HPhys}")
           # construct true moments for phase-space data
-          HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-          HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+          HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
           # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
           momentsInBin.HMeas._valsFlatIndex[0] = 0
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
           plotMomentsInBin(momentsInBin.HMeas, normalizeMoments,                  pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_", plotLegend = False)
-          # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
+          # plotMomentsInBin(momentsInBin.HPhys, normalizeMoments, HTruth = HTruthPs, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{binLabel}_accPsCorr_")
         # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)

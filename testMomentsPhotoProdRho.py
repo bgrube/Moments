@@ -149,8 +149,8 @@ if __name__ == "__main__":
       MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val = 1 + 0j),  # P_+1^+
     ]
     amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
-    HTrue: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
-    print(f"True moment values\n{HTrue}")
+    HTruth: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+    print(f"True moment values\n{HTruth}")
     for refl in (-1, +1):
       for l in range(3):
         for m1 in range(-l, l + 1):
@@ -216,9 +216,9 @@ if __name__ == "__main__":
       print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
       print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")
       # plot moments
-      HTruePs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-      HTruePs._valsFlatIndex[momentIndices[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
-      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTruePs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
+      HTruthPs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+      HTruthPs._valsFlatIndex[momentIndices[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
+      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruthPs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads"):
@@ -227,7 +227,7 @@ if __name__ == "__main__":
       print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
       print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
       # plot moments
-      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h_")
+      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruth, pdfFileNamePrefix = f"{outFileDirName}/h_")
 
     timer.stop("Total execution time")
     print(timer.summary)

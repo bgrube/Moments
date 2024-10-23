@@ -153,28 +153,28 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     t = timer.start("Time to generate MC data from partial waves")
-    HTrue: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = True)
-    print(f"True moment values\n{HTrue}")
-    HTrueJsonFileName = f"{outFileDirName}/trueMomentValues.json"
-    print(f"Writing true moment values to file {outFileDirName}/{HTrueJsonFileName}")
+    HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = True)
+    print(f"True moment values\n{HTruth}")
+    HTruthJsonFileName = f"{outFileDirName}/trueMomentValues.json"
+    print(f"Writing true moment values to file {outFileDirName}/{HTruthJsonFileName}")
     # convert MomentResult objects to tuple of dictionaries and write to JSON file
     momentMemberVarsToRemove = ("binCenters", "label", "bsSamples", "uncertRe", "uncertIm")
-    HTrueDicts: list[dict[str, Any]] = []
-    for moment in HTrue.values:
-      HTrueDict = {}
+    HTruthDicts: list[dict[str, Any]] = []
+    for moment in HTruth.values:
+      HTruthDict = {}
       for key, value in asdict(moment).items():
         if key not in momentMemberVarsToRemove:
           # export only selected member variables
           if isinstance(value, complex):
             # since JSON does not have builtin support for complex numbers,
             # expand complex numbers into real and imaginary parts
-            HTrueDict[f"{key}_Re"] = value.real
-            HTrueDict[f"{key}_Im"] = value.imag
+            HTruthDict[f"{key}_Re"] = value.real
+            HTruthDict[f"{key}_Im"] = value.imag
           else:
-            HTrueDict[key] = value
-      HTrueDicts.append(HTrueDict)
-    with open(HTrueJsonFileName, "w") as HTrueJsonFile:
-      json.dump(HTrueDicts, HTrueJsonFile, indent = 4, default = str)
+            HTruthDict[key] = value
+      HTruthDicts.append(HTruthDict)
+    with open(HTruthJsonFileName, "w") as HTruthJsonFile:
+      json.dump(HTruthDicts, HTruthJsonFile, indent = 4, default = str)
     dataPwaModel = genDataFromWaves(
       nmbEvents         = nmbPwaMcEvents,
       polarization      = beamPolarization,

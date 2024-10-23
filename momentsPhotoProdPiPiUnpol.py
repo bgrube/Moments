@@ -302,22 +302,22 @@ if __name__ == "__main__":
           print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentResultInBin.HMeas}")
           print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentResultInBin.HPhys}")
           # construct true moments for phase-space data
-          HTruePs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-          HTruePs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+          HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
           # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
           momentResultInBin.HMeas._valsFlatIndex[0] = 0
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
           plotMomentsInBin(
             HData             = momentResultInBin.HMeas,
             normalizedMoments = normalizeMoments,
-            HTrue             = None,
+            HTruth            = None,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_",
             plotLegend        = False,
           )
           plotMomentsInBin(
             HData             = momentResultInBin.HPhys,
             normalizedMoments = normalizeMoments,
-            HTrue             = HTruePs,
+            HTruth            = HTruthPs,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_"
           )
 
@@ -366,13 +366,13 @@ if __name__ == "__main__":
         HClas = momentResultsClas[massBinIndex]
         label = binLabel(HPhys)
         title = binTitle(HPhys)
-        # print(f"True moments for kinematic bin {title}:\n{HTrue}")
+        # print(f"True moments for kinematic bin {title}:\n{HTruth}")
         print(f"Measured moments of real data for kinematic bin {title}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {title}:\n{HPhys}")
         plotMomentsInBin(
           HData             = HPhys,
           normalizedMoments = normalizeMoments,
-          HTrue             = HClas,
+          HTruth            = HClas,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "CLAS"),
           plotTruthUncert   = True,
@@ -381,7 +381,7 @@ if __name__ == "__main__":
         plotMomentsInBin(
           HData             = HMeas,
           normalizedMoments = normalizeMoments,
-          HTrue             = None,
+          HTruth            = None,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
           plotLegend        = False,
         )
@@ -396,17 +396,17 @@ if __name__ == "__main__":
           graphTitle = f"({label})"
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
-            HTrue             = HClas,
+            HTruth            = HClas,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title,
-            HTrueLabel        = "CLAS",
+            HTruthLabel       = "CLAS",
           )
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
-            HTrue             = HClas,
+            HTruth            = HClas,
             pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title,
-            HTrueLabel        = "CLAS",
+            HTruthLabel       = "CLAS",
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
@@ -454,7 +454,7 @@ if __name__ == "__main__":
         for indexKinBin, HVal in enumerate(H000):
           if (massBinning._var not in HVal.binCenters.keys()):
             continue
-          y, yErr = HVal.realPart(True)
+          y, yErr = HVal.part(True)
           binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[massBinning.var])
           histIntensity.SetBinContent(binIndex, y)
           histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)

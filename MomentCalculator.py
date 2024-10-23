@@ -214,12 +214,12 @@ class AmplitudeSet:
           qnIndex   = QnMomentIndex(momentIndex, L, M)
           flatIndex = momentIndices[qnIndex]
           momentsFlatIndex[flatIndex] = moment / norm
-    HTrue = MomentResult(
+    HTruth = MomentResult(
       indices = momentIndices,
       label   = "true",
     )
-    HTrue._valsFlatIndex = momentsFlatIndex
-    return HTrue
+    HTruth._valsFlatIndex = momentsFlatIndex
+    return HTruth
 
   def intensityFormula(
     self,

@@ -231,8 +231,8 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     t = timer.start("Time to generate MC data from partial waves")
-    HTrue: MomentResult = amplitudeSet.photoProdMomentSet(maxL)
-    print(f"True moment values\n{HTrue}")
+    HTruth: MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+    print(f"True moment values\n{HTruth}")
     dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
     t.stop()
 
@@ -265,7 +265,7 @@ if __name__ == "__main__":
       dataSet = DataSet(dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents, polarization = beamPolarization)  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
       momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # dummy truth values; identical for all bins
-      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTrue))
+      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTruth))
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     # plot moments in each kinematic bin
     for HData in moments:
       label = binLabel(HData)
-      plotMomentsInBin(HData = moments[0].HPhys, HTrue = HTrue, pdfFileNamePrefix = f"{outFileDirName}/h{label}_")
+      plotMomentsInBin(HData = moments[0].HPhys, HTruth = HTruth, pdfFileNamePrefix = f"{outFileDirName}/h{label}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.qnIndices:
       plotMoments1D(

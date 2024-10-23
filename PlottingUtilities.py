@@ -469,7 +469,7 @@ def plotMoments(
 def plotMomentsInBin(
   HData:             MomentResult,  # moments extracted from data
   normalizedMoments: bool                          = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  HTrue:             MomentResult | None           = None,  # true moments
+  HTruth:            MomentResult | None           = None,  # true moments
   pdfFileNamePrefix: str                           = "",    # name prefix for output files
   plotLegend:        bool                          = True,
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
@@ -477,25 +477,25 @@ def plotMomentsInBin(
   truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
 ) -> None:
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
-  # ensure that indices of HData and HTrue are compatible
-  # allow case where HTrue contains unpolarized as well as polarized moments but HData only unpolarized moments
+  # ensure that indices of HData and HTruth are compatible
+  # allow case where HTruth contains unpolarized as well as polarized moments but HData only unpolarized moments
   indicesTrueMoments = None
-  if HTrue:
-    if (HTrue.indices.polarized and not HData.indices.polarized):
-      indicesTrueMoments = copy.deepcopy(HTrue.indices)
+  if HTruth:
+    if (HTruth.indices.polarized and not HData.indices.polarized):
+      indicesTrueMoments = copy.deepcopy(HTruth.indices)
       indicesTrueMoments.polarized = False
       indicesTrueMoments.regenerateIndexMaps()
     else:
-      indicesTrueMoments = HTrue.indices
-  assert not HTrue or HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
+      indicesTrueMoments = HTruth.indices
+  assert not HTruth or HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
   # generate separate plots for each moment index
   for momentIndex in range(HData.indices.momentIndexRange):
     HVals = tuple(
       MomentValueAndTruth(
         *HData[qnIndex],
-        truth         = HTrue[qnIndex].val      if HTrue else None,
-        truthUncertRe = HTrue[qnIndex].uncertRe if HTrue else None,
-        truthUncertIm = HTrue[qnIndex].uncertIm if HTrue else None,
+        truth         = HTruth[qnIndex].val      if HTruth else None,
+        truthUncertRe = HTruth[qnIndex].uncertRe if HTruth else None,
+        truthUncertIm = HTruth[qnIndex].uncertIm if HTruth else None,
       ) for qnIndex in HData.indices.qnIndices if qnIndex.momentIndex == momentIndex
     )
     plotMoments(
@@ -550,19 +550,19 @@ def plotMoments1D(
 
 def plotMomentsBootstrapDistributions1D(
   HData:             MomentResult,  # moments extracted from data
-  HTrue:             MomentResult | None = None,  # true moments
+  HTruth:            MomentResult | None = None,  # true moments
   pdfFileNamePrefix: str                 = "",    # name prefix for output files
   histTitle:         str                 = "",    # histogram title
   nmbBins:           int                 = 100,   # number of bins for bootstrap histograms
-  HTrueLabel:        str                 = "True value",  # label for true value in legend
+  HTruthLabel:       str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
-  assert not HTrue or HData.indices == HTrue.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTrue.indices}."
+  assert not HTruth or HData.indices == HTruth.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTruth.indices}."
   # generate separate plots for each moment index
   for qnIndex in HData.indices.qnIndices:
     HVal = MomentValueAndTruth(
       *HData[qnIndex],
-      truth = HTrue[qnIndex].val if HTrue else None
+      truth = HTruth[qnIndex].val if HTruth else None
     )
     assert HVal.hasBootstrapSamples, "Bootstrap samples must be present"
     for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
@@ -618,10 +618,10 @@ def plotMomentsBootstrapDistributions1D(
       # indicate true value
       if HVal.truth is not None:
         truth = HVal.truthPart(real = (momentPart == "Re"))
-        lineTrue = ROOT.TLine(truth, 0, truth, histBs.GetMaximum())
-        lineTrue.SetLineColor(ROOT.kRed + 1)
-        lineTrue.SetLineStyle(ROOT.kDashed)
-        lineTrue.Draw()
+        lineTruth = ROOT.TLine(truth, 0, truth, histBs.GetMaximum())
+        lineTruth.SetLineColor(ROOT.kRed + 1)
+        lineTruth.SetLineStyle(ROOT.kDashed)
+        lineTruth.Draw()
       # add legend
       legend = ROOT.TLegend(0.7, 0.85, 0.99, 0.99)
       legend.AddEntry(histBs, "Bootstrap samples", "LE")
@@ -631,7 +631,7 @@ def plotMomentsBootstrapDistributions1D(
       entry.SetLineColor(ROOT.kGreen + 2)
       legend.AddEntry(gaussian, "Nominal estimate Gaussian", "LP")
       if HVal.truth is not None:
-        legend.AddEntry(lineTrue, HTrueLabel, "L")
+        legend.AddEntry(lineTruth, HTruthLabel, "L")
       legend.Draw()
       canv.SaveAs(f"{histBs.GetName()}.pdf")
 
@@ -639,15 +639,15 @@ def plotMomentsBootstrapDistributions1D(
 def plotMomentPairBootstrapDistributions2D(
   momentIndexPair:   tuple[QnMomentIndex, QnMomentIndex],  # indices of moments to plot
   HData:             MomentResult,  # moments extracted from data
-  HTrue:             MomentResult | None = None,  # true moments
+  HTruth:            MomentResult | None = None,  # true moments
   pdfFileNamePrefix: str                 = "",    # name prefix for output files
   histTitle:         str                 = "",    # histogram title
   nmbBins:           int                 = 20,    # number of bins for bootstrap histograms
-  HTrueLabel:        str                 = "True value",  # label for true value in legend
+  HTruthLabel:       str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
-  HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], truth = HTrue[momentIndexPair[0]].val if HTrue else None),
-           MomentValueAndTruth(*HData[momentIndexPair[1]], truth = HTrue[momentIndexPair[1]].val if HTrue else None))
+  HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], truth = HTruth[momentIndexPair[0]].val if HTruth else None),
+           MomentValueAndTruth(*HData[momentIndexPair[1]], truth = HTruth[momentIndexPair[1]].val if HTruth else None))
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
   assert len(HVals[0].bsSamples) == len(HVals[1].bsSamples), "Number of bootstrap samples must be the same for both moments"
   # loop over combinations of real and imag parts
@@ -730,18 +730,18 @@ def plotMomentPairBootstrapDistributions2D(
     entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
     entry.SetLineColor(ROOT.kGreen + 2)
     if plotTruth:
-      entry = legend.AddEntry(markerTruth, HTrueLabel, "P")
+      entry = legend.AddEntry(markerTruth, HTruthLabel, "P")
     legend.Draw()
     canv.SaveAs(f"{histBs.GetName()}.pdf")
 
 
 def plotMomentsBootstrapDistributions2D(
   HData:             MomentResult,  # moments extracted from data
-  HTrue:             MomentResult | None = None,  # true moments
+  HTruth:            MomentResult | None = None,  # true moments
   pdfFileNamePrefix: str                 = "",    # name prefix for output files
   histTitle:         str                 = "",    # histogram title
   nmbBins:           int                 = 20,    # number of bins for bootstrap histograms
-  HTrueLabel:        str                 = "True value",  # label for true value in legend
+  HTruthLabel:       str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
   momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
@@ -752,11 +752,11 @@ def plotMomentsBootstrapDistributions2D(
     plotMomentPairBootstrapDistributions2D(
       momentIndexPair   = momentIndexPair,
       HData             = HData,
-      HTrue             = HTrue,
+      HTruth            = HTruth,
       pdfFileNamePrefix = pdfFileNamePrefix,
       histTitle         = histTitle,
       nmbBins           = nmbBins,
-      HTrueLabel        = HTrueLabel,
+      HTruthLabel       = HTruthLabel,
     )
 
 
