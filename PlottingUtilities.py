@@ -356,7 +356,7 @@ def plotMoments(
     histData.SetMarkerColor(ROOT.kRed + 1)
     histData.SetMarkerStyle(ROOT.kFullCircle)
     histData.SetMarkerSize(0.75)
-    histStack.Add(histData, "PEX0")
+    histStack.Add(histData, "PE1X0")
     if trueValues:
       # create histogram with true values
       histTrue = ROOT.TH1D(legendLabels[1] or "True Values", "", *histBinning.astuple)
@@ -384,15 +384,15 @@ def plotMoments(
     histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     if plotLegend:
       canv.BuildLegend(0.7, 0.85, 0.99, 0.99)
+    canv.Update()
+    if plotHTrueUncert:
+      # draw data on top of "truth"
+      histData.Draw("PE1X0 SAME")
     # adjust style of automatic zero line
     # does not work
     # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
     # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
-    canv.Update()
-    if plotHTrueUncert:
-      # draw data on top of "truth"
-      histData.Draw("PEX0 SAME")
     if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
       zeroLine = ROOT.TLine()
       zeroLine.SetLineColor(ROOT.kBlack)
