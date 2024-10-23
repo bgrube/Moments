@@ -29,6 +29,7 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   HistAxisBinning,
+  makeMomentHistogram,
   MomentValueAndTruth,
   plotAngularDistr,
   plotComplexMatrix,
@@ -160,7 +161,6 @@ def readMomentResultsJpac(
   return MomentResultsKinematicBinning(momentResults)
 
 
-
 if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
@@ -188,8 +188,8 @@ if __name__ == "__main__":
     plotAccIntegralMatrices  = False
     calcAccPsMoments         = True
     # calcAccPsMoments         = False
-    # limitNmbPsAccEvents      = 0  # process all data
-    limitNmbPsAccEvents      = 1000
+    limitNmbPsAccEvents      = 0  # use all accepted phase-space data
+    # limitNmbPsAccEvents      = 100000
     binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
     massBinning              = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
     # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
@@ -353,12 +353,15 @@ if __name__ == "__main__":
       momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
       momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
       momentResultsClas = readMomentResultsClas(momentIndices, binVarMass)
-      # normalize CLAS moments
-      H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+      momentResultsJpac = readMomentResultsJpac(momentIndices, binVarMass)
+
+      # normalize CLAS and JPAC moments
+      # TODO normalize by integral
       normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
-      scaleFactor =   momentResultsPhys[normMassBinIndex][H000Index].val.real \
-                    / momentResultsClas[normMassBinIndex][H000Index].val.real
-      momentResultsClas.scaleBy(scaleFactor)
+      H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+      H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
+      momentResultsClas.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)
+      momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
@@ -416,6 +419,22 @@ if __name__ == "__main__":
 
       # plot kinematic dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
+        # get histogram with moment values from JPAC fit
+        #TODO do not plot this for imaginary parts
+        HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
+        histJpac = makeMomentHistogram(
+          HVals      = HValsJpac,
+          momentPart = "Re",
+          histName   = "JPAC",
+          histTitle  = "",
+          binning    = massBinning,
+          plotTruth  = False,
+          plotUncert = True,
+        )
+        histJpacBand = histJpac.Clone(f"{histJpac.GetName()}_band")
+        histJpac.SetLineColor(ROOT.kBlue + 1)
+        histJpac.SetLineWidth(2)
+        histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         plotMoments1D(
           momentResults     = momentResultsPhys,
           qnIndex           = qnIndex,
@@ -428,6 +447,10 @@ if __name__ == "__main__":
           legendLabels      = ("Moment", "CLAS"),
           plotTruthUncert   = True,
           truthColor        = ROOT.kGray + 1,
+          histsToOverlay    = [
+            (histJpac,     "HIST L", histJpac.GetName()),
+            (histJpacBand,     "E3", ""),
+          ],
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,
