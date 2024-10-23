@@ -375,7 +375,8 @@ if __name__ == "__main__":
           HTrue             = HClas,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "CLAS"),
-          plotHTrueUncert   = True,
+          plotTruthUncert   = True,
+          truthColor        = ROOT.kGray + 1,
         )
         plotMomentsInBin(
           HData             = HMeas,
@@ -425,7 +426,8 @@ if __name__ == "__main__":
           histTitle         = qnIndex.title,
           plotLegend        = True,
           legendLabels      = ("Moment", "CLAS"),
-          plotHTrueUncert   = True,
+          plotTruthUncert   = True,
+          truthColor        = ROOT.kGray + 1,
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,
