@@ -330,7 +330,8 @@ def plotMoments(
   histTitle:         str                           = "",  # histogram title
   plotLegend:        bool                          = True,
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
-  plotHTrueUncert:   bool                          = False,  # plot uncertainty of true moments
+  plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
+  truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
 ) -> None:
   """Plots moments extracted from data along categorical axis and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -365,12 +366,12 @@ def plotMoments(
           y, yErr = HVal.truthRealPart(momentPart == "Re")
           binIndex = index + 1
           histTrue.SetBinContent(binIndex, y)
-          if plotHTrueUncert and (yErr is not None) and (yErr > 1e-100):  # yErr must not be zero, otherwise ROOT does not draw x error bars; sigh
+          if plotTruthUncert and (yErr is not None) and (yErr > 1e-100):  # yErr must not be zero, otherwise ROOT does not draw x error bars; sigh
             histTrue.SetBinError(binIndex, yErr)
           else:
             histTrue.SetBinError(binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-      histTrue.SetMarkerColor(ROOT.kBlue + 1)
-      histTrue.SetLineColor(ROOT.kBlue + 1)
+      histTrue.SetMarkerColor(truthColor)
+      histTrue.SetLineColor(truthColor)
       histTrue.SetLineWidth(2)
       histStack.Add(histTrue, "PE")
     canv = ROOT.TCanvas()
@@ -385,7 +386,7 @@ def plotMoments(
     if plotLegend:
       canv.BuildLegend(0.7, 0.85, 0.99, 0.99)
     canv.Update()
-    if plotHTrueUncert:
+    if plotTruthUncert:
       # draw data on top of "truth"
       histData.Draw("PE1X0 SAME")
     # adjust style of automatic zero line
@@ -472,7 +473,8 @@ def plotMomentsInBin(
   pdfFileNamePrefix: str                           = "",    # name prefix for output files
   plotLegend:        bool                          = True,
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
-  plotHTrueUncert:   bool                          = False,  # plot uncertainty of true moments
+  plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
+  truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
 ) -> None:
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
   # ensure that indices of HData and HTrue are compatible
@@ -504,7 +506,8 @@ def plotMomentsInBin(
       pdfFileNamePrefix = pdfFileNamePrefix,
       plotLegend        = plotLegend,
       legendLabels      = legendLabels,
-      plotHTrueUncert   = plotHTrueUncert,
+      plotTruthUncert   = plotTruthUncert,
+      truthColor        = truthColor,
     )
 
 
@@ -518,7 +521,8 @@ def plotMoments1D(
   histTitle:         str                                  = "",    # histogram title
   plotLegend:        bool                                 = True,
   legendLabels:      tuple[str | None, str | None]        = (None, None),  # labels for legend entries; None = use defaults
-  plotHTrueUncert:   bool                                 = False,  # plot uncertainty of true moments
+  plotTruthUncert:   bool                                 = False,  # plot uncertainty of true moments
+  truthColor:        int                                  = ROOT.kBlue + 1,  # color used for true values
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
@@ -539,7 +543,8 @@ def plotMoments1D(
     histTitle         = histTitle,
     plotLegend        = plotLegend,
     legendLabels      = legendLabels,
-    plotHTrueUncert   = plotHTrueUncert,
+    plotTruthUncert   = plotTruthUncert,
+    truthColor        = truthColor,
   )
 
 
