@@ -68,6 +68,7 @@ def readMomentResultsClas(
         csvData = csvFile.read()
         momentLabel = f"YLM(LM={qnMomentIndex.L}{qnMomentIndex.M},P=3_4) [MUB/GEV**3]"
         if (momentLabel in csvData) and (tBinLabel in csvData):
+          print(f"Reading CLAS values for moment {qnMomentIndex.label} from file '{csvFileName}'")
           # within each file there are sub-tables for the 4 beam-energy bins
           # second step: extract sub-table for the desired beam-energy bin
           tableStartPos = csvData.find(beamEnergyBinLabel)
@@ -110,6 +111,56 @@ def readMomentResultsClas(
   return MomentResultsKinematicBinning(momentResults)
 
 
+def readMomentResultsJpac(
+    momentIndices: MomentIndices,  # moment indices to read
+    binVarMass:    KinematicBinningVariable,  # binning variable for mass bins
+    tBinLabel:     str = "t=0.40-0.50",
+    dataDirName:   str = "./dataPhotoProdPiPiUnpol/2406.08016",
+  ) -> MomentResultsKinematicBinning:
+  """Reads the moments values from the JPAC fit to the CLAS data in range 3.6 < E_gamma < 3.8 GeV as published in Figs. 6, 7, 13--16 in arXiv:2406.08016"""
+  momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas data frame with moment values in mass bins
+  for qnMomentIndex in momentIndices.qnIndices:
+    datFileName = f"{dataDirName}/Y{qnMomentIndex.L}{qnMomentIndex.M}{tBinLabel}.dat"
+    print(f"Reading JPAC values for moment {qnMomentIndex.label} from file '{datFileName}'")
+    try:
+      momentDf = pd.read_csv(
+        datFileName,
+        sep      ='\s+',  # values are whitespace separated
+        skiprows = 1,     # first row with column names
+        names    = ["mass", "moment", "uncert"],
+      )
+      # scale moment values and their uncertainties by 1 / sqrt(2L + 1) to match normalization used in this analysis
+      momentDf[["moment", "uncert"]] /= np.sqrt(2 * qnMomentIndex.L + 1)
+      momentDfs[qnMomentIndex] = momentDf
+    except FileNotFoundError as e:
+        print(f"Warning: file '{datFileName}' not found. Skipping moment {qnMomentIndex.label}.")
+  # ensure that mass bins are the same in all data frames
+  dfs = list(momentDfs.values())
+  massColunm = dfs[0]["mass"]
+  for df in dfs[1:]:
+    assert df["mass"].equals(massColunm), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColunm}"
+  # convert data frames to MomentResultsKinematicBinning
+  momentResults: list[MomentResult] = []
+  for massBinCenter in massColunm:
+    # loop over momentDfs and extract moment values for the given mass bin
+    momentValues: list[MomentValue] = []
+    for qnMomentIndex, momentDf in momentDfs.items():
+      mask = momentDf["mass"] == massBinCenter
+      moment, uncert = momentDf[mask][["moment", "uncert"]].values[0]
+      momentValues.append(
+        MomentValue(
+          qn         = qnMomentIndex,
+          val        = moment,
+          uncertRe   = uncert,
+          uncertIm   = 0,
+          binCenters = {binVarMass: massBinCenter},
+        )
+      )
+    momentResults.append(constructMomentResultFrom(momentIndices, momentValues))
+  return MomentResultsKinematicBinning(momentResults)
+
+
+
 if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
@@ -143,7 +194,6 @@ if __name__ == "__main__":
     nmbOpenMpThreads         = ROOT.getNmbOpenMpThreads()
 
     namePrefix = "norm" if normalizeMoments else "unnorm"
-
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
