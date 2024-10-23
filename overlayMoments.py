@@ -29,23 +29,24 @@ print = functools.partial(print, flush = True)
 
 
 def overlayMoments1D(
-  momentResultsToOverlay: dict[int, MomentResultsKinematicBinning],  # key: L_max moment results, value: moment results
+  momentResultsToOverlay: dict[str, MomentResultsKinematicBinning],  # key: legend label, value: moment results
   qnIndex:                QnMomentIndex,    # defines specific moment
   binning:                HistAxisBinning,  # binning to use for plot
   normalizedMoments:      bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   pdfFileNamePrefix:      str  = "",    # name prefix for output files
 ) -> None:
-  """Overlays moments H_i(L, M) for different L_max as function of kinematical variable"""
+  """Overlays moments H_i(L, M) from different analyses as function of kinematical variable"""
+  print(f"Overlaying {qnIndex.label} moments as a function of the '{binning.var.name}' variable")
   for momentPart, momentPartLabel in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
     histStack = ROOT.THStack(
       f"{pdfFileNamePrefix}overlay_{qnIndex.label}_{momentPart}",
       f"{qnIndex.title} {momentPartLabel};{binning.axisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value",
     )
-    for index, (maxL, momentResults) in enumerate(momentResultsToOverlay.items()):
+    for index, (legendLabel, momentResults) in enumerate(momentResultsToOverlay.items()):
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(HPhys[qnIndex] for HPhys in momentResults if qnIndex in HPhys)
       # create histogram with moments
-      histData = ROOT.TH1D("#it{L}_{max} = "f"{maxL}", "", *binning.astuple)
+      histData = ROOT.TH1D(legendLabel, "", *binning.astuple)
       for HVal in HVals:
         if binning.var not in HVal.binCenters.keys():
           continue
@@ -81,37 +82,38 @@ if __name__ == "__main__":
   setupPlotStyle()
   timer.start("Total execution time")
 
-  # # set parameters of analysis
-  # momentsFileDirNamePattern = "./plotsPhotoProdPiPiUnpol.maxL_*"
-  # fitResultDirNames         = sorted(tuple(found for found in glob.glob(momentsFileDirNamePattern) if os.path.isdir(found)))
-  fitResultDirNames         = (
-    "./plotsPhotoProdPiPiUnpol.maxL_3",
-    "./plotsPhotoProdPiPiUnpol.maxL_4",
-    "./plotsPhotoProdPiPiUnpol.maxL_5",
-    "./plotsPhotoProdPiPiUnpol.maxL_8",
-    "./plotsPhotoProdPiPiUnpol.maxL_10",
+  # define what to overlay
+  fitResults: tuple[tuple[str, str], ...] = (
+    # (directory name, legend label)
+    ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2"),
+    # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4"),
+    ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5"),
+    ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8"),
+    ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20"),
+    # last entry defines which moments are plotted
   )
-  outFileDirName            = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
-  normalizeMoments          = False
-  binVarMass                = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
-  massBinning               = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
+  # fitResults: tuple[tuple[str, str], ...] = (
+  #   ("./plotsPhotoProdPiPiUnpol.rhoMc",  "Old MC"),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_5", "New MC"),
+  # )
+  outFileDirName   = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
+  normalizeMoments = False
+  binVarMass       = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
+  massBinning      = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
 
   namePrefix = "norm" if normalizeMoments else "unnorm"
 
   # load moment results
-  momentResultsToOverlay: dict[int, MomentResultsKinematicBinning] = {}  # key: L_max moment results, value: moment results
-  for fitResultDirName in fitResultDirNames:
+  momentResultsToOverlay: dict[str, MomentResultsKinematicBinning] = {}  # key: legend label, value: moment results
+  for fitResultDirName, fitResultLabel in fitResults:
     print(f"Loading moment results from directory {fitResultDirName}")
-    maxL = int(fitResultDirName.split("_")[-1])
     momentResultsPhysFileName = f"{fitResultDirName}/{namePrefix}_moments_phys.pkl"
     try:
       momentResultsPhys = MomentResultsKinematicBinning.load(momentResultsPhysFileName)
     except FileNotFoundError as e:
       print(f"Cannot not find file '{momentResultsPhysFileName}'. Skipping directory '{fitResultDirName}'")
       continue
-    momentResultsToOverlay[maxL] = momentResultsPhys
-  # get largest maxL value
-  maxMaxL = max(momentResultsToOverlay.keys())
+    momentResultsToOverlay[fitResultLabel] = momentResultsPhys
 
   # ensure that all moment results have identical kinematic binning and identical order of kinematic bins
   momentResults: tuple[MomentResultsKinematicBinning, ...]         = tuple(momentResultsToOverlay.values())
@@ -119,25 +121,9 @@ if __name__ == "__main__":
   for momentResult in momentResults[1:]:
     assert momentResult.binCenters == binCenters
 
-  # # plot moments in each kinematic bin
-  # for massBinIndex, HPhys in enumerate(momentResultsPhys):
-  #   label = binLabel(HPhys)
-  #   title = binTitle(HPhys)
-  #   # print(f"True moments for kinematic bin {title}:\n{HTrue}")
-  #   print(f"Measured moments of real data for kinematic bin {title}:\n{HMeas}")
-  #   print(f"Physical moments of real data for kinematic bin {title}:\n{HPhys}")
-  #   plotMomentsInBin(
-  #     HData             = HPhys,
-  #     normalizedMoments = normalizeMoments,
-  #     HTrue             = HClas,
-  #     pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
-  #     legendLabels      = ("Moment", "CLAS"),
-  #     plotHTrueUncert   = True,
-  #   )
-
   # plot kinematic dependences of all moments
-  for qnIndex in momentResultsToOverlay[maxMaxL][0].indices.qnIndices:
-    print(f"!!! {qnIndex=}")
+  lastLabel = fitResults[-1][1]
+  for qnIndex in momentResultsToOverlay[lastLabel][0].indices.qnIndices:
     overlayMoments1D(
       momentResultsToOverlay = momentResultsToOverlay,
       qnIndex                = qnIndex,
