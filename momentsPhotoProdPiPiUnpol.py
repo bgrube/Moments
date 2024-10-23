@@ -88,7 +88,7 @@ def readMomentResultsClas(
   dfs = list(momentDfs.values())
   massColunm = dfs[0]["mass"]
   for df in dfs[1:]:
-    assert df["mass"].equals(massColunm), f"Mass bins in data frames differ"
+    assert df["mass"].equals(massColunm), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColunm}"
   # convert data frames to MomentResultsKinematicBinning
   momentResults: list[MomentResult] = []
   for massBinCenter in massColunm:
@@ -188,6 +188,8 @@ if __name__ == "__main__":
     plotAccIntegralMatrices  = False
     calcAccPsMoments         = True
     # calcAccPsMoments         = False
+    # limitNmbPsAccEvents      = 0  # process all data
+    limitNmbPsAccEvents      = 1000
     binVarMass               = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
     massBinning              = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
     # massBinning              = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
@@ -211,7 +213,7 @@ if __name__ == "__main__":
         dataInBin = ROOT.RDataFrame(treeName, dataFileName).Filter(binMassRangeFilter)
         print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
         print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
+        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Range(limitNmbPsAccEvents).Filter(binMassRangeFilter)
         print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
         dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
         nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
@@ -421,6 +423,7 @@ if __name__ == "__main__":
           momentResultsTrue = momentResultsClas,
           pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
           histTitle         = qnIndex.title,
+          plotLegend        = True,
           legendLabels      = ("Moment", "CLAS"),
           plotHTrueUncert   = True,
         )
