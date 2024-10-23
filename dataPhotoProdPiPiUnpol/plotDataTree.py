@@ -10,6 +10,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   # declare C++ function to calculate invariant mass of a pair of particles
   CPP_CODE = """
@@ -91,6 +92,7 @@ if __name__ == "__main__":
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
   dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
+  mcDataFileName        = "./amptools_tree_accepted_tbin1_ebin4*.root"
   treeName = "kin"
 
   # create friend trees with correct weights
@@ -172,3 +174,22 @@ if __name__ == "__main__":
     histDiff.Draw("COLZ")
     canv.SaveAs(f"{hist.GetName()}_diff.pdf")
   histFileAlex.Close()
+
+  # overlay pipi mass distributions from data and from accepted phase-space MC
+  lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
+  lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
+  dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
+             .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
+  histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 200, 0, 2), "MassPiPi")
+  histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 200, 0, 2), "MassPiPi", "eventWeight")
+  canv = ROOT.TCanvas()
+  histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events")
+  histStack.Add(histMassPiPiMc.GetValue())
+  histStack.Add(histMassPiPiData.GetValue())
+  histMassPiPiMc.SetLineColor  (ROOT.kBlue + 1)
+  histMassPiPiData.SetLineColor(ROOT.kRed + 1)
+  histMassPiPiMc.SetMarkerColor  (ROOT.kBlue + 1)
+  histMassPiPiData.SetMarkerColor(ROOT.kRed + 1)
+  histStack.Draw("NOSTACK")
+  canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
+  canv.SaveAs(f"{histStack.GetName()}.pdf")
