@@ -169,24 +169,7 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
   """Generates all plots for the given analysis configuration"""
   timer.start("Total execution time")
 
-  if cfg.plotAngularDistributions:
-    print("Plotting total angular distributions")
-    # load all signal and phase-space data
-    print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
-    data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
-    print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
-    dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
-    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
-    dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
-    plotAngularDistr(
-      dataPsAcc         = dataPsAcc,
-      dataPsGen         = dataPsGen,
-      dataSignalAcc     = data,
-      dataSignalGen     = None,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
-    )
-
-  # load moment results from files
+  # load moments from files
   momentIndices = MomentIndices(cfg.maxL)
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
@@ -346,6 +329,23 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
     histTitle         = H000Index.title,
     legendLabels      = ("Measured Moment", "Measured Intensity"),
   )
+
+  if cfg.plotAngularDistributions:
+    print("Plotting total angular distributions")
+    # load all signal and phase-space data
+    print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
+    data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
+    print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
+    dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
+    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
+    dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+    plotAngularDistr(
+      dataPsAcc         = dataPsAcc,
+      dataPsGen         = dataPsGen,
+      dataSignalAcc     = data,
+      dataSignalGen     = None,
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
+    )
 
   timer.stop("Total execution time")
   print(timer.summary)
