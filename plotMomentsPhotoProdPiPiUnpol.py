@@ -22,9 +22,9 @@ from calcMomentsPhotoProdPiPiUnpol import (
   AnalysisConfig,
   CFG,
 )
+import MomentCalculator
 from MomentCalculator import (
-  binLabel,
-  binTitle,
+  AcceptanceIntegralMatrix,
   constructMomentResultFrom,
   KinematicBinningVariable,
   MomentIndices,
@@ -46,7 +46,6 @@ from PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
 import Utilities
 
 
@@ -185,20 +184,20 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
   momentResultsClas.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)
   momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
 
-  # plot moments in each kinematic bin
+  # plot moments in each mass bin
   for massBinIndex, HPhys in enumerate(momentResultsPhys):
     HMeas = momentResultsMeas[massBinIndex]
     HClas = momentResultsClas[massBinIndex]
-    label = binLabel(HPhys)
-    title = binTitle(HPhys)
+    binLabel = MomentCalculator.binLabel(HPhys)
+    binTitle = MomentCalculator.binTitle(HPhys)
     # print(f"True moments for kinematic bin {title}:\n{HTruth}")
-    print(f"Measured moments of real data for kinematic bin {title}:\n{HMeas}")
-    print(f"Physical moments of real data for kinematic bin {title}:\n{HPhys}")
+    print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
+    print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
     plotMomentsInBin(
       HData             = HPhys,
       normalizedMoments = cfg.normalizeMoments,
       HTruth            = HClas,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
       legendLabels      = ("Moment", "CLAS"),
       plotTruthUncert   = True,
       truthColor        = ROOT.kGray + 1,
@@ -207,39 +206,39 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
       HData             = HMeas,
       normalizedMoments = cfg.normalizeMoments,
       HTruth            = None,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{label}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
       plotLegend        = False,
     )
     #TODO also plot correlation matrices
     plotMomentsCovMatrices(
       HData             = HPhys,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{label}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{binLabel}_",
       axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
-      plotTitle         = f"{label}: ",
+      plotTitle         = f"{binLabel}: ",
     )
     if cfg.nmbBootstrapSamples > 0:
-      graphTitle = f"({label})"
+      graphTitle = f"({binLabel})"
       plotMomentsBootstrapDistributions1D(
         HData             = HPhys,
         HTruth            = HClas,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
-        histTitle         = title,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+        histTitle         = binTitle,
         HTruthLabel       = "CLAS",
       )
       plotMomentsBootstrapDistributions2D(
         HData             = HPhys,
         HTruth            = HClas,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
-        histTitle         = title,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+        histTitle         = binTitle,
         HTruthLabel       = "CLAS",
       )
       plotMomentsBootstrapDiffInBin(
         HData             = HPhys,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
-        graphTitle        = title,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+        graphTitle        = binTitle,
       )
 
-  # plot kinematic dependences of all moments
+  # plot mass dependences of all moments
   for qnIndex in momentResultsPhys[0].indices.qnIndices:
     # get histogram with moment values from JPAC fit
     #TODO do not plot JPAC moments for imaginary parts
