@@ -26,6 +26,7 @@ import MomentCalculator
 from MomentCalculator import (
   AcceptanceIntegralMatrix,
   constructMomentResultFrom,
+  DataSet,
   KinematicBinningVariable,
   MomentIndices,
   MomentResult,
@@ -37,6 +38,7 @@ from PlottingUtilities import (
   makeMomentHistogram,
   MomentValueAndTruth,
   plotAngularDistr,
+  plotComplexMatrix,
   plotMoments,
   plotMoments1D,
   plotMomentsBootstrapDiffInBin,
@@ -345,6 +347,38 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
       dataSignalGen     = None,
       pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
     )
+
+  if cfg.plotAccIntegralMatrices:
+    # plot acceptance integral matrices for all mass bins
+    for HPhys in momentResultsPhys:
+      # load integral matrix
+      binLabel = MomentCalculator.binLabel(HPhys)
+      accIntMatrix = AcceptanceIntegralMatrix(
+        indices = HPhys.indices,
+        dataSet = DataSet(
+          data           = None,
+          phaseSpaceData = None,
+          nmbGenEvents   = 0,
+          polarization   = None,
+        ),
+      )  # dummy matrix without dataset
+      accIntMatrix.load(f"{cfg.outFileDirName}/integralMatrix_{binLabel}.npy")
+      plotComplexMatrix(
+        complexMatrix     = accIntMatrix.matrixNormalized,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrix_{binLabel}_",
+        axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
+        plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
+        zRangeAbs         = 1.2,
+        zRangeImag        = 0.05,
+      )
+      plotComplexMatrix(
+        complexMatrix     = accIntMatrix.inverse,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrixInv_{binLabel}_",
+        axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
+        plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
+        zRangeAbs         = 5,
+        zRangeImag        = 0.3,
+      )
 
   timer.stop("Total execution time")
   print(timer.summary)

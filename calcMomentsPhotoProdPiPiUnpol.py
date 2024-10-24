@@ -63,8 +63,8 @@ class AnalysisConfig:
   # nmbBootstrapSamples:      int                      = 10000
   # plotAngularDistributions: bool                     = True
   plotAngularDistributions: bool                     = False
-  # plotAccIntegralMatrices:  bool                     = True
-  plotAccIntegralMatrices:  bool                     = False
+  plotAccIntegralMatrices:  bool                     = True
+  # plotAccIntegralMatrices:  bool                     = False
   calcAccPsMoments:         bool                     = True
   # calcAccPsMoments:         bool                     = False
   limitNmbPsAccEvents:      int                      = 0
@@ -153,27 +153,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
     print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{momentCalculators[0].integralMatrix}")
     eigenVals, _ = momentCalculators[0].integralMatrix.eigenDecomp
     print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
-    # plot acceptance integral matrices for all kinematic bins
-    #TODO move this to plot script and use saved integral matrices
-    if cfg.plotAccIntegralMatrices:
-      for momentCalculatorInBin in momentCalculators:
-        label = binLabel(momentCalculatorInBin)
-        plotComplexMatrix(
-          complexMatrix     = momentCalculatorInBin.integralMatrix.matrixNormalized,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrix_{label}_",
-          axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
-          plotTitle         = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
-          zRangeAbs         = 1.2,
-          zRangeImag        = 0.05,
-        )
-        plotComplexMatrix(
-          complexMatrix     = momentCalculatorInBin.integralMatrix.inverse,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrixInv_{label}_",
-          axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
-          plotTitle         = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
-          zRangeAbs         = 5,
-          zRangeImag        = 0.3,
-        )
 
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
