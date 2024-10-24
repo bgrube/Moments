@@ -37,7 +37,7 @@ print = functools.partial(print, flush = True)
 
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
-  """Immutable container class that stores information about quantum-number indices of two-pseudocalar partial-waves in reflectivity basis"""
+  """Immutable container class that stores information about quantum-number indices of two-pseudoscalar partial-waves in reflectivity basis"""
   refl: int  # reflectivity
   l:    int  # orbital angular momentum
   m:    int  # projection quantum number of l
@@ -853,7 +853,7 @@ def constructMomentResultFrom(
   # ensure that all moment values have the same bin centers, labels, and number of bootstrap samples
   assert all(momentValues[0].binCenters         == momentValue.binCenters         for momentValue in momentValues[1:]), "Moment values must have the same bin centers"
   assert all(momentValues[0].label              == momentValue.label              for momentValue in momentValues[1:]), "Moment values must have the same label"
-  assert all(momentValues[0].bsSamples.shape[0] == momentValue.bsSamples.shape[0] for momentValue in momentValues[1:]), "Moment values must have the same number of boostrap samples"
+  assert all(momentValues[0].bsSamples.shape[0] == momentValue.bsSamples.shape[0] for momentValue in momentValues[1:]), "Moment values must have the same number of bootstrap samples"
   # ensure that quantum numbers of moment values are unique
   assert len(set(momentValue.qn for momentValue in momentValues)) == len(momentValues), "Moment values must have unique quantum numbers"
   momentResult = MomentResult(
