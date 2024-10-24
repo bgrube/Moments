@@ -93,19 +93,25 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
   nmbPsGenEvents: list[int]              = []
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
+    print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
+    data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
+    print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
+    dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
+    if cfg.limitNmbPsAccEvents > 0:
+      dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! .Range switches to single-threaded mode
+    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
+    dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
     for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
       massBinRange = cfg.massBinning.binValueRange(massBinIndex)
       print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
 
       # load data for mass bin
       binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
-      print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}' and applying filter {binMassRangeFilter}")
-      dataInBin = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName).Filter(binMassRangeFilter)
+      print(f"Applying filter '{binMassRangeFilter}' to select kinematic bin")
+      dataInBin = data.Filter(binMassRangeFilter)
       print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
-      print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}' and applying filter {binMassRangeFilter}")
-      dataPsAccInBin = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName).Range(cfg.limitNmbPsAccEvents).Filter(binMassRangeFilter)
-      print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}' and applying filter {binMassRangeFilter}")
-      dataPsGenInBin = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName).Filter(binMassRangeFilter)
+      dataPsAccInBin = dataPsAcc.Filter(binMassRangeFilter)
+      dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
       nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
       nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
       print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}; "
