@@ -89,8 +89,8 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
 
   # setup MomentCalculators for all mass bins
   momentIndices = MomentIndices(cfg.maxL)
-  momentsInBins:  list[MomentCalculator] = []
-  nmbPsGenEvents: list[int]              = []
+  momentCalculatorsBins:  list[MomentCalculator] = []  #TODO directly use list in momentCalculators
+  nmbPsGenEvents:         list[int]              = []
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
     print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
@@ -125,7 +125,7 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
         nmbGenEvents   = nmbPsGenEvents[-1],
         polarization   = None,
       )
-      momentsInBins.append(
+      momentCalculatorsBins.append(
         MomentCalculator(
           indices              = momentIndices,
           dataSet              = dataSet,
@@ -141,23 +141,24 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
           dataPsGen         = dataPsGenInBin,
           dataSignalAcc     = dataInBin,
           dataSignalGen     = None,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_"
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{binLabel(momentCalculatorsBins[-1])}_"
         )
-  moments = MomentCalculatorsKinematicBinning(momentsInBins)
+  momentCalculators = MomentCalculatorsKinematicBinning(momentCalculatorsBins)
 
   # calculate and plot integral matrix for all mass bins
-  with timer.timeThis(f"Time to calculate integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
-    print(f"Calculating acceptance integral matrices for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
-    moments.calculateIntegralMatrices(forceCalculation = True)
-    print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{moments[0].integralMatrix}")
-    eigenVals, _ = moments[0].integralMatrix.eigenDecomp
+  with timer.timeThis(f"Time to calculate integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):
+    print(f"Calculating acceptance integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
+    momentCalculators.calculateIntegralMatrices(forceCalculation = True)
+    print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{momentCalculators[0].integralMatrix}")
+    eigenVals, _ = momentCalculators[0].integralMatrix.eigenDecomp
     print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
     # plot acceptance integral matrices for all kinematic bins
+    #TODO move this to plot script and use saved integral matrices
     if cfg.plotAccIntegralMatrices:
-      for momentResultInBin in moments:
-        label = binLabel(momentResultInBin)
+      for momentCalculatorInBin in momentCalculators:
+        label = binLabel(momentCalculatorInBin)
         plotComplexMatrix(
-          complexMatrix     = momentResultInBin.integralMatrix.matrixNormalized,
+          complexMatrix     = momentCalculatorInBin.integralMatrix.matrixNormalized,
           pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrix_{label}_",
           axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
           plotTitle         = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
@@ -165,7 +166,7 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
           zRangeImag        = 0.05,
         )
         plotComplexMatrix(
-          complexMatrix     = momentResultInBin.integralMatrix.inverse,
+          complexMatrix     = momentCalculatorInBin.integralMatrix.inverse,
           pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrixInv_{label}_",
           axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
           plotTitle         = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
@@ -176,12 +177,12 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
   if cfg.calcAccPsMoments:
     # calculate moments of accepted phase-space data
     with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
-      print(f"Calculating moments of phase-space MC data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
-      moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
+      print(f"Calculating moments of phase-space MC data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
+      momentCalculators.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
       #TODO move into separate plotting script
       # plot kinematic dependences of all phase-space moments
       for qnIndex in momentIndices.qnIndices:
-        HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
+        HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in momentCalculators)
         plotMoments(
           HVals             = HVals,
           binning           = cfg.massBinning,
@@ -192,26 +193,26 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
           plotLegend        = False,
         )
       # plot accepted phase-space moments in each kinematic bin
-      for massBinIndex, momentResultInBin in enumerate(moments):
-        label = binLabel(momentResultInBin)
-        title = binTitle(momentResultInBin)
-        print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentResultInBin.HMeas}")
-        print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentResultInBin.HPhys}")
+      for massBinIndex, momentCalculatorInBin in enumerate(momentCalculators):
+        label = binLabel(momentCalculatorInBin)
+        title = binTitle(momentCalculatorInBin)
+        print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentCalculatorInBin.HMeas}")
+        print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentCalculatorInBin.HPhys}")
         # construct true moments for phase-space data
         HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
         HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
         # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
-        momentResultInBin.HMeas._valsFlatIndex[0] = 0
+        momentCalculatorInBin.HMeas._valsFlatIndex[0] = 0
         # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
         plotMomentsInBin(
-          HData             = momentResultInBin.HMeas,
+          HData             = momentCalculatorInBin.HMeas,
           normalizedMoments = cfg.normalizeMoments,
           HTruth            = None,
           pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_accPs_",
           plotLegend        = False,
         )
         plotMomentsInBin(
-          HData             = momentResultInBin.HPhys,
+          HData             = momentCalculatorInBin.HPhys,
           normalizedMoments = cfg.normalizeMoments,
           HTruth            = HTruthPs,
           pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_accPsCorr_"
@@ -220,11 +221,11 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
   # calculate moments of real data and write them to files
   #TODO calculate normalized and unnormalized moments
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-  with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
-    print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
-    moments.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
-    moments.momentResultsMeas.save(f"{momentResultsFileBaseName}_meas.pkl")
-    moments.momentResultsPhys.save(f"{momentResultsFileBaseName}_phys.pkl")
+  with timer.timeThis(f"Time to calculate moments of real data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):
+    print(f"Calculating moments of real data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
+    momentCalculators.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
+    momentCalculators.momentResultsMeas.save(f"{momentResultsFileBaseName}_meas.pkl")
+    momentCalculators.momentResultsPhys.save(f"{momentResultsFileBaseName}_phys.pkl")
 
   timer.stop("Total execution time")
   print(timer.summary)
