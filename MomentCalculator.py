@@ -44,12 +44,12 @@ class QnWaveIndex:
 
   @property
   def label(self) -> str:
-    """Returns string to construct TObject or file names"""
+    """Returns string to construct `TObject` or file names"""
     return f"[{self.l}]_{self.m}_" + ("p" if self.refl > 0 else "m")
 
   @property
   def title(self) -> str:
-    """Returns TLatex string for titles"""
+    """Returns `TLatex` string for titles"""
     return f"[{self.l}]_{{{self.m}}}" + "^{(" + ("#plus" if self.refl > 0 else "#minus") + ")}"
 
 
@@ -272,12 +272,12 @@ class QnMomentIndex:
 
   @property
   def label(self) -> str:
-    """Returns string to construct TObject or file names"""
+    """Returns string to construct `TObject` or file names"""
     return f"{QnMomentIndex.momentSymbol}{self.momentIndex}_{self.L}_{self.M}"
 
   @property
   def title(self) -> str:
-    """Returns TLatex string for titles"""
+    """Returns `TLatex` string for titles"""
     return f"#it{{{QnMomentIndex.momentSymbol}}}_{{{self.momentIndex}}}({self.L}, {self.M})"
 
 
@@ -322,7 +322,7 @@ class MomentIndices:
     self,
     subscript: int | QnMomentIndex,
   ) -> QnMomentIndex | int:
-    """Returns QnIndex that correspond to given flat index and vice versa"""
+    """Returns `QnIndex` that correspond to given flat index and vice versa"""
     if isinstance(subscript, int):
       return self._qnIndexByFlatIndex[subscript]
     elif isinstance(subscript, QnMomentIndex):
@@ -343,7 +343,7 @@ class MomentIndices:
 
   @property
   def qnIndices(self) -> Generator[QnMomentIndex, None, None]:
-    """Generates quantum-number indices of the form QnIndex(moment index, L, M)"""
+    """Generates quantum-number indices of the form 'QnIndex(moment index, L, M)'"""
     for flatIndex in range(len(self)):
       yield self[flatIndex]
 
@@ -354,7 +354,7 @@ class DataSet:
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: ROOT.RDataFrame | None  # (accepted) phase-space data; None corresponds to perfect acceptance
   nmbGenEvents:   int  # number of generated events
-  polarization:   float | None = None  # photon-beam polarization; 0.0 = read from tree
+  polarization:   float | None = None  # photon-beam polarization; 0.0 = read from tree; None = unpolarized production
 
 
 @dataclass(frozen = True)  # immutable
@@ -832,7 +832,7 @@ class MomentResult:
     self,
     pickleFileName: str,
   ) -> None:
-    """Saves MomentResult to pickle file"""
+    """Saves `MomentResult` to pickle file"""
     with open(pickleFileName, "wb") as file:
       pickle.dump(self, file)
 
@@ -841,7 +841,7 @@ class MomentResult:
     cls,
     pickleFileName: str,
   ) -> MomentResult:
-    """Loads MomentResult from pickle file"""
+    """Loads `MomentResult` from pickle file"""
     with open(pickleFileName, "rb") as file:
       return pickle.load(file)
 
@@ -895,11 +895,11 @@ class MomentResultsKinematicBinning:
     self,
     subscript: int,
   ) -> MomentResult:
-    """Returns MomentResult that correspond to given bin index"""
+    """Returns `MomentResult` that correspond to given bin index"""
     return self.moments[subscript]
 
   def __iter__(self) -> Iterator[MomentResult]:
-    """Iterates over MomentResults in kinematic bins"""
+    """Iterates over `MomentResults` in kinematic bins"""
     return iter(self.moments)
 
   @property
@@ -911,7 +911,7 @@ class MomentResultsKinematicBinning:
     self,
     factor: float,
   ) -> None:
-    """Scales MomentResults by given factor"""
+    """Scales `MomentResults` by given factor"""
     for moment in self:
       moment.scaleBy(factor)
 
@@ -919,7 +919,7 @@ class MomentResultsKinematicBinning:
     self,
     pickleFileName: str,
   ) -> None:
-    """Saves MomentResultsKinematicBinning to pickle file"""
+    """Saves `MomentResultsKinematicBinning` to pickle file"""
     with open(pickleFileName, "wb") as file:
       pickle.dump(self, file)
 
@@ -928,7 +928,7 @@ class MomentResultsKinematicBinning:
     cls,
     pickleFileName: str,
   ) -> MomentResultsKinematicBinning:
-    """Loads MomentResultsKinematicBinning from pickle file"""
+    """Loads `MomentResultsKinematicBinning` from pickle file"""
     with open(pickleFileName, "rb") as file:
       return pickle.load(file)
 
@@ -1148,34 +1148,35 @@ def binLabel(obj: MomentCalculator | MomentResult) -> str:
   return "_".join(binLabels(obj))
 
 def binTitles(obj: MomentCalculator | MomentResult) -> list[str]:
-  """Returns list of TLatex expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
+  """Returns list of `TLatex` expressions for bin centers; scheme of entries is '<binning var> = <bin center> <unit>'"""
   return [f"{var.label} = " + (f"{center:.{var.nmbDigits}f}" if var.nmbDigits is not None else f"{center}") + f" {var.unit}" for var, center in obj.binCenters.items()]
 
 def binTitle(obj: MomentCalculator | MomentResult) -> str:
-  """Returns TLatex expressions for kinematic bin centers; scheme is '<binning var 0> = <bin center 0> <unit>, ...'"""
+  """Returns `TLatex` expressions for kinematic bin centers; scheme is '<binning var 0> = <bin center 0> <unit>, ...'"""
   return ", ".join(binTitles(obj))
 
 
 @dataclass
 class MomentCalculatorsKinematicBinning:
   """Container class that holds all information needed to calculate moments for several kinematic bins"""
-  moments: list[MomentCalculator]  # data for all bins of the kinematic binning
+  calculators: list[MomentCalculator]  # data for all bins of the kinematic binning
 
   # make MomentCalculatorsKinematicBinning behave like a list of MomentCalculators
   def __len__(self) -> int:
     """Returns number of kinematic bins"""
-    return len(self.moments)
+    return len(self.calculators)
 
   def __getitem__(
     self,
     subscript: int,
   ) -> MomentCalculator:
-    """Returns MomentCalculator that correspond to given bin index"""
-    return self.moments[subscript]
+    """Returns `MomentCalculator` that correspond to given bin index"""
+    return self.calculators[subscript]
 
   def __iter__(self) -> Iterator[MomentCalculator]:
-    """Iterates over MomentCalculators in kinematic bins"""
-    return iter(self.moments)
+    """Iterates over `MomentCalculators` in kinematic bins"""
+    return iter(self.calculators)
+
 
   def calculateIntegralMatrices(
     self,
@@ -1200,10 +1201,10 @@ class MomentCalculatorsKinematicBinning:
 
   @property
   def momentResultsMeas(self) -> MomentResultsKinematicBinning:
-    """Returns MomentResultsKinematicBinning with all measured moments"""
+    """Returns `MomentResultsKinematicBinning` with all measured moments"""
     return MomentResultsKinematicBinning([momentsInBin.HMeas for momentsInBin in self])
 
   @property
   def momentResultsPhys(self) -> MomentResultsKinematicBinning:
-    """Returns MomentResultsKinematicBinning with all physical moments"""
+    """Returns `MomentResultsKinematicBinning` with all physical moments"""
     return MomentResultsKinematicBinning([momentsInBin.HPhys for momentsInBin in self])
