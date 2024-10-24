@@ -52,8 +52,8 @@ class AnalysisConfig:
   normalizeMoments:         bool                     = False
   nmbBootstrapSamples:      int                      = 0
   # nmbBootstrapSamples:      int                      = 10000
-  plotAngularDistributions: bool                     = True
-  # plotAngularDistributions: bool                     = False
+  # plotAngularDistributions: bool                     = True
+  plotAngularDistributions: bool                     = False
   # plotAccIntegralMatrices:  bool                     = True
   plotAccIntegralMatrices:  bool                     = False
   calcAccPsMoments:         bool                     = True
@@ -82,7 +82,7 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
 
   # setup MomentCalculators for all mass bins
   momentIndices = MomentIndices(cfg.maxL)
-  momentCalculatorsBins:  list[MomentCalculator] = []  #TODO directly use list in momentCalculators
+  momentCalculators = MomentCalculatorsKinematicBinning([])
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
     print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
@@ -96,7 +96,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
     for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
       massBinRange = cfg.massBinning.binValueRange(massBinIndex)
       print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
-
       # load data for mass bin
       binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
       print(f"Applying filter '{binMassRangeFilter}' to select kinematic bin")
@@ -109,7 +108,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
       print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
             f"number accepted = {nmbPsAccEvents}, "
             f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
-
       # setup moment calculators for data
       dataSet = DataSet(
         data           = dataInBin,
@@ -117,7 +115,7 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
         nmbGenEvents   = nmbPsGenEvents,
         polarization   = None,
       )
-      momentCalculatorsBins.append(
+      momentCalculators.append(
         MomentCalculator(
           indices              = momentIndices,
           dataSet              = dataSet,
@@ -125,7 +123,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
           integralFileBaseName = f"{cfg.outFileDirName}/integralMatrix",
         )
       )
-  momentCalculators = MomentCalculatorsKinematicBinning(momentCalculatorsBins)
 
   # calculate and plot integral matrix for all mass bins
   with timer.timeThis(f"Time to calculate integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):

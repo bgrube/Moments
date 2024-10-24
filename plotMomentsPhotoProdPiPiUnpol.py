@@ -179,12 +179,24 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
   momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
 
   # normalize CLAS and JPAC moments
-  # TODO normalize by integral
-  normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
+  normalizeByIntegral = True  # if false CLAS and JPAC moments are normalized to the maximum bin
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-  H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
-  momentResultsClas.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)
-  momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
+  if normalizeByIntegral:
+    # loop over mass bins and sum up H(0, 0) values
+    H000Sum = H000SumClas = H000SumJpac = 0
+    for HPhys, HClas, HJpac in zip(momentResultsPhys, momentResultsClas, momentResultsJpac):
+      H000Sum     += HPhys[H000Index].val.real
+      H000SumClas += HClas[H000Index].val.real
+      # H000SumJpac += HJpac[H000Index].val.real
+    momentResultsClas.scaleBy(H000Sum / H000SumClas)
+    momentResultsJpac.scaleBy(H000Sum / H000SumClas)  # use same factor as for CLAS
+    # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
+  else:
+    normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
+    H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
+    momentResultsClas.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)
+    momentResultsJpac.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)  # use same factor as for CLAS
+    # momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
 
   if True:
     with timer.timeThis(f"Time to plot results from analysis of real data"):
