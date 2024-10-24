@@ -135,6 +135,7 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
       )
 
       # plot angular distributions for mass bin
+      #TODO move to plotting script
       if cfg.plotAngularDistributions:
         plotAngularDistr(
           dataPsAcc         = dataPsAccInBin,
@@ -174,11 +175,14 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
           zRangeImag        = 0.3,
         )
 
+  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
     # calculate moments of accepted phase-space data
     with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of phase-space MC data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
       momentCalculators.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
+      momentCalculators.momentResultsMeas.save(f"{momentResultsFileBaseName}_accPs_meas.pkl")
+      momentCalculators.momentResultsPhys.save(f"{momentResultsFileBaseName}_accPs_phys.pkl")
       #TODO move into separate plotting script
       # plot kinematic dependences of all phase-space moments
       for qnIndex in momentIndices.qnIndices:
@@ -220,7 +224,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
 
   # calculate moments of real data and write them to files
   #TODO calculate normalized and unnormalized moments
-  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   with timer.timeThis(f"Time to calculate moments of real data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):
     print(f"Calculating moments of real data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
     momentCalculators.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
