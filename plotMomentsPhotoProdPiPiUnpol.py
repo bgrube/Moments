@@ -186,150 +186,152 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
   momentResultsClas.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)
   momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
 
-  # plot moments in each mass bin
-  for massBinIndex, HPhys in enumerate(momentResultsPhys):
-    HMeas = momentResultsMeas[massBinIndex]
-    HClas = momentResultsClas[massBinIndex]
-    binLabel = MomentCalculator.binLabel(HPhys)
-    binTitle = MomentCalculator.binTitle(HPhys)
-    # print(f"True moments for kinematic bin {title}:\n{HTruth}")
-    print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
-    print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
-    plotMomentsInBin(
-      HData             = HPhys,
-      normalizedMoments = cfg.normalizeMoments,
-      HTruth            = HClas,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
-      legendLabels      = ("Moment", "CLAS"),
-      plotTruthUncert   = True,
-      truthColor        = ROOT.kGray + 1,
-    )
-    plotMomentsInBin(
-      HData             = HMeas,
-      normalizedMoments = cfg.normalizeMoments,
-      HTruth            = None,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
-      plotLegend        = False,
-    )
-    #TODO also plot correlation matrices
-    plotMomentsCovMatrices(
-      HData             = HPhys,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{binLabel}_",
-      axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
-      plotTitle         = f"{binLabel}: ",
-    )
-    if cfg.nmbBootstrapSamples > 0:
-      graphTitle = f"({binLabel})"
-      plotMomentsBootstrapDistributions1D(
-        HData             = HPhys,
-        HTruth            = HClas,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
-        histTitle         = binTitle,
-        HTruthLabel       = "CLAS",
-      )
-      plotMomentsBootstrapDistributions2D(
-        HData             = HPhys,
-        HTruth            = HClas,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
-        histTitle         = binTitle,
-        HTruthLabel       = "CLAS",
-      )
-      plotMomentsBootstrapDiffInBin(
-        HData             = HPhys,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
-        graphTitle        = binTitle,
-      )
+  if True:
+    with timer.timeThis(f"Time to plot results from analysis of real data"):
+      # plot moments in each mass bin
+      for massBinIndex, HPhys in enumerate(momentResultsPhys):
+        HMeas = momentResultsMeas[massBinIndex]
+        HClas = momentResultsClas[massBinIndex]
+        binLabel = MomentCalculator.binLabel(HPhys)
+        binTitle = MomentCalculator.binTitle(HPhys)
+        # print(f"True moments for kinematic bin {title}:\n{HTruth}")
+        print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
+        print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
+        plotMomentsInBin(
+          HData             = HPhys,
+          normalizedMoments = cfg.normalizeMoments,
+          HTruth            = HClas,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+          legendLabels      = ("Moment", "CLAS"),
+          plotTruthUncert   = True,
+          truthColor        = ROOT.kGray + 1,
+        )
+        plotMomentsInBin(
+          HData             = HMeas,
+          normalizedMoments = cfg.normalizeMoments,
+          HTruth            = None,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
+          plotLegend        = False,
+        )
+        #TODO also plot correlation matrices
+        plotMomentsCovMatrices(
+          HData             = HPhys,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{binLabel}_",
+          axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
+          plotTitle         = f"{binLabel}: ",
+        )
+        if cfg.nmbBootstrapSamples > 0:
+          graphTitle = f"({binLabel})"
+          plotMomentsBootstrapDistributions1D(
+            HData             = HPhys,
+            HTruth            = HClas,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            histTitle         = binTitle,
+            HTruthLabel       = "CLAS",
+          )
+          plotMomentsBootstrapDistributions2D(
+            HData             = HPhys,
+            HTruth            = HClas,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            histTitle         = binTitle,
+            HTruthLabel       = "CLAS",
+          )
+          plotMomentsBootstrapDiffInBin(
+            HData             = HPhys,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            graphTitle        = binTitle,
+          )
 
-  # plot mass dependences of all moments
-  for qnIndex in momentResultsPhys[0].indices.qnIndices:
-    # get histogram with moment values from JPAC fit
-    #TODO do not plot JPAC moments for imaginary parts
-    HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
-    histJpac = makeMomentHistogram(
-      HVals      = HValsJpac,
-      momentPart = "Re",
-      histName   = "JPAC",
-      histTitle  = "",
-      binning    = cfg.massBinning,
-      plotTruth  = False,
-      plotUncert = True,
-    )
-    histJpacBand = histJpac.Clone(f"{histJpac.GetName()}_band")
-    histJpac.SetLineColor(ROOT.kBlue + 1)
-    histJpac.SetLineWidth(2)
-    histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
-    plotMoments1D(
-      momentResults     = momentResultsPhys,
-      qnIndex           = qnIndex,
-      binning           = cfg.massBinning,
-      normalizedMoments = cfg.normalizeMoments,
-      momentResultsTrue = momentResultsClas,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
-      histTitle         = qnIndex.title,
-      plotLegend        = True,
-      legendLabels      = ("Moment", "CLAS"),
-      plotTruthUncert   = True,
-      truthColor        = ROOT.kGray + 1,
-      histsToOverlay    = [
-        (histJpac,     "HIST L", histJpac.GetName()),
-        (histJpacBand,     "E3", ""),
-      ],
-    )
-    plotMoments1D(
-      momentResults     = momentResultsMeas,
-      qnIndex           = qnIndex,
-      binning           = cfg.massBinning,
-      normalizedMoments = cfg.normalizeMoments,
-      momentResultsTrue = None,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
-      histTitle         = qnIndex.title,
-      plotLegend        = False,
-    )
+      # plot mass dependences of all moments
+      for qnIndex in momentResultsPhys[0].indices.qnIndices:
+        # get histogram with moment values from JPAC fit
+        #TODO do not plot JPAC moments for imaginary parts
+        HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
+        histJpac = makeMomentHistogram(
+          HVals      = HValsJpac,
+          momentPart = "Re",
+          histName   = "JPAC",
+          histTitle  = "",
+          binning    = cfg.massBinning,
+          plotTruth  = False,
+          plotUncert = True,
+        )
+        histJpacBand = histJpac.Clone(f"{histJpac.GetName()}_band")
+        histJpac.SetLineColor(ROOT.kBlue + 1)
+        histJpac.SetLineWidth(2)
+        histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
+        plotMoments1D(
+          momentResults     = momentResultsPhys,
+          qnIndex           = qnIndex,
+          binning           = cfg.massBinning,
+          normalizedMoments = cfg.normalizeMoments,
+          momentResultsTrue = momentResultsClas,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
+          histTitle         = qnIndex.title,
+          plotLegend        = True,
+          legendLabels      = ("Moment", "CLAS"),
+          plotTruthUncert   = True,
+          truthColor        = ROOT.kGray + 1,
+          histsToOverlay    = [
+            (histJpac,     "HIST L", histJpac.GetName()),
+            (histJpacBand,     "E3", ""),
+          ],
+        )
+        plotMoments1D(
+          momentResults     = momentResultsMeas,
+          qnIndex           = qnIndex,
+          binning           = cfg.massBinning,
+          normalizedMoments = cfg.normalizeMoments,
+          momentResultsTrue = None,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
+          histTitle         = qnIndex.title,
+          plotLegend        = False,
+        )
 
-  # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
-  H000s = (
-    tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
-    tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
-  )
-  hists = (
-    ROOT.TH1D(f"H000Meas", "", *cfg.massBinning.astuple),
-    ROOT.TH1D(f"H000Phys", "", *cfg.massBinning.astuple),
-  )
-  for indexMeasPhys, H000 in enumerate(H000s):
-    histIntensity = hists[indexMeasPhys]
-    for indexKinBin, HVal in enumerate(H000):
-      if (cfg.massBinning._var not in HVal.binCenters.keys()):
-        continue
-      y, yErr = HVal.part(True)
-      binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[cfg.massBinning.var])
-      histIntensity.SetBinContent(binIndex, y)
-      histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
-  histRatio = hists[0].Clone("H000Ratio")
-  histRatio.Divide(hists[1])
-  canv = ROOT.TCanvas()
-  histRatio.SetMarkerStyle(ROOT.kFullCircle)
-  histRatio.SetMarkerSize(0.75)
-  histRatio.SetXTitle(cfg.massBinning.axisTitle)
-  histRatio.SetYTitle("#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
-  histRatio.Draw("PEX0")
-  canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
+      # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
+      H000s = (
+        tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
+        tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
+      )
+      hists = (
+        ROOT.TH1D(f"H000Meas", "", *cfg.massBinning.astuple),
+        ROOT.TH1D(f"H000Phys", "", *cfg.massBinning.astuple),
+      )
+      for indexMeasPhys, H000 in enumerate(H000s):
+        histIntensity = hists[indexMeasPhys]
+        for indexKinBin, HVal in enumerate(H000):
+          if (cfg.massBinning._var not in HVal.binCenters.keys()):
+            continue
+          y, yErr = HVal.part(True)
+          binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[cfg.massBinning.var])
+          histIntensity.SetBinContent(binIndex, y)
+          histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
+      histRatio = hists[0].Clone("H000Ratio")
+      histRatio.Divide(hists[1])
+      canv = ROOT.TCanvas()
+      histRatio.SetMarkerStyle(ROOT.kFullCircle)
+      histRatio.SetMarkerSize(0.75)
+      histRatio.SetXTitle(cfg.massBinning.axisTitle)
+      histRatio.SetYTitle("#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
+      histRatio.Draw("PEX0")
+      canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
-  # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-  histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
-                    .Histo1D(
-                      ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
-                    ).GetValue()
-  for binIndex, HMeas in enumerate(H000s[0]):
-    HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
-  plotMoments(
-    HVals             = H000s[0],
-    binning           = cfg.massBinning,
-    normalizedMoments = cfg.normalizeMoments,
-    momentLabel       = H000Index.label,
-    pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
-    histTitle         = H000Index.title,
-    legendLabels      = ("Measured Moment", "Measured Intensity"),
-  )
+      # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
+      histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
+                        .Histo1D(
+                          ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
+                        ).GetValue()
+      for binIndex, HMeas in enumerate(H000s[0]):
+        HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
+      plotMoments(
+        HVals             = H000s[0],
+        binning           = cfg.massBinning,
+        normalizedMoments = cfg.normalizeMoments,
+        momentLabel       = H000Index.label,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
+        histTitle         = H000Index.title,
+        legendLabels      = ("Measured Moment", "Measured Intensity"),
+      )
 
   nmbPsGenEvents: list[int] = []  # number of generated phase-space events; needed to plot accepted phase-space moments
   if cfg.plotAngularDistributions:
@@ -369,36 +371,37 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
           )
 
   if cfg.plotAccIntegralMatrices:
-    # plot acceptance integral matrices for all mass bins
-    for HPhys in momentResultsPhys:
-      # load integral matrix
-      binLabel = MomentCalculator.binLabel(HPhys)
-      accIntMatrix = AcceptanceIntegralMatrix(
-        indices = HPhys.indices,
-        dataSet = DataSet(
-          data           = None,
-          phaseSpaceData = None,
-          nmbGenEvents   = 0,
-          polarization   = None,
-        ),
-      )  # dummy matrix without dataset
-      accIntMatrix.load(f"{cfg.outFileDirName}/integralMatrix_{binLabel}.npy")
-      plotComplexMatrix(
-        complexMatrix     = accIntMatrix.matrixNormalized,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrix_{binLabel}_",
-        axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
-        plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
-        zRangeAbs         = 1.2,
-        zRangeImag        = 0.05,
-      )
-      plotComplexMatrix(
-        complexMatrix     = accIntMatrix.inverse,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrixInv_{binLabel}_",
-        axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
-        plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
-        zRangeAbs         = 5,
-        zRangeImag        = 0.3,
-      )
+    with timer.timeThis(f"Time to plot acceptance integral matrices"):
+      # plot acceptance integral matrices for all mass bins
+      for HPhys in momentResultsPhys:
+        # load integral matrix
+        binLabel = MomentCalculator.binLabel(HPhys)
+        accIntMatrix = AcceptanceIntegralMatrix(
+          indices = HPhys.indices,
+          dataSet = DataSet(
+            data           = None,
+            phaseSpaceData = None,
+            nmbGenEvents   = 0,
+            polarization   = None,
+          ),
+        )  # dummy matrix without dataset
+        accIntMatrix.load(f"{cfg.outFileDirName}/integralMatrix_{binLabel}.npy")
+        plotComplexMatrix(
+          complexMatrix     = accIntMatrix.matrixNormalized,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrix_{binLabel}_",
+          axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
+          plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
+          zRangeAbs         = 1.2,
+          zRangeImag        = 0.05,
+        )
+        plotComplexMatrix(
+          complexMatrix     = accIntMatrix.inverse,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrixInv_{binLabel}_",
+          axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
+          plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
+          zRangeAbs         = 5,
+          zRangeImag        = 0.3,
+        )
 
   if cfg.plotAccPsMoments:
     # load accepted phase-space moments
@@ -408,44 +411,45 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
     except FileNotFoundError as e:
       print(f"Warning: File not found. Cannot plot accepted phase-space moments. {e}")
     else:
-      # plot mass dependences of all phase-space moments
-      for qnIndex in momentIndices.qnIndices:
-        HVals = tuple(MomentValueAndTruth(*momentResultInBin[qnIndex]) for momentResultInBin in momentResultsAccPsMeas)
-        plotMoments(
-          HVals             = HVals,
-          binning           = cfg.massBinning,
-          normalizedMoments = cfg.normalizeMoments,
-          momentLabel       = qnIndex.label,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
-          histTitle         = qnIndex.title,
-          plotLegend        = False,
-        )
-      # plot accepted phase-space moments in each mass bin
-      for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
-        binLabel = MomentCalculator.binLabel(HPhys)
-        binTitle = MomentCalculator.binTitle(HPhys)
-        HMeas = momentResultsAccPsMeas[massBinIndex]
-        print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{HMeas}")
-        print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{HPhys}")
-        # construct true moments for phase-space data
-        HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-        HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
-        # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
-        HMeas._valsFlatIndex[0] = 0
-        # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
-        plotMomentsInBin(
-          HData             = HMeas,
-          normalizedMoments = cfg.normalizeMoments,
-          HTruth            = None,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
-          plotLegend        = False,
-        )
-        plotMomentsInBin(
-          HData             = HPhys,
-          normalizedMoments = cfg.normalizeMoments,
-          HTruth            = HTruthPs,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
-        )
+      with timer.timeThis(f"Time to plot accepted phase-space moments"):
+        # plot mass dependences of all phase-space moments
+        for qnIndex in momentIndices.qnIndices:
+          HVals = tuple(MomentValueAndTruth(*momentResultInBin[qnIndex]) for momentResultInBin in momentResultsAccPsMeas)
+          plotMoments(
+            HVals             = HVals,
+            binning           = cfg.massBinning,
+            normalizedMoments = cfg.normalizeMoments,
+            momentLabel       = qnIndex.label,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
+            histTitle         = qnIndex.title,
+            plotLegend        = False,
+          )
+        # plot accepted phase-space moments in each mass bin
+        for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
+          binLabel = MomentCalculator.binLabel(HPhys)
+          binTitle = MomentCalculator.binTitle(HPhys)
+          HMeas = momentResultsAccPsMeas[massBinIndex]
+          print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{HMeas}")
+          print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{HPhys}")
+          # construct true moments for phase-space data
+          HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+          # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
+          HMeas._valsFlatIndex[0] = 0
+          # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
+          plotMomentsInBin(
+            HData             = HMeas,
+            normalizedMoments = cfg.normalizeMoments,
+            HTruth            = None,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
+            plotLegend        = False,
+          )
+          plotMomentsInBin(
+            HData             = HPhys,
+            normalizedMoments = cfg.normalizeMoments,
+            HTruth            = HTruthPs,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
+          )
 
   timer.stop("Total execution time")
   print(timer.summary)
