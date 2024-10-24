@@ -92,12 +92,12 @@ def readMomentResultsClas(
           break
   # ensure that mass bins are the same in all data frames
   dfs = list(momentDfs.values())
-  massColunm = dfs[0]["mass"]
+  massColumn = dfs[0]["mass"]
   for df in dfs[1:]:
-    assert df["mass"].equals(massColunm), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColunm}"
+    assert df["mass"].equals(massColumn), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColumn}"
   # convert data frames to MomentResultsKinematicBinning
   momentResults: list[MomentResult] = []
-  for massBinCenter in massColunm:
+  for massBinCenter in massColumn:
     # loop over momentDfs and extract moment values for the given mass bin
     momentValues: list[MomentValue] = []
     for qnMomentIndex, momentDf in momentDfs.items():
@@ -142,12 +142,12 @@ def readMomentResultsJpac(
         print(f"Warning: file '{datFileName}' not found. Skipping moment {qnMomentIndex.label}.")
   # ensure that mass bins are the same in all data frames
   dfs = list(momentDfs.values())
-  massColunm = dfs[0]["mass"]
+  massColumn = dfs[0]["mass"]
   for df in dfs[1:]:
-    assert df["mass"].equals(massColunm), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColunm}"
+    assert df["mass"].equals(massColumn), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColumn}"
   # convert data frames to MomentResultsKinematicBinning
   momentResults: list[MomentResult] = []
-  for massBinCenter in massColunm:
+  for massBinCenter in massColumn:
     # loop over momentDfs and extract moment values for the given mass bin
     momentValues: list[MomentValue] = []
     for qnMomentIndex, momentDf in momentDfs.items():
@@ -183,7 +183,7 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
   if normalizeByIntegral:
     # loop over mass bins and sum up H(0, 0) values
-    H000Sum = H000SumClas = H000SumJpac = 0
+    H000Sum = H000SumClas = H000SumJpac = 0.0
     for HPhys, HClas, HJpac in zip(momentResultsPhys, momentResultsClas, momentResultsJpac):
       H000Sum     += HPhys[H000Index].val.real
       H000SumClas += HClas[H000Index].val.real
@@ -311,7 +311,7 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
       )
       for indexMeasPhys, H000 in enumerate(H000s):
         histIntensity = hists[indexMeasPhys]
-        for indexKinBin, HVal in enumerate(H000):
+        for HVal in H000:
           if (cfg.massBinning._var not in HVal.binCenters.keys()):
             continue
           y, yErr = HVal.part(True)
@@ -333,8 +333,8 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
                         .Histo1D(
                           ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
                         ).GetValue()
-      for binIndex, HMeas in enumerate(H000s[0]):
-        HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
+      for binIndex, H000Meas in enumerate(H000s[0]):
+        H000Meas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
       plotMoments(
         HVals             = H000s[0],
         binning           = cfg.massBinning,
