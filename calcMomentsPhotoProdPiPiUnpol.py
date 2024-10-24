@@ -22,22 +22,15 @@ import ROOT
 
 from MomentCalculator import (
   binLabel,
-  binTitle,
   DataSet,
   KinematicBinningVariable,
   MomentCalculator,
   MomentCalculatorsKinematicBinning,
   MomentIndices,
-  MomentResult,
-  QnMomentIndex,
 )
 from PlottingUtilities import (
   HistAxisBinning,
-  MomentValueAndTruth,
   plotAngularDistr,
-  plotComplexMatrix,
-  plotMoments,
-  plotMomentsInBin,
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
@@ -67,6 +60,8 @@ class AnalysisConfig:
   # plotAccIntegralMatrices:  bool                     = False
   calcAccPsMoments:         bool                     = True
   # calcAccPsMoments:         bool                     = False
+  plotAccPsMoments:         bool                     = True
+  # plotAccPsMoments:         bool                     = False
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
   binVarMass:               KinematicBinningVariable = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
@@ -162,44 +157,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
       momentCalculators.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
       momentCalculators.momentResultsMeas.save(f"{momentResultsFileBaseName}_accPs_meas.pkl")
       momentCalculators.momentResultsPhys.save(f"{momentResultsFileBaseName}_accPs_phys.pkl")
-      #TODO move into separate plotting script
-      # plot kinematic dependences of all phase-space moments
-      for qnIndex in momentIndices.qnIndices:
-        HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in momentCalculators)
-        plotMoments(
-          HVals             = HVals,
-          binning           = cfg.massBinning,
-          normalizedMoments = cfg.normalizeMoments,
-          momentLabel       = qnIndex.label,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
-          histTitle         = qnIndex.title,
-          plotLegend        = False,
-        )
-      # plot accepted phase-space moments in each kinematic bin
-      for massBinIndex, momentCalculatorInBin in enumerate(momentCalculators):
-        label = binLabel(momentCalculatorInBin)
-        title = binTitle(momentCalculatorInBin)
-        print(f"Measured moments of accepted phase-space data for kinematic bin {title}:\n{momentCalculatorInBin.HMeas}")
-        print(f"Physical moments of accepted phase-space data for kinematic bin {title}:\n{momentCalculatorInBin.HPhys}")
-        # construct true moments for phase-space data
-        HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-        HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
-        # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
-        momentCalculatorInBin.HMeas._valsFlatIndex[0] = 0
-        # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
-        plotMomentsInBin(
-          HData             = momentCalculatorInBin.HMeas,
-          normalizedMoments = cfg.normalizeMoments,
-          HTruth            = None,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_accPs_",
-          plotLegend        = False,
-        )
-        plotMomentsInBin(
-          HData             = momentCalculatorInBin.HPhys,
-          normalizedMoments = cfg.normalizeMoments,
-          HTruth            = HTruthPs,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_accPsCorr_"
-        )
 
   # calculate moments of real data and write them to files
   #TODO calculate normalized and unnormalized moments

@@ -380,6 +380,61 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
         zRangeImag        = 0.3,
       )
 
+  if cfg.plotAccPsMoments:
+    # load accepted phase-space moments
+    try:
+      momentResultsAccPsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_accPs_meas.pkl")
+      momentResultsAccPsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_accPs_phys.pkl")
+    except FileNotFoundError as e:
+      print(f"Warning: File not found. Cannot plot accepted phase-space moments. {e}")
+    else:
+      # plot mass dependences of all phase-space moments
+      for qnIndex in momentIndices.qnIndices:
+        HVals = tuple(MomentValueAndTruth(*momentResultInBin[qnIndex]) for momentResultInBin in momentResultsAccPsMeas)
+        plotMoments(
+          HVals             = HVals,
+          binning           = cfg.massBinning,
+          normalizedMoments = cfg.normalizeMoments,
+          momentLabel       = qnIndex.label,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
+          histTitle         = qnIndex.title,
+          plotLegend        = False,
+        )
+      # get number of generated phase-space events
+      nmbPsGenEvents: list[int] = []
+      dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+      for massBinIndex, _ in enumerate(cfg.massBinning):
+        massBinRange = cfg.massBinning.binValueRange(massBinIndex)
+        binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
+        dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
+        nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
+      # plot accepted phase-space moments in each mass bin
+      for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
+        binLabel = MomentCalculator.binLabel(HPhys)
+        binTitle = MomentCalculator.binTitle(HPhys)
+        HMeas = momentResultsAccPsMeas[massBinIndex]
+        print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{HMeas}")
+        print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{HPhys}")
+        # construct true moments for phase-space data
+        HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+        HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+        # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
+        HMeas._valsFlatIndex[0] = 0
+        # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
+        plotMomentsInBin(
+          HData             = HMeas,
+          normalizedMoments = cfg.normalizeMoments,
+          HTruth            = None,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
+          plotLegend        = False,
+        )
+        plotMomentsInBin(
+          HData             = HPhys,
+          normalizedMoments = cfg.normalizeMoments,
+          HTruth            = HTruthPs,
+          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
+        )
+
   timer.stop("Total execution time")
   print(timer.summary)
 
