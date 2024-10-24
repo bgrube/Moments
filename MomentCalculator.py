@@ -1177,6 +1177,12 @@ class MomentCalculatorsKinematicBinning:
     """Iterates over `MomentCalculators` in kinematic bins"""
     return iter(self.calculators)
 
+  def append(
+    self,
+    calculator: MomentCalculator
+  ) -> None:
+    """Appends a new `MomentCalculator`"""
+    self.calculators.append(calculator)
 
   def calculateIntegralMatrices(
     self,
