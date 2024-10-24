@@ -18,7 +18,10 @@ import pandas as pd
 
 import ROOT
 
-from calcMomentsPhotoProdPiPiUnpol import CFG
+from calcMomentsPhotoProdPiPiUnpol import (
+  AnalysisConfig,
+  CFG,
+)
 from MomentCalculator import (
   binLabel,
   binTitle,
@@ -162,39 +165,34 @@ def readMomentResultsJpac(
   return MomentResultsKinematicBinning(momentResults)
 
 
-if __name__ == "__main__":
-  Utilities.printGitInfo()
-  timer = Utilities.Timer()
-  ROOT.gROOT.SetBatch(True)
-  setupPlotStyle()
+def makeAllPlots(cfg: AnalysisConfig) -> None:
+  """Generates all plots for the given analysis configuration"""
   timer.start("Total execution time")
 
-  namePrefix = "norm" if CFG.normalizeMoments else "unnorm"
-
-  if CFG.plotAngularDistributions:
+  if cfg.plotAngularDistributions:
     print("Plotting total angular distributions")
     # load all signal and phase-space data
-    print(f"Loading real data from tree '{CFG.treeName}' in file '{CFG.dataFileName}'")
-    data = ROOT.RDataFrame(CFG.treeName, CFG.dataFileName)
-    print(f"Loading accepted phase-space data from tree '{CFG.treeName}' in file '{CFG.psAccFileName}'")
-    dataPsAcc = ROOT.RDataFrame(CFG.treeName, CFG.psAccFileName)
-    print(f"Loading generated phase-space data from tree '{CFG.treeName}' in file '{CFG.psGenFileName}'")
-    dataPsGen = ROOT.RDataFrame(CFG.treeName, CFG.psGenFileName)
+    print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
+    data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
+    print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
+    dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
+    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
+    dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
     plotAngularDistr(
       dataPsAcc         = dataPsAcc,
       dataPsGen         = dataPsGen,
       dataSignalAcc     = data,
       dataSignalGen     = None,
-      pdfFileNamePrefix = f"{CFG.outFileDirName}/angDistr_total_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
     )
 
   # load moment results from files
-  momentIndices = MomentIndices(CFG.maxL)
-  momentResultsFileBaseName = f"{CFG.outFileDirName}/{namePrefix}_moments"
+  momentIndices = MomentIndices(cfg.maxL)
+  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
-  momentResultsClas = readMomentResultsClas(momentIndices, CFG.binVarMass)
-  momentResultsJpac = readMomentResultsJpac(momentIndices, CFG.binVarMass)
+  momentResultsClas = readMomentResultsClas(momentIndices, cfg.binVarMass)
+  momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
 
   # normalize CLAS and JPAC moments
   # TODO normalize by integral
@@ -215,46 +213,46 @@ if __name__ == "__main__":
     print(f"Physical moments of real data for kinematic bin {title}:\n{HPhys}")
     plotMomentsInBin(
       HData             = HPhys,
-      normalizedMoments = CFG.normalizeMoments,
+      normalizedMoments = cfg.normalizeMoments,
       HTruth            = HClas,
-      pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_{label}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
       legendLabels      = ("Moment", "CLAS"),
       plotTruthUncert   = True,
       truthColor        = ROOT.kGray + 1,
     )
     plotMomentsInBin(
       HData             = HMeas,
-      normalizedMoments = CFG.normalizeMoments,
+      normalizedMoments = cfg.normalizeMoments,
       HTruth            = None,
-      pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_meas_{label}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{label}_",
       plotLegend        = False,
     )
     #TODO also plot correlation matrices
     plotMomentsCovMatrices(
       HData             = HPhys,
-      pdfFileNamePrefix = f"{CFG.outFileDirName}/covMatrix_{label}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{label}_",
       axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
       plotTitle         = f"{label}: ",
     )
-    if CFG.nmbBootstrapSamples > 0:
+    if cfg.nmbBootstrapSamples > 0:
       graphTitle = f"({label})"
       plotMomentsBootstrapDistributions1D(
         HData             = HPhys,
         HTruth            = HClas,
-        pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_{label}_",
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
         histTitle         = title,
         HTruthLabel       = "CLAS",
       )
       plotMomentsBootstrapDistributions2D(
         HData             = HPhys,
         HTruth            = HClas,
-        pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_{label}_",
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
         histTitle         = title,
         HTruthLabel       = "CLAS",
       )
       plotMomentsBootstrapDiffInBin(
         HData             = HPhys,
-        pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_{label}_",
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{label}_",
         graphTitle        = title,
       )
 
@@ -268,7 +266,7 @@ if __name__ == "__main__":
       momentPart = "Re",
       histName   = "JPAC",
       histTitle  = "",
-      binning    = CFG.massBinning,
+      binning    = cfg.massBinning,
       plotTruth  = False,
       plotUncert = True,
     )
@@ -279,10 +277,10 @@ if __name__ == "__main__":
     plotMoments1D(
       momentResults     = momentResultsPhys,
       qnIndex           = qnIndex,
-      binning           = CFG.massBinning,
-      normalizedMoments = CFG.normalizeMoments,
+      binning           = cfg.massBinning,
+      normalizedMoments = cfg.normalizeMoments,
       momentResultsTrue = momentResultsClas,
-      pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
       histTitle         = qnIndex.title,
       plotLegend        = True,
       legendLabels      = ("Moment", "CLAS"),
@@ -296,10 +294,10 @@ if __name__ == "__main__":
     plotMoments1D(
       momentResults     = momentResultsMeas,
       qnIndex           = qnIndex,
-      binning           = CFG.massBinning,
-      normalizedMoments = CFG.normalizeMoments,
+      binning           = cfg.massBinning,
+      normalizedMoments = cfg.normalizeMoments,
       momentResultsTrue = None,
-      pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_meas_",
+      pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
       histTitle         = qnIndex.title,
       plotLegend        = False,
     )
@@ -310,16 +308,16 @@ if __name__ == "__main__":
     tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
   )
   hists = (
-    ROOT.TH1D(f"H000Meas", "", *CFG.massBinning.astuple),
-    ROOT.TH1D(f"H000Phys", "", *CFG.massBinning.astuple),
+    ROOT.TH1D(f"H000Meas", "", *cfg.massBinning.astuple),
+    ROOT.TH1D(f"H000Phys", "", *cfg.massBinning.astuple),
   )
   for indexMeasPhys, H000 in enumerate(H000s):
     histIntensity = hists[indexMeasPhys]
     for indexKinBin, HVal in enumerate(H000):
-      if (CFG.massBinning._var not in HVal.binCenters.keys()):
+      if (cfg.massBinning._var not in HVal.binCenters.keys()):
         continue
       y, yErr = HVal.part(True)
-      binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[CFG.massBinning.var])
+      binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[cfg.massBinning.var])
       histIntensity.SetBinContent(binIndex, y)
       histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
   histRatio = hists[0].Clone("H000Ratio")
@@ -327,27 +325,36 @@ if __name__ == "__main__":
   canv = ROOT.TCanvas()
   histRatio.SetMarkerStyle(ROOT.kFullCircle)
   histRatio.SetMarkerSize(0.75)
-  histRatio.SetXTitle(CFG.massBinning.axisTitle)
+  histRatio.SetXTitle(cfg.massBinning.axisTitle)
   histRatio.SetYTitle("#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
   histRatio.Draw("PEX0")
-  canv.SaveAs(f"{CFG.outFileDirName}/{histRatio.GetName()}.pdf")
+  canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
   # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-  histIntMeas = ROOT.RDataFrame(CFG.treeName, CFG.dataFileName) \
+  histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
                     .Histo1D(
-                      ROOT.RDF.TH1DModel("intensity_meas", f";{CFG.massBinning.axisTitle};Events", *CFG.massBinning.astuple), "mass", "eventWeight"
+                      ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
                     ).GetValue()
   for binIndex, HMeas in enumerate(H000s[0]):
     HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
   plotMoments(
     HVals             = H000s[0],
-    binning           = CFG.massBinning,
-    normalizedMoments = CFG.normalizeMoments,
+    binning           = cfg.massBinning,
+    normalizedMoments = cfg.normalizeMoments,
     momentLabel       = H000Index.label,
-    pdfFileNamePrefix = f"{CFG.outFileDirName}/{namePrefix}_meas_intensity_",
+    pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
     histTitle         = H000Index.title,
     legendLabels      = ("Measured Moment", "Measured Intensity"),
   )
 
   timer.stop("Total execution time")
   print(timer.summary)
+
+
+if __name__ == "__main__":
+  Utilities.printGitInfo()
+  timer = Utilities.Timer()
+  ROOT.gROOT.SetBatch(True)
+  setupPlotStyle()
+
+  makeAllPlots(CFG)
