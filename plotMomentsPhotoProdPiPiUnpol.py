@@ -331,22 +331,42 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
     legendLabels      = ("Measured Moment", "Measured Intensity"),
   )
 
+  nmbPsGenEvents: list[int] = []  # number of generated phase-space events; needed to plot accepted phase-space moments
   if cfg.plotAngularDistributions:
-    print("Plotting total angular distributions")
-    # load all signal and phase-space data
-    print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
-    data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
-    print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
-    dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
-    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
-    dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
-    plotAngularDistr(
-      dataPsAcc         = dataPsAcc,
-      dataPsGen         = dataPsGen,
-      dataSignalAcc     = data,
-      dataSignalGen     = None,
-      pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
-    )
+    with timer.timeThis(f"Time to plot angular distributions"):
+      print("Plotting angular distributions")
+      # load all signal and phase-space data
+      print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
+      data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
+      print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
+      dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
+      print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
+      dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+      # plot total angular distribution
+      plotAngularDistr(
+        dataPsAcc         = dataPsAcc,
+        dataPsGen         = dataPsGen,
+        dataSignalAcc     = data,
+        dataSignalGen     = None,
+        pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
+      )
+      for massBinIndex, HPhys in enumerate(momentResultsPhys):
+        # load data for mass bin
+        massBinRange = cfg.massBinning.binValueRange(massBinIndex)
+        binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
+        dataInBin      = data.Filter     (binMassRangeFilter)
+        dataPsAccInBin = dataPsAcc.Filter(binMassRangeFilter)
+        dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
+        nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
+        # plot angular distributions for mass bin
+        if cfg.plotAngularDistributions:
+          plotAngularDistr(
+            dataPsAcc         = dataPsAccInBin,
+            dataPsGen         = dataPsGenInBin,
+            dataSignalAcc     = dataInBin,
+            dataSignalGen     = None,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_"
+          )
 
   if cfg.plotAccIntegralMatrices:
     # plot acceptance integral matrices for all mass bins
@@ -400,14 +420,6 @@ def makeAllPlots(cfg: AnalysisConfig) -> None:
           histTitle         = qnIndex.title,
           plotLegend        = False,
         )
-      # get number of generated phase-space events
-      nmbPsGenEvents: list[int] = []
-      dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
-      for massBinIndex, _ in enumerate(cfg.massBinning):
-        massBinRange = cfg.massBinning.binValueRange(massBinIndex)
-        binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
-        dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
-        nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
       # plot accepted phase-space moments in each mass bin
       for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
         binLabel = MomentCalculator.binLabel(HPhys)

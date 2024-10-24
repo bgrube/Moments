@@ -21,7 +21,6 @@ import threadpoolctl
 import ROOT
 
 from MomentCalculator import (
-  binLabel,
   DataSet,
   KinematicBinningVariable,
   MomentCalculator,
@@ -30,7 +29,6 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   HistAxisBinning,
-  plotAngularDistr,
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
@@ -54,14 +52,14 @@ class AnalysisConfig:
   normalizeMoments:         bool                     = False
   nmbBootstrapSamples:      int                      = 0
   # nmbBootstrapSamples:      int                      = 10000
-  # plotAngularDistributions: bool                     = True
-  plotAngularDistributions: bool                     = False
-  plotAccIntegralMatrices:  bool                     = True
-  # plotAccIntegralMatrices:  bool                     = False
+  plotAngularDistributions: bool                     = True
+  # plotAngularDistributions: bool                     = False
+  # plotAccIntegralMatrices:  bool                     = True
+  plotAccIntegralMatrices:  bool                     = False
   calcAccPsMoments:         bool                     = True
   # calcAccPsMoments:         bool                     = False
-  plotAccPsMoments:         bool                     = True
-  # plotAccPsMoments:         bool                     = False
+  # plotAccPsMoments:         bool                     = True
+  plotAccPsMoments:         bool                     = False
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
   binVarMass:               KinematicBinningVariable = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
@@ -85,7 +83,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
   # setup MomentCalculators for all mass bins
   momentIndices = MomentIndices(cfg.maxL)
   momentCalculatorsBins:  list[MomentCalculator] = []  #TODO directly use list in momentCalculators
-  nmbPsGenEvents:         list[int]              = []
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
     print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
@@ -94,7 +91,7 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
     dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
     if cfg.limitNmbPsAccEvents > 0:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! .Range switches to single-threaded mode
-    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
+    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
     dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
     for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
       massBinRange = cfg.massBinning.binValueRange(massBinIndex)
@@ -107,17 +104,17 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
       print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
       dataPsAccInBin = dataPsAcc.Filter(binMassRangeFilter)
       dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
-      nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
+      nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
       nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
-      print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}; "
+      print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
             f"number accepted = {nmbPsAccEvents}, "
-            f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
+            f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
 
       # setup moment calculators for data
       dataSet = DataSet(
         data           = dataInBin,
         phaseSpaceData = dataPsAccInBin,
-        nmbGenEvents   = nmbPsGenEvents[-1],
+        nmbGenEvents   = nmbPsGenEvents,
         polarization   = None,
       )
       momentCalculatorsBins.append(
@@ -128,17 +125,6 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
           integralFileBaseName = f"{cfg.outFileDirName}/integralMatrix",
         )
       )
-
-      # plot angular distributions for mass bin
-      #TODO move to plotting script
-      if cfg.plotAngularDistributions:
-        plotAngularDistr(
-          dataPsAcc         = dataPsAccInBin,
-          dataPsGen         = dataPsGenInBin,
-          dataSignalAcc     = dataInBin,
-          dataSignalGen     = None,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{binLabel(momentCalculatorsBins[-1])}_"
-        )
   momentCalculators = MomentCalculatorsKinematicBinning(momentCalculatorsBins)
 
   # calculate and plot integral matrix for all mass bins
