@@ -19,6 +19,7 @@ import numpy as np
 import threadpoolctl
 
 import ROOT
+from wurlitzer import pipes, STDOUT
 
 from MomentCalculator import (
   DataSet,
@@ -154,13 +155,16 @@ def calculateAllMoments(cfg: AnalysisConfig) -> None:
 
 
 if __name__ == "__main__":
-  Utilities.printGitInfo()
-  timer = Utilities.Timer()
-  ROOT.gROOT.SetBatch(True)
-  setupPlotStyle()
-  threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
-  print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-  with threadController.limit(limits = 4):
-    print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
+  logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
+  print(f"Writing output to log file '{logFileName}'")
+  with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+    Utilities.printGitInfo()
+    timer = Utilities.Timer()
+    ROOT.gROOT.SetBatch(True)
+    setupPlotStyle()
+    threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
+    print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
+    with threadController.limit(limits = 4):
+      print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
 
-    calculateAllMoments(CFG)
+      calculateAllMoments(CFG)
