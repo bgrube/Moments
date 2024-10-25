@@ -172,6 +172,7 @@ def calculateAllMoments(
 
 if __name__ == "__main__":
   for maxL in (4, 5, 8, 20):
+    print(f"Performing moment analysis for L_max = {maxL}")
     CFG.maxL = maxL
     logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
     print(f"Writing output to log file '{logFileName}'")
