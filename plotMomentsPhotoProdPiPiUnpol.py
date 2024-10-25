@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 import ROOT
+from wurlitzer import pipes, STDOUT
 
 from calcMomentsPhotoProdPiPiUnpol import (
   AnalysisConfig,
@@ -471,9 +472,15 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  Utilities.printGitInfo()
-  timer = Utilities.Timer()
-  ROOT.gROOT.SetBatch(True)
-  setupPlotStyle()
+  for maxL in (2, 4, 5, 8, 20):
+    print(f"Plotting moments for L_max = {maxL}")
+    CFG.maxL = maxL
+    logFileName = f"{CFG.outFileDirName}/plotMomentsPhotoProdPiPiUnpol.log"
+    print(f"Writing output to log file '{logFileName}'")
+    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+      Utilities.printGitInfo()
+      timer = Utilities.Timer()
+      ROOT.gROOT.SetBatch(True)
+      setupPlotStyle()
 
-  makeAllPlots(CFG, timer)
+      makeAllPlots(CFG, timer)
