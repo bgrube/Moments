@@ -47,7 +47,7 @@ class AnalysisConfig:
   dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
   psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
   psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
-  maxL:                     int                      = 8
+  _maxL:                    int                      = 8
   outFileDirName:           str                      = field(init = False)
   outFileNamePrefix:        str                      = field(init = False)
   normalizeMoments:         bool                     = False
@@ -71,6 +71,19 @@ class AnalysisConfig:
     """Creates output directory and initializes member variables"""
     self.outFileDirName    = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
+
+  @property
+  def maxL(self) -> int:
+    return self._maxL
+
+  @maxL.setter
+  def maxL(
+    self,
+    value: int
+  ) -> None:
+    assert value > 0, f"maxL must be > 0, but is {value}"
+    self._maxL = value
+    self.outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{self.maxL}")
 
 CFG = AnalysisConfig()
 
@@ -158,16 +171,18 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
-  print(f"Writing output to log file '{logFileName}'")
-  with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-    Utilities.printGitInfo()
-    timer = Utilities.Timer()
-    ROOT.gROOT.SetBatch(True)
-    setupPlotStyle()
-    threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
-    print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-    with threadController.limit(limits = 4):
-      print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
+  for maxL in (4, 5, 8, 20):
+    CFG.maxL = maxL
+    logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
+    print(f"Writing output to log file '{logFileName}'")
+    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+      Utilities.printGitInfo()
+      timer = Utilities.Timer()
+      ROOT.gROOT.SetBatch(True)
+      setupPlotStyle()
+      threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
+      print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
+      with threadController.limit(limits = 4):
+        print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
 
-      calculateAllMoments(CFG, timer)
+        calculateAllMoments(CFG, timer)
