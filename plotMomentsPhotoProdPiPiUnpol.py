@@ -62,7 +62,7 @@ def readMomentResultsClas(
     # beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.4-3.6",
     beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.6-3.8",
     csvDirName:         str = "./dataPhotoProdPiPiUnpol/HEPData-ins825040-v1-csv",
-  ) -> MomentResultsKinematicBinning:
+) -> MomentResultsKinematicBinning:
   """Reads the moment values in the for the given moment indices and from the CLAS analysis in PRD 80 (2009) 072005 published at https://www.hepdata.net/record/ins825040"""
   csvFileNames = sorted(glob.glob(f"{csvDirName}/Table*.csv"))
   # each file contains the values for a given H(L, M) moment and a given t bin for all 4 beam-energy bins and all mass bins
@@ -122,7 +122,7 @@ def readMomentResultsJpac(
     binVarMass:    KinematicBinningVariable,  # binning variable for mass bins
     tBinLabel:     str = "t=0.40-0.50",
     dataDirName:   str = "./dataPhotoProdPiPiUnpol/2406.08016",
-  ) -> MomentResultsKinematicBinning:
+) -> MomentResultsKinematicBinning:
   """Reads the moments values from the JPAC fit to the CLAS data in range 3.6 < E_gamma < 3.8 GeV as published in Figs. 6, 7, 13--16 in arXiv:2406.08016"""
   momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas data frame with moment values in mass bins
   for qnMomentIndex in momentIndices.qnIndices:
@@ -166,7 +166,10 @@ def readMomentResultsJpac(
   return MomentResultsKinematicBinning(momentResults)
 
 
-def makeAllPlots(cfg: AnalysisConfig) -> None:
+def makeAllPlots(
+  cfg:   AnalysisConfig,
+  timer: Utilities.Timer = Utilities.Timer(),
+) -> None:
   """Generates all plots for the given analysis configuration"""
   timer.start("Total execution time")
 
@@ -473,4 +476,4 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
 
-  makeAllPlots(CFG)
+  makeAllPlots(CFG, timer)
