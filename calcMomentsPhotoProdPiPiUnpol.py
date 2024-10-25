@@ -75,7 +75,10 @@ class AnalysisConfig:
 CFG = AnalysisConfig()
 
 
-def calculateAllMoments(cfg: AnalysisConfig) -> None:
+def calculateAllMoments(
+  cfg:   AnalysisConfig,
+  timer: Utilities.Timer = Utilities.Timer(),
+) -> None:
   """Performs the moment analysis for the given configuration"""
   timer.start("Total execution time")
 
@@ -167,4 +170,4 @@ if __name__ == "__main__":
     with threadController.limit(limits = 4):
       print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
 
-      calculateAllMoments(CFG)
+      calculateAllMoments(CFG, timer)
