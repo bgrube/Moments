@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import functools
-import glob
-import os
 
 import ROOT
 
+from calcMomentsPhotoProdPiPiUnpol import (
+  AnalysisConfig,
+  CFG,
+)
 from MomentCalculator import (
   KinematicBinningVariable,
   MomentResultsKinematicBinning,
@@ -85,11 +87,13 @@ if __name__ == "__main__":
   # define what to overlay
   fitResults: tuple[tuple[str, str], ...] = (
     # (directory name, legend label)
-    ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2"),
+    # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2"),
     # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4"),
     ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5"),
     ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8"),
-    ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20"),
+    ("./plotsPhotoProdPiPiUnpol.maxL_10", "#it{L}_{max} = 10"),
+    # ("./plotsPhotoProdPiPiUnpol.maxL_12", "#it{L}_{max} = 12"),
+    # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20"),
     # last entry defines which moments are plotted
   )
   # fitResults: tuple[tuple[str, str], ...] = (
@@ -97,17 +101,12 @@ if __name__ == "__main__":
   #   ("./plotsPhotoProdPiPiUnpol.maxL_5", "New MC"),
   # )
   outFileDirName   = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
-  normalizeMoments = False
-  binVarMass       = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
-  massBinning      = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
-
-  namePrefix = "norm" if normalizeMoments else "unnorm"
 
   # load moment results
   momentResultsToOverlay: dict[str, MomentResultsKinematicBinning] = {}  # key: legend label, value: moment results
   for fitResultDirName, fitResultLabel in fitResults:
     print(f"Loading moment results from directory {fitResultDirName}")
-    momentResultsPhysFileName = f"{fitResultDirName}/{namePrefix}_moments_phys.pkl"
+    momentResultsPhysFileName = f"{fitResultDirName}/{CFG.outFileNamePrefix}_moments_phys.pkl"
     try:
       momentResultsPhys = MomentResultsKinematicBinning.load(momentResultsPhysFileName)
     except FileNotFoundError as e:
@@ -127,9 +126,9 @@ if __name__ == "__main__":
     overlayMoments1D(
       momentResultsToOverlay = momentResultsToOverlay,
       qnIndex                = qnIndex,
-      binning                = massBinning,
-      normalizedMoments      = normalizeMoments,
-      pdfFileNamePrefix      = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_",
+      binning                = CFG.massBinning,
+      normalizedMoments      = CFG.normalizeMoments,
+      pdfFileNamePrefix      = f"{outFileDirName}/{CFG.outFileNamePrefix}_{CFG.massBinning.var.name}_",
     )
 
   timer.stop("Total execution time")
