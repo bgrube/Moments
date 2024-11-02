@@ -467,16 +467,22 @@ class AcceptanceIntegralMatrix:
       # polarized case: read polarization value from tree
       assert "beamPol" in self.dataSet.phaseSpaceData.GetColumnNames(), "No 'beamPol' column found in phase-space data"
       print("Reading photon-beam polarization from 'beamPol' column when calculating the acceptance integral matrix")
+      assert self.dataSet.phaseSpaceData.GetColumnType("beamPol") in ("double", "Double_t"), \
+        "Phase-space data column 'beamPol' must be of type 'double, ''Double_t', or 'Double32_t'"
       beamPol = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["beamPol"])["beamPol"])
     else:
       # polarized case: use polarization value defined for data set
       beamPol = self.dataSet.polarization
       print(f"Using photon-beam polarization of {beamPol} when calculating the acceptance integral matrix")
     # get phase-space data data as std::vectors
+    assert (
+          all(self.dataSet.phaseSpaceData.GetColumnType(var) in ("double", "Double_t") for var in ("theta", "phi"))
+      and ((self.dataSet.phaseSpaceData.GetColumnType("Phi") in ("double", "Double_t")) if self.dataSet.polarization is not None else True)
+    ), "Phase-space data columns 'theta', 'phi', and 'Phi' must be of type 'double, ''Double_t', or 'Double32_t'"
     thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
     phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
     Phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"  ])["Phi"  ]) if self.dataSet.polarization is not None else \
-             ROOT.std.vector["double"](np.zeros(len(thetas)))  # for unpolarized production the basis functions are independent of Phi; set values to zero
+             ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
     print(f"Phase-space data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
     nmbAccEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
@@ -1024,6 +1030,7 @@ class MomentCalculator:
     bootstrapSeed:       int              = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
+    #TODO move loading and conversion of data to separate function
     # define dataset and integral matrix to use for moment calculation
     dataSet        = None
     integralMatrix = self._integralMatrix
@@ -1045,16 +1052,23 @@ class MomentCalculator:
       # polarized case: read polarization value from tree
       assert "beamPol" in dataSet.data.GetColumnNames(), "No 'beamPol' column found in data"
       print("Reading photon-beam polarization from 'beamPol' column when calculating the moments")
+      #TODO move type check into separate function
+      assert dataSet.data.GetColumnType("beamPol") in ("double", "Double_t"), \
+        "Input data column 'beamPol' must be of type 'double, ''Double_t', or 'Double32_t'"
       beamPol = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["beamPol"])["beamPol"])
     else:
       # polarized case: use polarization value defined for data set
       beamPol = dataSet.polarization
       print(f"Using photon-beam polarization of {beamPol} when calculating the moments")
     # get input data as std::vectors
+    assert (
+          all(dataSet.data.GetColumnType(var) in ("double", "Double_t") for var in ("theta", "phi"))
+      and ((dataSet.data.GetColumnType("Phi") in ("double", "Double_t")) if dataSet.polarization is not None else True)
+    ), "Input data columns 'theta', 'phi', and 'Phi' must be of type 'double, ''Double_t', or 'Double32_t'"
     thetas = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["theta"])["theta"])
     phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["phi"  ])["phi"  ])
     Phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["Phi"  ])["Phi"  ]) if dataSet.polarization is not None else \
-             ROOT.std.vector["double"](np.zeros(len(thetas)))  # for unpolarized production the basis functions are independent of Phi; set values to zero
+             ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
     print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
     nmbEvents = thetas.size()
     assert thetas.size() == phis.size() == Phis.size(), (
