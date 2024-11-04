@@ -86,7 +86,7 @@ bigPhi(
 ROOT.gInterpreter.Declare(CPP_CODE)
 
 
-# delcare C++ function to check equality of column values
+# declare C++ function to check equality of column values
 CPP_CODE = """
 struct checkValEqual {
 
