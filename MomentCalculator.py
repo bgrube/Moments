@@ -371,6 +371,17 @@ class KinematicBinningVariable:
     return f"{self.label} [{self.unit}]"
 
 
+def getStdVectorFromRdfColumn(
+  data:       ROOT.RDataFrame,
+  columnName: str,
+) -> ROOT.std.vector["double"]:
+  """Returns given column of `RDataFrame` as `std::vector<double>`"""
+  columnType = data.GetColumnType(columnName)
+  assert columnType in ("double", "Double_t"), \
+    f"Data column '{columnName}' must be of type 'double', 'Double_t', or 'Double32_t' but is of type '{columnType}'"
+  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName,])[columnName])
+
+
 @dataclass
 class AcceptanceIntegralMatrix:
   """Container class that calculates, stores, and provides access to acceptance integral matrix"""
@@ -466,22 +477,17 @@ class AcceptanceIntegralMatrix:
     elif self.dataSet.polarization == 0:
       # polarized case: read polarization value from tree
       assert "beamPol" in self.dataSet.phaseSpaceData.GetColumnNames(), "No 'beamPol' column found in phase-space data"
-      print("Reading photon-beam polarization from 'beamPol' column when calculating the acceptance integral matrix")
-      assert self.dataSet.phaseSpaceData.GetColumnType("beamPol") in ("double", "Double_t"), \
-        "Phase-space data column 'beamPol' must be of type 'double, ''Double_t', or 'Double32_t'"
-      beamPol = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["beamPol"])["beamPol"])
+      print("Reading photon-beam polarization from 'beamPol' column for the calculation of the acceptance integral matrix")
+      beamPol = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "beamPol")
     else:
       # polarized case: use polarization value defined for data set
       beamPol = self.dataSet.polarization
-      print(f"Using photon-beam polarization of {beamPol} when calculating the acceptance integral matrix")
+      print(f"Using photon-beam polarization of {beamPol} for the calculation of the acceptance integral matrix")
     # get phase-space data data as std::vectors
-    assert (
-          all(self.dataSet.phaseSpaceData.GetColumnType(var) in ("double", "Double_t") for var in ("theta", "phi"))
-      and ((self.dataSet.phaseSpaceData.GetColumnType("Phi") in ("double", "Double_t")) if self.dataSet.polarization is not None else True)
-    ), "Phase-space data columns 'theta', 'phi', and 'Phi' must be of type 'double, ''Double_t', or 'Double32_t'"
-    thetas = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["theta"])["theta"])
-    phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["phi"  ])["phi"  ])
-    Phis   = ROOT.std.vector["double"](self.dataSet.phaseSpaceData.AsNumpy(columns = ["Phi"  ])["Phi"  ]) if self.dataSet.polarization is not None else \
+    print("Reading angles for calculation of the acceptance integral matrix")
+    thetas = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "theta")
+    phis   = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "phi")
+    Phis   = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "Phi") if self.dataSet.polarization is not None else \
              ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
     print(f"Phase-space data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
     nmbAccEvents = thetas.size()
@@ -1051,23 +1057,17 @@ class MomentCalculator:
     elif dataSet.polarization == 0:
       # polarized case: read polarization value from tree
       assert "beamPol" in dataSet.data.GetColumnNames(), "No 'beamPol' column found in data"
-      print("Reading photon-beam polarization from 'beamPol' column when calculating the moments")
-      #TODO move type check into separate function
-      assert dataSet.data.GetColumnType("beamPol") in ("double", "Double_t"), \
-        "Input data column 'beamPol' must be of type 'double, ''Double_t', or 'Double32_t'"
-      beamPol = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["beamPol"])["beamPol"])
+      print("Reading photon-beam polarization from 'beamPol' column for the calculation of the moments")
+      beamPol = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "beamPol")
     else:
       # polarized case: use polarization value defined for data set
       beamPol = dataSet.polarization
-      print(f"Using photon-beam polarization of {beamPol} when calculating the moments")
+      print(f"Using photon-beam polarization of {beamPol} for the calculation of the moments")
     # get input data as std::vectors
-    assert (
-          all(dataSet.data.GetColumnType(var) in ("double", "Double_t") for var in ("theta", "phi"))
-      and ((dataSet.data.GetColumnType("Phi") in ("double", "Double_t")) if dataSet.polarization is not None else True)
-    ), "Input data columns 'theta', 'phi', and 'Phi' must be of type 'double, ''Double_t', or 'Double32_t'"
-    thetas = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["theta"])["theta"])
-    phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["phi"  ])["phi"  ])
-    Phis   = ROOT.std.vector["double"](dataSet.data.AsNumpy(columns = ["Phi"  ])["Phi"  ]) if dataSet.polarization is not None else \
+    print("Reading angles for calculation of the moments")
+    thetas = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "theta")
+    phis   = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "phi")
+    Phis   = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "Phi") if dataSet.polarization is not None else \
              ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
     print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
     nmbEvents = thetas.size()
