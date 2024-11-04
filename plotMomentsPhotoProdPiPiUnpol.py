@@ -472,7 +472,7 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  for maxL in (2, 4, 5, 8, 20):
+  for maxL in (2, 4, 5, 8, 10, 12, 20):
     print(f"Plotting moments for L_max = {maxL}")
     CFG.maxL = maxL
     logFileName = f"{CFG.outFileDirName}/plotMomentsPhotoProdPiPiUnpol.log"

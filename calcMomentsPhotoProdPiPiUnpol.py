@@ -67,7 +67,7 @@ class AnalysisConfig:
   massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
   # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
 
-  def __post_init__(self) -> None:
+  def init(self) -> None:
     """Creates output directory and initializes member variables"""
     self.outFileDirName    = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
@@ -83,7 +83,7 @@ class AnalysisConfig:
   ) -> None:
     assert value > 0, f"maxL must be > 0, but is {value}"
     self._maxL = value
-    self.outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{self.maxL}")
+    self.init()
 
 CFG = AnalysisConfig()
 
@@ -171,7 +171,7 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  for maxL in (4, 5, 8, 20):
+  for maxL in (2, 4, 5, 8, 10, 12, 20):
     print(f"Performing moment analysis for L_max = {maxL}")
     CFG.maxL = maxL
     logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
