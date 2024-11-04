@@ -382,6 +382,58 @@ def getStdVectorFromRdfColumn(
   return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName,])[columnName])
 
 
+def loadInputData(
+  polarization: float | None,
+  data:         ROOT.RDataFrame,
+) -> tuple[
+  float | ROOT.std.vector["double"] | None,
+  ROOT.std.vector["double"],
+  ROOT.std.vector["double"],
+  ROOT.std.vector["double"],
+  npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
+]:
+  """Loads input data needed to calculate moments or acceptance integral matrix from given `RDataFrame`"""
+  # get photon-beam polarization
+  beamPol: float | ROOT.std.vector["double"] | None = None
+  if polarization is None:
+    # unpolarized case
+    print("Setting beam polarization to 0 for unpolarized production")
+    beamPol = 0.0  # for unpolarized production the basis functions are independent of beamPol; set value to zero
+  elif polarization == 0:
+    # polarized case: read polarization value from tree
+    assert "beamPol" in data.GetColumnNames(), "No 'beamPol' column found in data"
+    print("Reading photon-beam polarization from 'beamPol' column")
+    beamPol = getStdVectorFromRdfColumn(data = data, columnName = "beamPol")
+  else:
+    # polarized case: use polarization value defined for data set
+    beamPol = polarization
+    print(f"Using photon-beam polarization of {beamPol}")
+
+  # get input data as std::vectors
+  print("Reading values of decay angles")
+  thetas = getStdVectorFromRdfColumn(data = data, columnName = "theta")
+  phis   = getStdVectorFromRdfColumn(data = data, columnName = "phi")
+  Phis   = getStdVectorFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else \
+    ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
+  print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
+  nmbEvents = thetas.size()
+  assert thetas.size() == phis.size() == Phis.size(), (
+    f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
+
+  # get event weights
+  eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
+  if "eventWeight" in data.GetColumnNames():
+    print("Applying weights from 'eventWeight' column")
+    # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
+    eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
+    assert eventWeights.shape == (nmbEvents,), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
+  else:
+    # all events have weight 1
+    eventWeights = np.ones(nmbEvents, dtype = np.float64)
+
+  return beamPol, thetas, phis, Phis, eventWeights
+
+
 @dataclass
 class AcceptanceIntegralMatrix:
   """Container class that calculates, stores, and provides access to acceptance integral matrix"""
@@ -468,41 +520,12 @@ class AcceptanceIntegralMatrix:
       print("Warning: no phase-space data; using perfect acceptance")
       self._IFlatIndex = np.eye(len(self.indices), dtype = np.complex128)
       return
-    # get photon-beam polarization
-    beamPol: float | ROOT.std.vector["double"] | None = None
-    if self.dataSet.polarization is None:
-      # unpolarized case
-      print("Calculating acceptance integral matrix for unpolarized production")
-      beamPol = 0.0  # for unpolarized production the basis functions are independent of beamPol; set value to zero
-    elif self.dataSet.polarization == 0:
-      # polarized case: read polarization value from tree
-      assert "beamPol" in self.dataSet.phaseSpaceData.GetColumnNames(), "No 'beamPol' column found in phase-space data"
-      print("Reading photon-beam polarization from 'beamPol' column for the calculation of the acceptance integral matrix")
-      beamPol = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "beamPol")
-    else:
-      # polarized case: use polarization value defined for data set
-      beamPol = self.dataSet.polarization
-      print(f"Using photon-beam polarization of {beamPol} for the calculation of the acceptance integral matrix")
-    # get phase-space data data as std::vectors
-    print("Reading angles for calculation of the acceptance integral matrix")
-    thetas = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "theta")
-    phis   = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "phi")
-    Phis   = getStdVectorFromRdfColumn(data = self.dataSet.phaseSpaceData, columnName = "Phi") if self.dataSet.polarization is not None else \
-             ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
-    print(f"Phase-space data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
+    print("Loading input data for the calculation of the acceptance integral matrix")
+    beamPol, thetas, phis, Phis, eventWeights = loadInputData(
+      polarization = self.dataSet.polarization,
+      data         = self.dataSet.phaseSpaceData,
+    )
     nmbAccEvents = thetas.size()
-    assert thetas.size() == phis.size() == Phis.size(), (
-      f"Not all std::vectors with input data have the correct size. Expected {nmbAccEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
-    # get event weights
-    eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.empty(nmbAccEvents, dtype = np.float64)
-    if "eventWeight" in self.dataSet.phaseSpaceData.GetColumnNames():
-      print("Applying weights from 'eventWeight' column in calculation of acceptance integral matrix")
-      # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
-      eventWeights = self.dataSet.phaseSpaceData.AsNumpy(columns = ["eventWeight"])["eventWeight"]
-      assert eventWeights.shape == (nmbAccEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbAccEvents},) but got {eventWeights.shape}"
-    else:
-      # all events have weight 1
-      eventWeights = np.ones(nmbAccEvents, dtype = np.float64)
     # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `basisFunctions.C`
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
@@ -1048,41 +1071,12 @@ class MomentCalculator:
       dataSet = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     else:
       raise ValueError(f"Unknown data source '{dataSource}'")
-    # get photon-beam polarization
-    beamPol: float | ROOT.std.vector["double"] | None = None
-    if dataSet.polarization is None:
-      # unpolarized case
-      print("Calculating moments for unpolarized production")
-      beamPol = 0.0  # for unpolarized production the basis functions are independent of beamPol; set value to zero
-    elif dataSet.polarization == 0:
-      # polarized case: read polarization value from tree
-      assert "beamPol" in dataSet.data.GetColumnNames(), "No 'beamPol' column found in data"
-      print("Reading photon-beam polarization from 'beamPol' column for the calculation of the moments")
-      beamPol = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "beamPol")
-    else:
-      # polarized case: use polarization value defined for data set
-      beamPol = dataSet.polarization
-      print(f"Using photon-beam polarization of {beamPol} for the calculation of the moments")
-    # get input data as std::vectors
-    print("Reading angles for calculation of the moments")
-    thetas = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "theta")
-    phis   = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "phi")
-    Phis   = getStdVectorFromRdfColumn(data = dataSet.data, columnName = "Phi") if dataSet.polarization is not None else \
-             ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
-    print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
+    print("Loading input data for moment calculation")
+    beamPol, thetas, phis, Phis, eventWeights = loadInputData(
+      polarization = dataSet.polarization,
+      data         = dataSet.data,
+    )
     nmbEvents = thetas.size()
-    assert thetas.size() == phis.size() == Phis.size(), (
-      f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
-    # get event weights
-    eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
-    if "eventWeight" in dataSet.data.GetColumnNames():
-      print("Applying weights from 'eventWeight' column in calculation of moments")
-      # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
-      eventWeights = dataSet.data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
-      assert eventWeights.shape == (nmbEvents,), f"NumPy arrays with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
-    else:
-      # all events have weight 1
-      eventWeights = np.ones(nmbEvents, dtype = np.float64)
     # calculate basis-function values and values of measured moments
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = np.complex128)
