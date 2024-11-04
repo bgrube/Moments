@@ -1,11 +1,14 @@
 # created by `pipreqs --force --mode compat .`
 
-bidict~=0.22.1
-matplotlib~=3.8.2
+bidict~=0.23.1
+matplotlib~=3.9.2
 nptyping~=2.5.0
-numpy~=1.26.3
+numpy~=1.26.4
+pandas~=2.2.3
 py3nj~=0.2.1
 # rcdb~=0.9.1
-scipy~=1.12.0
-threadpoolctl~=3.2.0
-uncertainties~=3.1.7
+scipy~=1.13.1
+threadpoolctl~=3.5.0
+uncertainties~=3.2.2
+wurlitzer~=3.1.1
+
