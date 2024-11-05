@@ -14,6 +14,7 @@ from scipy import stats
 from typing import (
   Any,
   Iterator,
+  Mapping,
   Sequence,
 )
 
@@ -351,16 +352,16 @@ def makeMomentHistogram(
 
 def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
-  binning:           HistAxisBinning | None                      = None,  # if not None data are plotted as function of binning variable
-  normalizedMoments: bool                                        = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentLabel:       str                                         = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
-  pdfFileNamePrefix: str                                         = "",  # name prefix for output files
-  histTitle:         str                                         = "",  # histogram title
-  plotLegend:        bool                                        = True,
-  legendLabels:      tuple[str | None, str | None]               = (None, None),  # labels for legend entries; None = use defaults
-  plotTruthUncert:   bool                                        = False,  # plot uncertainty of true moments
-  truthColor:        int                                         = ROOT.kBlue + 1,  # color used for true values
-  histsToOverlay:    Sequence[tuple[ROOT.TH1D, str, str]] | None = None,  # histograms to overlay on top of data and (optional) true values; tuple: (histogram, draw option, legend entry label)
+  binning:           HistAxisBinning | None        = None,  # if not None data are plotted as function of binning variable
+  normalizedMoments: bool                          = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  momentLabel:       str                           = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
+  pdfFileNamePrefix: str                           = "",  # name prefix for output files
+  histTitle:         str                           = "",  # histogram title
+  plotLegend:        bool                          = True,
+  legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
+  plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
+  truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
+  histsToOverlay:    Mapping[str, Sequence[tuple[ROOT.TH1D, str, str]]] | None = None,  # histograms to overlay on top of data and (optional) true values; Mapping: key = "Re" or "Im", Sequence: tuple: (histogram, draw option, legend entry)
 ) -> None:
   """Plots moments extracted from data along categorical axis or along given binning and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -402,8 +403,8 @@ def plotMoments(
       histTruth.SetLineColor(truthColor)
       histTruth.SetLineWidth(2)
       histStack.Add(histTruth, "PE")
-    if histsToOverlay is not None:
-      for histOverlay, drawOption, _ in histsToOverlay:
+    if histsToOverlay is not None and momentPart in histsToOverlay.keys():
+      for histOverlay, drawOption, _ in histsToOverlay[momentPart]:
         histStack.Add(histOverlay, drawOption)
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
@@ -419,8 +420,8 @@ def plotMoments(
       legend.AddEntry(histData, histData.GetName(), "LP")
       if histTruth is not None:
         legend.AddEntry(histTruth, histTruth.GetName(), "LP")
-      if histsToOverlay is not None:
-        for histOverlay, _, legendEntryLabel in histsToOverlay:
+      if histsToOverlay is not None and momentPart in histsToOverlay.keys():
+        for histOverlay, _, legendEntryLabel in histsToOverlay[momentPart]:
           if legendEntryLabel:
             legend.AddEntry(histOverlay, legendEntryLabel, "LP")
       legend.Draw()
@@ -553,15 +554,15 @@ def plotMoments1D(
   momentResults:     MomentResultsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
-  normalizedMoments: bool                                        = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  momentResultsTrue: MomentResultsKinematicBinning | None        = None,  # true moments
-  pdfFileNamePrefix: str                                         = "",    # name prefix for output files
-  histTitle:         str                                         = "",    # histogram title
-  plotLegend:        bool                                        = True,
-  legendLabels:      tuple[str | None, str | None]               = (None, None),  # labels for legend entries; None = use defaults
-  plotTruthUncert:   bool                                        = False,  # plot uncertainty of true moments
-  truthColor:        int                                         = ROOT.kBlue + 1,  # color used for true values
-  histsToOverlay:    Sequence[tuple[ROOT.TH1D, str, str]] | None = None,  # histograms to overlay on top of data and (optional) true values; tuple: (histogram, draw option, legend entry)
+  normalizedMoments: bool                                 = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  momentResultsTrue: MomentResultsKinematicBinning | None = None,  # true moments
+  pdfFileNamePrefix: str                                  = "",    # name prefix for output files
+  histTitle:         str                                  = "",    # histogram title
+  plotLegend:        bool                                 = True,
+  legendLabels:      tuple[str | None, str | None]        = (None, None),  # labels for legend entries; None = use defaults
+  plotTruthUncert:   bool                                 = False,  # plot uncertainty of true moments
+  truthColor:        int                                  = ROOT.kBlue + 1,  # color used for true values
+  histsToOverlay:    Mapping[str, Sequence[tuple[ROOT.TH1D, str, str]]] | None = None,  # histograms to overlay on top of data and (optional) true values; Mapping: key = "Re" or "Im", Sequence: tuple: (histogram, draw option, legend entry)
 ) -> None:
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex

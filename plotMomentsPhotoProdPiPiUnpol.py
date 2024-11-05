@@ -261,7 +261,6 @@ def makeAllPlots(
       # plot mass dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
         # get histogram with moment values from JPAC fit
-        #TODO do not plot JPAC moments for imaginary parts
         HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
         histJpac = makeMomentHistogram(
           HVals      = HValsJpac,
@@ -288,10 +287,12 @@ def makeAllPlots(
           legendLabels      = ("Moment", "CLAS"),
           plotTruthUncert   = True,
           truthColor        = ROOT.kGray + 1,
-          histsToOverlay    = [
-            (histJpac,     "HIST L", histJpac.GetName()),
-            (histJpacBand,     "E3", ""),
-          ],
+          histsToOverlay    = {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+            "Re" : [
+              (histJpac,     "HIST L", histJpac.GetName()),
+              (histJpacBand,     "E3", ""),
+            ],
+          },
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,
