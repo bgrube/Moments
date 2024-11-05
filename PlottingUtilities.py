@@ -472,7 +472,7 @@ def plotMoments(
         ndf      = residualsMasked.count()
         chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
         # fill histogram with residuals
-        for (index,), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
+        for (index, ), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
           binIndex = index + 1
           histResidual.SetBinContent(binIndex, residual)
           histResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh

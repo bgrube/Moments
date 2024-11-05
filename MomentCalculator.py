@@ -195,6 +195,7 @@ class AmplitudeSet:
         # get all moments for given (L, M)
         moments: list[complex] = list(self.photoProdMoments(L, M, printMomentFormulas))
         # ensure that moments are either real-valued or purely imaginary
+        #TODO use all() and comprehension
         assert (abs(moments[0].imag) < self.tolerance) and (abs(moments[1].imag) < self.tolerance) and (abs(moments[2].real) < self.tolerance), (
           f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
         # set respective real and imaginary parts exactly to zero
@@ -379,7 +380,7 @@ def getStdVectorFromRdfColumn(
   columnType = data.GetColumnType(columnName)
   assert columnType in ("double", "Double_t"), \
     f"Data column '{columnName}' must be of type 'double', 'Double_t', or 'Double32_t' but is of type '{columnType}'"
-  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName,])[columnName])
+  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName, ])[columnName])
 
 
 def loadInputData(
@@ -426,7 +427,7 @@ def loadInputData(
     print("Applying weights from 'eventWeight' column")
     # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
     eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
-    assert eventWeights.shape == (nmbEvents,), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents},) but got {eventWeights.shape}"
+    assert eventWeights.shape == (nmbEvents, ), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents}, ) but got {eventWeights.shape}"
   else:
     # all events have weight 1
     eventWeights = np.ones(nmbEvents, dtype = np.float64)
@@ -664,7 +665,7 @@ class MomentResult:
 
   def __post_init__(self) -> None:
     nmbMoments = len(self)
-    self._valsFlatIndex      = np.zeros((nmbMoments,),                          dtype = np.complex128)
+    self._valsFlatIndex      = np.zeros((nmbMoments, ),                         dtype = np.complex128)
     self._covReReFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
     self._covImImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
     self._covReImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
@@ -1059,7 +1060,6 @@ class MomentCalculator:
     bootstrapSeed:       int              = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
-    #TODO move loading and conversion of data to separate function
     # define dataset and integral matrix to use for moment calculation
     dataSet        = None
     integralMatrix = self._integralMatrix

@@ -265,7 +265,7 @@ if __name__ == "__main__":
         cName = histDef["columnName"]
         unit  = histDef["xAxisUnit"]
         hists.append(data.Histo1D((f"h_{cName}", f";{cName}" + (f" [{unit}]" if unit else "") + f";{histDef['yAxisTitle']}",
-                                  *histDef["binning"]), (cName,), weightColumnName))
+                                  *histDef["binning"]), (cName, ), weightColumnName))
 
       # write root tree for moments analysis
       print(f"Writing skimmed tree to file '{outputFileName}'")
