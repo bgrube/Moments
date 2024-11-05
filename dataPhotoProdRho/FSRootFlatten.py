@@ -67,7 +67,7 @@ def runFlatten(
       flattenCommand += f" -mctag '{flattenMcModeString}'"
     flattenCommand += f' &> "{logFileName}"'  # redirect stdout and stderr to log file
     print(f"Starting process [{index + 1} of {nmbInputFiles}]: {flattenCommand}")
-    processResults.append(processPool.apply_async(callProcess, (flattenCommand,)))
+    processResults.append(processPool.apply_async(callProcess, (flattenCommand, )))
   # close process pool and wait for each process to complete
   processPool.close()
   processPool.join()
@@ -114,7 +114,7 @@ def runRanking(
       f' &> "{logFileName}"'
     )
     print(f"Starting process [{index + 1} of {nmbInputFiles}]: {rankCommand}")
-    processResults.append(processPool.apply_async(callProcess, (rankCommand,)))
+    processResults.append(processPool.apply_async(callProcess, (rankCommand, )))
   # close process pool and wait for each process to complete
   processPool.close()
   processPool.join()
