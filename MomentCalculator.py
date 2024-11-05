@@ -303,6 +303,22 @@ class MomentIndices:
   def __post_init__(self) -> None:
     self.regenerateIndexMaps()
 
+  def setMaxL(
+    self,
+    value: int
+  ) -> None:
+    """Sets maximum L quantum number of moments and regenerates index maps"""
+    self.maxL = value
+    self.regenerateIndexMaps()
+
+  def setPolarized(
+    self,
+    value: bool
+  ) -> None:
+    """Sets flag that switches between unpolarized production and polarized photoproduction mode and regenerates index maps"""
+    self.polarized = value
+    self.regenerateIndexMaps()
+
   def __len__(self) -> int:
     """Returns total number of moments"""
     return len(self._qnIndexByFlatIndex)
@@ -445,9 +461,9 @@ class AcceptanceIntegralMatrix:
   def __post_init__(self) -> None:
     # set polarized moments case of `indices` according to info provided by `dataSet`
     if self.dataSet.polarization is None:
-      self.indices.polarized = False
+      self.indices.setPolarized(False)
     else:
-      self.indices.polarized = True
+      self.indices.setPolarized(True)
 
   # accessor that guarantees existence of optional field
   @property
@@ -997,9 +1013,9 @@ class MomentCalculator:
   def __post_init__(self) -> None:
     # set polarized moments case of `indices` according to info provided by `dataSet`
     if self.dataSet.polarization is None:
-      self.indices.polarized = False
+      self.indices.setPolarized(False)
     else:
-      self.indices.polarized = True
+      self.indices.setPolarized(True)
 
   # accessors that guarantee existence of optional fields
   @property

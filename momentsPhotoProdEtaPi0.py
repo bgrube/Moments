@@ -164,8 +164,8 @@ if __name__ == "__main__":
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
     normalizeMoments         = False
-    # nmbBootstrapSamples  = 0
-    nmbBootstrapSamples  = 10000
+    nmbBootstrapSamples      = 0
+    # nmbBootstrapSamples  = 10000
     # plotAngularDistributions = True
     plotAngularDistributions = False
     # plotAccIntegralMatrices  = True
@@ -218,6 +218,7 @@ if __name__ == "__main__":
           data           = dataInBin,
           phaseSpaceData = dataPsAccInBin,
           nmbGenEvents   = nmbPsGenEvents[-1],
+          polarization   = 0.0,  # read beam polarization from input trees
         )
         momentsInBins.append(
           MomentCalculator(

@@ -521,9 +521,9 @@ def plotMomentsInBin(
   indicesTrueMoments = None
   if HTruth:
     if (HTruth.indices.polarized and not HData.indices.polarized):
+      # take only unpolarized part of true moments
       indicesTrueMoments = copy.deepcopy(HTruth.indices)
-      indicesTrueMoments.polarized = False
-      indicesTrueMoments.regenerateIndexMaps()
+      indicesTrueMoments.setPolarized(False)
     else:
       indicesTrueMoments = HTruth.indices
   assert not HTruth or HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
