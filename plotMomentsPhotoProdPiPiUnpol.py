@@ -127,11 +127,11 @@ def readMomentResultsJpac(
   """Reads the moments values from the JPAC fit to the CLAS data in range 3.6 < E_gamma < 3.8 GeV as published in Figs. 6, 7, 13--16 in arXiv:2406.08016"""
   momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas data frame with moment values in mass bins
   for qnMomentIndex in momentIndices.qnIndices:
-    datFileName = f"{dataDirName}/Y{qnMomentIndex.L}{qnMomentIndex.M}{tBinLabel}.dat"
-    print(f"Reading JPAC values for moment {qnMomentIndex.label} from file '{datFileName}'")
+    dataFileName = f"{dataDirName}/Y{qnMomentIndex.L}{qnMomentIndex.M}{tBinLabel}.dat"
+    print(f"Reading JPAC values for moment {qnMomentIndex.label} from file '{dataFileName}'")
     try:
       momentDf = pd.read_csv(
-        datFileName,
+        dataFileName,
         sep      ='\s+',  # values are whitespace separated
         skiprows = 1,     # first row with column names
         names    = ["mass", "moment", "uncert"],
@@ -140,7 +140,7 @@ def readMomentResultsJpac(
       momentDf[["moment", "uncert"]] /= np.sqrt(2 * qnMomentIndex.L + 1)
       momentDfs[qnMomentIndex] = momentDf
     except FileNotFoundError as e:
-        print(f"Warning: file '{datFileName}' not found. Skipping moment {qnMomentIndex.label}.")
+        print(f"Warning: file '{dataFileName}' not found. Skipping moment {qnMomentIndex.label}.")
   # ensure that mass bins are the same in all data frames
   dfs = list(momentDfs.values())
   massColumn = dfs[0]["mass"]
