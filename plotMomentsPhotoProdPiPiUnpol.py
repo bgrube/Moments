@@ -172,8 +172,6 @@ def makeAllPlots(
   timer: Utilities.Timer = Utilities.Timer(),
 ) -> None:
   """Generates all plots for the given analysis configuration"""
-  timer.start("Total execution time")
-
   # load moments from files
   momentIndices = MomentIndices(cfg.maxL)
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
@@ -468,9 +466,6 @@ def makeAllPlots(
             pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
           )
 
-  timer.stop("Total execution time")
-  print(timer.summary)
-
 
 if __name__ == "__main__":
   for maxL in (2, 4, 5, 8, 10, 12, 20):
@@ -484,4 +479,9 @@ if __name__ == "__main__":
       ROOT.gROOT.SetBatch(True)
       setupPlotStyle()
 
+      timer.start("Total execution time")
+
       makeAllPlots(CFG, timer)
+
+      timer.stop("Total execution time")
+      print(timer.summary)

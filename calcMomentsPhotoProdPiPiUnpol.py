@@ -93,10 +93,6 @@ def calculateAllMoments(
   timer: Utilities.Timer = Utilities.Timer(),
 ) -> None:
   """Performs the moment analysis for the given configuration"""
-  timer.start("Total execution time")
-
-  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
-
   # setup MomentCalculators for all mass bins
   momentIndices = MomentIndices(cfg.maxL)
   momentCalculators = MomentCalculatorsKinematicBinning([])
@@ -142,6 +138,7 @@ def calculateAllMoments(
       )
 
   # calculate and plot integral matrix for all mass bins
+  nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
   with timer.timeThis(f"Time to calculate integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):
     print(f"Calculating acceptance integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
     momentCalculators.calculateIntegralMatrices(forceCalculation = True)
@@ -166,9 +163,6 @@ def calculateAllMoments(
     momentCalculators.momentResultsMeas.save(f"{momentResultsFileBaseName}_meas.pkl")
     momentCalculators.momentResultsPhys.save(f"{momentResultsFileBaseName}_phys.pkl")
 
-  timer.stop("Total execution time")
-  print(timer.summary)
-
 
 if __name__ == "__main__":
   for maxL in (2, 4, 5, 8, 10, 12, 20):
@@ -186,4 +180,9 @@ if __name__ == "__main__":
       with threadController.limit(limits = 4):
         print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
 
+        timer.start("Total execution time")
+
         calculateAllMoments(CFG, timer)
+
+        timer.stop("Total execution time")
+        print(timer.summary)
