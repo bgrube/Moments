@@ -100,6 +100,7 @@ CFG = AnalysisConfig()
 
 def readMomentResultsPwa(
   dataFileName:          str,
+  maxL:                  int,
   binVarMass:            KinematicBinningVariable,  # binning variable for mass bins
   momentResultsFileName: str | None = None,  # if not `None`, moments are written to this file; if file already exists moments are read from this file instead of recalculating them
   overwriteExistingFile: bool = False,  # False: read values from existing file; True: recalculate moments and write new file
@@ -144,7 +145,7 @@ def readMomentResultsPwa(
     amplitudeSet = AmplitudeSet(amps = partialWaveAmplitudes, tolerance = 1e-8)
     momentResults.append(
       amplitudeSet.photoProdMomentSet(
-        maxL                = 2 * amplitudeSet.maxSpin,
+        maxL                = maxL,
         normalize           = False,
         printMomentFormulas = False,
         binCenters          = {binVarMass: massBinCenter},
@@ -255,6 +256,7 @@ if __name__ == "__main__":
           with timer.timeThis(f"Time to load moments from partial-wave analysis"):
             readMomentResultsPwa(
               dataFileName          = "./dataPhotoProdPiPiUnpol/amplitudes_range_tbin.txt",
+              maxL                  = CFG.maxL,
               binVarMass            = CFG.binVarMass,
               momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa.pkl",
               overwriteExistingFile = False,
