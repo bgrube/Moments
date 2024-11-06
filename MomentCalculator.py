@@ -195,15 +195,15 @@ class AmplitudeSet:
         # get all moments for given (L, M)
         moments: list[complex] = list(self.photoProdMoments(L, M, printMomentFormulas))
         # ensure that moments are either real-valued or purely imaginary
-        #TODO use all() and comprehension
-        assert (abs(moments[0].imag) < self.tolerance) and (abs(moments[1].imag) < self.tolerance) and (abs(moments[2].real) < self.tolerance), (
-          f"expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found ({moments[0].imag}, {moments[1].imag}, {moments[2].real})")
+        zeroMomentParts = (moments[0].imag, moments[1].imag, moments[2].real)
+        assert all(np.isclose(momentPart, 0, atol = self.tolerance) for momentPart in zeroMomentParts), \
+          f"Expect (Im[H_0({L} {M})], Im[H_1({L} {M})], and Re[H_2({L} {M})]) < {self.tolerance} but found {zeroMomentParts}"
         # set respective real and imaginary parts exactly to zero
         moments[0] = moments[0].real + 0j
         moments[1] = moments[1].real + 0j
         moments[2] = 0 + moments[2].imag * 1j
         # ensure that H_2(L, 0) is zero
-        assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2].imag}"
+        assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2]}"
         if normalize and L == M == 0:
           if isinstance(normalize, bool):
             # normalize all moments to H_0(0, 0)
