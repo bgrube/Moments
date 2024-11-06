@@ -54,6 +54,8 @@ class AnalysisConfig:
   psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
   psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
   _maxL:                    int                      = 8
+  # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
+  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
   outFileDirName:           str                      = field(init = False)
   outFileNamePrefix:        str                      = field(init = False)
   normalizeMoments:         bool                     = False
@@ -76,7 +78,7 @@ class AnalysisConfig:
 
   def init(self) -> None:
     """Creates output directory and initializes member variables"""
-    self.outFileDirName    = Utilities.makeDirPath(f"./plotsPhotoProdPiPiUnpol.maxL_{self.maxL}")
+    self.outFileDirName    = Utilities.makeDirPath(f"{self.outFileDirBaseName}.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
 
   @property
