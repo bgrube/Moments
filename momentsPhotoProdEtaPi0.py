@@ -86,7 +86,7 @@ def readPartialWaveAmplitudes(
   # Pandas cannot read-back complex values out of the box
   # there also seems to be no interest in fixing that; see <https://github.com/pandas-dev/pandas/issues/9379>
   # have to convert the respective column by hand
-  ampSeries = df.astype('complex128').loc[df.index[0]]
+  ampSeries = df.astype('complex128').loc[df.index[0]]  # get first row
   # normalize amplitudes to number of produced events
   # !Note! In principle, the normalized amplitude value is given by
   #   A^norm_i = A_i * ampScaleFactor_i * sqrt(I_{ii})

@@ -67,7 +67,7 @@ def readMomentResultsClas(
   """Reads the moment values in the for the given moment indices and from the CLAS analysis in PRD 80 (2009) 072005 published at https://www.hepdata.net/record/ins825040"""
   csvFileNames = sorted(glob.glob(f"{csvDirName}/Table*.csv"))
   # each file contains the values for a given H(L, M) moment and a given t bin for all 4 beam-energy bins and all mass bins
-  momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas data frame with moment values in mass bins
+  momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas dataframe with moment values in mass bins
   for qnMomentIndex in momentIndices.qnIndices:
     for csvFileName in csvFileNames:
       # first step: open file, read whole contents, and filter pick the file that contain the desired moment an the t bin
@@ -91,18 +91,18 @@ def readMomentResultsClas(
           momentDf[["moment", "uncertPlus", "uncertMinus"]] /= np.sqrt(2 * qnMomentIndex.L + 1)
           momentDfs[qnMomentIndex] = momentDf
           break
-  # ensure that mass bins are the same in all data frames
+  # ensure that mass bins are the same in all dataframes
   dfs = list(momentDfs.values())
   massColumn = dfs[0]["mass"]
   for df in dfs[1:]:
-    assert df["mass"].equals(massColumn), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColumn}"
-  # convert data frames to MomentResultsKinematicBinning
+    assert df["mass"].equals(massColumn), f"Mass bins in dataframes differ:\n{df['mass']}\nvs.\n{massColumn}"
+  # convert dataframes to MomentResultsKinematicBinning
   momentResults: list[MomentResult] = []
   for massBinCenter in massColumn:
     # loop over momentDfs and extract moment values for the given mass bin
     momentValues: list[MomentValue] = []
     for qnMomentIndex, momentDf in momentDfs.items():
-      mask = momentDf["mass"] == massBinCenter
+      mask = (momentDf["mass"] == massBinCenter)
       moment, uncertPlus, uncertMinus = momentDf[mask][["moment", "uncertPlus", "uncertMinus"]].values[0]
       assert uncertPlus == -uncertMinus, f"Uncertainties are not symmetric: {uncertPlus} vs. {uncertMinus}"
       momentValues.append(
@@ -125,14 +125,14 @@ def readMomentResultsJpac(
     dataDirName:   str = "./dataPhotoProdPiPiUnpol/2406.08016",
 ) -> MomentResultsKinematicBinning:
   """Reads the moments values from the JPAC fit to the CLAS data in range 3.6 < E_gamma < 3.8 GeV as published in Figs. 6, 7, 13--16 in arXiv:2406.08016"""
-  momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas data frame with moment values in mass bins
+  momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas dataframe with moment values in mass bins
   for qnMomentIndex in momentIndices.qnIndices:
     dataFileName = f"{dataDirName}/Y{qnMomentIndex.L}{qnMomentIndex.M}{tBinLabel}.dat"
     print(f"Reading JPAC values for moment {qnMomentIndex.label} from file '{dataFileName}'")
     try:
       momentDf = pd.read_csv(
         dataFileName,
-        sep      ='\s+',  # values are whitespace separated
+        sep      = r"\s+",  # values are whitespace separated
         skiprows = 1,     # first row with column names
         names    = ["mass", "moment", "uncert"],
       )
@@ -141,12 +141,12 @@ def readMomentResultsJpac(
       momentDfs[qnMomentIndex] = momentDf
     except FileNotFoundError as e:
         print(f"Warning: file '{dataFileName}' not found. Skipping moment {qnMomentIndex.label}.")
-  # ensure that mass bins are the same in all data frames
+  # ensure that mass bins are the same in all dataframes
   dfs = list(momentDfs.values())
   massColumn = dfs[0]["mass"]
   for df in dfs[1:]:
-    assert df["mass"].equals(massColumn), f"Mass bins in data frames differ:\n{df['mass']}\nvs.\n{massColumn}"
-  # convert data frames to MomentResultsKinematicBinning
+    assert df["mass"].equals(massColumn), f"Mass bins in dataframes differ:\n{df['mass']}\nvs.\n{massColumn}"
+  # convert dataframes to MomentResultsKinematicBinning
   momentResults: list[MomentResult] = []
   for massBinCenter in massColumn:
     # loop over momentDfs and extract moment values for the given mass bin
