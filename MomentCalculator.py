@@ -38,19 +38,27 @@ print = functools.partial(print, flush = True)
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
   """Immutable container class that stores information about quantum-number indices of two-pseudoscalar partial-waves in reflectivity basis"""
-  refl: int  # reflectivity
+  refl: int | None  # reflectivity: +-1 for polarized photoproduction; `None`` for unpolarized production
   l:    int  # orbital angular momentum
   m:    int  # projection quantum number of l
 
   @property
   def label(self) -> str:
     """Returns string to construct `TObject` or file names"""
-    return f"[{self.l}]_{self.m}_" + ("p" if self.refl > 0 else "m")
+    return f"[{self.l}]_{self.m}" + (
+      ""   if self.refl is None else
+      "_p" if self.refl > 0 else
+      "_m"
+    )
 
   @property
   def title(self) -> str:
     """Returns `TLatex` string for titles"""
-    return f"[{self.l}]_{{{self.m}}}" + "^{(" + ("#plus" if self.refl > 0 else "#minus") + ")}"
+    return f"[{self.l}]_{{{self.m}}}" + (
+      ""           if self.refl is None else
+      "^{(#plus)}" if self.refl > 0 else
+      "^{(#minus)}"
+    )
 
 
 @dataclass
@@ -63,9 +71,10 @@ class AmplitudeValue:
 @dataclass
 class AmplitudeSet:
   """Container class that stores partial-wave amplitudes, makes them accessible by quantum numbers, and calculates spin-density matrix elements and moments"""
-  amps:      InitVar[Sequence[AmplitudeValue]]
-  tolerance: float = 1e-15  # used when checking whether that moments are either real-valued or purely imaginary
-  _amps:     tuple[dict[tuple[int, int], complex], dict[tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes split by positive and negative reflectivity
+  amps:       InitVar[Sequence[AmplitudeValue]]
+  tolerance:  float = 1e-15  # used when checking whether that moments are either real-valued or purely imaginary
+  _amps:      tuple[dict[tuple[int, int], complex], dict[tuple[int, int], complex]] = field(init = False)  # internal storage for amplitudes tuple: positive/ negative reflectivity, dict: key = (l, m), value = moment
+  _polarized: bool = field(init = False)  # indicates whether amplitudes are for polarized photoproduction or unpolarized production
 
   def __post_init__(
     self,
@@ -73,49 +82,84 @@ class AmplitudeSet:
   ) -> None:
     """Constructs object from list"""
     self._amps = ({}, {})
+    # check that reflectivities are consistent
+    if all(amp.qn.refl is None for amp in amps):
+      self._polarized = False
+    elif all(amp.qn.refl is not None and abs(amp.qn.refl) == 1 for amp in amps):
+      self._polarized = True
+    else:
+      raise ValueError("Reflectivity quantum numbers of partial-wave amplitudes can either be all None (unpolarized production) or all +-1 (polarized photoproduction)")
     for amp in amps:
       self[amp.qn] = amp.val
+
+  @property
+  def polarized(self) -> bool:
+    """Returns `True` if amplitudes are for polarized photoproduction and `False` for unpolarized production"""
+    return self._polarized
+
+  def _checkRefl(
+    self,
+    refl: int | None,
+  ) -> None:
+    """Checks whether given reflectivity quantum number matches the partial-wave amplitudes"""
+    if self.polarized:
+      assert refl is not None and abs(refl) == 1, f"Reflectivity quantum number must be +-1 for polarized photoproduction; got {refl}"
+    else:
+      assert refl is None, f"Reflectivity quantum number must be `None` for unpolarized production; got {refl}"
+
+  def _reflIndex(
+    self,
+    refl: int | None,
+  ) -> int:
+    """Returns index to access `_amps` tuple"""
+    self._checkRefl(refl)
+    return 0 if (refl is None or refl == +1) else 1
 
   def __getitem__(
     self,
     subscript: QnWaveIndex,
   ) -> AmplitudeValue:
     """Returns partial-wave amplitude for given quantum numbers; returns 0 for non-existing amplitudes"""
-    assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
-    reflIndex = 0 if subscript.refl == +1 else 1
-    return AmplitudeValue(subscript, self._amps[reflIndex].get((subscript.l, subscript.m), 0 + 0j))
+    return AmplitudeValue(subscript, self._amps[self._reflIndex(subscript.refl)].get((subscript.l, subscript.m), 0 + 0j))
 
   def __setitem__(
     self,
     subscript: QnWaveIndex,
     amp:       complex,
   ) -> None:
-    """Returns partial-wave amplitude for given quantum numbers"""
-    assert abs(subscript.refl) == 1, f"Reflectivity quantum number can only be +-1; got {subscript.refl}."
-    reflIndex = 0 if subscript.refl == +1 else 1
-    self._amps[reflIndex][(subscript.l, subscript.m)] = amp
+    """Sets partial-wave amplitude for given quantum numbers"""
+    self._amps[self._reflIndex(subscript.refl)][(subscript.l, subscript.m)] = amp
 
   def amplitudes(
     self,
-    onlyRefl: int | None = None,  # if set to +-1 only waves with the corresponding reflectivities
+    onlyRefl: int | None = None,  # if set to +-1 only waves with the corresponding reflectivities are returned; for all other values all amplitudes are returned
   ) -> Generator[AmplitudeValue, None, None]:
     """Returns all amplitude values up maximum spin; optionally filtered by reflectivity"""
-    assert onlyRefl is None or abs(onlyRefl) == 1, f"Invalid reflectivity value f{onlyRefl}; expect +1, -1, or None"
-    reflIndices: tuple[int, ...] = (0, 1)
-    if onlyRefl == +1:
-      reflIndices = (0, )
-    elif onlyRefl == -1:
-      reflIndices = (1, )
+    reflIndices: tuple[int, ...] = (0, 1) if self.polarized else (0, )
+    if self.polarized:
+      if onlyRefl is not None:
+        self._checkRefl(onlyRefl)
+      if (onlyRefl == +1):
+        reflIndices = (0, )
+      elif onlyRefl == -1:
+        reflIndices = (1, )
     for reflIndex in reflIndices:
       for l in range(self.maxSpin + 1):
         for m in range(-l, l + 1):
-          yield self[QnWaveIndex(refl = (+1 if reflIndex == 0 else -1), l = l, m = m)]
+          yield self[QnWaveIndex(
+            refl = (
+              None if not self.polarized else
+              +1   if reflIndex == 0 else
+              -1
+            ),
+            l = l, m = m
+          )]
 
   @property
   def maxSpin(self) -> int:
     """Returns maximum spin of wave set ignoring 0 amplitudes"""
     maxl = 0
-    for reflIndex in (0, 1):
+    for reflIndex in (0, 1) if self.polarized else (0, ):
       for (l, _), val in self._amps[reflIndex].items():
         if val != 0:
           maxl = max(l, maxl)
@@ -123,21 +167,27 @@ class AmplitudeSet:
 
   def photoProdSpinDensElements(
     self,
-    refl: int,  # reflectivity
+    refl: int | None,  # reflectivity
     l1:   int,  # l
     l2:   int,  # l'
     m1:   int,  # m
     m2:   int,  # m'
   ) -> tuple[complex, complex, complex]:
     """Returns elements of spin-density matrix components (0^rho^ll'_mm', 1^rho^ll'_mm', 2^rho^ll'_mm') with given quantum numbers calculated from partial-wave amplitudes assuming rank 1"""
+    self._checkRefl(refl)
     qn1     = QnWaveIndex(refl, l1,  m1)
     qn1NegM = QnWaveIndex(refl, l1, -m1)
     qn2     = QnWaveIndex(refl, l2,  m2)
     qn2NegM = QnWaveIndex(refl, l2, -m2)
     rhos: list[complex] = 3 * [0 + 0j]
-    rhos[0] =                    (           self[qn1    ].val * self[qn2].val.conjugate() + (-1)**(m1 - m2) * self[qn1NegM].val * self[qn2NegM].val.conjugate())  # Eq. (150)
-    rhos[1] =            -refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() + (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (151)
-    rhos[2] = -(0 + 1j) * refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() - (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (152)
+    if self.polarized:
+      rhos[0] =                    (           self[qn1    ].val * self[qn2].val.conjugate() + (-1)**(m1 - m2) * self[qn1NegM].val * self[qn2NegM].val.conjugate())  # Eq. (150)
+      rhos[1] =            -refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() + (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (151)
+      rhos[2] = -(0 + 1j) * refl * ((-1)**m1 * self[qn1NegM].val * self[qn2].val.conjugate() - (-1)**m2        * self[qn1    ].val * self[qn2NegM].val.conjugate())  # Eq. (152)
+    else:
+      rhos[0] = self[qn1].val * self[qn2].val.conjugate() + (-1)**(m1 - m2) * self[qn1NegM].val * self[qn2NegM].val.conjugate()
+      rhos[1] = 0 + 0j
+      rhos[2] = 0 + 0j
     return (rhos[0], rhos[1], rhos[2])
 
   def photoProdMoments(
@@ -151,7 +201,7 @@ class AmplitudeSet:
     # Eqs. (154) to (156) assuming that rank is 1
     moments:        list[complex] = 3 * [0 + 0j]
     momentFormulas: list[str]     = [f"H_{i}({L}, {M}) =" for i in range(3)]
-    for refl in (-1, +1):
+    for refl in (-1, +1) if self.polarized else (None, ):
       for amp1 in self.amplitudes(onlyRefl = refl):
         l1 = amp1.qn.l
         m1 = amp1.qn.m
@@ -162,18 +212,20 @@ class AmplitudeSet:
               py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 0,      0,     0,      ignore_invalid = True)  # (l_2, 0;    L, 0 | l_1, 0  )
             * py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (l_2, m_2;  L, M | l_1, m_1)
           )
-          if term == 0:  # unphysical Clebsch-Gordan
+          if term == 0:  # unphysical combination of angular-momentum quantum numbers -> zero Clebsch-Gordan coefficient
             continue
           rhos: tuple[complex, complex, complex] = self.photoProdSpinDensElements(refl, l1, l2, m1, m2)
-          moments[0] +=  term * rhos[0]  # H_0; Eq. (124)
-          moments[1] += -term * rhos[1]  # H_1; Eq. (125)
-          moments[2] += -term * rhos[2]  # H_2; Eq. (125)
+          moments[0] += term * rhos[0]  # H_0; Eqs. (29) and (124)
+          if self.polarized:
+            moments[1] -= term * rhos[1]  # H_1; Eq. (125)
+            moments[2] -= term * rhos[2]  # H_2; Eq. (125)
           if printMomentFormulas:
-            momentFormulas[0] += "" if np.isclose(rhos[0], 0) else f" + {term} * rho_0(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[0]}"
-            momentFormulas[1] += "" if np.isclose(rhos[1], 0) else f" - {term} * rho_1(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[1]}"
-            momentFormulas[2] += "" if np.isclose(rhos[2], 0) else f" - {term} * rho_2(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[2]}"
+            momentFormulas[0] += "" if np.isclose(rhos[0], 0) else f" + {term} * rho_0(" + ("" if refl is None else f"refl = {refl}, ") + f"l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[0]}"
+            if self.polarized:
+              momentFormulas[1] += "" if np.isclose(rhos[1], 0) else f" - {term} * rho_1(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[1]}"
+              momentFormulas[2] += "" if np.isclose(rhos[2], 0) else f" - {term} * rho_2(refl = {refl}, l1 = {l1}, m1 = {m1}, l2 = {l2}, m2 = {m2})] = {rhos[2]}"
     if printMomentFormulas:
-      print(f"Moment formulas:"
+      print("Moment formulas:"
             + ("" if np.isclose(moments[0], 0) else f"\n    {momentFormulas[0]} = {moments[0]}")
             + ("" if np.isclose(moments[1], 0) else f"\n    {momentFormulas[1]} = {moments[1]}")
             + ("" if np.isclose(moments[2], 0) else f"\n    {momentFormulas[2]} = {moments[2]}"))
@@ -187,7 +239,7 @@ class AmplitudeSet:
     printMomentFormulas: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
-    momentIndices = MomentIndices(maxL, polarized = True)
+    momentIndices = MomentIndices(maxL, polarized = self.polarized)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = np.complex128)
     norm: float = 1.0
     for L in range(maxL + 1):
@@ -211,7 +263,12 @@ class AmplitudeSet:
           elif isinstance(normalize, int) and normalize > 0:
             # normalize all moments such that H_0(0, 0) = given number of events
             norm = moments[0].real / float(normalize)
-        for momentIndex, moment in enumerate(moments[:2 if M == 0 else 3]):
+        momentsRange = (
+          1 if not self.polarized else
+          2 if M == 0 else
+          3
+        )
+        for momentIndex, moment in enumerate(moments[:momentsRange]):
           qnIndex   = QnMomentIndex(momentIndex, L, M)
           flatIndex = momentIndices[qnIndex]
           momentsFlatIndex[flatIndex] = moment / norm
@@ -224,7 +281,7 @@ class AmplitudeSet:
 
   def intensityFormula(
     self,
-    polarization: float,         # photon-beam polarization
+    polarization: float | None,  # photon-beam polarization
     thetaFormula: str,           # formula for polar angle theta [rad]
     phiFormula:   str,           # formula for azimuthal angle phi [rad]
     PhiFormula:   str,           # formula for angle Phi between photon polarization and production plane[rad]
@@ -233,7 +290,7 @@ class AmplitudeSet:
     """Returns formula for intensity calculated from partial-wave amplitudes assuming rank-1 spin-density matrix"""
     # constructed formula uses functions defined in `basisFunctions.C
     intensityComponentTerms: list[tuple[str, str, str]] = []  # summands in Eq. (161) separated by intensity component
-    for refl in (-1, +1):
+    for refl in (-1, +1) if self.polarized else (None, ):
       for amp1 in self.amplitudes(onlyRefl = refl):
         l1 = amp1.qn.l
         m1 = amp1.qn.m
@@ -253,11 +310,11 @@ class AmplitudeSet:
     for iComponent in range(3):
       intensityComponentsFormula.append(f"({' + '.join(filter(None, (term[iComponent] for term in intensityComponentTerms)))})")
     # sum intensity components
-    intensityFormula = (
-      f"std::real({intensityComponentsFormula[0]} "
-      f"- {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula}) "
-      f"- {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula}))"
-    )  # Eq. (120)
+    intensityFormula = f"std::real({intensityComponentsFormula[0]}"
+    if self.polarized:  # Eq. (120)
+      intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"
+      intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
+    intensityFormula += ")"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
