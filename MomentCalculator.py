@@ -234,9 +234,10 @@ class AmplitudeSet:
   def photoProdMomentSet(
     self,
     maxL:                int,  # maximum L quantum number of moments
-    normalize:           bool | int = True,  # if set to true, moment values are normalized to H_0(0, 0)
-                                             # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
-    printMomentFormulas: bool = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
+    normalize:           bool | int = True,   # if set to true, moment values are normalized to H_0(0, 0)
+                                              # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
+    printMomentFormulas: bool       = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
+    binCenters:          dict[KinematicBinningVariable, float] = {}  # center values of variables that define kinematic bin of `MomentResult`
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL, polarized = self.polarized)
@@ -273,8 +274,9 @@ class AmplitudeSet:
           flatIndex = momentIndices[qnIndex]
           momentsFlatIndex[flatIndex] = moment / norm
     HTruth = MomentResult(
-      indices = momentIndices,
-      label   = "true",
+      indices    = momentIndices,
+      binCenters = binCenters,
+      label      = "true",
     )
     HTruth._valsFlatIndex = momentsFlatIndex
     return HTruth
