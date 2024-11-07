@@ -290,7 +290,7 @@ class AmplitudeSet:
     printFormula: bool = False,  # if set formula for calculation of intensity is printed
   ) -> str:
     """Returns formula for intensity calculated from partial-wave amplitudes assuming rank-1 spin-density matrix"""
-    # constructed formula uses functions defined in `basisFunctions.C
+    # constructed formula uses functions defined in `basisFunctions.C`
     intensityComponentTerms: list[tuple[str, str, str]] = []  # summands in Eq. (161) separated by intensity component
     for refl in (-1, +1) if self.polarized else (None, ):
       for amp1 in self.amplitudes(onlyRefl = refl):
@@ -314,6 +314,7 @@ class AmplitudeSet:
     # sum intensity components
     intensityFormula = f"std::real({intensityComponentsFormula[0]}"
     if self.polarized:  # Eq. (120)
+      assert polarization is not None, f"For polarized photoproduction, `polarization` must not be `None`"
       intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"
       intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
     intensityFormula += ")"
