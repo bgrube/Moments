@@ -177,27 +177,34 @@ def makeAllPlots(
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
-  momentResultsClas = readMomentResultsClas(momentIndices, cfg.binVarMass)
-  momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
+  # momentResultsCompare      = readMomentResultsClas(momentIndices, cfg.binVarMass)
+  # momentResultsCompareColor = ROOT.kGray + 1
+  # momentResultsCompareLabel = "CLAS"
+  momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa.pkl")
+  momentResultsCompareColor = ROOT.kBlue + 1
+  momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D}"
+  momentResultsJpac         = readMomentResultsJpac(momentIndices, cfg.binVarMass)
+  momentResultsJpacLabel    = "JPAC"
+  overlayMomentResultsJpac  = False
 
-  # normalize CLAS and JPAC moments
-  normalizeByIntegral = True  # if false CLAS and JPAC moments are normalized to the maximum bin
+  # normalize comparison and JPAC moments
+  normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
   if normalizeByIntegral:
     # loop over mass bins and sum up H(0, 0) values
-    H000Sum = H000SumClas = H000SumJpac = 0.0
-    for HPhys, HClas, HJpac in zip(momentResultsPhys, momentResultsClas, momentResultsJpac):
+    H000Sum = H000SumComp = H000SumJpac = 0.0
+    for HPhys, HComp, HJpac in zip(momentResultsPhys, momentResultsCompare, momentResultsJpac):
       H000Sum     += HPhys[H000Index].val.real
-      H000SumClas += HClas[H000Index].val.real
+      H000SumComp += HComp[H000Index].val.real
       # H000SumJpac += HJpac[H000Index].val.real
-    momentResultsClas.scaleBy(H000Sum / H000SumClas)
-    momentResultsJpac.scaleBy(H000Sum / H000SumClas)  # use same factor as for CLAS
+    momentResultsCompare.scaleBy(H000Sum / H000SumComp)
+    momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
     # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
   else:
     normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
     H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
-    momentResultsClas.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)
-    momentResultsJpac.scaleBy(H000Value / momentResultsClas[normMassBinIndex][H000Index].val.real)  # use same factor as for CLAS
+    momentResultsCompare.scaleBy(H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)
+    momentResultsJpac.scaleBy   (H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)  # use same factor as for comparison moments
     # momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
 
   if True:
@@ -205,7 +212,7 @@ def makeAllPlots(
       # plot moments in each mass bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         HMeas = momentResultsMeas[massBinIndex]
-        HClas = momentResultsClas[massBinIndex]
+        HComp = momentResultsCompare[massBinIndex]
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
         # print(f"True moments for kinematic bin {title}:\n{HTruth}")
@@ -214,11 +221,11 @@ def makeAllPlots(
         plotMomentsInBin(
           HData             = HPhys,
           normalizedMoments = cfg.normalizeMoments,
-          HTruth            = HClas,
+          HTruth            = HComp,
           pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
-          legendLabels      = ("Moment", "CLAS"),
+          legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
-          truthColor        = ROOT.kGray + 1,
+          truthColor        = momentResultsCompareColor,
         )
         plotMomentsInBin(
           HData             = HMeas,
@@ -238,17 +245,17 @@ def makeAllPlots(
           graphTitle = f"({binLabel})"
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
-            HTruth            = HClas,
+            HTruth            = HComp,
             pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
-            HTruthLabel       = "CLAS",
+            HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
-            HTruth            = HClas,
+            HTruth            = HComp,
             pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
-            HTruthLabel       = "CLAS",
+            HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
@@ -259,33 +266,36 @@ def makeAllPlots(
       # plot mass dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
         # get histogram with moment values from JPAC fit
-        HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
-        histJpac = makeMomentHistogram(
-          HVals      = HValsJpac,
-          momentPart = "Re",
-          histName   = "JPAC",
-          histTitle  = "",
-          binning    = cfg.massBinning,
-          plotTruth  = False,
-          plotUncert = True,
-        )
-        histJpacBand = histJpac.Clone(f"{histJpac.GetName()}_band")
-        histJpac.SetLineColor(ROOT.kBlue + 1)
-        histJpac.SetLineWidth(2)
-        histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
+        histJpac: ROOT.TH1D | None = None
+        if overlayMomentResultsJpac:
+          HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
+          histJpac = makeMomentHistogram(
+            HVals      = HValsJpac,
+            momentPart = "Re",
+            histName   = momentResultsJpacLabel,
+            histTitle  = "",
+            binning    = cfg.massBinning,
+            plotTruth  = False,
+            plotUncert = True,
+          )
+          if histJpac is not None:
+            histJpacBand = histJpac.Clone(f"{histJpac.GetName()}_band")
+            histJpac.SetLineColor(ROOT.kBlue + 1)
+            histJpac.SetLineWidth(2)
+            histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         plotMoments1D(
           momentResults     = momentResultsPhys,
           qnIndex           = qnIndex,
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
-          momentResultsTrue = momentResultsClas,
+          momentResultsTrue = momentResultsCompare,
           pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
           histTitle         = qnIndex.title,
           plotLegend        = True,
-          legendLabels      = ("Moment", "CLAS"),
+          legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
-          truthColor        = ROOT.kGray + 1,
-          histsToOverlay    = {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          truthColor        = momentResultsCompareColor,
+          histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
               (histJpac,     "HIST L", histJpac.GetName()),
               (histJpacBand,     "E3", ""),
