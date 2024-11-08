@@ -255,7 +255,7 @@ if __name__ == "__main__":
         if True:
           with timer.timeThis(f"Time to load moments from partial-wave analysis"):
             readMomentResultsPwa(
-              dataFileName          = "./dataPhotoProdPiPiUnpol/amplitudes_range_tbin.txt",
+              dataFileName          = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt",
               maxL                  = CFG.maxL,
               binVarMass            = CFG.binVarMass,
               momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa.pkl",
