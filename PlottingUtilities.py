@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import ctypes
 from dataclasses import dataclass
 import functools
 import matplotlib as mpl
@@ -239,6 +240,25 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   ROOT.gStyle.SetStatFormat("8.8g")
   ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
   ROOT.gStyle.SetTitleOffset(1.35, "Y")
+
+
+def convertGraphToHist(
+  graph:     ROOT.TGraphErrors,
+  binning:   tuple[int, float, float],
+  histName:  str,
+  histTitle: str = "",
+) -> ROOT.TH1D:
+  """Converts `TGraphErrors` to `TH1D` assuming equidistant binning"""
+  hist = ROOT.TH1D(histName, histTitle, *binning)
+  for pointIndex in range(graph.GetN()):
+    x = ctypes.c_double(0.0)
+    y = ctypes.c_double(0.0)
+    graph.GetPoint(pointIndex, x, y)
+    yErr = graph.GetErrorY(pointIndex)
+    histBin = hist.FindFixBin(x)
+    hist.SetBinContent(histBin, y)
+    hist.SetBinError  (histBin, yErr)
+  return hist
 
 
 def plotRealMatrix(
