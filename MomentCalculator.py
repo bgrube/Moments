@@ -14,6 +14,7 @@ from dataclasses import (
 )
 from enum import Enum
 import functools
+import math
 import numpy as np
 import nptyping as npt
 import pickle
@@ -956,6 +957,42 @@ class MomentResult:
     """Loads `MomentResult` from pickle file"""
     with open(pickleFileName, "rb") as file:
       return pickle.load(file)
+
+  def intensityFormula(
+    self,
+    polarization: float | None,  # photon-beam polarization
+    thetaFormula: str,           # formula for polar angle theta [rad]
+    phiFormula:   str,           # formula for azimuthal angle phi [rad]
+    PhiFormula:   str,           # formula for angle Phi between photon polarization and production plane[rad]
+    printFormula: bool = False,  # if set formula for calculation of intensity is printed
+  ) -> str:
+    """Returns formula for intensity calculated from moment values"""
+    # constructed formula uses functions defined in `basisFunctions.C`
+    intensityComponentTerms: tuple[list[str], list[str], list[str]] = ([], [], [])  # summands in Eqs. (150) to (152) separated by intensity component
+    for momentIndex in range(3) if self.indices.polarized else range(1):
+      for L in range(self.indices.maxL + 1):
+        for M in range(L + 1):
+          YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
+          HLM = self[QnMomentIndex(momentIndex, L, M)].val
+          intensityComponentTerms[momentIndex].append(
+            f"{np.sqrt((2 * L + 1) / (4 * math.pi))} * {1 if M == 0 else 2} "
+            f"* {HLM.imag if momentIndex == 2 else HLM.real} * {'Im' if momentIndex == 2 else 'Re'}{YLM}"
+          )
+    # sum all terms for each intensity component
+    intensityComponentsFormula = [""] * 3
+    for momentIndex, terms in enumerate(intensityComponentTerms):
+      intensityComponentsFormula[momentIndex] = f"({' + '.join(filter(None, terms))})"
+    if self.indices.polarized:
+      intensityComponentsFormula[1] = f"(-{intensityComponentsFormula[1]})"
+    # sum intensity components
+    intensityFormula = f"{intensityComponentsFormula[0]}"
+    if self.indices.polarized:  # Eq. (120)
+      assert polarization is not None, f"For polarized photoproduction, `polarization` must not be `None`"
+      intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"
+      intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
+    if printFormula:
+      print(f"Intensity formula = {intensityFormula}")
+    return intensityFormula
 
 
 def constructMomentResultFrom(
