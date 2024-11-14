@@ -97,13 +97,13 @@ class AnalysisConfig:
 CFG = AnalysisConfig()
 
 
-
 def readMomentResultsPwa(
   dataFileName:          str,
-  maxL:                  int,
-  binVarMass:            KinematicBinningVariable,  # binning variable for mass bins
-  momentResultsFileName: str | None = None,  # if not `None`, moments are written to this file; if file already exists moments are read from this file instead of recalculating them
-  overwriteExistingFile: bool = False,  # False: read values from existing file; True: recalculate moments and write new file
+  maxL:                  int,  # maximum L quantum number of moments
+  waves:                 list[tuple[str, QnWaveIndex]],  # wave labels and quantum numbers
+  binVarMass:            KinematicBinningVariable,       # binning variable for mass bins
+  momentResultsFileName: str | None = None,   # if not `None`, moments are written to this file; if file already exists moments are read from this file instead of recalculating them
+  overwriteExistingFile: bool       = False,  # False: read values from existing file; True: recalculate moments and write new file
 ) -> MomentResultsKinematicBinning:
   """Reads the partial-amplitude values from the PWA fit and calculates the corresponding moments"""
   if momentResultsFileName and not overwriteExistingFile:
@@ -113,11 +113,11 @@ def readMomentResultsPwa(
     except FileNotFoundError:
       print(f"Could not find file '{momentResultsFileName}'. Calculating PWA moments.")
   print(f"Reading partial-wave amplitude values from file '{dataFileName}'")
-  waves = ["S_0", "P_0", "P_+1", "P_-1", "D_0", "D_+1", "D_+2", "D_-1", "D_-2"]
+  waveLabels = [wave[0] for wave in waves]
   amplitudesDf = pd.read_csv(
     dataFileName,
     sep   = r"\s+",  # values are whitespace separated
-    names = ["mass", ] + waves,
+    names = ["mass", ] + waveLabels,
   )
   # converts columns to correct types
   def strToComplex(s: str) -> complex:
@@ -125,24 +125,16 @@ def readMomentResultsPwa(
     real, imag = s.strip("()").split(",")
     return complex(float(real), float(imag))
   for wave in waves:
-    amplitudesDf[wave] = amplitudesDf[wave].apply(strToComplex)
+    amplitudesDf[wave[0]] = amplitudesDf[wave[0]].apply(strToComplex)
   # convert dataframe to MomentResultsKinematicBinning
   momentResults: list[MomentResult] = []
   for amplitudesRow in amplitudesDf.to_dict(orient = "records"):  # iterate over list of dictionaries
     massBinCenter = amplitudesRow["mass"]
     print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV")
-    partialWaveAmplitudes = [
-      AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val = amplitudesRow["S_0" ]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = amplitudesRow["P_-1"]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val = amplitudesRow["P_0" ]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = amplitudesRow["P_+1"]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val = amplitudesRow["D_-2"]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val = amplitudesRow["D_-1"]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val = amplitudesRow["D_0" ]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val = amplitudesRow["D_+1"]),
-      AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = amplitudesRow["D_+2"]),
-    ]
-    amplitudeSet = AmplitudeSet(amps = partialWaveAmplitudes, tolerance = 1e-8)
+    amplitudeSet = AmplitudeSet(
+      amps      = [AmplitudeValue(qn = wave[1], val = amplitudesRow[wave[0]]) for wave in waves],
+      tolerance = 1e-8,
+    )
     momentResults.append(
       amplitudeSet.photoProdMomentSet(
         maxL                = maxL,
@@ -235,7 +227,8 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  for maxL in (2, 4, 5, 8, 10, 12, 20):
+  # for maxL in (2, 4, 5, 8, 10, 12, 20):
+  for maxL in (8, ):
     print(f"Performing moment analysis for L_max = {maxL}")
     CFG.maxL = maxL
     logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
@@ -254,11 +247,37 @@ if __name__ == "__main__":
 
         if True:
           with timer.timeThis(f"Time to load moments from partial-wave analysis"):
+            # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
+            pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+            waves: list[tuple[str, QnWaveIndex]] = [  # order must match columns in file with partial-wave amplitudes
+              ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
+              # P-waves
+              ("P_0",  QnWaveIndex(refl = None, l = 1, m =  0)),
+              ("P_+1", QnWaveIndex(refl = None, l = 1, m = +1)),
+              ("P_-1", QnWaveIndex(refl = None, l = 1, m = -1)),
+              # D-waves
+              ("D_0",  QnWaveIndex(refl = None, l = 2, m =  0)),
+              ("D_+1", QnWaveIndex(refl = None, l = 2, m = +1)),
+              ("D_+2", QnWaveIndex(refl = None, l = 2, m = +2)),
+              ("D_-1", QnWaveIndex(refl = None, l = 2, m = -1)),
+              ("D_-2", QnWaveIndex(refl = None, l = 2, m = -2)),
+              # F-waves
+              ("F_0",  QnWaveIndex(refl = None, l = 3, m =  0)),
+              ("F_+1", QnWaveIndex(refl = None, l = 3, m = +1)),
+              ("F_+2", QnWaveIndex(refl = None, l = 3, m = +2)),
+              ("F_+3", QnWaveIndex(refl = None, l = 3, m = +3)),
+              ("F_-1", QnWaveIndex(refl = None, l = 3, m = -1)),
+              ("F_-2", QnWaveIndex(refl = None, l = 3, m = -2)),
+              ("F_-3", QnWaveIndex(refl = None, l = 3, m = -3)),
+            ]
             readMomentResultsPwa(
-              dataFileName          = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt",
+              dataFileName          = pwaAmplitudesFileName,
               maxL                  = CFG.maxL,
+              waves                 = waves,
               binVarMass            = CFG.binVarMass,
-              momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa.pkl",
+              # momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPD.pkl",
+              momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPDF.pkl",
+              # overwriteExistingFile = True,
               overwriteExistingFile = False,
             )  # binning used in PWA: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40, _var = CFG.binVarMass)
 
