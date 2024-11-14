@@ -140,7 +140,7 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}", 50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",   "HfCosTheta", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{HF}",      50,  0.28, 2.28,  72, -180, +180), "MassPiPi",   "HfPhiDeg",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsPhiDeg",     ";m_{#pi#pi} [GeV];#Phi",           50,  0.28, 2.28,  72, -180, +180), "MassPiPi",   "PhiDeg",     "eventWeight"),
-    df.Histo3D(ROOT.RDF.TH3DModel(f"hDataPhiDegVsHfPhiDegVsHfCosTheta", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosTheta", "HfPhiDeg", "PhiDeg", "eventWeight"),
+    df.Histo3D(ROOT.RDF.TH3DModel("hDataPhiDegVsHfPhiDegVsHfCosTheta", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosTheta", "HfPhiDeg", "PhiDeg", "eventWeight"),
   )
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")

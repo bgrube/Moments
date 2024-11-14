@@ -10,12 +10,12 @@ import ROOT
 CPP_CODE_MASSPAIR = """
 double
 massPair(
-  const double Px1, const double Py1, const double Pz1, const double E1,
-  const double Px2, const double Py2, const double Pz2, const double E2
+	const double Px1, const double Py1, const double Pz1, const double E1,
+	const double Px2, const double Py2, const double Pz2, const double E2
 )	{
-  const TLorentzVector p1(Px1, Py1, Pz1, E1);
-  const TLorentzVector p2(Px2, Py2, Pz2, E2);
-  return (p1 + p2).M();
+	const TLorentzVector p1(Px1, Py1, Pz1, E1);
+	const TLorentzVector p2(Px2, Py2, Pz2, E2);
+	return (p1 + p2).M();
 }
 """
 
@@ -28,23 +28,23 @@ CPP_CODE_BIGPHI = """
 // code taken from https://github.com/JeffersonLab/halld_sim/blob/538677ee1347891ccefa5780e01b158e035b49b1/src/libraries/AMPTOOLS_AMPS/TwoPiAngles.cc#L94
 double
 bigPhi(
-  const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // recoil
-  const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // beam
-  const double polAngle = 0  // polarization angle [deg]
+	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // recoil
+	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // beam
+	const double polAngle = 0  // polarization angle [deg]
 ) {
-  const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
-  const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
-  const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
-  const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-  double Phi = polAngle * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle in lab frame [rad]
-  // ensure [-pi, +pi] range
-  while (Phi > TMath::Pi()) {
-    Phi -= TMath::TwoPi();
-  }
-  while (Phi < -TMath::Pi()) {
-    Phi += TMath::TwoPi();
-  }
-  return Phi;
+	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
+	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
+	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
+	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
+	double Phi = polAngle * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle in lab frame [rad]
+	// ensure [-pi, +pi] range
+	while (Phi > TMath::Pi()) {
+		Phi -= TMath::TwoPi();
+	}
+	while (Phi < -TMath::Pi()) {
+		Phi += TMath::TwoPi();
+	}
+	return Phi;
 }
 """
 
