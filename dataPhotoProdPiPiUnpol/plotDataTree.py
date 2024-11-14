@@ -1,9 +1,31 @@
 #!/usr/bin/env python3
 
 
+from __future__ import annotations
+
+import ctypes
 import os
 
 import ROOT
+
+
+def convertGraphToHist(
+  graph:     ROOT.TGraphErrors,
+  binning:   tuple[int, float, float],
+  histName:  str,
+  histTitle: str = "",
+) -> ROOT.TH1D:
+  """Converts `TGraphErrors` to `TH1D` assuming equidistant binning"""
+  hist = ROOT.TH1D(histName, histTitle, *binning)
+  for pointIndex in range(graph.GetN()):
+    x = ctypes.c_double(0.0)
+    y = ctypes.c_double(0.0)
+    graph.GetPoint(pointIndex, x, y)
+    yErr = graph.GetErrorY(pointIndex)
+    histBin = hist.FindFixBin(x)
+    hist.SetBinContent(histBin, y)
+    hist.SetBinError  (histBin, yErr)
+  return hist
 
 
 if __name__ == "__main__":
@@ -175,21 +197,31 @@ if __name__ == "__main__":
     canv.SaveAs(f"{hist.GetName()}_diff.pdf")
   histFileAlex.Close()
 
-  # overlay pipi mass distributions from data and from accepted phase-space MC
+  # overlay pipi mass distributions from data, accepted phase-space MC, and total acceptance-weighted intensity from PWA
   lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
   lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
   dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
              .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
   histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 200, 0, 2), "MassPiPi")
   histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 200, 0, 2), "MassPiPi", "eventWeight")
+  pwaPlotFile = ROOT.TFile.Open("./pwa_plots3.root", "READ")
+  histMassPiPiPwa = convertGraphToHist(
+    graph    = pwaPlotFile.Get("Total"),
+    binning  = (56, 0.28, 1.40),
+    histName = "PWA Total Intensity * 0.5",
+  )
+  histMassPiPiPwa.Scale(0.5)
   canv = ROOT.TCanvas()
-  histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events")
-  histStack.Add(histMassPiPiMc.GetValue())
+  histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events / 10 MeV")
+  # histStack.Add(histMassPiPiMc.GetValue())
   histStack.Add(histMassPiPiData.GetValue())
+  histStack.Add(histMassPiPiPwa)
   histMassPiPiMc.SetLineColor  (ROOT.kBlue + 1)
   histMassPiPiData.SetLineColor(ROOT.kRed + 1)
+  histMassPiPiPwa.SetLineColor (ROOT.kGreen + 2)
   histMassPiPiMc.SetMarkerColor  (ROOT.kBlue + 1)
   histMassPiPiData.SetMarkerColor(ROOT.kRed + 1)
+  histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
   histStack.Draw("NOSTACK")
   canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
   canv.SaveAs(f"{histStack.GetName()}.pdf")
