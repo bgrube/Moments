@@ -140,20 +140,22 @@ if __name__ == "__main__":
   lvRecoil = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"
   lvPip    = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"
   lvPim    = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"
-  df = ROOT.RDataFrame(dataTChain) \
-           .Define("MassPiPi",       f"massPair({lvPip}, {lvPim})") \
-           .Define("MassPipP",       f"massPair({lvPip}, {lvRecoil})") \
-           .Define("MassPimP",       f"massPair({lvPim}, {lvRecoil})") \
-           .Define("GjCosTheta",     f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})") \
-           .Define("GjTheta",        "std::acos(GjCosTheta)") \
-           .Define("GjPhi",          f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
-           .Define("GjPhiDeg",       "GjPhi * TMath::RadToDeg()") \
-           .Define("HfCosTheta",     f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
-           .Define("HfCosThetaDiff", f"HfCosTheta - helcostheta_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
-           .Define("HfTheta",        "std::acos(HfCosTheta)") \
-           .Define("HfPhi",          f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})") \
-           .Define("HfPhiDeg",       "HfPhi * TMath::RadToDeg()") \
-           .Define("HfPhiDegDiff",   f"HfPhiDeg - helphideg_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+  df = (
+    ROOT.RDataFrame(dataTChain)
+        .Define("MassPiPi",       f"massPair({lvPip}, {lvPim})")
+        .Define("MassPipP",       f"massPair({lvPip}, {lvRecoil})")
+        .Define("MassPimP",       f"massPair({lvPim}, {lvRecoil})")
+        .Define("GjCosTheta",     f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
+        .Define("GjTheta",        "std::acos(GjCosTheta)")
+        .Define("GjPhi",          f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+        .Define("GjPhiDeg",       "GjPhi * TMath::RadToDeg()")
+        .Define("HfCosTheta",     f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
+        .Define("HfCosThetaDiff", f"HfCosTheta - helcostheta_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+        .Define("HfTheta",        "std::acos(HfCosTheta)")
+        .Define("HfPhi",          f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
+        .Define("HfPhiDeg",       "HfPhi * TMath::RadToDeg()")
+        .Define("HfPhiDegDiff",   f"HfPhiDeg - helphideg_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+  )
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = (
     df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",           ";E_{beam} [GeV];"          + yAxisLabel,  50, 3.55,   3.80),   "E_Beam",         "eventWeight"),
@@ -216,11 +218,11 @@ if __name__ == "__main__":
   # histStack.Add(histMassPiPiMc.GetValue())
   histStack.Add(histMassPiPiData.GetValue())
   histStack.Add(histMassPiPiPwa)
-  histMassPiPiMc.SetLineColor  (ROOT.kBlue + 1)
-  histMassPiPiData.SetLineColor(ROOT.kRed + 1)
-  histMassPiPiPwa.SetLineColor (ROOT.kGreen + 2)
-  histMassPiPiMc.SetMarkerColor  (ROOT.kBlue + 1)
-  histMassPiPiData.SetMarkerColor(ROOT.kRed + 1)
+  histMassPiPiMc.SetLineColor    (ROOT.kBlue  + 1)
+  histMassPiPiMc.SetMarkerColor  (ROOT.kBlue  + 1)
+  histMassPiPiData.SetLineColor  (ROOT.kRed   + 1)
+  histMassPiPiData.SetMarkerColor(ROOT.kRed   + 1)
+  histMassPiPiPwa.SetLineColor   (ROOT.kGreen + 2)
   histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
   histStack.Draw("NOSTACK")
   canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
