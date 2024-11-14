@@ -13,6 +13,7 @@ from __future__ import annotations
 import functools
 import glob
 from io import StringIO
+import math
 import numpy as np
 import pandas as pd
 
@@ -36,6 +37,7 @@ from MomentCalculator import (
   QnMomentIndex,
 )
 from PlottingUtilities import (
+  convertGraphToHist,
   makeMomentHistogram,
   MomentValueAndTruth,
   plotAngularDistr,
@@ -180,11 +182,14 @@ def makeAllPlots(
   # momentResultsCompare      = readMomentResultsClas(momentIndices, cfg.binVarMass)
   # momentResultsCompareColor = ROOT.kGray + 1
   # momentResultsCompareLabel = "CLAS"
-  momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa.pkl")
-  momentResultsCompareColor = ROOT.kBlue + 1
+  momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
   momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D}"
+  # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl")
+  # momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}"
+  momentResultsCompareColor = ROOT.kBlue + 1
   momentResultsJpac         = readMomentResultsJpac(momentIndices, cfg.binVarMass)
   momentResultsJpacLabel    = "JPAC"
+  # overlayMomentResultsJpac  = True
   overlayMomentResultsJpac  = False
 
   # normalize comparison and JPAC moments
@@ -197,7 +202,8 @@ def makeAllPlots(
       H000Sum     += HPhys[H000Index].val.real
       H000SumComp += HComp[H000Index].val.real
       # H000SumJpac += HJpac[H000Index].val.real
-    momentResultsCompare.scaleBy(H000Sum / H000SumComp)
+    momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
+    # momentResultsCompare.scaleBy(H000Sum / H000SumComp)
     momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
     # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
   else:
@@ -283,6 +289,16 @@ def makeAllPlots(
             histJpac.SetLineColor(ROOT.kBlue + 1)
             histJpac.SetLineWidth(2)
             histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
+        histPwaTotalIntensity = None
+        if qnIndex == H000Index:
+          plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
+          histPwaTotalIntensity = convertGraphToHist(
+            graph     = plotFile.Get("Total"),
+            binning   = cfg.massBinning.astuple,
+            histName  = "Total Intensity",
+            histTitle = "",
+          )
+          histPwaTotalIntensity.SetLineColor(ROOT.kGreen + 2)
         plotMoments1D(
           momentResults     = momentResultsPhys,
           qnIndex           = qnIndex,
@@ -295,10 +311,15 @@ def makeAllPlots(
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
-          histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          # histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          #   "Re" : [
+          #     (histJpac,     "HIST L", histJpac.GetName()),
+          #     (histJpacBand,     "E3", ""),
+          #   ],
+          # },
+          histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
-              (histJpac,     "HIST L", histJpac.GetName()),
-              (histJpacBand,     "E3", ""),
+              (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
             ],
           },
         )
@@ -478,7 +499,8 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  for maxL in (2, 4, 5, 8, 10, 12, 20):
+  # for maxL in (2, 4, 5, 8, 10, 12, 20):
+  for maxL in (8, ):
     print(f"Plotting moments for L_max = {maxL}")
     CFG.maxL = maxL
     logFileName = f"{CFG.outFileDirName}/plotMomentsPhotoProdPiPiUnpol.log"
