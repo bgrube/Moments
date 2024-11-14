@@ -12,7 +12,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   PlottingUtilities.setupPlotStyle(rootlogonPath = "../../rootlogon.C")
 
-  plotFileName = "./pwa_plots.root"
+  plotFileName = "./pwa_plots_weight1.root"
   plotFile = ROOT.TFile.Open(plotFileName, "READ")
 
   graphNamesToLabels = {
@@ -38,8 +38,8 @@ if __name__ == "__main__":
     graph.SetLineColor(ROOT.kBlue + 1)
     graph.SetMinimum(0)
     if graphName == "Total":
-      graph.SetMaximum(95e3)
+      graph.SetMaximum(55e3)
     else:
-      graph.SetMaximum(80e3)
+      graph.SetMaximum(15e3)
     graph.SetTitle(f"{graphLabel};" + "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}} [GeV/#it{c}^{2}];Intensity / 20 MeV/#it{c}^{2}")
     canv.SaveAs(f"intensity_{graphName}.pdf")
