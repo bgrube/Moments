@@ -377,8 +377,9 @@ class MomentIndices:
     value: bool
   ) -> None:
     """Sets flag that switches between unpolarized production and polarized photoproduction mode and regenerates index maps"""
-    self.polarized = value
-    self.regenerateIndexMaps()
+    if value != self.polarized:
+      self.polarized = value
+      self.regenerateIndexMaps()
 
   def __len__(self) -> int:
     """Returns total number of moments"""
