@@ -1311,8 +1311,8 @@ class MomentCalculatorsKinematicBinning:
     forceCalculation: bool = False,
   ) -> None:
     """Calculates acceptance integral matrices for all kinematic bins"""
-    for momentsInBin in self:
-      print(f"Calculating acceptance integral matrix for kinematic bin {momentsInBin.binCenters}")
+    for kinBinIndex, momentsInBin in enumerate(self):
+      print(f"Calculating acceptance integral matrix for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
       momentsInBin.calculateIntegralMatrix(forceCalculation)
 
   def calculateMoments(
@@ -1324,7 +1324,7 @@ class MomentCalculatorsKinematicBinning:
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
     for kinBinIndex, momentsInBin in enumerate(self):
-      print(f"Calculating moments for kinematic bin {momentsInBin.binCenters}")
+      print(f"Calculating moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
       momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
 
   @property
