@@ -53,6 +53,7 @@ class AnalysisConfig:
   dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
   psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
   psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
+  polarization:             float | None             = None  # unpolarized data
   _maxL:                    int                      = 8
   # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
   outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
@@ -156,7 +157,6 @@ def calculateAllMoments(
 ) -> None:
   """Performs the moment analysis for the given configuration"""
   # setup MomentCalculators for all mass bins
-  momentIndices = MomentIndices(cfg.maxL)
   momentCalculators = MomentCalculatorsKinematicBinning([])
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
@@ -165,12 +165,12 @@ def calculateAllMoments(
     print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
     dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
     if cfg.limitNmbPsAccEvents > 0:
-      dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! .Range switches to single-threaded mode
+      dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
     print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
     dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
     for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
       massBinRange = cfg.massBinning.binValueRange(massBinIndex)
-      print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
+      print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex + 1} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
       # load data for mass bin
       binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
       print(f"Applying filter '{binMassRangeFilter}' to select kinematic bin")
@@ -188,11 +188,11 @@ def calculateAllMoments(
         data           = dataInBin,
         phaseSpaceData = dataPsAccInBin,
         nmbGenEvents   = nmbPsGenEvents,
-        polarization   = None,
+        polarization   = cfg.polarization,
       )
       momentCalculators.append(
         MomentCalculator(
-          indices              = momentIndices,
+          indices              = MomentIndices(maxL = cfg.maxL, polarized = (cfg.polarization is not None)),
           dataSet              = dataSet,
           binCenters           = {cfg.binVarMass : massBinCenter},
           integralFileBaseName = f"{cfg.outFileDirName}/integralMatrix",
@@ -275,11 +275,11 @@ if __name__ == "__main__":
               maxL                  = CFG.maxL,
               waves                 = waves,
               binVarMass            = CFG.binVarMass,
-              # momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPD.pkl",
-              momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPDF.pkl",
+              momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPD.pkl",
+              # momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPDF.pkl",
               # overwriteExistingFile = True,
               overwriteExistingFile = False,
-            )  # binning used in PWA: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40, _var = CFG.binVarMass)
+            )
 
         calculateAllMoments(CFG, timer)
 
