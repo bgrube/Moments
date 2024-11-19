@@ -202,8 +202,9 @@ def makeAllPlots(
       H000Sum     += HPhys[H000Index].val.real
       H000SumComp += HComp[H000Index].val.real
       # H000SumJpac += HJpac[H000Index].val.real
-    momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
-    # momentResultsCompare.scaleBy(H000Sum / H000SumComp)
+    # momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
+    print(f"!!! scale factor = {H000Sum / H000SumComp}")
+    momentResultsCompare.scaleBy(H000Sum / H000SumComp)
     momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
     # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
   else:
@@ -311,17 +312,17 @@ def makeAllPlots(
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
-          # histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
-          #   "Re" : [
-          #     (histJpac,     "HIST L", histJpac.GetName()),
-          #     (histJpacBand,     "E3", ""),
-          #   ],
-          # },
-          histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
-              (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
+              (histJpac,     "HIST L", histJpac.GetName()),
+              (histJpacBand,     "E3", ""),
             ],
           },
+          # histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          #   "Re" : [
+          #     (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
+          #   ],
+          # },
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,
