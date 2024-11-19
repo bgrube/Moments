@@ -405,11 +405,10 @@ def makeAllPlots(
       )
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         # load data for mass bin
-        massBinRange = cfg.massBinning.binValueRange(massBinIndex)
-        binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
-        dataInBin      = data.Filter     (binMassRangeFilter)
-        dataPsAccInBin = dataPsAcc.Filter(binMassRangeFilter)
-        dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
+        massBinFilter  = cfg.massBinning.binFilter(massBinIndex)
+        dataInBin      = data.Filter     (massBinFilter)
+        dataPsAccInBin = dataPsAcc.Filter(massBinFilter)
+        dataPsGenInBin = dataPsGen.Filter(massBinFilter)
         nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
         # plot angular distributions for mass bin
         if cfg.plotAngularDistributions:

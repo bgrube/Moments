@@ -192,12 +192,12 @@ def calculateAllMoments(
       massBinRange = cfg.massBinning.binValueRange(massBinIndex)
       print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex + 1} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
       # load data for mass bin
-      binMassRangeFilter = f"(({massBinRange[0]} < {cfg.binVarMass.name}) && ({cfg.binVarMass.name} < {massBinRange[1]}))"
-      print(f"Applying filter '{binMassRangeFilter}' to select kinematic bin")
-      dataInBin = data.Filter(binMassRangeFilter)
+      massBinFilter = cfg.massBinning.binFilter(massBinIndex)
+      print(f"Applying filter '{massBinFilter}' to select kinematic bin")
+      dataInBin = data.Filter(massBinFilter)
       print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
-      dataPsAccInBin = dataPsAcc.Filter(binMassRangeFilter)
-      dataPsGenInBin = dataPsGen.Filter(binMassRangeFilter)
+      dataPsAccInBin = dataPsAcc.Filter(massBinFilter)
+      dataPsGenInBin = dataPsGen.Filter(massBinFilter)
       nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
       nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
       print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "

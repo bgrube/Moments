@@ -192,14 +192,14 @@ if __name__ == "__main__":
         print(f"Preparing {binVarMass.name} bin [{massBinIndex} of {len(massBinning)}] at {massBinCenter} {binVarMass.unit} with range {massBinRange} {binVarMass.unit}")
 
         # load data for mass bin
-        binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
-        print(f"Loading real data from tree '{treeName}' in file '{dataFileName}' and applying filter {binMassRangeFilter}")
-        dataInBin = ROOT.RDataFrame(treeName, dataFileName).Filter(binMassRangeFilter)
+        massBinFilter = massBinning.binFilter(massBinIndex)
+        print(f"Loading real data from tree '{treeName}' in file '{dataFileName}' and applying filter {massBinFilter}")
+        dataInBin = ROOT.RDataFrame(treeName, dataFileName).Filter(massBinFilter)
         print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
-        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
-        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {massBinFilter}")
+        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(massBinFilter)
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {massBinFilter}")
+        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(massBinFilter)
         nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
         assert nmbPsGenEvents[-1] == dataPsGenInBin.Sum("eventWeight").GetValue(), f"Event number mismatch: {nmbPsGenEvents[-1]=} vs. {dataPsGenInBin.Sum('eventWeight').GetValue()=}"
         nmbPsAccEvents = dataPsAccInBin.Sum("eventWeight").GetValue()

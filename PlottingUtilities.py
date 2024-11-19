@@ -231,6 +231,19 @@ class HistAxisBinning:
     """Returns value ranges for all bins"""
     return tuple((binCenter - 0.5 * self.binWidth, binCenter + 0.5 * self.binWidth) for binCenter in self)
 
+  def binFilter(
+    self,
+    binIndex: int,
+  ) -> str:
+    """Constructs formula string that can be used to select data for the given bin index"""
+    binRange = self.binValueRange(binIndex)
+    return f"(({binRange[0]} < {self.var.name}) && ({self.var.name} < {binRange[1]}))"
+
+  @property
+  def binFilters(self) -> tuple[str, ...]:
+    """Returns filter formulas for all bins"""
+    return tuple(self.binFilter(binIndex) for binIndex in range(len(self)))
+
 
 def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   """Defines ROOT plotting style"""

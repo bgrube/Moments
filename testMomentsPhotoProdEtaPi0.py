@@ -151,20 +151,20 @@ if __name__ == "__main__":
         print(f"Preparing {binVarMass.name} bin [{massBinIndex} of {len(massBinning)}] at {massBinCenter} {binVarMass.unit} with range {massBinRange} {binVarMass.unit}")
 
         # load data for mass bin
-        binMassRangeFilter = f"(({massBinRange[0]} < {binVarMass.name}) && ({binVarMass.name} < {massBinRange[1]}))"
-        print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}' and applying filter {binMassRangeFilter}")
-        dataSignalAccInBin = ROOT.RDataFrame(treeName, signalAccFileName).Filter(binMassRangeFilter)
+        massBinFilter = massBinning.binFilter(massBinIndex)
+        print(f"Loading accepted signal data from tree '{treeName}' in file '{signalAccFileName}' and applying filter {massBinFilter}")
+        dataSignalAccInBin = ROOT.RDataFrame(treeName, signalAccFileName).Filter(massBinFilter)
         nmbSignalAccEvents = dataSignalAccInBin.Count().GetValue()
-        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(binMassRangeFilter)
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {massBinFilter}")
+        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(massBinFilter)
         nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
-        print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}' and applying filter {binMassRangeFilter}")
-        dataSignalGenInBin = ROOT.RDataFrame(treeName, signalGenFileName).Filter(binMassRangeFilter)
+        print(f"Loading generated signal data from tree '{treeName}' in file '{signalGenFileName}' and applying filter {massBinFilter}")
+        dataSignalGenInBin = ROOT.RDataFrame(treeName, signalGenFileName).Filter(massBinFilter)
         nmbSignalGenEvents.append(dataSignalGenInBin.Count().GetValue())
         print(f"Loaded signal events: number generated = {nmbSignalGenEvents[-1]}, number accepted = {nmbSignalAccEvents}"
               f" -> efficiency = {nmbSignalAccEvents / nmbSignalGenEvents[-1]:.3f}")
-        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {binMassRangeFilter}")
-        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(binMassRangeFilter)
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {massBinFilter}")
+        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(massBinFilter)
         nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
         print(f"Loaded phase-space events: number generated = {nmbPsGenEvents[-1]}, number accepted = {nmbPsAccEvents}"
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
