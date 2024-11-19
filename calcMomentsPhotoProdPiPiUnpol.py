@@ -50,13 +50,18 @@ print = functools.partial(print, flush = True)
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis"""
   treeName:                 str                      = "PiPi"
-  dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
-  psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
-  psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
-  polarization:             float | None             = None  # unpolarized data
+  # dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
+  # psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
+  # psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
+  # polarization:             float | None             = None  # unpolarized data
+  dataFileName:             str                      = f"./dataPhotoProdPiPiPol/data_flat.root"
+  psAccFileName:            str                      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root"
+  psGenFileName:            str                      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root"
+  polarization:             float | None             = 0.0  # read polarization value from input data
   _maxL:                    int                      = 8
   # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
-  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
+  # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
+  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiPol"
   outFileDirName:           str                      = field(init = False)
   outFileNamePrefix:        str                      = field(init = False)
   normalizeMoments:         bool                     = False
@@ -66,8 +71,8 @@ class AnalysisConfig:
   plotAngularDistributions: bool                     = False
   # plotAccIntegralMatrices:  bool                     = True
   plotAccIntegralMatrices:  bool                     = False
-  calcAccPsMoments:         bool                     = True
-  # calcAccPsMoments:         bool                     = False
+  # calcAccPsMoments:         bool                     = True
+  calcAccPsMoments:         bool                     = False
   # plotAccPsMoments:         bool                     = True
   plotAccPsMoments:         bool                     = False
   limitNmbPsAccEvents:      int                      = 0
@@ -75,7 +80,8 @@ class AnalysisConfig:
   binVarMass:               KinematicBinningVariable = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
   # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
   # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
-  massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40, _var = binVarMass)  # binning used in PWA
+  # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40, _var = binVarMass)  # binning used in PWA of unpolarized data
+  massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28, _var = binVarMass)  # binning used in PWA of polarizaed data
 
   def init(self) -> None:
     """Creates output directory and initializes member variables"""
@@ -247,28 +253,54 @@ if __name__ == "__main__":
 
         if True:
           with timer.timeThis(f"Time to load moments from partial-wave analysis"):
-            # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
-            pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+            # # unpolarized data
+            # # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
+            # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+            # waves: list[tuple[str, QnWaveIndex]] = [  # order must match columns in file with partial-wave amplitudes
+            #   ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
+            #   # P-waves
+            #   ("P_0",  QnWaveIndex(refl = None, l = 1, m =  0)),
+            #   ("P_+1", QnWaveIndex(refl = None, l = 1, m = +1)),
+            #   ("P_-1", QnWaveIndex(refl = None, l = 1, m = -1)),
+            #   # D-waves
+            #   ("D_0",  QnWaveIndex(refl = None, l = 2, m =  0)),
+            #   ("D_+1", QnWaveIndex(refl = None, l = 2, m = +1)),
+            #   ("D_+2", QnWaveIndex(refl = None, l = 2, m = +2)),
+            #   ("D_-1", QnWaveIndex(refl = None, l = 2, m = -1)),
+            #   ("D_-2", QnWaveIndex(refl = None, l = 2, m = -2)),
+            #   # # F-waves
+            #   # ("F_0",  QnWaveIndex(refl = None, l = 3, m =  0)),
+            #   # ("F_+1", QnWaveIndex(refl = None, l = 3, m = +1)),
+            #   # ("F_+2", QnWaveIndex(refl = None, l = 3, m = +2)),
+            #   # ("F_+3", QnWaveIndex(refl = None, l = 3, m = +3)),
+            #   # ("F_-1", QnWaveIndex(refl = None, l = 3, m = -1)),
+            #   # ("F_-2", QnWaveIndex(refl = None, l = 3, m = -2)),
+            #   # ("F_-3", QnWaveIndex(refl = None, l = 3, m = -3)),
+            # ]
+            # polarized data
+            pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD.txt"
             waves: list[tuple[str, QnWaveIndex]] = [  # order must match columns in file with partial-wave amplitudes
-              ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
+              # S-waves
+              ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),
+              ("S_0-",  QnWaveIndex(refl = -1, l = 0, m =  0)),
               # P-waves
-              ("P_0",  QnWaveIndex(refl = None, l = 1, m =  0)),
-              ("P_+1", QnWaveIndex(refl = None, l = 1, m = +1)),
-              ("P_-1", QnWaveIndex(refl = None, l = 1, m = -1)),
+              ("P_0+",  QnWaveIndex(refl = +1, l = 1, m =  0)),
+              ("P_+1+", QnWaveIndex(refl = +1, l = 1, m = +1)),
+              ("P_-1+", QnWaveIndex(refl = +1, l = 1, m = -1)),
+              ("P_0-",  QnWaveIndex(refl = -1, l = 1, m =  0)),
+              ("P_+1-", QnWaveIndex(refl = -1, l = 1, m = +1)),
+              ("P_-1-", QnWaveIndex(refl = -1, l = 1, m = -1)),
               # D-waves
-              ("D_0",  QnWaveIndex(refl = None, l = 2, m =  0)),
-              ("D_+1", QnWaveIndex(refl = None, l = 2, m = +1)),
-              ("D_+2", QnWaveIndex(refl = None, l = 2, m = +2)),
-              ("D_-1", QnWaveIndex(refl = None, l = 2, m = -1)),
-              ("D_-2", QnWaveIndex(refl = None, l = 2, m = -2)),
-              # F-waves
-              ("F_0",  QnWaveIndex(refl = None, l = 3, m =  0)),
-              ("F_+1", QnWaveIndex(refl = None, l = 3, m = +1)),
-              ("F_+2", QnWaveIndex(refl = None, l = 3, m = +2)),
-              ("F_+3", QnWaveIndex(refl = None, l = 3, m = +3)),
-              ("F_-1", QnWaveIndex(refl = None, l = 3, m = -1)),
-              ("F_-2", QnWaveIndex(refl = None, l = 3, m = -2)),
-              ("F_-3", QnWaveIndex(refl = None, l = 3, m = -3)),
+              ("D_0+",  QnWaveIndex(refl = +1, l = 2, m =  0)),
+              ("D_+1+", QnWaveIndex(refl = +1, l = 2, m = +1)),
+              ("D_+2+", QnWaveIndex(refl = +1, l = 2, m = +2)),
+              ("D_-1+", QnWaveIndex(refl = +1, l = 2, m = -1)),
+              ("D_-2+", QnWaveIndex(refl = +1, l = 2, m = -2)),
+              ("D_0-",  QnWaveIndex(refl = -1, l = 2, m =  0)),
+              ("D_+1-", QnWaveIndex(refl = -1, l = 2, m = +1)),
+              ("D_+2-", QnWaveIndex(refl = -1, l = 2, m = +2)),
+              ("D_-1-", QnWaveIndex(refl = -1, l = 2, m = -1)),
+              ("D_-2-", QnWaveIndex(refl = -1, l = 2, m = -2)),
             ]
             readMomentResultsPwa(
               dataFileName          = pwaAmplitudesFileName,
