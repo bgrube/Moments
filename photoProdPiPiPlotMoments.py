@@ -20,7 +20,7 @@ import pandas as pd
 import ROOT
 from wurlitzer import pipes, STDOUT
 
-from calcMomentsPhotoProdPiPiUnpol import (
+from photoProdPiPiCalcMoments import (
   AnalysisConfig,
   CFG,
 )

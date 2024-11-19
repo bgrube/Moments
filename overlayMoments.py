@@ -7,10 +7,7 @@ import functools
 
 import ROOT
 
-from calcMomentsPhotoProdPiPiUnpol import (
-  AnalysisConfig,
-  CFG,
-)
+from photoProdPiPiCalcMoments import CFG
 from MomentCalculator import (
   KinematicBinningVariable,
   MomentResultsKinematicBinning,
@@ -100,7 +97,7 @@ if __name__ == "__main__":
   #   ("./plotsPhotoProdPiPiUnpol.rhoMc",  "Old MC"),
   #   ("./plotsPhotoProdPiPiUnpol.maxL_5", "New MC"),
   # )
-  outFileDirName   = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
+  outFileDirName = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
 
   # load moment results
   momentResultsToOverlay: dict[str, MomentResultsKinematicBinning] = {}  # key: legend label, value: moment results
