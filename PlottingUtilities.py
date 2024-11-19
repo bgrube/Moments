@@ -186,6 +186,14 @@ class HistAxisBinning:
     assert self._var is not None, "self._var must not be None"
     return self._var
 
+  @var.setter
+  def var(
+    self,
+    value: KinematicBinningVariable,
+  ) -> None:
+    """Sets info about binning variable"""
+    self._var = value
+
   @property
   def astuple(self) -> tuple[int, float, float]:
     """Returns tuple with binning info that can be directly used in ROOT.THX() constructor"""

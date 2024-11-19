@@ -89,7 +89,7 @@ class AnalysisConfig:
     """Creates output directory and initializes member variables"""
     self.outFileDirName    = Utilities.makeDirPath(f"{self.outFileDirBaseName}.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
-    self.massBinning._var  = self.binVarMass
+    self.massBinning.var   = self.binVarMass
 
   @property
   def maxL(self) -> int:

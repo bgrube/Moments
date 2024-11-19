@@ -351,7 +351,7 @@ def makeAllPlots(
       for indexMeasPhys, H000 in enumerate(H000s):
         histIntensity = hists[indexMeasPhys]
         for HVal in H000:
-          if (cfg.massBinning._var not in HVal.binCenters.keys()):
+          if (cfg.massBinning.var not in HVal.binCenters.keys()):
             continue
           y, yErr = HVal.part(True)
           binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[cfg.massBinning.var])
