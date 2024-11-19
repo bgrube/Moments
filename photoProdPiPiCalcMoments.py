@@ -11,6 +11,7 @@ and to generate the output files.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import (
   dataclass,
   field,
@@ -50,20 +51,15 @@ print = functools.partial(print, flush = True)
 
 @dataclass
 class AnalysisConfig:
-  """Stores configuration parameters for the moment analysis"""
+  """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
   treeName:                 str                      = "PiPi"
-  # dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
-  # psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
-  # psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
-  # polarization:             float | None             = None  # unpolarized data
-  dataFileName:             str                      = f"./dataPhotoProdPiPiPol/data_flat.root"
-  psAccFileName:            str                      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root"
-  psGenFileName:            str                      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root"
-  polarization:             float | None             = 0.0  # read polarization value from input data
+  dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
+  psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
+  psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
+  polarization:             float | None             = None  # unpolarized data
   _maxL:                    int                      = 8
   # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
-  # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
-  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiPol"
+  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
   outFileDirName:           str                      = field(init = False)
   outFileNamePrefix:        str                      = field(init = False)
   normalizeMoments:         bool                     = False
@@ -79,16 +75,21 @@ class AnalysisConfig:
   plotAccPsMoments:         bool                     = False
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
-  binVarMass:               KinematicBinningVariable = KinematicBinningVariable(name = "mass", label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}", unit = "GeV/#it{c}^{2}", nmbDigits = 3)
-  # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4, _var = binVarMass)  # same binning as used by CLAS
-  # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29, _var = binVarMass)  # f_2(1270) region
-  # massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40, _var = binVarMass)  # binning used in PWA of unpolarized data
-  massBinning:              HistAxisBinning          = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28, _var = binVarMass)  # binning used in PWA of polarizaed data
+  binVarMass:               KinematicBinningVariable = field(default_factory=lambda: KinematicBinningVariable(
+    name  = "mass",
+    label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+    unit = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ))
+  # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4))  # same binning as used by CLAS
+  # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29))  # f_2(1270) region
+  massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40))  # binning used in PWA of unpolarized data
 
   def init(self) -> None:
     """Creates output directory and initializes member variables"""
     self.outFileDirName    = Utilities.makeDirPath(f"{self.outFileDirBaseName}.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
+    self.massBinning._var  = self.binVarMass
 
   @property
   def maxL(self) -> int:
@@ -103,7 +104,18 @@ class AnalysisConfig:
     self._maxL = value
     self.init()
 
-CFG = AnalysisConfig()
+CFG_UNPOLARIZED = AnalysisConfig()
+CFG_POLARIZED = AnalysisConfig(
+  # dataFileName       = f"./dataPhotoProdPiPiPol/data_flat.root",
+  dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
+  psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
+  psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
+  polarization       = 0.0,  # read polarization value from input data
+  _maxL              = 6,
+  # outFileDirBaseName = "./plotsPhotoProdPiPiPol",
+  outFileDirBaseName = "./plotsPhotoProdPiPiPol_downsampled_0.1",
+  massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
+)
 
 
 def readMomentResultsPwa(
@@ -235,12 +247,15 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
+  # cfg = deepcopy(CFG_UNPOLARIZED)
+  cfg = deepcopy(CFG_POLARIZED)
+
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
   for maxL in (8, ):
     print(f"Performing moment analysis for L_max = {maxL}")
-    CFG.maxL = maxL
+    cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{CFG.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
+    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
     print(f"Writing output to log file '{logFileName}'")
     with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
       Utilities.printGitInfo()
@@ -307,16 +322,16 @@ if __name__ == "__main__":
             ]
             readMomentResultsPwa(
               dataFileName          = pwaAmplitudesFileName,
-              maxL                  = CFG.maxL,
+              maxL                  = cfg.maxL,
               waves                 = waves,
-              binVarMass            = CFG.binVarMass,
-              momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPD.pkl",
-              # momentResultsFileName = f"{CFG.outFileDirName}/{CFG.outFileNamePrefix}_moments_pwa_SPDF.pkl",
+              binVarMass            = cfg.binVarMass,
+              momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl",
+              # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl",
               # overwriteExistingFile = True,
               overwriteExistingFile = False,
             )
 
-        calculateAllMoments(CFG, timer)
+        calculateAllMoments(cfg, timer)
 
         timer.stop("Total execution time")
         print(timer.summary)

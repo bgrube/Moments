@@ -11,6 +11,7 @@ Usage: Run this module as a script to generate the output files.
 
 from __future__ import annotations
 
+from copy import deepcopy
 import functools
 import glob
 from io import StringIO
@@ -24,7 +25,8 @@ from wurlitzer import pipes, STDOUT
 
 from photoProdPiPiCalcMoments import (
   AnalysisConfig,
-  CFG,
+  CFG_POLARIZED,
+  CFG_UNPOLARIZED,
 )
 import MomentCalculator
 from MomentCalculator import (
@@ -502,12 +504,15 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
+  # cfg = deepcopy(CFG_UNPOLARIZED)
+  cfg = deepcopy(CFG_POLARIZED)
+
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
   for maxL in (8, ):
     print(f"Plotting moments for L_max = {maxL}")
-    CFG.maxL = maxL
+    cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{CFG.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
+    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
     print(f"Writing output to log file '{logFileName}'")
     with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
       Utilities.printGitInfo()
@@ -517,7 +522,7 @@ if __name__ == "__main__":
 
       timer.start("Total execution time")
 
-      makeAllPlots(CFG, timer)
+      makeAllPlots(cfg, timer)
 
       timer.stop("Total execution time")
       print(timer.summary)
