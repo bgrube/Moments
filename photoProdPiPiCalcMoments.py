@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-This module performs the moment analysis of unpolarized pi+ pi- photoproduction data in the CLAS energy range.
-The calculated moments are written to files to be read by the plotting script.
+This module performs the moment analysis of unpolarized and polarized
+pi+ pi- photoproduction data. The calculated moments are written to
+files to be read by the plotting script `photoProdPiPiPlotMoments.py`.
 
-Usage:
-Run this module as a script to perform the moment calculations and to generate the output files.
+Usage: Run this module as a script to perform the moment calculations
+and to generate the output files.
 """
 
 
