@@ -16,6 +16,7 @@ from dataclasses import (
 )
 import functools
 import numpy as np
+import os
 import pandas as pd
 import threadpoolctl
 
@@ -237,7 +238,8 @@ if __name__ == "__main__":
   for maxL in (8, ):
     print(f"Performing moment analysis for L_max = {maxL}")
     CFG.maxL = maxL
-    logFileName = f"{CFG.outFileDirName}/calcMomentsPhotoProdPiPiUnpol.log"
+    thisSourceFileName = os.path.basename(__file__)
+    logFileName = f"{CFG.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
     print(f"Writing output to log file '{logFileName}'")
     with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
       Utilities.printGitInfo()

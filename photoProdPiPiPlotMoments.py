@@ -15,6 +15,7 @@ import glob
 from io import StringIO
 import math
 import numpy as np
+import os
 import pandas as pd
 
 import ROOT
@@ -504,7 +505,8 @@ if __name__ == "__main__":
   for maxL in (8, ):
     print(f"Plotting moments for L_max = {maxL}")
     CFG.maxL = maxL
-    logFileName = f"{CFG.outFileDirName}/plotMomentsPhotoProdPiPiUnpol.log"
+    thisSourceFileName = os.path.basename(__file__)
+    logFileName = f"{CFG.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
     print(f"Writing output to log file '{logFileName}'")
     with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
       Utilities.printGitInfo()
