@@ -45,6 +45,7 @@ def overlayDistributions(
   weightedMcFileName: str,
   treeName:           str,
   filter:             str,
+  pdfFileMameSuffix:  str = "",
   yAxisLabel:         str = "RF-Sideband Subtracted Combos"
 ) -> None:
   dataToOverlay = DataToOverlay(
@@ -87,7 +88,7 @@ def overlayDistributions(
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
     label.DrawLatex(0.15, 0.99, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
-    canv.SaveAs(f"{histStack.GetName()}.pdf")
+    canv.SaveAs(f"{histStack.GetName()}{pdfFileMameSuffix}.pdf")
 
 
 if __name__ == "__main__":
@@ -100,13 +101,19 @@ if __name__ == "__main__":
   dataFileName       = "./data_flat.root"
   weightedMcFileName = "./psAccData_weighted_flat.maxL_4.root"
   treeName           = "PiPi"
-  massRange          = (0.7, 0.8)
+  massMin            = 0.28  # [GeV]
+  massBinWidth       = 0.2   # [GeV]
+  nmbBins            = 10
 
-  massRangeFilter = f"(({massRange[0]} < mass) && (mass < {massRange[1]}))"
-
-  overlayDistributions(
-    dataFileName       = dataFileName,
-    weightedMcFileName = weightedMcFileName,
-    treeName           = treeName,
-    filter             = massRangeFilter,
-  )
+  for massBinIndex in range(nmbBins):
+    massBinMin = massMin + massBinIndex * massBinWidth
+    massBinMax = massBinMin + massBinWidth
+    print(f"Overlaying histograms for mass range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
+    massRangeFilter = f"(({massBinMin} < mass) && (mass < {massBinMax}))"
+    overlayDistributions(
+      dataFileName       = dataFileName,
+      weightedMcFileName = weightedMcFileName,
+      treeName           = treeName,
+      filter             = massRangeFilter,
+      pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+    )
