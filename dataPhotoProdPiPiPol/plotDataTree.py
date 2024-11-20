@@ -137,6 +137,8 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hDataHfPhiDeg_diff",   ";#Delta #phi_{HF} [deg]",               1000, -1e-11, +1e-11), "HfPhiDegDiff",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGj",         ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1,   +1,     72, -180, +180), "GjCosTheta", "GjPhiDeg",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHf",         ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1,   +1,     72, -180, +180), "HfCosTheta", "HfPhiDeg",   "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsGjCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",   "GjCosTheta", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsGjPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{GJ}",      50,  0.28, 2.28,  72, -180, +180), "MassPiPi",   "GjPhiDeg",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}", 50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",   "HfCosTheta", "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{HF}",      50,  0.28, 2.28,  72, -180, +180), "MassPiPi",   "HfPhiDeg",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsPhiDeg",     ";m_{#pi#pi} [GeV];#Phi",           50,  0.28, 2.28,  72, -180, +180), "MassPiPi",   "PhiDeg",     "eventWeight"),
@@ -145,6 +147,8 @@ if __name__ == "__main__":
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
+    if "TH2" in hist.ClassName() and str(hist.GetName()).startswith("hDataMassVs"):
+      canv.SetLogz(1)
     hist.SetMinimum(0)
     if "TH3" in hist.ClassName():
       hist.GetXaxis().SetTitleOffset(1.5)
