@@ -40,26 +40,18 @@ class HistsToOverlay:
   weightedMc: tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
 
 
-if __name__ == "__main__":
-  ROOT.gROOT.SetBatch(True)
-  ROOT.gStyle.SetOptStat("i")
-  # ROOT.gStyle.SetOptStat(1111111)
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
-  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
-
-  dataFileName       = "./data_flat.root"
-  weightedMcFileName = "./psAccData_weighted_flat.maxL_4.root"
-  treeName           = "PiPi"
-  massRange          = (0.7, 0.8)
-
-  massRangeFilter = f"(({massRange[0]} < mass) && (mass < {massRange[1]}))"
+def overlayDistributions(
+  dataFileName:       str,
+  weightedMcFileName: str,
+  treeName:           str,
+  filter:             str,
+  yAxisLabel:         str = "RF-Sideband Subtracted Combos"
+) -> None:
   dataToOverlay = DataToOverlay(
-    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(massRangeFilter),
-    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(massRangeFilter),
+    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
+    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
   )
-
   histsToOverlay = HistsToOverlay()
-  yAxisLabel = "RF-Sideband Subtracted Combos"
   for member in fields(dataToOverlay):  # loop over members of dataclass
     label = member.name
     df    = getattr(dataToOverlay,  label)
@@ -96,3 +88,25 @@ if __name__ == "__main__":
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
     label.DrawLatex(0.15, 0.99, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
     canv.SaveAs(f"{histStack.GetName()}.pdf")
+
+
+if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gStyle.SetOptStat("i")
+  # ROOT.gStyle.SetOptStat(1111111)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
+  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+
+  dataFileName       = "./data_flat.root"
+  weightedMcFileName = "./psAccData_weighted_flat.maxL_4.root"
+  treeName           = "PiPi"
+  massRange          = (0.7, 0.8)
+
+  massRangeFilter = f"(({massRange[0]} < mass) && (mass < {massRange[1]}))"
+
+  overlayDistributions(
+    dataFileName       = dataFileName,
+    weightedMcFileName = weightedMcFileName,
+    treeName           = treeName,
+    filter             = massRangeFilter,
+  )
