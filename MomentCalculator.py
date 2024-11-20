@@ -970,15 +970,16 @@ class MomentResult:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
     intensityComponentTerms: tuple[list[str], list[str], list[str]] = ([], [], [])  # summands in Eqs. (150) to (152) separated by intensity component
-    for momentIndex in range(3) if self.indices.polarized else range(1):
-      for L in range(self.indices.maxL + 1):
-        for M in range(L + 1):
-          YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
-          HLM = self[QnMomentIndex(momentIndex, L, M)].val
-          intensityComponentTerms[momentIndex].append(
-            f"{np.sqrt((2 * L + 1) / (4 * math.pi))} * {1 if M == 0 else 2} "
-            f"* {HLM.imag if momentIndex == 2 else HLM.real} * {'Im' if momentIndex == 2 else 'Re'}{YLM}"
-          )
+    for qnIndex in self.indices.qnIndices:
+      momentIndex = qnIndex.momentIndex
+      L           = qnIndex.L
+      M           = qnIndex.M
+      HLM         = self[QnMomentIndex(momentIndex, L, M)].val
+      YLM         = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
+      intensityComponentTerms[momentIndex].append(
+        f"{np.sqrt((2 * L + 1) / (4 * math.pi))} * {1 if M == 0 else 2} "
+        f"* {HLM.imag if momentIndex == 2 else HLM.real} * {'Im' if momentIndex == 2 else 'Re'}{YLM}"
+      )
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3
     for momentIndex, terms in enumerate(intensityComponentTerms):
@@ -994,7 +995,6 @@ class MomentResult:
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
-
 
 def constructMomentResultFrom(
   indices:      MomentIndices,  # index mapping and iterators
@@ -1030,6 +1030,9 @@ def constructMomentResultFrom(
     if not foundMomentValue:
       print(f"Warning: no moment value found for {qnIndex}. Assuming value of 0.")
   return momentResult
+
+#TODO add member function to calculate chi2 of another MomentResult w.r.t. self
+
 
 @dataclass
 class MomentResultsKinematicBinning:
