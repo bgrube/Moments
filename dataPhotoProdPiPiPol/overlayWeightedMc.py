@@ -82,7 +82,7 @@ def overlayDistributions(
     scaleFactor = histData.Integral() / histWeightedMc.Integral()
     histWeightedMc.Scale(scaleFactor)
     histStack.Draw("NOSTACK")
-    histStack.SetMaximum(1.1 * histStack.GetMaximum())
+    # histStack.SetMaximum(1.1 * histStack.GetMaximum())
     histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
     histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
     canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
