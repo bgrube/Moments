@@ -45,6 +45,7 @@ def overlayDistributions(
   weightedMcFileName: str,
   treeName:           str,
   filter:             str,
+  histTitle:          str = "",
   pdfFileMameSuffix:  str = "",
   yAxisLabel:         str = "RF-Sideband Subtracted Combos"
 ) -> None:
@@ -58,10 +59,10 @@ def overlayDistributions(
     label = member.name
     label = label[0].upper() + label[1:]  # make sure first character is upper case
     hists = (
-      bookHistogram(df, f"h{label}MassPiPi",   ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
-      bookHistogram(df, f"h{label}HfCosTheta", ";cos#theta_{HF};"   + yAxisLabel, ( 50,   -1,      +1   ), "cosTheta"),
-      bookHistogram(df, f"h{label}HfPhiDeg",   ";#phi_{HF} [deg];"  + yAxisLabel, ( 50, -180,    +180   ), "phiDeg"  ),
-      bookHistogram(df, f"h{label}PhiDeg",     ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
+      bookHistogram(df, f"h{label}MassPiPi",   histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
+      bookHistogram(df, f"h{label}HfCosTheta", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ( 50,   -1,      +1   ), "cosTheta"),
+      bookHistogram(df, f"h{label}HfPhiDeg",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, ( 50, -180,    +180   ), "phiDeg"  ),
+      bookHistogram(df, f"h{label}PhiDeg",     histTitle + ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
     )
     setattr(histsToOverlay, member.name, hists)
   for histIndex, histData in enumerate(histsToOverlay.realData):
@@ -69,8 +70,8 @@ def overlayDistributions(
     print(f"Overlaying histograms '{histData.GetName()}' and '{histWeightedMc.GetName()}'")
     canv = ROOT.TCanvas()
     histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
-    histWeightedMc.SetName("Weighted MC")
-    histData.SetName("Real Data")
+    histWeightedMc.SetTitle("Weighted MC")
+    histData.SetTitle      ("Real Data")
     histStack.Add(histWeightedMc.GetValue(), "HIST E")
     histStack.Add(histData.GetValue(),       "E")
     histData.SetLineColor      (ROOT.kRed + 1)
@@ -81,6 +82,7 @@ def overlayDistributions(
     scaleFactor = histData.Integral() / histWeightedMc.Integral()
     histWeightedMc.Scale(scaleFactor)
     histStack.Draw("NOSTACK")
+    histStack.SetMaximum(1.1 * histStack.GetMaximum())
     histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
     histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
     canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
@@ -88,7 +90,7 @@ def overlayDistributions(
     label = ROOT.TLatex()
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
-    label.DrawLatex(0.15, 0.99, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
+    label.DrawLatex(0.15, 0.89, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
     canv.SaveAs(f"{histStack.GetName()}{pdfFileMameSuffix}.pdf")
 
 
@@ -103,8 +105,8 @@ if __name__ == "__main__":
   weightedMcFileName = "./psAccData_weighted_flat.maxL_4.root"
   treeName           = "PiPi"
   massMin            = 0.28  # [GeV]
-  massBinWidth       = 0.2   # [GeV]
-  nmbBins            = 10
+  massBinWidth       = 0.1   # [GeV]
+  nmbBins            = 20
 
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
@@ -116,5 +118,6 @@ if __name__ == "__main__":
       weightedMcFileName = weightedMcFileName,
       treeName           = treeName,
       filter             = massRangeFilter,
+      histTitle          = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
       pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
     )
