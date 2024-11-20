@@ -54,15 +54,16 @@ def overlayDistributions(
   )
   histsToOverlay = HistsToOverlay()
   for member in fields(dataToOverlay):  # loop over members of dataclass
+    df    = getattr(dataToOverlay, member.name)
     label = member.name
-    df    = getattr(dataToOverlay,  label)
+    label = label[0].upper() + label[1:]  # make sure first character is upper case
     hists = (
       bookHistogram(df, f"h{label}MassPiPi",   ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
       bookHistogram(df, f"h{label}HfCosTheta", ";cos#theta_{HF};"   + yAxisLabel, ( 50,   -1,      +1   ), "cosTheta"),
       bookHistogram(df, f"h{label}HfPhiDeg",   ";#phi_{HF} [deg];"  + yAxisLabel, ( 50, -180,    +180   ), "phiDeg"  ),
       bookHistogram(df, f"h{label}PhiDeg",     ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
     )
-    setattr(histsToOverlay, label, hists)
+    setattr(histsToOverlay, member.name, hists)
   for histIndex, histData in enumerate(histsToOverlay.realData):
     histWeightedMc = histsToOverlay.weightedMc[histIndex]
     print(f"Overlaying histograms '{histData.GetName()}' and '{histWeightedMc.GetName()}'")
