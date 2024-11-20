@@ -19,6 +19,8 @@ if __name__ == "__main__":
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
@@ -128,7 +130,7 @@ if __name__ == "__main__":
   )
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",           ";E_{beam} [GeV];"          + yAxisLabel, 100, 8,        9),   "E_Beam",         "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",           ";E_{beam} [GeV];"          + yAxisLabel, 100, 8,        9),    "E_Beam",         "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi",        ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28,   2.28),   "MassPiPi",       "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPiPwa" ,    ";m_{#pi#pi} [GeV];"        + yAxisLabel,  50, 0.28,   2.28),   "MassPiPi",       "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP",        ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,      5),      "MassPipP",       "eventWeight"),
