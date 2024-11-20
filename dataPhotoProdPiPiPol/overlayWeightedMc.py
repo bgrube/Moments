@@ -3,6 +3,12 @@
 
 from __future__ import annotations
 
+from dataclasses import (
+  dataclass,
+  field,
+  fields,
+)
+
 import ROOT
 
 
@@ -20,6 +26,20 @@ def bookHistogram(
     return df.Histo1D(ROOT.RDF.TH1DModel(name, title, *binning), columnName)
 
 
+@dataclass
+class DataToOverlay:
+  """Stores data frames for real data and weighted MC"""
+  realData:   ROOT.RDataFrame
+  weightedMc: ROOT.RDataFrame
+
+@dataclass
+class HistsToOverlay:
+  """Stores histograms for real data and weighted MC"""
+  # tuples are assumed to contain histograms in identical order
+  realData:   tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
+  weightedMc: tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("i")
@@ -33,23 +53,26 @@ if __name__ == "__main__":
   massRange          = (0.7, 0.8)
 
   massRangeFilter = f"(({massRange[0]} < mass) && (mass < {massRange[1]}))"
-  dataToOverlay: dict[str, ROOT.RDataFrame] = {
-    "RealData"   : ROOT.RDataFrame(treeName, dataFileName      ).Filter(massRangeFilter),
-    "WeightedMc" : ROOT.RDataFrame(treeName, weightedMcFileName).Filter(massRangeFilter),
-  }
+  dataToOverlay = DataToOverlay(
+    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(massRangeFilter),
+    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(massRangeFilter),
+  )
 
-  hists: dict[str, tuple[ROOT.RResultPtr[ROOT.TH1D], ...]]  = {}
+  histsToOverlay = HistsToOverlay()
   yAxisLabel = "RF-Sideband Subtracted Combos"
-  for label, df in dataToOverlay.items():
-    hists[label] = (
+  for member in fields(dataToOverlay):  # loop over members of dataclass
+    label = member.name
+    df    = getattr(dataToOverlay,  label)
+    hists = (
       bookHistogram(df, f"h{label}MassPiPi",   ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
       bookHistogram(df, f"h{label}HfCosTheta", ";cos#theta_{HF};"   + yAxisLabel, ( 50,   -1,      +1   ), "cosTheta"),
       bookHistogram(df, f"h{label}HfPhiDeg",   ";#phi_{HF} [deg];"  + yAxisLabel, ( 50, -180,    +180   ), "phiDeg"  ),
       bookHistogram(df, f"h{label}PhiDeg",     ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
     )
-  for histIndex, histData in enumerate(hists["RealData"]):
-    print(f"Overlaying histograms '{histData.GetName()}'")
-    histWeightedMc = hists["WeightedMc"][histIndex]
+    setattr(histsToOverlay, label, hists)
+  for histIndex, histData in enumerate(histsToOverlay.realData):
+    histWeightedMc = histsToOverlay.weightedMc[histIndex]
+    print(f"Overlaying histograms '{histData.GetName()}' and '{histWeightedMc.GetName()}'")
     canv = ROOT.TCanvas()
     histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
     histWeightedMc.SetName("Weighted MC")
