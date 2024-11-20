@@ -218,6 +218,16 @@ class HistAxisBinning:
     """Returns bin width"""
     return self.valueIntervalLength / self.nmbBins
 
+  def findBin(
+    self,
+    value: float
+  ) -> int | None:
+    """Returns bin index for given value; returns `None` when out of range"""
+    if (value < self.minVal) or (value > self.maxVal):
+      return None
+    else:
+      return int(self.nmbBins * (value - self.minVal) / self.valueIntervalLength)
+
   def binValueRange(
     self,
     binIndex: int,
@@ -235,7 +245,8 @@ class HistAxisBinning:
     self,
     binIndex: int,
   ) -> str:
-    """Constructs formula string that can be used to select data for the given bin index"""
+    """Constructs formula string that selects data for the given bin index"""
+    assert binIndex is not None, "`binIndex` must not be None"
     binRange = self.binValueRange(binIndex)
     return f"(({binRange[0]} < {self.var.name}) && ({self.var.name} < {binRange[1]}))"
 
@@ -600,8 +611,8 @@ def plotMoments1D(
   pdfFileNamePrefix: str                                  = "",    # name prefix for output files
   histTitle:         str                                  = "",    # histogram title
   plotLegend:        bool                                 = True,
-  legendLabels:      tuple[str | None, str | None]        = (None, None),  # labels for legend entries; None = use defaults
-  plotTruthUncert:   bool                                 = False,  # plot uncertainty of true moments
+  legendLabels:      tuple[str | None, str | None]        = (None, None),    # labels for legend entries; None = use defaults
+  plotTruthUncert:   bool                                 = False,           # plot uncertainty of true moments
   truthColor:        int                                  = ROOT.kBlue + 1,  # color used for true values
   histsToOverlay:    Mapping[str, Sequence[tuple[ROOT.TH1D, str, str]]] | None = None,  # histograms to overlay on top of data and (optional) true values; Mapping: key = "Re" or "Im", Sequence: tuple: (histogram, draw option, legend entry)
 ) -> None:
