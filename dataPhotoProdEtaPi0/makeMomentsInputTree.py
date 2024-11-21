@@ -142,7 +142,7 @@ def defineDataFrameColumns(
   #   ["beamPolPhi"])
   checkValEqual = ROOT.checkValEqual(beamPolAngle, "beam polarization angles")
   df.Foreach(checkValEqual, ["beamPolPhi"])
-  bigPhiFunc = f"bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam, beamPolPhi)"
+  bigPhiFunc = "bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam, beamPolPhi)"
   phiVarDef = f"(double)phi_eta_{coordSys}{columnSuffix}"
   if thrownData:
     df = (
