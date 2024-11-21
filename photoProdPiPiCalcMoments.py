@@ -100,14 +100,14 @@ class AnalysisConfig:
 
 CFG_UNPOLARIZED = AnalysisConfig()
 CFG_POLARIZED = AnalysisConfig(
-  # dataFileName       = f"./dataPhotoProdPiPiPol/data_flat.root",
-  dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
+  dataFileName       = f"./dataPhotoProdPiPiPol/data_flat.root",
+  # dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
   psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
   psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
-  polarization       = 0.0,  # read polarization value from input data
-  _maxL              = 6,
-  # outFileDirBaseName = "./plotsPhotoProdPiPiPol",
-  outFileDirBaseName = "./plotsPhotoProdPiPiPol_downsampled_0.1",
+  polarization       = 0.3519,
+  _maxL              = 4,
+  outFileDirBaseName = "./plotsPhotoProdPiPiPol",
+  # outFileDirBaseName = "./plotsPhotoProdPiPiPol_downsampled_0.1",
   massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
 )
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED)
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (8, ):
+  for maxL in (4, ):
     print(f"Performing moment analysis for L_max = {maxL}")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
