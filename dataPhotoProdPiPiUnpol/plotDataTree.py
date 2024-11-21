@@ -34,6 +34,8 @@ if __name__ == "__main__":
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+
   # declare C++ function to calculate invariant mass of a pair of particles
   CPP_CODE = """
 	double

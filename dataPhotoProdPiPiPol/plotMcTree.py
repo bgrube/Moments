@@ -18,6 +18,8 @@ if __name__ == "__main__":
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
+  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+
   # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
 	double
