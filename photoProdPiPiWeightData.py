@@ -87,7 +87,7 @@ if __name__ == "__main__":
       # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
       for momentResult in momentResults:
         intensityFormula = momentResult.intensityFormula(
-          polarization = 0.3519,
+          polarization = cfg.polarization,
           thetaFormula = "theta",
           phiFormula   = "phi",
           PhiFormula   = "Phi",
@@ -95,8 +95,9 @@ if __name__ == "__main__":
         )
         massBinCenter = momentResult.binCenters[cfg.massBinning.var]
         massBinIndex  = cfg.massBinning.findBin(massBinCenter)
+        assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} GeV"
         outFileName   = f"{cfg.outFileDirName}/psAccData_weighted_flat_{massBinIndex}.root"
-        print(f"Weighting accepted phase-space events for bin {massBinIndex} at {massBinCenter} {cfg.massBinning.var.unit}")
+        print(f"Weighting accepted phase-space events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit}")
         weightAccPhaseSpaceWithIntensity(
           intensityFormula   = intensityFormula,
           kinematicBinFilter = cfg.massBinning.binFilter(massBinIndex),
