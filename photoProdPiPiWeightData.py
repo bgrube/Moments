@@ -15,6 +15,7 @@ from __future__ import annotations
 from copy import deepcopy
 import functools
 import os
+import subprocess
 
 import ROOT
 from wurlitzer import pipes, STDOUT
@@ -103,6 +104,12 @@ if __name__ == "__main__":
           outFileName        = outFileName,
           cfg                = cfg,
         )
+
+      # merge trees with weighted MC data
+      outFileName = f"{cfg.outFileDirName}/psAccData_weighted_flat.maxL_{cfg.maxL}.root"
+      cmd = f"hadd {outFileName} {cfg.outFileDirName}/psAccData_weighted_flat_*.root"
+      print(f"Merging files: '{cmd}'")
+      gitInfo = subprocess.run(cmd, shell = True)
 
       timer.stop("Total execution time")
       print(timer.summary)
