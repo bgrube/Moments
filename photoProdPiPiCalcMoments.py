@@ -98,7 +98,9 @@ class AnalysisConfig:
     self._maxL = value
     self.init()
 
+# configuration for unpolarized data
 CFG_UNPOLARIZED = AnalysisConfig()
+# configuration for polarized data
 CFG_POLARIZED = AnalysisConfig(
   dataFileName       = f"./dataPhotoProdPiPiPol/data_flat.root",
   # dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",

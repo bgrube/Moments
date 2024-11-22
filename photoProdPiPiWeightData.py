@@ -68,8 +68,7 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED)
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (4, ):
-    print(f"Plotting moments for L_max = {maxL}")
+    print(f"Generating weighted MC for L_max = {maxL}")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
     logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
