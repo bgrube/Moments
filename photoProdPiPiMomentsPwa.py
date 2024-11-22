@@ -66,6 +66,9 @@ def readMomentResultsPwa(
   momentResults: list[MomentResult] = []
   for amplitudesRow in amplitudesDf.to_dict(orient = "records"):  # iterate over list of dictionaries
     massBinCenter = amplitudesRow["mass"]
+    # unfortunately, pd.read_csv does not check whether number of columns in CSV file matches given column list
+    # protect against case where file has more amplitude columns than given by `waves`
+    assert isinstance(massBinCenter, float), f"Something is wrong: Expect float number for bin center but got {type(massBinCenter)}: {massBinCenter}"
     print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV")
     amplitudeSet = AmplitudeSet(
       amps      = [AmplitudeValue(qn = wave[1], val = amplitudesRow[wave[0]]) for wave in waves],
@@ -83,10 +86,11 @@ def readMomentResultsPwa(
 
 
 if __name__ == "__main__":
-  # cfg = deepcopy(CFG_UNPOLARIZED)
-  cfg = deepcopy(CFG_POLARIZED)
+  cfg = deepcopy(CFG_UNPOLARIZED)
+  # cfg = deepcopy(CFG_POLARIZED)
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
+  for maxL in (8, ):
     print(f"Calculating moment values with L_max = {maxL} from partial-wave amplitudes")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
@@ -109,8 +113,8 @@ if __name__ == "__main__":
 
         if cfg.polarization is None:
           # unpolarized data
-          # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
-          pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+          pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
+          # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
           waves = [  # order must match columns in file with partial-wave amplitudes
             ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
             # P-waves
