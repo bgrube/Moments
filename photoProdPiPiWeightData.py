@@ -65,8 +65,8 @@ def weightAccPhaseSpaceWithIntensity(
 
 
 if __name__ == "__main__":
-  # cfg = deepcopy(CFG_UNPOLARIZED)
-  cfg = deepcopy(CFG_POLARIZED)
+  cfg = deepcopy(CFG_UNPOLARIZED)
+  # cfg = deepcopy(CFG_POLARIZED)
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
     print(f"Generating weighted MC for L_max = {maxL}")
@@ -83,8 +83,8 @@ if __name__ == "__main__":
       timer.start("Total execution time")
 
       momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-      momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
-      # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
+      # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
+      momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
       for momentResult in momentResults:
         intensityFormula = momentResult.intensityFormula(
           polarization = cfg.polarization,
@@ -96,7 +96,9 @@ if __name__ == "__main__":
         massBinCenter = momentResult.binCenters[cfg.massBinning.var]
         massBinIndex  = cfg.massBinning.findBin(massBinCenter)
         assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} GeV"
-        outFileName   = f"{cfg.outFileDirName}/psAccData_weighted_flat_{massBinIndex}.root"
+        # outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_flat"
+        outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_pwa_SPD_flat"
+        outFileName     = f"{outFileBaseName}_{massBinIndex}.root"
         print(f"Weighting accepted phase-space events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit}")
         weightAccPhaseSpaceWithIntensity(
           intensityFormula   = intensityFormula,
@@ -106,8 +108,8 @@ if __name__ == "__main__":
         )
 
       # merge trees with weighted MC data
-      outFileName = f"{cfg.outFileDirName}/psAccData_weighted_flat.maxL_{cfg.maxL}.root"
-      cmd = f"hadd {outFileName} {cfg.outFileDirName}/psAccData_weighted_flat_*.root"
+      outFileName = f"{outFileBaseName}.maxL_{cfg.maxL}.root"
+      cmd = f"hadd {outFileName} {outFileBaseName}_*.root"
       print(f"Merging files: '{cmd}'")
       gitInfo = subprocess.run(cmd, shell = True)
 
