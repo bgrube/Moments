@@ -21,7 +21,7 @@ if __name__ == "__main__":
     "P0"    : "#it{P}_{#kern[-0.3]{0}}",
     "P1"    : "#it{P}_{#kern[-0.3]{#plus 1}}",
     "Dm2"   : "#it{D}_{#minus 2}",
-    "Dm2"   : "#it{D}_{#minus 2}",
+    "Dm1"   : "#it{D}_{#minus 1}",
     "D0"    : "#it{D}_{0}",
     "D1"    : "#it{D}_{#plus 1}",
     "D2"    : "#it{D}_{#plus 2}",
@@ -41,5 +41,5 @@ if __name__ == "__main__":
       graph.SetMaximum(55e3)
     else:
       graph.SetMaximum(15e3)
-    graph.SetTitle(f"{graphLabel};" + "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}} [GeV/#it{c}^{2}];Intensity / 20 MeV/#it{c}^{2}")
+    graph.SetTitle(graphLabel + ";#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}} [GeV/#it{c}^{2}];Intensity / 20 MeV/#it{c}^{2}")
     canv.SaveAs(f"intensity_{graphName}.pdf")
