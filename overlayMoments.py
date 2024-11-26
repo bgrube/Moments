@@ -3,15 +3,19 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 import functools
 
 import ROOT
 
-from photoProdPiPiCalcMoments import CFG
 from MomentCalculator import (
   KinematicBinningVariable,
   MomentResultsKinematicBinning,
   QnMomentIndex,
+)
+from photoProdPiPiCalcMoments import (
+  CFG_POLARIZED,
+  CFG_UNPOLARIZED,
 )
 from PlottingUtilities import (
   HistAxisBinning,
@@ -82,28 +86,30 @@ if __name__ == "__main__":
   timer.start("Total execution time")
 
   # define what to overlay
-  fitResults: tuple[tuple[str, str], ...] = (
-    # (directory name, legend label)
-    # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2"),
-    # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4"),
-    ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5"),
-    ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8"),
-    ("./plotsPhotoProdPiPiUnpol.maxL_10", "#it{L}_{max} = 10"),
-    # ("./plotsPhotoProdPiPiUnpol.maxL_12", "#it{L}_{max} = 12"),
-    # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20"),
-    # last entry defines which moments are plotted
-  )
+  # cfg = deepcopy(CFG_UNPOLARIZED)  # perform unpolarized analysis
+  cfg = deepcopy(CFG_POLARIZED)    # perform polarized analysis
   # fitResults: tuple[tuple[str, str], ...] = (
-  #   ("./plotsPhotoProdPiPiUnpol.rhoMc",  "Old MC"),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_5", "New MC"),
+  #   # (directory name, legend label)
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2"),
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4"),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5"),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8"),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_10", "#it{L}_{max} = 10"),
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_12", "#it{L}_{max} = 12"),
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20"),
+  #   # last entry defines which moments are plotted
   # )
-  outFileDirName = Utilities.makeDirPath("./plotsPhotoProdPiPiUnpolOverlay")
+  fitResults: tuple[tuple[str, str], ...] = (
+    ("./plotsPhotoProdPiPiPol.maxL_4.oldMc", "Old MC"),
+    ("./plotsPhotoProdPiPiPol.maxL_4",       "New MC"),
+  )
+  outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}Overlay")
 
   # load moment results
   momentResultsToOverlay: dict[str, MomentResultsKinematicBinning] = {}  # key: legend label, value: moment results
   for fitResultDirName, fitResultLabel in fitResults:
     print(f"Loading moment results from directory {fitResultDirName}")
-    momentResultsPhysFileName = f"{fitResultDirName}/{CFG.outFileNamePrefix}_moments_phys.pkl"
+    momentResultsPhysFileName = f"{fitResultDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
     try:
       momentResultsPhys = MomentResultsKinematicBinning.load(momentResultsPhysFileName)
     except FileNotFoundError as e:
@@ -123,9 +129,9 @@ if __name__ == "__main__":
     overlayMoments1D(
       momentResultsToOverlay = momentResultsToOverlay,
       qnIndex                = qnIndex,
-      binning                = CFG.massBinning,
-      normalizedMoments      = CFG.normalizeMoments,
-      pdfFileNamePrefix      = f"{outFileDirName}/{CFG.outFileNamePrefix}_{CFG.massBinning.var.name}_",
+      binning                = cfg.massBinning,
+      normalizedMoments      = cfg.normalizeMoments,
+      pdfFileNamePrefix      = f"{outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_",
     )
 
   timer.stop("Total execution time")
