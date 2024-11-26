@@ -79,7 +79,7 @@ class AnalysisConfig:
   # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29))  # f_2(1270) region
   massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40))  # binning used in PWA of unpolarized data
 
-  def init(self) -> None:
+  def __post_init__(self) -> None:
     """Creates output directory and initializes member variables"""
     self.outFileDirName    = Utilities.makeDirPath(f"{self.outFileDirBaseName}.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
@@ -96,7 +96,7 @@ class AnalysisConfig:
   ) -> None:
     assert value > 0, f"maxL must be > 0, but is {value}"
     self._maxL = value
-    self.init()
+    self.__post_init__()
 
 # configuration for unpolarized data
 CFG_UNPOLARIZED = AnalysisConfig()
