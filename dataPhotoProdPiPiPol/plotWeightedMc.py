@@ -40,7 +40,7 @@ class HistsToOverlay:
   weightedMc: tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
 
 
-def overlayDistributions(
+def plotDistributions1D(
   dataFileName:       str,
   weightedMcFileName: str,
   treeName:           str,
@@ -102,19 +102,19 @@ if __name__ == "__main__":
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
   dataFileName       = "./data_flat.root"
-  # weightedMcFileName = "./psAccData_weighted_flat.maxL_4.root"
+  weightedMcFileName = "./psAccData_weighted_flat.maxL_4.root"
   # weightedMcFileName = "./psAccData_weighted_flat.maxL_5.root"
   # weightedMcFileName = "./psAccData_weighted_flat.maxL_6.root"
   # weightedMcFileName = "./psAccData_weighted_flat.maxL_7.root"
   # weightedMcFileName = "./psAccData_weighted_flat.maxL_8.root"
-  weightedMcFileName = "./psAccData_weighted_pwa_SPD_flat.maxL_4.root"
+  # weightedMcFileName = "./psAccData_weighted_pwa_SPD_flat.maxL_4.root"
   treeName           = "PiPi"
   massMin            = 0.28  # [GeV]
   massBinWidth       = 0.1   # [GeV]
   nmbBins            = 20
 
   print(f"Overlaying histograms for full mass range")
-  overlayDistributions(
+  plotDistributions1D(
     dataFileName       = dataFileName,
     weightedMcFileName = weightedMcFileName,
     treeName           = treeName,
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     massBinMax = massBinMin + massBinWidth
     print(f"Overlaying histograms for mass range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
     massRangeFilter = f"(({massBinMin} < mass) && (mass < {massBinMax}))"
-    overlayDistributions(
+    plotDistributions1D(
       dataFileName       = dataFileName,
       weightedMcFileName = weightedMcFileName,
       treeName           = treeName,
