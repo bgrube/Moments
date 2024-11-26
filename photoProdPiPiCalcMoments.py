@@ -190,8 +190,8 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  # cfg = deepcopy(CFG_UNPOLARIZED)
-  cfg = deepcopy(CFG_POLARIZED)
+  # cfg = deepcopy(CFG_UNPOLARIZED)  # perform unpolarized analysis
+  cfg = deepcopy(CFG_POLARIZED)    # perform polarized analysis
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
   for maxL in (4, ):
