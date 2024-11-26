@@ -85,8 +85,10 @@ if __name__ == "__main__":
   beamPolAngle          = 0.0
   dataSigRegionFileName = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
   dataBkgRegionFileName = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
-  phaseSpaceAccFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
-  phaseSpaceGenFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
+  # phaseSpaceAccFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
+  # phaseSpaceGenFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
+  phaseSpaceAccFileName = "./MC_100M/amptools_tree_accepted_30274_31057.root"
+  phaseSpaceGenFileName = "./MC_100M/amptools_tree_thrown_30274_31057.root"
   treeName              = "kin"
   outputTreeName        = "PiPi"
   outputColumns         = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "mass")
