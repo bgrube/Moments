@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import functools
+import math
 
 import ROOT
 
@@ -32,7 +33,7 @@ print = functools.partial(print, flush = True)
 
 
 def overlayMoments1D(
-  momentResultsToOverlay: dict[str, MomentResultsKinematicBinning],  # key: legend label, value: moment results
+  momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]],  # key: legend label, value: (moment results, optional scale factor)
   qnIndex:                QnMomentIndex,    # defines specific moment
   binning:                HistAxisBinning,  # binning to use for plot
   normalizedMoments:      bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
@@ -45,7 +46,7 @@ def overlayMoments1D(
       f"{pdfFileNamePrefix}overlay_{qnIndex.label}_{momentPart}",
       f"{qnIndex.title} {momentPartLabel};{binning.axisTitle};" + ("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value",
     )
-    for index, (legendLabel, momentResults) in enumerate(momentResultsToOverlay.items()):
+    for index, (legendLabel, (momentResults, scaleFactor)) in enumerate(momentResultsToOverlay.items()):
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(HPhys[qnIndex] for HPhys in momentResults if qnIndex in HPhys)
       # create histogram with moments
@@ -58,6 +59,8 @@ def overlayMoments1D(
         histData.SetBinContent(binIndex, y)
         histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
       setCbFriendlyStyle(histData, index)
+      if scaleFactor is not None:
+        histData.Scale(scaleFactor)
       histStack.Add(histData, "PE1X0")
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
@@ -88,26 +91,25 @@ if __name__ == "__main__":
   # define what to overlay
   # cfg = deepcopy(CFG_UNPOLARIZED)  # perform unpolarized analysis
   cfg = deepcopy(CFG_POLARIZED)    # perform polarized analysis
-  # fitResults: tuple[tuple[str, str], ...] = (
-  #   # (directory name, legend label)
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2"),
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4"),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5"),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8"),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_10", "#it{L}_{max} = 10"),
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_12", "#it{L}_{max} = 12"),
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20"),
-  #   # last entry defines which moments are plotted
+  fitResults: tuple[tuple[str, str, float | None], ...]  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
+  # fitResults = (
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2",  None),
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4",  None),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5",  None),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8",  None),
+  #   ("./plotsPhotoProdPiPiUnpol.maxL_10", "#it{L}_{max} = 10", None),
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_12", "#it{L}_{max} = 12", None),
+  #   # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20", None),
   # )
-  fitResults: tuple[tuple[str, str], ...] = (
-    ("./plotsPhotoProdPiPiPol.maxL_4.oldMc", "Old MC"),
-    ("./plotsPhotoProdPiPiPol.maxL_4",       "New MC"),
+  fitResults = (
+    ("./plotsPhotoProdPiPiPol.maxL_4.oldMc", "Old MC",   0.03228842737363692 * (8 * math.pi)),
+    ("./plotsPhotoProdPiPiPol.maxL_4",       "New MC", None),
   )
   outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}Overlay")
 
   # load moment results
-  momentResultsToOverlay: dict[str, MomentResultsKinematicBinning] = {}  # key: legend label, value: moment results
-  for fitResultDirName, fitResultLabel in fitResults:
+  momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
+  for fitResultDirName, fitResultLabel, scaleFactor in fitResults:
     print(f"Loading moment results from directory {fitResultDirName}")
     momentResultsPhysFileName = f"{fitResultDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
     try:
@@ -115,17 +117,17 @@ if __name__ == "__main__":
     except FileNotFoundError as e:
       print(f"Cannot not find file '{momentResultsPhysFileName}'. Skipping directory '{fitResultDirName}'")
       continue
-    momentResultsToOverlay[fitResultLabel] = momentResultsPhys
+    momentResultsToOverlay[fitResultLabel] = (momentResultsPhys, scaleFactor)
 
   # ensure that all moment results have identical kinematic binning and identical order of kinematic bins
-  momentResults: tuple[MomentResultsKinematicBinning, ...]         = tuple(momentResultsToOverlay.values())
+  momentResults: tuple[MomentResultsKinematicBinning, ...]         = tuple(value[0]for value in momentResultsToOverlay.values())
   binCenters:    tuple[dict[KinematicBinningVariable, float], ...] = momentResults[0].binCenters  # bin centers of first moment result
   for momentResult in momentResults[1:]:
     assert momentResult.binCenters == binCenters
 
   # plot kinematic dependences of all moments
   lastLabel = fitResults[-1][1]
-  for qnIndex in momentResultsToOverlay[lastLabel][0].indices.qnIndices:
+  for qnIndex in momentResultsToOverlay[lastLabel][0][0].indices.qnIndices:
     overlayMoments1D(
       momentResultsToOverlay = momentResultsToOverlay,
       qnIndex                = qnIndex,
