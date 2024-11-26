@@ -34,7 +34,9 @@ if __name__ == "__main__":
   # data for lowest t bin [0.1, 0.2] GeV^2
   beamPolAngle = 0.0
   # mcDataFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
-  mcDataFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
+  # mcDataFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
+  mcDataFileName = "./MC_100M/amptools_tree_thrown_30274_31057.root"
+  # mcDataFileName = "./MC_100M/amptools_tree_accepted_30274_31057.root"
   treeName = "kin"
 
   # read MC data in AmpTools formatand plot distributions
@@ -50,16 +52,12 @@ if __name__ == "__main__":
         .Define("MassPiPi",     f"massPair({lvPip}, {lvPim})")
         .Define("MassPipP",     f"massPair({lvPip}, {lvRecoil})")
         .Define("MassPimP",     f"massPair({lvPim}, {lvRecoil})")
-        .Define("GjCosTheta",   f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
-        .Define("GjTheta",       "std::acos(GjCosTheta)")
-        .Define("GjPhi",        f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
-        .Define("GjPhiDeg",      "GjPhi * TMath::RadToDeg()")
-        .Define("HfCosTheta",   f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
-        .Define("HfTheta",       "std::acos(HfCosTheta)")
-        .Define("HfPhi",        f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
-        .Define("HfPhiDeg",      "HfPhi * TMath::RadToDeg()")
-        .Define("Phi",          f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle})")
-        .Define("PhiDeg",        "Phi * TMath::RadToDeg()")
+        .Define("PhiDeg",       f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle}) * TMath::RadToDeg()")
+        # pi+pi- system
+        .Define("GjCosThetaPiPi",   f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
+        .Define("GjPhiDegPiPi",     f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
+        .Define("HfCosThetaPiPi",   f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
+        .Define("HfPhiDegPiPi",     f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
   )
   yAxisLabel = "Events"
   hists = (
@@ -70,12 +68,13 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiPwa",  ";m_{#pi#pi} [GeV];"        + yAxisLabel,  50, 0.28,   2.28),   "MassPiPi"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipP",     ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,      5),      "MassPipP"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimP",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,      5),      "MassPimP"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGj",         ";cos#theta_{GJ};#phi_{GJ} [deg]",  100, -1,   +1,    72, -180, +180), "GjCosTheta", "GjPhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHf",         ";cos#theta_{HF};#phi_{HF} [deg]",  100, -1,   +1,    72, -180, +180), "HfCosTheta", "HfPhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  50, 0.28, 2.28, 100,   -1,   +1), "MassPiPi",   "HfCosTheta"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassVsHfPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{HF}",       50, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "HfPhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassVsPhiDeg",     ";m_{#pi#pi} [GeV];#Phi",            50, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "PhiDeg"),
-    df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegVsHfCosTheta", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosTheta", "HfPhiDeg", "PhiDeg"),
+    # pi+pi- system
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",  100, -1,   +1,    72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",  100, -1,   +1,    72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  50, 0.28, 2.28, 100,   -1,   +1), "MassPiPi",   "HfCosThetaPiPi"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{HF}",       50, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "HfPhiDegPiPi"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsPhiDeg",         ";m_{#pi#pi} [GeV];#Phi",            50, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "PhiDeg"),
+    df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg"),
   )
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
