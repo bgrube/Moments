@@ -415,11 +415,12 @@ def plotMoments(
   plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
   truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
   histsToOverlay:    Mapping[str, Sequence[tuple[ROOT.TH1D, str, str]]] | None = None,  # histograms to overlay on top of data and (optional) true values; Mapping: key = "Re" or "Im", Sequence: tuple: (histogram, draw option, legend entry)
-) -> None:
+) -> dict[str, tuple[float, float] | tuple[None, None]]:  # key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots moments extracted from data along categorical axis or along given binning and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
   xAxisTitle = "" if binning is None else binning.axisTitle
   trueValues = any((HVal.truth is not None for HVal in HVals))
+  chi2Values: dict[str, tuple[float, float] | tuple[None, None]] = {}
 
   # (i) plot moments from data and overlay with true values (if given)
   for momentPart, legendEntrySuffix in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
@@ -494,68 +495,74 @@ def plotMoments(
     #   zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
     canv.SaveAs(f"{histStack.GetName()}.pdf")
 
+    if not trueValues:
+      chi2Values[momentPart] = (None, None)
+      continue
     # (ii) plot residuals
-    if trueValues:
-      histResidualName = f"{pdfFileNamePrefix}residuals_{momentLabel}_{momentPart}"
-      histResidual = ROOT.TH1D(histResidualName,
-        (f"{histTitle} " if histTitle else "") + f"Residuals {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}",
-        *histBinning.astuple)
-      # calculate residuals; NaN flags histogram bins, for which truth info is missing
-      residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
-      indicesToMask: list[int] = []
-      for index, HVal in enumerate(HVals):
-        if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
-          continue
-        if HVal.truth is not None:
-          dataVal, dataValErr = HVal.part     (real = (momentPart == "Re"))
-          trueVal, _          = HVal.truthPart(real = (momentPart == "Re"))
-          binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
-          residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
-          if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
-            indicesToMask.append(binIndex)  # exclude H_0(0, 0) from plotting and chi^2 calculation
-      # calculate chi^2
-      # if moments were normalized, exclude Re and Im of H_0(0, 0) because it is always 1 by definition
-      # exclude values, for which truth value is missing (residual = NaN)
-      residualsMasked = np.ma.fix_invalid(residuals)
-      for i in indicesToMask:
-        residualsMasked[i] = np.ma.masked
-      if residualsMasked.count() == 0:
-        print(f"All residuals masked; skipping '{histResidualName}.pdf'.")
-      else:
-        chi2     = np.sum(residualsMasked**2)
-        ndf      = residualsMasked.count()
-        chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
-        # fill histogram with residuals
-        for (index, ), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
-          binIndex = index + 1
-          histResidual.SetBinContent(binIndex, residual)
-          histResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
-        if binning is None:
-          for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
-            histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
-        histResidual.LabelsOption("V", "X")
-        histResidual.SetMarkerColor(ROOT.kBlue + 1)
-        histResidual.SetLineColor(ROOT.kBlue + 1)
-        histResidual.SetLineWidth(2)
-        histResidual.SetMinimum(-3)
-        histResidual.SetMaximum(+3)
-        canv = ROOT.TCanvas()
-        histResidual.Draw("PE")
-        # draw zero line
-        xAxis = histResidual.GetXaxis()
-        line = ROOT.TLine()
-        line.SetLineStyle(ROOT.kDashed)
-        line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-        # shade 1 sigma region
-        box = ROOT.TBox()
-        box.SetFillColorAlpha(ROOT.kBlack, 0.15)
-        box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
-        # draw chi^2 info
-        label = ROOT.TLatex()
-        label.SetNDC()
-        label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
-        label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {chi2Prob * 100:.0f}%")
-        canv.SaveAs(f"{histResidualName}.pdf")
+    histResidualName = f"{pdfFileNamePrefix}residuals_{momentLabel}_{momentPart}"
+    histResidual = ROOT.TH1D(histResidualName,
+      (f"{histTitle} " if histTitle else "") + f"Residuals {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}",
+      *histBinning.astuple)
+    # calculate residuals; NaN flags histogram bins, for which truth info is missing
+    residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
+    indicesToMask: list[int] = []
+    for index, HVal in enumerate(HVals):
+      if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
+        continue
+      if HVal.truth is not None:
+        dataVal, dataValErr = HVal.part     (real = (momentPart == "Re"))
+        trueVal, _          = HVal.truthPart(real = (momentPart == "Re"))
+        binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
+        residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
+        if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
+          indicesToMask.append(binIndex)  # exclude H_0(0, 0) from plotting and chi^2 calculation
+    # calculate chi^2
+    # if moments were normalized, exclude Re and Im of H_0(0, 0) because it is always 1 by definition
+    # exclude values, for which truth value is missing (residual = NaN)
+    residualsMasked = np.ma.fix_invalid(residuals)
+    for i in indicesToMask:
+      residualsMasked[i] = np.ma.masked
+    if residualsMasked.count() == 0:
+      print(f"All residuals masked; skipping '{histResidualName}.pdf'.")
+      chi2Values[momentPart] = (None, None)
+      continue
+    chi2     = np.sum(residualsMasked**2)
+    ndf      = residualsMasked.count()
+    chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
+    # fill histogram with residuals
+    for (index, ), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
+      binIndex = index + 1
+      histResidual.SetBinContent(binIndex, residual)
+      histResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+    if binning is None:
+      for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
+        histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
+    histResidual.LabelsOption("V", "X")
+    histResidual.SetMarkerColor(ROOT.kBlue + 1)
+    histResidual.SetLineColor(ROOT.kBlue + 1)
+    histResidual.SetLineWidth(2)
+    histResidual.SetMinimum(-3)
+    histResidual.SetMaximum(+3)
+    canv = ROOT.TCanvas()
+    histResidual.Draw("PE")
+    # draw zero line
+    xAxis = histResidual.GetXaxis()
+    line = ROOT.TLine()
+    line.SetLineStyle(ROOT.kDashed)
+    line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    # shade 1 sigma region
+    box = ROOT.TBox()
+    box.SetFillColorAlpha(ROOT.kBlack, 0.15)
+    box.DrawBox(xAxis.GetBinLowEdge(xAxis.GetFirst()), -1, xAxis.GetBinUpEdge(xAxis.GetLast()), +1)
+    # draw chi^2 info
+    label = ROOT.TLatex()
+    label.SetNDC()
+    label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
+    label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {chi2Prob * 100:.0f}%")
+    canv.SaveAs(f"{histResidualName}.pdf")
+    chi2Values[momentPart] = (chi2, ndf)
+
+  return chi2Values
 
 
 def plotMomentsInBin(
