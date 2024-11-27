@@ -238,22 +238,23 @@ def makeAllPlots(
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
         )
-        plotMomentsInBin(
-          HData             = HMeas,
-          normalizedMoments = cfg.normalizeMoments,
-          HTruth            = None,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
-          plotLegend        = False,
-        )
-        #TODO also plot correlation matrices
-        plotMomentsCovMatrices(
-          HData             = HPhys,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{binLabel}_",
-          axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
-          plotTitle         = f"{binLabel}: ",
-        )
+        if cfg.plotMeasuredMoments:
+          plotMomentsInBin(
+            HData             = HMeas,
+            normalizedMoments = cfg.normalizeMoments,
+            HTruth            = None,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
+            plotLegend        = False,
+          )
+        if cfg.plotCovarianceMatrices:
+          #TODO also plot correlation matrices
+          plotMomentsCovMatrices(
+            HData             = HPhys,
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{binLabel}_",
+            axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
+            plotTitle         = f"{binLabel}: ",
+          )
         if cfg.nmbBootstrapSamples > 0:
-          graphTitle = f"({binLabel})"
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
             HTruth            = HComp,
@@ -296,7 +297,8 @@ def makeAllPlots(
             histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         histPwaTotalIntensity = None
         if qnIndex == H000Index:
-          plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
+          # plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
+          plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiPol/PWA_S_P_D/pwa_plots_SPD.root", "READ")
           histPwaTotalIntensity = convertGraphToHist(
             graph     = plotFile.Get("Total"),
             binning   = cfg.massBinning.astuple,
@@ -316,17 +318,17 @@ def makeAllPlots(
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
-          histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
-            "Re" : [
-              (histJpac,     "HIST L", histJpac.GetName()),
-              (histJpacBand,     "E3", ""),
-            ],
-          },
-          # histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          # histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
           #   "Re" : [
-          #     (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
+          #     (histJpac,     "HIST L", histJpac.GetName()),
+          #     (histJpacBand,     "E3", ""),
           #   ],
           # },
+          histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+            "Re" : [
+              (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
+            ],
+          },
         )
         plotMoments1D(
           momentResults     = momentResultsMeas,

@@ -67,6 +67,8 @@ class AnalysisConfig:
   calcAccPsMoments:         bool                     = False
   # plotAccPsMoments:         bool                     = True
   plotAccPsMoments:         bool                     = False
+  plotMeasuredMoments:      bool                     = False
+  plotCovarianceMatrices:   bool                     = False
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
   binVarMass:               KinematicBinningVariable = field(default_factory=lambda: KinematicBinningVariable(
