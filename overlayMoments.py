@@ -58,7 +58,7 @@ def overlayMoments1D(
         binIndex = histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
         histData.SetBinContent(binIndex, y)
         histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
-      setCbFriendlyStyle(histData, index)
+      setCbFriendlyStyle(histData, styleIndex = index)
       if scaleFactor is not None:
         histData.Scale(scaleFactor)
       histStack.Add(histData, "PE1X0")
@@ -102,8 +102,13 @@ if __name__ == "__main__":
   #   # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20", None),
   # )
   fitResults = (
-    ("./plotsPhotoProdPiPiPol.maxL_4.oldMc", "Old MC",   0.03228842737363692 * (8 * math.pi)),
-    ("./plotsPhotoProdPiPiPol.maxL_4",       "New MC", None),
+    # ("./plotsPhotoProdPiPiPol.maxL_4.oldMc", "Old MC",   0.03228842737363692 * (8 * math.pi)),
+    # ("./plotsPhotoProdPiPiPol.maxL_4",       "New MC", None),
+    ("./plotsPhotoProdPiPiPol.maxL_4", "#it{L}_{max} = 4", None),
+    ("./plotsPhotoProdPiPiPol.maxL_5", "#it{L}_{max} = 5", None),
+    ("./plotsPhotoProdPiPiPol.maxL_6", "#it{L}_{max} = 6", None),
+    ("./plotsPhotoProdPiPiPol.maxL_7", "#it{L}_{max} = 7", None),
+    ("./plotsPhotoProdPiPiPol.maxL_8", "#it{L}_{max} = 8", None),
   )
   outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}Overlay")
 
