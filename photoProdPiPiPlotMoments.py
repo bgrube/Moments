@@ -221,15 +221,16 @@ def makeAllPlots(
   if True:
     with timer.timeThis(f"Time to plot results from analysis of real data"):
       # plot moments in each mass bin
+      chi2Values: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # index: mass-bin index; index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
-        HMeas = momentResultsMeas[massBinIndex]
+        HMeas = momentResultsMeas   [massBinIndex]
         HComp = momentResultsCompare[massBinIndex]
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
         # print(f"True moments for kinematic bin {title}:\n{HTruth}")
         print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
-        plotMomentsInBin(
+        chi2Values[massBinIndex] = plotMomentsInBin(
           HData             = HPhys,
           normalizedMoments = cfg.normalizeMoments,
           HTruth            = HComp,
@@ -274,6 +275,32 @@ def makeAllPlots(
             pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             graphTitle        = binTitle,
           )
+      # plot chi^2/ndf of physical moments w.r.t. true values as a function of mass
+      for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
+        for momentPart in ("Re", "Im"):
+          _, ndf = chi2Values[0][momentIndex][momentPart]  # assume that ndf is the same for all mass bins
+          histChi2 = ROOT.TH1D(
+            f"{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_chi2_H{momentIndex}_{momentPart}",
+            f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
+            *cfg.massBinning.astuple
+          )
+          for massBinIndex in range(len(chi2Values)):
+            chi2, ndf = chi2Values[massBinIndex][momentIndex][momentPart]
+            if chi2 is None or ndf is None:
+              continue
+            massBinCenter = momentResultsPhys.binCenters[massBinIndex][cfg.massBinning.var]
+            histChi2.SetBinContent(histChi2.FindBin(massBinCenter), chi2 / ndf)
+          canv = ROOT.TCanvas()
+          histChi2.SetLineColor(ROOT.kBlue + 1)
+          histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
+          histChi2.SetMaximum(12)
+          histChi2.Draw("HIST")
+          # add line at nominal chi2/ndf value to guide the eye
+          line = ROOT.TLine()
+          line.SetLineColor(ROOT.kGray + 1)
+          line.SetLineStyle(ROOT.kDashed)
+          line.DrawLine(cfg.massBinning.minVal, 1, cfg.massBinning.maxVal, 1)
+          canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot mass dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
