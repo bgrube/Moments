@@ -12,18 +12,31 @@ from dataclasses import (
 import ROOT
 
 
-def bookHistogram(
+def bookHistogram1D(
   df:         ROOT.RDataFrame,
   name:       str,
   title:      str,
   binning:    tuple[int, float, float],
   columnName: str,
 ) -> ROOT.RResultPtr[ROOT.TH1D]:
-  """Books histograms with or without event weight depending on the presence of the corresponding column in the input data"""
+  """Books 1D histograms with or without event weight depending on the presence of the corresponding column in the input data"""
   if "eventWeight" in df.GetColumnNames():
     return df.Histo1D(ROOT.RDF.TH1DModel(name, title, *binning), columnName, "eventWeight")
   else:
     return df.Histo1D(ROOT.RDF.TH1DModel(name, title, *binning), columnName)
+
+def bookHistogram2D(
+  df:          ROOT.RDataFrame,
+  name:        str,
+  title:       str,
+  binning:     tuple[int, float, float, int, float, float],
+  columnNames: tuple[str, str],
+) -> ROOT.RResultPtr[ROOT.TH2D]:
+  """Books 2D histograms with or without event weight depending on the presence of the corresponding column in the input data"""
+  if "eventWeight" in df.GetColumnNames():
+    return df.Histo2D(ROOT.RDF.TH2DModel(name, title, *binning), *columnNames, "eventWeight")
+  else:
+    return df.Histo2D(ROOT.RDF.TH2DModel(name, title, *binning), *columnNames)
 
 
 @dataclass
@@ -49,24 +62,25 @@ def plotDistributions1D(
   pdfFileMameSuffix:  str = "",
   yAxisLabel:         str = "RF-Sideband Subtracted Combos"
 ) -> None:
+  """Overlays 1D distributions from real data and weighted Monte Carlo"""
   dataToOverlay = DataToOverlay(
     realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
     weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
   )
-  histsToOverlay = HistsToOverlay()
+  hists1DToOverlay = HistsToOverlay()
   for member in fields(dataToOverlay):  # loop over members of dataclass
     df    = getattr(dataToOverlay, member.name)
     label = member.name
     label = label[0].upper() + label[1:]  # make sure first character is upper case
-    hists = (
-      bookHistogram(df, f"h{label}MassPiPi",   histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
-      bookHistogram(df, f"h{label}HfCosTheta", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ( 50,   -1,      +1   ), "cosTheta"),
-      bookHistogram(df, f"h{label}HfPhiDeg",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, ( 50, -180,    +180   ), "phiDeg"  ),
-      bookHistogram(df, f"h{label}PhiDeg",     histTitle + ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
+    hists1D = (
+      bookHistogram1D(df, f"h{label}MassPiPi",   histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
+      bookHistogram1D(df, f"h{label}HfCosTheta", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ( 50,   -1,      +1   ), "cosTheta"),
+      bookHistogram1D(df, f"h{label}HfPhiDeg",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, ( 50, -180,    +180   ), "phiDeg"  ),
+      bookHistogram1D(df, f"h{label}PhiDeg",     histTitle + ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
     )
-    setattr(histsToOverlay, member.name, hists)
-  for histIndex, histData in enumerate(histsToOverlay.realData):
-    histWeightedMc = histsToOverlay.weightedMc[histIndex]
+    setattr(hists1DToOverlay, member.name, hists1D)
+  for histIndex, histData in enumerate(hists1DToOverlay.realData):
+    histWeightedMc = hists1DToOverlay.weightedMc[histIndex]
     print(f"Overlaying histograms '{histData.GetName()}' and '{histWeightedMc.GetName()}'")
     canv = ROOT.TCanvas()
     histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
@@ -92,6 +106,65 @@ def plotDistributions1D(
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
     label.DrawLatex(0.15, 0.89, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
     canv.SaveAs(f"{histStack.GetName()}{pdfFileMameSuffix}.pdf")
+
+
+def plotDistributions2D(
+  dataFileName:       str,
+  weightedMcFileName: str,
+  treeName:           str,
+  filter:             str,
+  pdfFileMameSuffix:  str = "",
+) -> None:
+  """Plots 2D distributions from real data and weighted Monte Carlo and their differences"""
+  dataToOverlay = DataToOverlay(
+    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
+    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
+  )
+  hists2DToCompare = HistsToOverlay()
+  for member in fields(dataToOverlay):  # loop over members of dataclass
+    df    = getattr(dataToOverlay, member.name)
+    label = member.name
+    label = label[0].upper() + label[1:]  # make sure first character is upper case
+    hists2D = (
+      # bookHistogram2D(df, f"h{label}MassPiPiVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  (20, 0.28, 2.28, 25, -1,   +1  ), ("mass",     "cosTheta")),
+      # bookHistogram2D(df, f"h{label}MassPiPiVsHfPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", (20, 0.28, 2.28, 25, -180, +180), ("mass",     "phiDeg"  )),
+      # bookHistogram2D(df, f"h{label}MassPiPiVsPhiDeg",     ";m_{#pi#pi} [GeV];#Phi [deg]",      (20, 0.28, 2.28, 25, -180, +180), ("mass",     "PhiDeg"  )),
+      bookHistogram2D(df, f"h{label}AnglesHf",             ";cos#theta_{HF};#phi_{HF} [deg]",   (25, -1,   +1,   25, -180, +180), ("cosTheta", "phiDeg"  )),
+      bookHistogram2D(df, f"h{label}PhiDegVsHfCosTheta",   ";cos#theta_{HF};#Phi [deg]",        (25, -1,   +1,   25, -180, +180), ("cosTheta", "PhiDeg"  )),
+      bookHistogram2D(df, f"h{label}PhiDegVsHfPhiDeg",     ";#phi_{HF} [deg];#Phi [deg]",       (25, -180, +180, 25, -180, +180), ("phiDeg",   "PhiDeg"  )),
+    )
+    setattr(hists2DToCompare, member.name, hists2D)
+  for histIndex, histData in enumerate(hists2DToCompare.realData):
+    print(f"Plotting histogram '{histData.GetName()}'")
+    histData.SetTitle("Real Data")
+    canv = ROOT.TCanvas()
+    histData.Draw("COLZ")
+    canv.SaveAs(f"{histData.GetName()}{pdfFileMameSuffix}.pdf")
+
+    histWeightedMc = hists2DToCompare.weightedMc[histIndex]
+    print(f"Plotting histograms '{histWeightedMc.GetName()}'")
+    histWeightedMc.SetTitle("Weighted MC")
+    canv = ROOT.TCanvas()
+    histWeightedMc.Draw("COLZ")
+    canv.SaveAs(f"{histWeightedMc.GetName()}{pdfFileMameSuffix}.pdf")
+
+    print(f"Plotting difference of histograms '{histData.GetName()}' - '{histWeightedMc.GetName()}'")
+    scaleFactor = histData.Integral() / histWeightedMc.Integral()
+    histWeightedMc.Scale(scaleFactor)
+    histResidual = histData.Clone(f"{histData.GetName()}_residual")
+    histResidual.Add(histWeightedMc.GetValue(), -1)  # data - weighted MC
+    # divide each bin by its uncertainty to get residual
+    for xBin in range(1, histResidual.GetNbinsX() + 1):
+      for yBin in range(1, histResidual.GetNbinsY() + 1):
+        binError = histResidual.GetBinError(xBin, yBin)
+        if binError > 0:
+          histResidual.SetBinContent(xBin, yBin, histResidual.GetBinContent(xBin, yBin) / binError)
+        else:
+          histResidual.SetBinContent(xBin, yBin, 0)
+    histResidual.SetTitle("(Real Data #minus Weighted MC) / Uncertainty")
+    canv = ROOT.TCanvas()
+    histResidual.Draw("COLZ")
+    canv.SaveAs(f"{histResidual.GetName()}{pdfFileMameSuffix}.pdf")
 
 
 if __name__ == "__main__":
@@ -121,6 +194,12 @@ if __name__ == "__main__":
     filter             = "(true)",
     histTitle          = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
   )
+  plotDistributions2D(
+    dataFileName       = dataFileName,
+    weightedMcFileName = weightedMcFileName,
+    treeName           = treeName,
+    filter             = "(true)",
+  )
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
     massBinMax = massBinMin + massBinWidth
@@ -132,5 +211,12 @@ if __name__ == "__main__":
       treeName           = treeName,
       filter             = massRangeFilter,
       histTitle          = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
+      pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+    )
+    plotDistributions2D(
+      dataFileName       = dataFileName,
+      weightedMcFileName = weightedMcFileName,
+      treeName           = treeName,
+      filter             = massRangeFilter,
       pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
     )
