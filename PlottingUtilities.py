@@ -574,7 +574,7 @@ def plotMomentsInBin(
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
   plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
   truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
-) -> None:
+) -> list[dict[str, tuple[float, float] | tuple[None, None]]]:  # index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
   # ensure that indices of HData and HTruth are compatible
   # allow case where HTruth contains unpolarized as well as polarized moments but HData only unpolarized moments
@@ -588,6 +588,7 @@ def plotMomentsInBin(
       indicesTrueMoments = HTruth.indices
   assert not HTruth or HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
   # generate separate plots for each moment index
+  chi2Values: list[dict[str, tuple[float, float] | tuple[None, None]]] = [{}] * HData.indices.momentIndexRange
   for momentIndex in range(HData.indices.momentIndexRange):
     HVals = tuple(
       MomentValueAndTruth(
@@ -597,7 +598,7 @@ def plotMomentsInBin(
         truthUncertIm = HTruth[qnIndex].uncertIm if HTruth else None,
       ) for qnIndex in HData.indices.qnIndices if qnIndex.momentIndex == momentIndex
     )
-    plotMoments(
+    chi2Values[momentIndex] = plotMoments(
       HVals             = HVals,
       binning           = None,
       normalizedMoments = normalizedMoments,
@@ -608,6 +609,7 @@ def plotMomentsInBin(
       plotTruthUncert   = plotTruthUncert,
       truthColor        = truthColor,
     )
+  return chi2Values
 
 
 def plotMoments1D(
