@@ -925,6 +925,38 @@ class MomentResult:
       [np.conjugate(V_pseudo), np.conjugate(V_Hermit)],
     ])
 
+  def setCovarianceMatricesFrom(
+    self,
+    V_aug: npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Complex128],
+  ) -> None:
+    """Set internal covariance matrices for real and imaginary parts from augmented covariance matrix"""
+    nmbMoments = len(self.indices)
+    V_Hermit = V_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
+    V_pseudo = V_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
+    self._V_ReReFlatIndex = (np.real(V_Hermit) + np.real(V_pseudo)) / 2  # Eq. (91)
+    self._V_ImImFlatIndex = (np.real(V_Hermit) - np.real(V_pseudo)) / 2  # Eq. (92)
+    self._V_ReImFlatIndex = (np.imag(V_pseudo) - np.imag(V_Hermit)) / 2  # Eq. (93)
+
+  def normalize(self) -> None:
+    """Scales all moment values by common factor such that H_0(0, 0) = 1"""
+    norm: complex = self[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val  # get value of H_0(0, 0)
+    self._valsFlatIndex /= norm
+    # since H_0(0, 0) might be complex-valued, we have to
+    # i) convert covariance matrices to an augmented covariance matrix
+    V_aug = self.augmentedCovarianceMatrix
+    # ii) scale the augmented covariance matrix with the complex-valued normalization factor
+    #!NOTE! this is not 100% correct because H_0(0, 0) actually
+    #  becomes a constant and its variance should actually be removed
+    #  from the covariance matrix; cross-check with the bootstrap
+    #  estimates to see whether this effect is negligible
+    V_aug /= norm**2
+    # iii) convert the augmented covariance matrix back to the covariance matrices for real and imaginary parts
+    self.setCovarianceMatricesFrom(V_aug)
+    # normalize each bootstrap sample
+    for bsSampleIndex in range(self.nmbBootstrapSamples):
+      norm: complex = self._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
+      self._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
+
   @property
   def hasBootstrapSamples(self) -> bool:
     """Returns whether bootstrap samples exist"""
@@ -1155,19 +1187,6 @@ class MomentCalculator:
       self._integralMatrix.loadOrCalculate(self.integralFileName)
     self._integralMatrix.save(self.integralFileName)
 
-  def _calcReImCovMatrices(
-    self,
-    V_aug: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128],  # augmented covariance matrix
-  ) -> tuple[npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64], npt.NDArray[npt.Shape["Dim, Dim"], npt.Float64]]:
-    """Calculates covariance matrices for real parts, for imaginary parts, and for real and imaginary parts from augmented covariance matrix"""
-    nmbMoments = len(self.indices)
-    V_Hermit = V_aug[:nmbMoments, :nmbMoments]  # Hermitian covariance matrix; Eq. (88)
-    V_pseudo = V_aug[:nmbMoments, nmbMoments:]  # pseudo-covariance matrix; Eq. (88)
-    V_ReRe = (np.real(V_Hermit) + np.real(V_pseudo)) / 2  # Eq. (91)
-    V_ImIm = (np.real(V_Hermit) - np.real(V_pseudo)) / 2  # Eq. (92)
-    V_ReIm = (np.imag(V_pseudo) - np.imag(V_Hermit)) / 2  # Eq. (93)
-    return (V_ReRe, V_ImIm, V_ReIm)
-
   MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE"))
 
   def calculateMoments(
@@ -1221,7 +1240,7 @@ class MomentCalculator:
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181) #TODO update eq numbers
     fMeasWeighted = eventWeights * fMeas
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
-    self._HMeas._V_ReReFlatIndex, self._HMeas._V_ImImFlatIndex, self._HMeas._V_ReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
+    self._HMeas.setCovarianceMatricesFrom(V_meas_aug)
     # calculate physical moments and propagate uncertainty
     self._HPhys = MomentResult(
       indices             = self.indices,
@@ -1252,21 +1271,9 @@ class MomentCalculator:
         [np.conjugate(J_conj), np.conjugate(J)],
       ])  # augmented Jacobian; Eq. (98)
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative; Eq. (85)
+    self._HPhys.setCovarianceMatricesFrom(V_phys_aug)
     if normalize:
-      #TODO move normalization into MomentResult member function
-      # normalize moments such that H_0(0, 0) = 1
-      norm: complex = self._HPhys[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val
-      self._HPhys._valsFlatIndex /= norm
-      #TODO the following is not 100% correct because H_0(0, 0)
-      #  actually becomes a constant its variance should be removed from
-      #  the covariance matrix
-      V_phys_aug /= norm**2
-      # normalize bootstrap samples for H_phys
-      for bsSampleIndex in range(nmbBootstrapSamples):
-        norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
-        self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
-    self._HPhys._V_ReReFlatIndex, self._HPhys._V_ImImFlatIndex, self._HPhys._V_ReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
-
+      self._HPhys.normalize()
 
 # functions that read bin labels and titles from MomentCalculator or MomentResult
 def binLabels(obj: MomentCalculator | MomentResult) -> list[str]:
