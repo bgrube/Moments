@@ -88,7 +88,7 @@ def readPartialWaveAmplitudes(
   # have to convert the respective column by hand
   ampSeries = df.astype('complex128').loc[df.index[0]]  # get first row
   # normalize amplitudes to number of produced events
-  # !Note! In principle, the normalized amplitude value is given by
+  #!NOTE! In principle, the normalized amplitude value is given by
   #   A^norm_i = A_i * ampScaleFactor_i * sqrt(I_{ii})
   # However, the diagonal elements of the integral matrix from the fit
   # result cannot be used here because they are valid only for the
