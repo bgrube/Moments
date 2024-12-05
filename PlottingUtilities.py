@@ -907,9 +907,9 @@ def plotMomentsCovMatrices(
     covMatrixCompDiff = norm @ (covMatrixCompBs - covMatrixCompEst) @ norm
   # plot covariance matrices for nominal estimates
   covMatricesEst = {
-    (True,  True ) : ("ReRe", "Auto Covariance Real Parts"          , HData._covReReFlatIndex),  # ReRe, symmetric
-    (False, False) : ("ImIm", "Auto Covariance Imag Parts"          , HData._covImImFlatIndex),  # ImIm, symmetric
-    (True,  False) : ("ReIm", "Cross Covariance Real and Imag Parts", HData._covReImFlatIndex),  # ReIm, _not_ symmetric
+    (True,  True ) : ("ReRe", "Auto Covariance Real Parts"          , HData._V_ReReFlatIndex),  # ReRe, symmetric
+    (False, False) : ("ImIm", "Auto Covariance Imag Parts"          , HData._V_ImImFlatIndex),  # ImIm, symmetric
+    (True,  False) : ("ReIm", "Cross Covariance Real and Imag Parts", HData._V_ReImFlatIndex),  # ReIm, _not_ symmetric
   }
   for realParts, (label, title, covMatrixEst) in  covMatricesEst.items():
     plotRealMatrix(covMatrixEst, f"{pdfFileNamePrefix}{label}.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange)

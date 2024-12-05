@@ -736,17 +736,17 @@ class MomentResult:
   nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
   bootstrapSeed:       int                                                                       = 0   # seed for random number generator used for bootstrap samples
   _valsFlatIndex:      npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
-  _covReReFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
-  _covImImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
-  _covReImFlatIndex:   npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices; !Note! this matrix is _not_ symmetric
+  _V_ReReFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
+  _V_ImImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
+  _V_ReImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices; !NOTE! this matrix is _not_ symmetric
   _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __post_init__(self) -> None:
     nmbMoments = len(self)
     self._valsFlatIndex      = np.zeros((nmbMoments, ),                         dtype = np.complex128)
-    self._covReReFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
-    self._covImImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
-    self._covReImFlatIndex   = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
+    self._V_ReReFlatIndex    = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
+    self._V_ImImFlatIndex    = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
+    self._V_ReImFlatIndex    = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
     self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = np.complex128)
 
   def __eq__(
@@ -759,14 +759,14 @@ class MomentResult:
     return (
       (self.indices == other.indices)
       and (self.binCenters == other.binCenters)
-      and (self._valsFlatIndex.shape    == other._valsFlatIndex.shape   )
-      and (self._covReReFlatIndex.shape == other._covReReFlatIndex.shape)
-      and (self._covImImFlatIndex.shape == other._covImImFlatIndex.shape)
-      and (self._covReImFlatIndex.shape == other._covReImFlatIndex.shape)
+      and (self._valsFlatIndex.shape  == other._valsFlatIndex.shape   )
+      and (self._V_ReReFlatIndex.shape == other._V_ReReFlatIndex.shape)
+      and (self._V_ImImFlatIndex.shape == other._V_ImImFlatIndex.shape)
+      and (self._V_ReImFlatIndex.shape == other._V_ReImFlatIndex.shape)
       and np.allclose(self._valsFlatIndex,    other._valsFlatIndex   )
-      and np.allclose(self._covReReFlatIndex, other._covReReFlatIndex)
-      and np.allclose(self._covImImFlatIndex, other._covImImFlatIndex)
-      and np.allclose(self._covReImFlatIndex, other._covReImFlatIndex)
+      and np.allclose(self._V_ReReFlatIndex, other._V_ReReFlatIndex)
+      and np.allclose(self._V_ImImFlatIndex, other._V_ImImFlatIndex)
+      and np.allclose(self._V_ReImFlatIndex, other._V_ReImFlatIndex)
     )
 
   def __len__(self) -> int:
@@ -797,8 +797,8 @@ class MomentResult:
         MomentValue(
           qn         = self.indices[i],
           val        = self._valsFlatIndex[i],
-          uncertRe   = np.sqrt(self._covReReFlatIndex[i, i]),
-          uncertIm   = np.sqrt(self._covImImFlatIndex[i, i]),
+          uncertRe   = np.sqrt(self._V_ReReFlatIndex[i, i]),
+          uncertIm   = np.sqrt(self._V_ImImFlatIndex[i, i]),
           binCenters = self.binCenters,
           label      = self.label,
           bsSamples  = self._bsSamplesFlatIndex[i],
@@ -808,8 +808,8 @@ class MomentResult:
       return MomentValue(
         qn         = self.indices[flatIndex],
         val        = self._valsFlatIndex[flatIndex],
-        uncertRe   = np.sqrt(self._covReReFlatIndex[flatIndex, flatIndex]),
-        uncertIm   = np.sqrt(self._covImImFlatIndex[flatIndex, flatIndex]),
+        uncertRe   = np.sqrt(self._V_ReReFlatIndex[flatIndex, flatIndex]),
+        uncertIm   = np.sqrt(self._V_ImImFlatIndex[flatIndex, flatIndex]),
         binCenters = self.binCenters,
         label      = self.label,
         bsSamples  = self._bsSamplesFlatIndex[flatIndex],
@@ -856,23 +856,23 @@ class MomentResult:
     )
     if realParts == (True, True):
       return np.array([
-        [self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
-        [self._covReReFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
+        [self._V_ReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._V_ReReFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
+        [self._V_ReReFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._V_ReReFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     elif realParts == (False, False):
       return np.array([
-        [self._covImImFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covImImFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
-        [self._covImImFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._covImImFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
+        [self._V_ImImFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._V_ImImFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
+        [self._V_ImImFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._V_ImImFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     elif realParts == (True, False):
       return np.array([
-        [self._covReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReImFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
-        [self._covReImFlatIndex[flatIndexPair[0], flatIndexPair[1]], self._covImImFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
+        [self._V_ReReFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._V_ReImFlatIndex[flatIndexPair[0], flatIndexPair[1]]],
+        [self._V_ReImFlatIndex[flatIndexPair[0], flatIndexPair[1]], self._V_ImImFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     elif realParts == (False, True):
       return np.array([
-        [self._covImImFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._covReImFlatIndex[flatIndexPair[1], flatIndexPair[0]]],
-        [self._covReImFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._covReReFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
+        [self._V_ImImFlatIndex[flatIndexPair[0], flatIndexPair[0]], self._V_ReImFlatIndex[flatIndexPair[1], flatIndexPair[0]]],
+        [self._V_ReImFlatIndex[flatIndexPair[1], flatIndexPair[0]], self._V_ReReFlatIndex[flatIndexPair[1], flatIndexPair[1]]],
       ])
     else:
       raise ValueError(f"Invalid realParts tuple {realParts}; must be tuple of 2 bools")
@@ -899,30 +899,30 @@ class MomentResult:
 
   @property
   def compositeCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Float64]:
-    """Returns real-valued composite covariance matrix for all moments"""
+    """Returns real-valued composite covariance matrix for all moments indexed by flat index"""
     # Eq. (11) in https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6125&version=2
     return np.block([
-      [self._covReReFlatIndex,   self._covReImFlatIndex],
-      [self._covReImFlatIndex.T, self._covImImFlatIndex],
+      [self._V_ReReFlatIndex,   self._V_ReImFlatIndex],
+      [self._V_ReImFlatIndex.T, self._V_ImImFlatIndex],
     ])
 
   @property
   def hermitianAndPseudoCovarianceMatrix(self) \
     -> tuple[npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128],
              npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128]]:
-    """Returns tuple with complex-valued Hermitian covariance matrix and pseudo-covariance matrix for all moments"""
+    """Returns tuple with complex-valued Hermitian covariance matrix and pseudo-covariance matrix for all moments indexed by flat index"""
     # Eqs. (101) and (102)
-    return (self._covReReFlatIndex + self._covImImFlatIndex + 1j * (self._covReImFlatIndex.T - self._covReImFlatIndex),  # Hermitian covariance matrix
-            self._covReReFlatIndex - self._covImImFlatIndex + 1j * (self._covReImFlatIndex.T + self._covReImFlatIndex))  # pseudo-covariance matrix
+    return (self._V_ReReFlatIndex + self._V_ImImFlatIndex + 1j * (self._V_ReImFlatIndex.T - self._V_ReImFlatIndex),  # Hermitian covariance matrix
+            self._V_ReReFlatIndex - self._V_ImImFlatIndex + 1j * (self._V_ReImFlatIndex.T + self._V_ReImFlatIndex))  # pseudo-covariance matrix
 
   @property
   def augmentedCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Complex128]:
-    """Returns augmented covariance matrix for all moments"""
-    covHermit, covPseudo = self.hermitianAndPseudoCovarianceMatrix
+    """Returns augmented covariance matrix for all moments indexed by flat index"""
+    V_Hermit, V_pseudo = self.hermitianAndPseudoCovarianceMatrix
     # Eq. (95)
     return np.block([
-      [covPseudo,               covPseudo              ],
-      [np.conjugate(covPseudo), np.conjugate(covPseudo)],
+      [V_pseudo,               V_Hermit              ],
+      [np.conjugate(V_Hermit), np.conjugate(V_pseudo)],
     ])
 
   @property
@@ -935,10 +935,10 @@ class MomentResult:
     factor: float,
   ) -> None:
     """Scales moment values and uncertainties by given factor"""
-    self._valsFlatIndex    *= factor
-    self._covReReFlatIndex *= factor**2
-    self._covImImFlatIndex *= factor**2
-    self._covReImFlatIndex *= factor**2
+    self._valsFlatIndex *= factor
+    self._V_ReReFlatIndex *= factor**2
+    self._V_ImImFlatIndex *= factor**2
+    self._V_ReImFlatIndex *= factor**2
     if self.hasBootstrapSamples:
       self._bsSamplesFlatIndex *= factor
 
@@ -1021,9 +1021,10 @@ def constructMomentResultFrom(
         foundMomentValue = True
         # copy values to MomentResult
         flatIndex = indices[qnIndex]
-        momentResult._valsFlatIndex[flatIndex]               = momentValue.val
-        momentResult._covReReFlatIndex[flatIndex, flatIndex] = momentValue.uncertRe**2
-        momentResult._covImImFlatIndex[flatIndex, flatIndex] = momentValue.uncertIm**2
+        momentResult._valsFlatIndex[flatIndex] = momentValue.val
+        momentResult._V_ReReFlatIndex[flatIndex, flatIndex] = momentValue.uncertRe**2
+        momentResult._V_ImImFlatIndex[flatIndex, flatIndex] = momentValue.uncertIm**2
+        #!NOTE! covariance information is lost
         if momentResult.nmbBootstrapSamples:
           momentResult._bsSamplesFlatIndex[flatIndex] = momentValue.bsSamples
         break
@@ -1220,7 +1221,7 @@ class MomentCalculator:
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181) #TODO update eq numbers
     fMeasWeighted = eventWeights * fMeas
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
-    self._HMeas._covReReFlatIndex, self._HMeas._covImImFlatIndex, self._HMeas._covReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
+    self._HMeas._V_ReReFlatIndex, self._HMeas._V_ImImFlatIndex, self._HMeas._V_ReImFlatIndex = self._calcReImCovMatrices(V_meas_aug)
     # calculate physical moments and propagate uncertainty
     self._HPhys = MomentResult(
       indices             = self.indices,
@@ -1252,15 +1253,19 @@ class MomentCalculator:
       ])  # augmented Jacobian; Eq. (98)
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative; Eq. (85)
     if normalize:
+      #TODO move normalization into MomentResult member function
       # normalize moments such that H_0(0, 0) = 1
       norm: complex = self._HPhys[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val
       self._HPhys._valsFlatIndex /= norm
+      #TODO the following is not 100% correct because H_0(0, 0)
+      #  actually becomes a constant its variance should be removed from
+      #  the covariance matrix
       V_phys_aug /= norm**2
       # normalize bootstrap samples for H_phys
       for bsSampleIndex in range(nmbBootstrapSamples):
         norm: complex = self._HPhys._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
         self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
-    self._HPhys._covReReFlatIndex, self._HPhys._covImImFlatIndex, self._HPhys._covReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
+    self._HPhys._V_ReReFlatIndex, self._HPhys._V_ImImFlatIndex, self._HPhys._V_ReImFlatIndex = self._calcReImCovMatrices(V_phys_aug)
 
 
 # functions that read bin labels and titles from MomentCalculator or MomentResult
