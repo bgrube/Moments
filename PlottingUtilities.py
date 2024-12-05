@@ -625,7 +625,7 @@ def plotMoments1D(
   plotTruthUncert:   bool                                 = False,           # plot uncertainty of true moments
   truthColor:        int                                  = ROOT.kBlue + 1,  # color used for true values
   histsToOverlay:    Mapping[str, Sequence[tuple[ROOT.TH1D, str, str]]] | None = None,  # histograms to overlay on top of data and (optional) true values; Mapping: key = "Re" or "Im", Sequence: tuple: (histogram, draw option, legend entry)
-) -> None:
+) -> dict[str, tuple[float, float] | tuple[None, None]]:  # key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
   HVals = tuple(
@@ -636,7 +636,7 @@ def plotMoments1D(
       truthUncertIm = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertIm,
     ) for binIndex, HPhys in enumerate(momentResults)
   )
-  plotMoments(
+  return plotMoments(
     HVals             = HVals,
     binning           = binning,
     normalizedMoments = normalizedMoments,
