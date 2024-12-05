@@ -1146,8 +1146,8 @@ def plotPullParameters(
 
 def plotAngularDistr(
   dataPsAcc:         ROOT.RDataFrame,  # accepted phase-space data
-  dataPsGen:         ROOT.RDataFrame,  # generated phase-space data
   dataSignalAcc:     ROOT.RDataFrame,  # accepted signal data
+  dataPsGen:         ROOT.RDataFrame | None = None,  # generated phase-space data
   dataSignalGen:     ROOT.RDataFrame | None = None,  # generated signal data
   pdfFileNamePrefix: str                    = "",    # name prefix for output files
   nmbBins3D:         int                    = 15,    # number of bins for 3D histograms
@@ -1172,8 +1172,9 @@ def plotAngularDistr(
   dataInfos = [
     DataInfo(dataSignalAcc, "signalAcc"),
     DataInfo(dataPsAcc,     "psAcc"),
-    DataInfo(dataPsGen,     "psGen"),
   ]
+  if dataPsGen is not None:
+    dataInfos += [DataInfo(dataPsGen, "psGen")]
   if dataSignalGen is not None:
     dataInfos += [DataInfo(dataSignalGen, "signalGen")]
   title2D   = ";cos#it{#theta};#it{#phi} [deg]"

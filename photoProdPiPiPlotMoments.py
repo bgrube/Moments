@@ -445,7 +445,6 @@ def makeAllPlots(
         legendLabels      = ("Measured Moment", "Measured Intensity"),
       )
 
-  nmbPsGenEvents: list[int] = []  # number of generated phase-space events; needed to plot accepted phase-space moments
   if cfg.plotAngularDistributions:
     with timer.timeThis(f"Time to plot angular distributions"):
       print("Plotting angular distributions")
@@ -469,16 +468,17 @@ def makeAllPlots(
         massBinFilter  = cfg.massBinning.binFilter(massBinIndex)
         dataInBin      = data.Filter     (massBinFilter)
         dataPsAccInBin = dataPsAcc.Filter(massBinFilter)
-        dataPsGenInBin = dataPsGen.Filter(massBinFilter)
-        nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
+        # dataPsGenInBin = dataPsGen.Filter(massBinFilter)
         # plot angular distributions for mass bin
         if cfg.plotAngularDistributions:
           plotAngularDistr(
             dataPsAcc         = dataPsAccInBin,
-            dataPsGen         = dataPsGenInBin,
             dataSignalAcc     = dataInBin,
+            dataPsGen         = None,
+            # dataPsGen         = dataPsGenInBin,
             dataSignalGen     = None,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_"
+            pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
+            nmbBins2D         = 20,
           )
 
   if cfg.plotAccIntegralMatrices:
@@ -536,6 +536,7 @@ def makeAllPlots(
             plotLegend        = False,
           )
         # plot accepted phase-space moments in each mass bin
+        dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
         for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
           binLabel = MomentCalculator.binLabel(HPhys)
           binTitle = MomentCalculator.binTitle(HPhys)
@@ -543,8 +544,13 @@ def makeAllPlots(
           print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{HMeas}")
           print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{HPhys}")
           # construct true moments for phase-space data
+          nmbPsGenEvents = None
+          if not cfg.normalizeMoments:
+            massBinFilter  = cfg.massBinning.binFilter(massBinIndex)
+            dataPsGenInBin = dataPsGen.Filter(massBinFilter)
+            nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
           HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents  # ... except for H_0(0, 0)
           # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
           HMeas._valsFlatIndex[0] = 0
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
