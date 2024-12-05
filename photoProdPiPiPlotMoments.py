@@ -200,27 +200,28 @@ def makeAllPlots(
   # overlayMomentResultsJpac  = True
   overlayMomentResultsJpac  = False
 
-  # normalize comparison and JPAC moments
-  normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-  if normalizeByIntegral:
-    # loop over mass bins and sum up H(0, 0) values
-    H000Sum = H000SumComp = H000SumJpac = 0.0
-    for HPhys, HComp, HJpac in zip(momentResultsPhys, momentResultsCompare, momentResultsJpac):
-      H000Sum     += HPhys[H000Index].val.real
-      H000SumComp += HComp[H000Index].val.real
-      # H000SumJpac += HJpac[H000Index].val.real
-    momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
-    print(f"!!! scale factor = {H000Sum / H000SumComp}")
-    # momentResultsCompare.scaleBy(H000Sum / H000SumComp)
-    momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
-    # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
-  else:
-    normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
-    H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
-    momentResultsCompare.scaleBy(H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)
-    momentResultsJpac.scaleBy   (H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)  # use same factor as for comparison moments
-    # momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
+  if not cfg.normalizeMoments:
+    # scale comparison and JPAC moments to match GlueX data
+    normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
+    if normalizeByIntegral:
+      # loop over mass bins and sum up H(0, 0) values
+      H000Sum = H000SumComp = H000SumJpac = 0.0
+      for HPhys, HComp, HJpac in zip(momentResultsPhys, momentResultsCompare, momentResultsJpac):
+        H000Sum     += HPhys[H000Index].val.real
+        H000SumComp += HComp[H000Index].val.real
+        # H000SumJpac += HJpac[H000Index].val.real
+      momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
+      print(f"!!! scale factor = {H000Sum / H000SumComp}")
+      # momentResultsCompare.scaleBy(H000Sum / H000SumComp)
+      momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
+      # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
+    else:
+      normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
+      H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
+      momentResultsCompare.scaleBy(H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)
+      momentResultsJpac.scaleBy   (H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)  # use same factor as for comparison moments
+      # momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
 
   if True:
     with timer.timeThis(f"Time to plot results from analysis of real data"):
@@ -330,6 +331,7 @@ def makeAllPlots(
             histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         histPwaTotalIntensity = None
         if qnIndex == H000Index:
+          #TODO add this info to AnalysisConfig
           # plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
           plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiPol/PWA_S_P_D/pwa_plots_SPD.root", "READ")
           histPwaTotalIntensity = convertGraphToHist(
