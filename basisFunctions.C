@@ -67,7 +67,7 @@ powMinusOne(const int exponent)
 
 
 // Wigner D-function D^J_{M1 M2}^*(phi, theta, 0) in canonical basis
-// !NOTE! quantum numbers J, M1, and M2 are given in units of hbar/2
+//!NOTE! quantum numbers J, M1, and M2 are given in units of hbar/2
 std::complex<double>
 wignerD(
 	const int    twoJ,
@@ -126,7 +126,7 @@ wignerD(
 
 
 // complex conjugated Wigner D-function refl^D^J_{M1 M2}^*(phi, theta, 0) in reflectivity basis
-// !NOTE! quantum numbers J, M1, and M2 are given in units of hbar/2
+//!NOTE! quantum numbers J, M1, and M2 are given in units of hbar/2
 std::complex<double>
 wignerDReflConj(
 	const int    twoJ,
@@ -163,7 +163,7 @@ ylm(
 	const int    m,
 	const double theta  // [rad]
 ) {
-	// !Note! ROOT::Math::sph_legendre works only for non-negative m values
+	//!NOTE! ROOT::Math::sph_legendre works only for non-negative m values
 	return ROOT::Math::sph_legendre(l, std::abs(m), theta) * ((m >= 0) ? 1 : powMinusOne(std::abs(m)));
 }
 

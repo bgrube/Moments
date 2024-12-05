@@ -33,7 +33,7 @@ def enableRootACLiCOpenMp() -> None:
   """Enables OpenMP support for ROOT macros compiled via ACLiC"""
   arch = ROOT.gSystem.GetBuildArch()
   if "macos" in arch.lower():
-    # !Note! MacOS (Apple does not ship libomp; needs to be installed via MacPorts or Homebrew see testOpenMp.c)
+    #!NOTE! MacOS (Apple does not ship libomp; needs to be installed via MacPorts or Homebrew see testOpenMp.c)
     print(f"Enabling ACLiC compilation with OpenMP for MacOS")
     ROOT.gSystem.SetFlagsOpt("-Xpreprocessor -fopenmp")  # compiler flags for optimized mode
     ROOT.gSystem.AddIncludePath("-I/opt/local/include/libomp")

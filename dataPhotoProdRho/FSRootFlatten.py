@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# !NOTE! only on ifarm this shebang selects the correct Python3 version for ROOT
+#!NOTE! only on ifarm this shebang selects the correct Python3 version for ROOT
 
 from datetime import datetime
 import glob
@@ -17,7 +17,7 @@ TIME_COMMAND = "/usr/bin/time --verbose "  # times process and prints other proc
 
 def callProcess(command):
   with subprocess.Popen(command, shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, universal_newlines = True) as process:
-    # NOTE! 'universal_newlines = True' becomes 'text = True' from Python 3.7 on
+    #!NOTE! 'universal_newlines = True' becomes 'text = True' from Python 3.7 on
     out, err = process.communicate()
     return (out, err)
 
@@ -122,7 +122,7 @@ def runRanking(
 
 
 # creates zip file of all files matching given pattern
-# NOTE! saves full path of input files
+#!NOTE! saves full path of input files
 #       use `unzip -j <zipFileName>` to ignore any paths and extract all files into current directory
 def zipAndRemoveFiles(zipFileName, fileNamePattern):
   fileNamesToZip = sorted(glob.glob(fileNamePattern))

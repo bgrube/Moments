@@ -120,7 +120,7 @@ def genDataFromWaves(
   )
     # snapshot is needed or else the `point` column would be regenerated for every triggered loop
     # noop filter before snapshot logs when event loop is running
-    # !Note! for some reason, this is very slow
+    #!NOTE! for some reason, this is very slow
   return df
 
 

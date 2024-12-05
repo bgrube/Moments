@@ -883,10 +883,10 @@ def plotMomentsCovMatrices(
       (True,  False) : np.zeros((nmbMoments, nmbMoments), dtype = npt.Float64),  # ReIm, _not_ symmetric
     }
     for realParts, covMatrixBs in covMatricesBs.items():
-      # !Note! the covariance matrices for ReRe and ImIm are
+      #!NOTE! the covariance matrices for ReRe and ImIm are
       # symmetric, so we need only the indices of the upper triangle
       # of the covariance matrix including the diagonal
-      # !Note! the ReIm matrix is _not_ symmetric, so we need all indices
+      #!NOTE! the ReIm matrix is _not_ symmetric, so we need all indices
       momentIndexPairs = ((flatIndex0, flatIndex1)
                           for flatIndex0 in HData.indices.flatIndices
                           for flatIndex1 in HData.indices.flatIndices

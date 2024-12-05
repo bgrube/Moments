@@ -82,7 +82,7 @@ def getCohPeakLuminosity(runPeriodName):
 
 
 # returns list of run numbers for given run range that fulfill condition in searchString
-# Note! this function won't work with Python 3
+#!NOTE! this function won't work with Python 3
 def getRcdbRunNmbListForRange(
   runNmbMin    = 0,
   runNmbMax    = sys.maxsize,
@@ -95,7 +95,7 @@ def getRcdbRunNmbListForRange(
 
 
 # returns list of run numbers for given run-period name
-# Note! this function won't work with Python 3
+#!NOTE! this function won't work with Python 3
 def getRcdbRunNmbListForRunPeriod(runPeriodName):
   runPeriod = getRunPeriod(runPeriodName)
   if not runPeriod in RUN_PERIOD_INFO:

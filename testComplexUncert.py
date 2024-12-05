@@ -71,7 +71,7 @@ def testRealVectorCase(
   # perform analytic uncertainty propagation
   yMeans  = realFunc(xMeans)
   J       = realFuncJacobian(xMeans)
-  yCovMat = J @ (xCovMat @ J.T)  #!Note! @ is left-associative
+  yCovMat = J @ (xCovMat @ J.T)  #!NOTE! @ is left-associative
   print(f"analytic: mu = {yMeans}, V = \n{yCovMat}")
   print(f"ratio = \n{yCovMat / yCovMatMc}")
 
@@ -315,7 +315,7 @@ if __name__ == "__main__":
     [np.conjugate(xCovMatPseudo), np.conjugate(xCovMatHermit)],
   ])
   print(f"J_aug = \n{Jaug}")
-  yCovMatAug = Jaug @ (xCovMatAug @ np.asmatrix(Jaug).H)  #!Note! @ is left-associative
+  yCovMatAug = Jaug @ (xCovMatAug @ np.asmatrix(Jaug).H)  #!NOTE! @ is left-associative
   print(f"analytic: mu = {yMeans}")
   print(f"ratio = \n{yMeans / yMeansMc}")
   print(f"V_y_Aug_Prop = \n{yCovMatAug}")

@@ -503,7 +503,7 @@ def loadInputData(
   eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
   if "eventWeight" in data.GetColumnNames():
     print("Applying weights from 'eventWeight' column")
-    # !Note! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
+    #!NOTE! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
     eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
     assert eventWeights.shape == (nmbEvents, ), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents}, ) but got {eventWeights.shape}"
   else:
@@ -1250,7 +1250,7 @@ class MomentCalculator:
         [J,                    J_conj],
         [np.conjugate(J_conj), np.conjugate(J)],
       ])  # augmented Jacobian; Eq. (98)
-      V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative; Eq. (85)
+      V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative; Eq. (85)
     if normalize:
       # normalize moments such that H_0(0, 0) = 1
       norm: complex = self._HPhys[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val

@@ -100,7 +100,7 @@ if __name__ == "__main__":
     signalGenFileName    = "./dataMcPhotoProdEtaPi0/a0a2_signal_gen_flat.root"
     psAccFileName        = "./dataMcPhotoProdEtaPi0/a0a2_phaseSpace_acc_flat.root"
     psGenFileName        = "./dataMcPhotoProdEtaPi0/a0a2_phaseSpace_gen_flat.root"
-    #!Note! partial-wave amplitudes for signal are defined in helicity frame
+    #!NOTE! partial-wave amplitudes for signal are defined in helicity frame
     # signalPWAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_raw/a0a2_complex_amps.csv"
     signalPwAmpsFileName = "./dataMcPhotoProdEtaPi0/a0a2_bin_10_amps.csv"
     beamPolarization     = None  # unpolarized case; note that the data are still polarized we only extract the unpolarized moments neglecting the polarized ones

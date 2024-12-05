@@ -323,7 +323,7 @@ def calculateSphHarmMoments(
   # print(f"V_meas_ImIm =\n{V_meas_ImIm}")
   # print(f"vs.\n{V_meas_ImIm_np}")
   # print(f"ratio\n{np.real_if_close(V_meas_ImIm / V_meas_ImIm_np)}")
-  # V_meas_ReIm_np = nmbEvents * np.cov(Re_f, Im_f)[:nmbMoments, nmbMoments:]  # !Note! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
+  # V_meas_ReIm_np = nmbEvents * np.cov(Re_f, Im_f)[:nmbMoments, nmbMoments:]  #!NOTE! numpy.cov(x, y) returns the covariance matrix for the stacked vector (x^T, y^T)^T
   # print(f"V_meas_ReIm =\n{V_meas_ReIm}")
   # print(f"vs.\n{V_meas_ReIm_np}")
   # print(f"ratio\n{np.real_if_close(V_meas_ReIm / V_meas_ReIm_np)}")
@@ -389,7 +389,7 @@ def calculateSphHarmMoments(
       [J,                    J_conj],
       [np.conjugate(J_conj), np.conjugate(J)],
     ])  # augmented Jacobian
-    V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!Note! @ is left-associative
+    V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative
   # normalize such that H_0(0, 0) = 1
   norm = H_phys[0]
   H_phys /= norm
