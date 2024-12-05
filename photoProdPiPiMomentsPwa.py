@@ -46,6 +46,7 @@ def readMomentResultsPwa(
   maxL:         int,  # maximum L quantum number of moments
   waves:        list[tuple[str, QnWaveIndex]],  # wave labels and quantum numbers
   binVarMass:   KinematicBinningVariable,       # binning variable for mass bins
+  normalize:    bool = False,
 ) -> MomentResultsKinematicBinning:
   """Reads the partial-amplitude values from the PWA fit and calculates the corresponding moments"""
   print(f"Reading partial-wave amplitude values from file '{dataFileName}'")
@@ -77,7 +78,7 @@ def readMomentResultsPwa(
     momentResults.append(
       amplitudeSet.photoProdMomentSet(
         maxL                = maxL,
-        normalize           = False,
+        normalize           = normalize,
         printMomentFormulas = False,
         binCenters          = {binVarMass: massBinCenter},
       )
@@ -111,6 +112,7 @@ if __name__ == "__main__":
         pwaAmplitudesFileName = None
         waves: list[tuple[str, QnWaveIndex]] = []
 
+        #TODO add this info to AnalysisConfig?
         if cfg.polarization is None:
           # unpolarized data
           pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
@@ -171,6 +173,7 @@ if __name__ == "__main__":
           maxL         = cfg.maxL,
           waves        = waves,
           binVarMass   = cfg.binVarMass,
+          normalize    = cfg.normalizeMoments
         )
         print(f"Writing PWA moments to file '{momentResultsFileName}'")
         momentResultsPwa.save(momentResultsFileName)

@@ -260,7 +260,7 @@ class AmplitudeSet:
         assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2]}"
         if normalize and L == M == 0:
           if isinstance(normalize, bool):
-            # normalize all moments to H_0(0, 0)
+            # normalize all moments to H_0(0, 0) including H_0(0, 0) itself (i.e. H_0(0, 0) = 1 after normalization)
             norm = moments[0].real  # Re[H_0(0, 0)]
           elif isinstance(normalize, int) and normalize > 0:
             # normalize all moments such that H_0(0, 0) = given number of events
