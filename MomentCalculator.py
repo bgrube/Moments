@@ -736,9 +736,9 @@ class MomentResult:
   nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
   bootstrapSeed:       int                                                                       = 0   # seed for random number generator used for bootstrap samples
   _valsFlatIndex:      npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
-  _V_ReReFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real parts of moment values with flat indices
-  _V_ImImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of imaginary parts of moment values with flat indices
-  _V_ReImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # covariance matrix of real and imaginary parts of moment values with flat indices; !NOTE! this matrix is _not_ symmetric
+  _V_ReReFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of real parts of moment values with flat indices
+  _V_ImImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of imaginary parts of moment values with flat indices
+  _V_ReImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # cross-covariance matrix of real and imaginary parts of moment values with flat indices; !NOTE! this matrix is _not_ symmetric
   _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
 
   def __post_init__(self) -> None:
@@ -759,11 +759,11 @@ class MomentResult:
     return (
       (self.indices == other.indices)
       and (self.binCenters == other.binCenters)
-      and (self._valsFlatIndex.shape  == other._valsFlatIndex.shape   )
+      and (self._valsFlatIndex.shape == other._valsFlatIndex.shape)
       and (self._V_ReReFlatIndex.shape == other._V_ReReFlatIndex.shape)
       and (self._V_ImImFlatIndex.shape == other._V_ImImFlatIndex.shape)
       and (self._V_ReImFlatIndex.shape == other._V_ReImFlatIndex.shape)
-      and np.allclose(self._valsFlatIndex,    other._valsFlatIndex   )
+      and np.allclose(self._valsFlatIndex, other._valsFlatIndex)
       and np.allclose(self._V_ReReFlatIndex, other._V_ReReFlatIndex)
       and np.allclose(self._V_ImImFlatIndex, other._V_ImImFlatIndex)
       and np.allclose(self._V_ReImFlatIndex, other._V_ReImFlatIndex)
@@ -921,8 +921,8 @@ class MomentResult:
     V_Hermit, V_pseudo = self.hermitianAndPseudoCovarianceMatrix
     # Eq. (95)
     return np.block([
-      [V_pseudo,               V_Hermit              ],
-      [np.conjugate(V_Hermit), np.conjugate(V_pseudo)],
+      [V_Hermit,               V_pseudo              ],
+      [np.conjugate(V_pseudo), np.conjugate(V_Hermit)],
     ])
 
   @property
