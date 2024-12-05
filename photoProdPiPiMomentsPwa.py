@@ -95,7 +95,7 @@ if __name__ == "__main__":
     print(f"Calculating moment values with L_max = {maxL} from partial-wave amplitudes")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
+    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
     print(f"Writing output to log file '{logFileName}'")
     with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
       Utilities.printGitInfo()
