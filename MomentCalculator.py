@@ -465,13 +465,13 @@ def loadInputData(
   polarization: float | None,
   data:         ROOT.RDataFrame,
 ) -> tuple[
-  float | ROOT.std.vector["double"] | None,
-  ROOT.std.vector["double"],
-  ROOT.std.vector["double"],
-  ROOT.std.vector["double"],
-  npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
+  float | ROOT.std.vector["double"] | None,         # beam polarization
+  ROOT.std.vector["double"],                        # theta values
+  ROOT.std.vector["double"],                        # phi values
+  ROOT.std.vector["double"],                        # Phi values
+  npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]  # event weights
 ]:
-  """Loads input data needed to calculate moments or acceptance integral matrix from given `RDataFrame`"""
+  """Loads and returns input data needed to calculate moments or acceptance integral matrix from given `RDataFrame`"""
   # get photon-beam polarization
   beamPol: float | ROOT.std.vector["double"] | None = None
   if polarization is None:
@@ -484,7 +484,7 @@ def loadInputData(
     print("Reading photon-beam polarization from 'beamPol' column")
     beamPol = getStdVectorFromRdfColumn(data = data, columnName = "beamPol")
   else:
-    # polarized case: use polarization value defined for data set
+    # polarized case: use given polarization value for whole data set
     beamPol = polarization
     print(f"Using photon-beam polarization of {beamPol}")
 
