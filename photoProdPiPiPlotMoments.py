@@ -180,12 +180,16 @@ def makeAllPlots(
   """Generates all plots for the given analysis configuration"""
   # load moments from files
   momentIndices = MomentIndices(cfg.maxL)
+  #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
+  print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
   momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
+  print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
   # momentResultsCompare      = readMomentResultsClas(momentIndices, cfg.binVarMass)
   # momentResultsCompareColor = ROOT.kGray + 1
   # momentResultsCompareLabel = "CLAS"
+  print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
   momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
   momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D}"
   # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl")
@@ -206,9 +210,9 @@ def makeAllPlots(
       H000Sum     += HPhys[H000Index].val.real
       H000SumComp += HComp[H000Index].val.real
       # H000SumJpac += HJpac[H000Index].val.real
-    # momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
+    momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
     print(f"!!! scale factor = {H000Sum / H000SumComp}")
-    momentResultsCompare.scaleBy(H000Sum / H000SumComp)
+    # momentResultsCompare.scaleBy(H000Sum / H000SumComp)
     momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
     # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
   else:
@@ -517,7 +521,9 @@ def makeAllPlots(
   if cfg.plotAccPsMoments:
     # load accepted phase-space moments
     try:
+      print(f"Reading measured moments for accepted phase-space MC from file '{momentResultsFileBaseName}_accPs_meas.pkl'")
       momentResultsAccPsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_accPs_meas.pkl")
+      print(f"Reading physical moments for accepted phase-space MC from file '{momentResultsFileBaseName}_accPs_phys.pkl'")
       momentResultsAccPsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_accPs_phys.pkl")
     except FileNotFoundError as e:
       print(f"Warning: File not found. Cannot plot accepted phase-space moments. {e}")
