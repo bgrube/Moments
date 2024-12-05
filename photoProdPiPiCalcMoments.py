@@ -56,7 +56,8 @@ class AnalysisConfig:
   outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
   outFileDirName:           str                      = field(init = False)
   outFileNamePrefix:        str                      = field(init = False)
-  normalizeMoments:         bool                     = False
+  # _normalizeMoments:        bool                     = True
+  _normalizeMoments:        bool                     = False
   nmbBootstrapSamples:      int                      = 0
   # nmbBootstrapSamples:      int                      = 10000
   # plotAngularDistributions: bool                     = True
@@ -67,7 +68,9 @@ class AnalysisConfig:
   calcAccPsMoments:         bool                     = False
   # plotAccPsMoments:         bool                     = True
   plotAccPsMoments:         bool                     = False
+  # plotMeasuredMoments:      bool                     = True
   plotMeasuredMoments:      bool                     = False
+  # splotCovarianceMatrices:   bool                     = True
   plotCovarianceMatrices:   bool                     = False
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
@@ -99,6 +102,19 @@ class AnalysisConfig:
     assert value > 0, f"maxL must be > 0, but is {value}"
     self._maxL = value
     self.__post_init__()
+
+  @property
+  def normalizeMoments(self) -> bool:
+    return self._normalizeMoments
+
+  @normalizeMoments.setter
+  def normalizeMoments(
+    self,
+    value: bool
+  ) -> None:
+    self._normalizeMoments = value
+    self.__post_init__()
+
 
 # configuration for unpolarized data
 CFG_UNPOLARIZED = AnalysisConfig()
