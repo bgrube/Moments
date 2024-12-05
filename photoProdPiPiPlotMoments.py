@@ -551,17 +551,11 @@ def makeAllPlots(
           HMeas = momentResultsAccPsMeas[massBinIndex]
           print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{HMeas}")
           print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{HPhys}")
-          # construct true moments for phase-space data
-          nmbPsGenEvents = None
-          if not cfg.normalizeMoments:
-            massBinFilter  = cfg.massBinning.binFilter(massBinIndex)
-            dataPsGenInBin = dataPsGen.Filter(massBinFilter)
-            nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
-          HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
-          HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents  # ... except for H_0(0, 0)
-          #!NOTE! set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
-          HMeas._valsFlatIndex[0] = 0
-          # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects
+          if cfg.normalizeMoments:
+            HMeas.normalize()
+            #!NOTE! setting H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
+            HMeas._valsFlatIndex[0] = 0
+          # plot measured moments
           plotMomentsInBin(
             HData             = HMeas,
             normalizedMoments = cfg.normalizeMoments,
@@ -569,12 +563,22 @@ def makeAllPlots(
             pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
             plotLegend        = False,
           )
-          plotMomentsInBin(
-            HData             = HPhys,
-            normalizedMoments = cfg.normalizeMoments,
-            HTruth            = HTruthPs,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
-          )
+          if False:
+            # construct true moments for phase-space data
+            nmbPsGenEvents = None
+            if not cfg.normalizeMoments:
+              massBinFilter  = cfg.massBinning.binFilter(massBinIndex)
+              dataPsGenInBin = dataPsGen.Filter(massBinFilter)
+              nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
+            HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
+            HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents  # ... except for H_0(0, 0)
+            # plot physical moments; they should match the true moments exactly, i.e. all 0 except H_0(0, 0), modulo tiny numerical effects
+            plotMomentsInBin(
+              HData             = HPhys,
+              normalizedMoments = cfg.normalizeMoments,
+              HTruth            = HTruthPs,
+              pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
+            )
 
 
 if __name__ == "__main__":
