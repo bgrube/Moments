@@ -415,6 +415,7 @@ def plotMoments(
   plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
   truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
   histsToOverlay:    Mapping[str, Sequence[tuple[ROOT.TH1D, str, str]]] | None = None,  # histograms to overlay on top of data and (optional) true values; Mapping: key = "Re" or "Im", Sequence: tuple: (histogram, draw option, legend entry)
+  forceYaxisRange:   tuple[float | None, float | None] = (None, None)  # allows to set minimum and/or maximum for y axis
 ) -> dict[str, tuple[float, float] | tuple[None, None]]:  # key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots moments extracted from data along categorical axis or along given binning and overlays the corresponding true values if given"""
   histBinning = HistAxisBinning(len(HVals), 0, len(HVals)) if binning is None else binning
@@ -463,12 +464,6 @@ def plotMoments(
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
     histStack.GetXaxis().LabelsOption("V")
-    # adjust y-range
-    canv.Update()
-    actualYRange = canv.GetUymax() - canv.GetUymin()
-    yRangeFraction = 0.1 * actualYRange
-    histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
-    histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
     if plotLegend:
       legend = ROOT.TLegend(0.7, 0.85, 0.99, 0.99)
       legend.AddEntry(histData, histData.GetName(), "LP")
@@ -483,6 +478,20 @@ def plotMoments(
     if plotTruthUncert:
       # redraw data on top of "truth"
       histData.Draw("PE1X0 SAME")
+    # adjust y-range
+    canv.Update()
+    actualYRange = canv.GetUymax() - canv.GetUymin()
+    yRangeFraction = 0.1 * actualYRange
+    if forceYaxisRange[0] is None:
+      histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
+    else:
+      histStack.SetMinimum(forceYaxisRange[0])
+    if forceYaxisRange[1] is None:
+      histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
+    else:
+      histStack.SetMaximum(forceYaxisRange[1])
+    # histStack.SetMinimum(-0.1)
+    # histStack.SetMaximum(+0.1)
     # adjust style of automatic zero line
     histStack.GetHistogram().SetLineColor(ROOT.kBlack)
     histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
@@ -567,13 +576,14 @@ def plotMoments(
 
 def plotMomentsInBin(
   HData:             MomentResult,  # moments extracted from data
-  normalizedMoments: bool                          = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  HTruth:            MomentResult | None           = None,  # true moments
-  pdfFileNamePrefix: str                           = "",    # name prefix for output files
-  plotLegend:        bool                          = True,
-  legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
-  plotTruthUncert:   bool                          = False,  # plot uncertainty of true moments
-  truthColor:        int                           = ROOT.kBlue + 1,  # color used for true values
+  normalizedMoments: bool                              = True,  # indicates whether moment values were normalized to H_0(0, 0)
+  HTruth:            MomentResult | None               = None,  # true moments
+  pdfFileNamePrefix: str                               = "",    # name prefix for output files
+  plotLegend:        bool                              = True,
+  legendLabels:      tuple[str | None, str | None]     = (None, None),  # labels for legend entries; None = use defaults
+  plotTruthUncert:   bool                              = False,  # plot uncertainty of true moments
+  truthColor:        int                               = ROOT.kBlue + 1,  # color used for true values
+  forceYaxisRange:   tuple[float | None, float | None] = (None, None)  # allows to set minimum and/or maximum for y axis
 ) -> list[dict[str, tuple[float, float] | tuple[None, None]]]:  # index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
   # ensure that indices of HData and HTruth are compatible
@@ -608,6 +618,7 @@ def plotMomentsInBin(
       legendLabels      = legendLabels,
       plotTruthUncert   = plotTruthUncert,
       truthColor        = truthColor,
+      forceYaxisRange   = forceYaxisRange,
     )
   return chi2Values
 
