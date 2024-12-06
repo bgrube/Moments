@@ -877,6 +877,11 @@ class MomentResult:
     else:
       raise ValueError(f"Invalid realParts tuple {realParts}; must be tuple of 2 bools")
 
+  @property
+  def hasBootstrapSamples(self) -> bool:
+    """Returns whether bootstrap samples exist"""
+    return self._bsSamplesFlatIndex.size > 0
+
   def covarianceBootstrap(
     self,
     momentIndexPair: tuple[int | QnMomentIndex, int | QnMomentIndex],  # indices of the two moments
@@ -956,11 +961,6 @@ class MomentResult:
     for bsSampleIndex in range(self.nmbBootstrapSamples):
       norm: complex = self._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
       self._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
-
-  @property
-  def hasBootstrapSamples(self) -> bool:
-    """Returns whether bootstrap samples exist"""
-    return self._bsSamplesFlatIndex.size > 0
 
   def scaleBy(
     self,
@@ -1093,11 +1093,16 @@ class MomentResultsKinematicBinning:
     """Returns tuple with bin centers of all moments"""
     return tuple(momentResult.binCenters for momentResult in self)
 
+  def normalize(self) -> None:
+    """Scales all `MomentResults` such that in each bin H_0(0, 0) = 1"""
+    for moment in self:
+      moment.normalize()
+
   def scaleBy(
     self,
     factor: float,
   ) -> None:
-    """Scales `MomentResults` by given factor"""
+    """Scales all `MomentResults` by given factor"""
     for moment in self:
       moment.scaleBy(factor)
 
