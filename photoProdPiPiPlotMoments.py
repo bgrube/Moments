@@ -531,6 +531,8 @@ def makeAllPlots(
       print(f"Warning: File not found. Cannot plot accepted phase-space moments. {e}")
     else:
       with timer.timeThis(f"Time to plot accepted phase-space moments"):
+        if cfg.normalizeMoments:
+          momentResultsAccPsMeas.normalize()
         # plot mass dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentResultInBin[qnIndex]) for momentResultInBin in momentResultsAccPsMeas)
@@ -551,10 +553,6 @@ def makeAllPlots(
           HMeas = momentResultsAccPsMeas[massBinIndex]
           print(f"Measured moments of accepted phase-space data for kinematic bin {binTitle}:\n{HMeas}")
           print(f"Physical moments of accepted phase-space data for kinematic bin {binTitle}:\n{HPhys}")
-          if cfg.normalizeMoments:
-            HMeas.normalize()
-            #!NOTE! setting H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
-            HMeas._valsFlatIndex[0] = 0
           # plot measured moments
           plotMomentsInBin(
             HData             = HMeas,
@@ -562,6 +560,7 @@ def makeAllPlots(
             HTruth            = None,
             pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
             plotLegend        = False,
+            forceYaxisRange   = (-0.1, +0.1) if cfg.normalizeMoments else (None, None),
           )
           if False:
             # construct true moments for phase-space data
