@@ -47,9 +47,9 @@ print = functools.partial(print, flush = True)
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
   treeName:                 str                      = "PiPi"
-  dataFileName:             str                      = f"./dataPhotoProdPiPiUnpol/data_flat.root"
-  psAccFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
-  psGenFileName:            str                      = f"./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
+  dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.root"
+  psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
+  psGenFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
   polarization:             float | None             = None  # unpolarized data
   _maxL:                    int                      = 8
   # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
@@ -120,10 +120,10 @@ class AnalysisConfig:
 CFG_UNPOLARIZED = AnalysisConfig()
 # configuration for polarized data
 CFG_POLARIZED = AnalysisConfig(
-  dataFileName       = f"./dataPhotoProdPiPiPol/data_flat.root",
-  # dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
-  psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
-  psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
+  dataFileName       = "./dataPhotoProdPiPiPol/data_flat.root",
+  # dataFileName       = "./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
+  psAccFileName      = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
+  psGenFileName      = "./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
   polarization       = 0.3519,
   _maxL              = 4,
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",
