@@ -80,7 +80,6 @@ if __name__ == "__main__":
   phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
   phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
   treeName              = "kin"
-  outputTreeName        = "PiPi"
 
   # convert real data
   # create friend trees with correct weights
@@ -116,9 +115,10 @@ if __name__ == "__main__":
       frame = "Hf"
     )
     outFileName = f"data_flat.{pairLabel}.root"
-    print(f"Writing real data to '{outFileName}'")
+    outTreeName = pairLabel
+    print(f"Writing real data to tree '{outTreeName}' in '{outFileName}'")
     df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
-      .Snapshot(outputTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg", "eventWeight"))
+      .Snapshot(outTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg", "eventWeight"))
 
   # convert MC data
   lvBeam, lvRecoilP, lvPip, lvPim = lorentzVectors(realData = False)
@@ -136,6 +136,7 @@ if __name__ == "__main__":
         frame = "Hf"
       )
       outFileName = f"{outFileBaseName}.{pairLabel}.root"
-      print(f"Writing MC data to '{outFileName}'")
+      outTreeName = pairLabel
+      print(f"Writing MC data to tree '{outTreeName}' in '{outFileName}'")
       df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
-        .Snapshot(outputTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg"))
+        .Snapshot(outTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg"))
