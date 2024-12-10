@@ -151,30 +151,41 @@ if __name__ == "__main__":
       )
     df = (
       df.Define(f"Mass{pairLabel}",           f"massPair({pairLvs[0]}, {pairLvs[1]})")
+        .Define(f"Mass{pairLabel}Sq",         f"std::pow(massPair({pairLvs[0]}, {pairLvs[1]}), 2)")
         .Define(f"Hf{pairLabel}CosThetaDiff", f"Hf{pairLabel}CosTheta - helcostheta_Alex({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeam})")
         .Define(f"Hf{pairLabel}PhiDegDiff",   f"Hf{pairLabel}PhiDeg   - helphideg_Alex  ({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeam})")
     )
 
   yAxisLabel = "RF-Sideband Subtracted Combos"
-  hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",           ";E_{beam} [GeV];"          + yAxisLabel,   50, 3.55,   3.80),   "E_Beam",         "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPi",        ";m_{#pi#pi} [GeV];"        + yAxisLabel,  400, 0.28,   2.28),   "MassPiPi",       "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPiPiClas",    ";m_{#pi#pi} [GeV];"        + yAxisLabel,  200, 0,      2),      "MassPiPi",       "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP",        ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel,  400, 1,      5),      "MassPipP",       "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipPClas",    ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel,   72, 1,      2.8),    "MassPipP",       "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP",        ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel,  400, 1,      5),      "MassPimP",       "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimPClas",    ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel,   72, 1,      2.8),    "MassPimP",       "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataHfCosTheta_diff", ";#Delta cos#theta_{HF}",                 1000, -3e-13, +3e-13), "HfPiPiCosThetaDiff", "eventWeight"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hDataHfPhiDeg_diff",   ";#Delta #phi_{HF} [deg]",                1000, -1e-11, +1e-11), "HfPiPiPhiDegDiff",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGj",         ";cos#theta_{GJ};#phi_{GJ} [deg]",  50, -1,   +1,    50, -180, +180), "GjPiPiCosTheta", "GjPiPiPhiDeg",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHf",         ";cos#theta_{HF};#phi_{HF} [deg]",  50, -1,   +1,    50, -180, +180), "HfPiPiCosTheta", "HfPiPiPhiDeg",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsGjCosThetaPwa", ";m_{#pi#pi} [GeV];cos#theta_{GJ}",  56,  0.28, 1.40, 72,   -1,   +1), "MassPiPi",   "GjPiPiCosTheta", "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsGjPhiDegPwa",   ";m_{#pi#pi} [GeV];#phi_{GJ}",       56,  0.28, 1.40, 72, -180, +180), "MassPiPi",   "GjPiPiPhiDeg",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfCosThetaPwa", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  56,  0.28, 1.40, 72,   -1,   +1), "MassPiPi",   "HfPiPiCosTheta", "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfPhiDegPwa",   ";m_{#pi#pi} [GeV];#phi_{HF}",       56,  0.28, 1.40, 72, -180, +180), "MassPiPi",   "HfPiPiPhiDeg",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfCosTheta",    ";m_{#pi#pi} [GeV];cos#theta_{HF}", 100,  0.28, 2.28, 72,   -1,   +1), "MassPiPi",   "HfPiPiCosTheta", "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassVsHfPhiDeg",      ";m_{#pi#pi} [GeV];#phi_{HF}",      100,  0.28, 2.28, 72, -180, +180), "MassPiPi",   "HfPiPiPhiDeg",   "eventWeight"),
-  )
+  hists = [
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",        ";E_{beam} [GeV];"          + yAxisLabel,  50, 3.55, 3.80), "E_Beam",   "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataPiPiMass",     ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataPiPiMassClas", ";m_{#pi#pi} [GeV];"        + yAxisLabel, 200, 0,    2),    "MassPiPi", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataPipPMass",     ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataPipPMassClas", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel,  72, 1,    2.8),  "MassPipP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataPimPMass",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataPimPMassClas", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel,  72, 1,    2.8),  "MassPimP", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0,    3.5,  100,    1,  7.5), "MassPiPiSq", "MassPipPSq",     "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0,    3.5,  100,    1,  7.5), "MassPiPiSq", "MassPimPSq",     "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataPiPiMassVsHfCosThetaAlex", ";m_{#pi#pi} [GeV];cos#theta_{HF}",                          100, 0.28, 2.28,  72,   -1,   +1), "MassPiPi",   "HfPiPiCosTheta", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataPiPiMassVsHfPhiDegAlex",   ";m_{#pi#pi} [GeV];#phi_{HF}",                               100, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "HfPiPiPhiDeg",   "eventWeight"),
+  ]
+  # add histograms specific to subsystems
+  for pairLabel, massAxisTitle, massBinning in (
+    ("PiPi", "m_{#pi#pi} [GeV]",        (56, 0.28, 1.40)),
+    ("PipP", "m_{p#pi^{#plus}} [GeV]",  (72, 1,    2.8 )),
+    ("PimP", "m_{p#pi^{#minus}} [GeV]", (72, 1,    2.8 )),
+  ):
+    hists += [
+      df.Histo1D(ROOT.RDF.TH1DModel(f"hData{pairLabel}HfCosTheta_diff", ";#Delta cos#theta_{HF}",  1000, -3e-13, +3e-13), f"Hf{pairLabel}CosThetaDiff", "eventWeight"),
+      df.Histo1D(ROOT.RDF.TH1DModel(f"hData{pairLabel}HfPhiDeg_diff",   ";#Delta #phi_{HF} [deg]", 1000, -1e-11, +1e-11), f"Hf{pairLabel}PhiDegDiff",   "eventWeight"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}AnglesGj",          ";cos#theta_{GJ};#phi_{GJ} [deg]",      50, -1,   +1, 50, -180, +180), f"Gj{pairLabel}CosTheta", f"Gj{pairLabel}PhiDeg",   "eventWeight"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}AnglesHf",          ";cos#theta_{HF};#phi_{HF} [deg]",      50, -1,   +1, 50, -180, +180), f"Hf{pairLabel}CosTheta", f"Hf{pairLabel}PhiDeg",   "eventWeight"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsGjCosTheta", f";{massAxisTitle}" + ";cos#theta_{GJ}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Gj{pairLabel}CosTheta", "eventWeight"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsGjPhiDeg",   f";{massAxisTitle}" + ";#phi_{GJ}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Gj{pairLabel}PhiDeg",   "eventWeight"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsHfCosTheta", f";{massAxisTitle}" + ";cos#theta_{HF}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Hf{pairLabel}CosTheta", "eventWeight"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsHfPhiDeg",   f";{massAxisTitle}" + ";#phi_{HF}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Hf{pairLabel}PhiDeg",   "eventWeight"),
+    ]
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
@@ -184,11 +195,11 @@ if __name__ == "__main__":
   # check against Alex' RF-sideband subtracted histograms
   histFileNameAlex = "./plots_tbin1_ebin4.root"
   histNamesAlex = {  # map histogram names
-    "hDataMassPiPi"         : "M",
-    "hDataMassPipP"         : "Deltapp",
-    "hDataMassPimP"         : "Deltaz",
-    "hDataMassVsHfCosTheta" : "MassVsCosth",
-    "hDataMassVsHfPhiDeg"   : "MassVsphi",
+    "hDataPiPiMass"                 : "M",
+    "hDataPipPMass"                 : "Deltapp",
+    "hDataPimPMass"                 : "Deltaz",
+    "hDataPiPiMassVsHfCosThetaAlex" : "MassVsCosth",
+    "hDataPiPiMassVsHfPhiDegAlex"   : "MassVsphi",
   }
   histFileAlex = ROOT.TFile.Open(histFileNameAlex, "READ")
   for hist in hists:
@@ -207,18 +218,18 @@ if __name__ == "__main__":
   lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
   dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
              .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
-  histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 200, 0, 2), "MassPiPi")
-  histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 200, 0, 2), "MassPiPi", "eventWeight")
+  histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 90, 0.2, 2.0), "MassPiPi")
+  histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 90, 0.2, 2.0), "MassPiPi", "eventWeight")
   pwaPlotFile = ROOT.TFile.Open("./pwa_plots3.root", "READ")
   histMassPiPiPwa = convertGraphToHist(
     graph    = pwaPlotFile.Get("Total"),
     binning  = (56, 0.28, 1.40),
-    histName = "PWA Total Intensity * 0.5",
+    histName = "PWA Total Intensity",
   )
-  histMassPiPiPwa.Scale(0.5)
+  # histMassPiPiPwa.Scale(0.5)
   canv = ROOT.TCanvas()
-  histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events / 10 MeV")
-  # histStack.Add(histMassPiPiMc.GetValue())
+  histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
+  histStack.Add(histMassPiPiMc.GetValue())
   histStack.Add(histMassPiPiData.GetValue())
   histStack.Add(histMassPiPiPwa)
   histMassPiPiMc.SetLineColor    (ROOT.kBlue  + 1)
