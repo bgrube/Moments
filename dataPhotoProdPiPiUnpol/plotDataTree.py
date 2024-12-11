@@ -41,64 +41,76 @@ if __name__ == "__main__":
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
-  # Alex' code to calculate helicity angles
+  # Alex' code to calculate helicity angles of A for beam + target -> X + recoil with X -> A + B
   CPP_CODE = """
 	TVector3
-	helPiPlusVector(
-		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
-		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
-		const double PxProton, const double PyProton, const double PzProton, const double EProton,
+	analyzerVectorHf(
+		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
+		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
+		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
 		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
 	) {
-		// boost all 4-vectors into the resonance rest frame
-		TLorentzVector locPiPlusP4_Resonance (PxPip,    PyPip,    PzPip,    EPip);
-		TLorentzVector locPiMinusP4_Resonance(PxPim,    PyPim,    PzPim,    EPim);
-		TLorentzVector locProtonP4_Resonance (PxProton, PyProton, PzProton, EProton);
-		TLorentzVector locBeamP4_Resonance   (PxBeam,   PyBeam,   PzBeam,   EBeam);
-		const TLorentzVector resonanceP4 = locPiPlusP4_Resonance + locPiMinusP4_Resonance;
-		const TVector3 boostP3 = -resonanceP4.BoostVector();
-		locPiPlusP4_Resonance.Boost (boostP3);
-		locPiMinusP4_Resonance.Boost(boostP3);
-		locProtonP4_Resonance.Boost (boostP3);
-		locBeamP4_Resonance.Boost   (boostP3);
+		// boost all 4-vectors into the X rest frame
+		TLorentzVector locAP4_XRF     (PxPA,     PyPA,     PzPA,     EPA);
+		TLorentzVector locBP4_XRF     (PxPB,     PyPB,     PzPB,     EPB);
+		TLorentzVector locTargetP4_XRF(0,        0,        0,        0.938271999359130859375);  // proton mass value from phase-space generator
+		TLorentzVector locRecoilP4_XRF(PxRecoil, PyRecoil, PzRecoil, ERecoil);
+		TLorentzVector locBeamP4_XRF  (PxBeam,   PyBeam,   PzBeam,   EBeam);
+		const TLorentzVector XP4 = locAP4_XRF + locBP4_XRF;
+		const TVector3 boostP3 = -XP4.BoostVector();
+		locAP4_XRF.Boost     (boostP3);
+		locBP4_XRF.Boost     (boostP3);
+		locTargetP4_XRF.Boost(boostP3);
+		locRecoilP4_XRF.Boost(boostP3);
+		locBeamP4_XRF.Boost  (boostP3);
 
-		// COORDINATE SYSTEM:
-		// Normal to the production plane
-		const TVector3 y = (locBeamP4_Resonance.Vect().Unit().Cross(-locProtonP4_Resonance.Vect().Unit())).Unit();
-		// Helicity: z-axis opposite proton in rho rest frame
-		const TVector3 z = -locProtonP4_Resonance.Vect().Unit();
-		const TVector3 x = y.Cross(z).Unit();
-		const TVector3 v(locPiPlusP4_Resonance.Vect() * x, locPiPlusP4_Resonance.Vect() * y, locPiPlusP4_Resonance.Vect() * z);
+		// construct coordinate system
+    const TVector3 locAP3_XRF      = locAP4_XRF.Vect();
+    const TVector3 locTargetP3_XRF = locTargetP4_XRF.Vect();
+    const TVector3 locRecoilP3_XRF = locRecoilP4_XRF.Vect();
+    const TVector3 locBeamP3_XRF   = locBeamP4_XRF.Vect();
+		// helicity frame: z-axis opposite to recoil in X rest frame
+		const TVector3 z = -locRecoilP3_XRF.Unit();
+		// // Gottfried-Jackson frame for meson resonances: z-axis along beam photon
+		// const TVector3 z = locBeamP3_XRF.Unit();
+		// // Gottfried-Jackson frame for baryon resonances: z-axis along target (see Delta++ SDME Eq. (2))
+		// const TVector3 z = locTargetP3_XRF.Unit();
+		// y-axis: normal to the production plane
+		// const TVector3 y = (locRecoilP3_XRF.Cross(locBeamP3_XRF)).Unit();  // convention used in COMPASS; Mathieu et al., PRD 100 (2019) 054017, Appendix A; and in GlueX, PRC 108 (2023) 055204
+		const TVector3 y = (locBeamP3_XRF.Cross(locRecoilP3_XRF)).Unit();  // convention used in Yu et al., PRC 96 (2017) 025208, Appendix A; in GlueX, PRC 105 (2022) 035201, Eq. (1); and in Delta++ SDMEs, Eqs. (2) and (A.1)
+		// x-axis: right-handed coordinate system
+		const TVector3 x = y.Cross(z);
+		const TVector3 v(locAP3_XRF * x, locAP3_XRF * y, locAP3_XRF * z);
 		return v;
 	}
 
 	double
-	helcostheta_Alex(
-		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
-		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
-		const double PxProton, const double PyProton, const double PzProton, const double EProton,
+	HfCosTheta_Alex(
+		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
+		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
+		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
 		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
 	) {
-		const TVector3 v = helPiPlusVector(
-			PxPip,    PyPip,    PzPip,    EPip,
-			PxPim,    PyPim,    PzPim,    EPim,
-			PxProton, PyProton, PzProton, EProton,
+		const TVector3 v = analyzerVectorHf(
+			PxPA,     PyPA,     PzPA,     EPA,
+			PxPB,     PyPB,     PzPB,     EPB,
+			PxRecoil, PyRecoil, PzRecoil, ERecoil,
 			PxBeam,   PyBeam,   PzBeam,   EBeam
 		);
 		return v.CosTheta();
 	}
 
 	double
-	helphideg_Alex(
-		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
-		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
-		const double PxProton, const double PyProton, const double PzProton, const double EProton,
+	HfPhiDeg_Alex(
+		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
+		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
+		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
 		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
 	) {
-		const TVector3 v = helPiPlusVector(
-			PxPip,    PyPip,    PzPip,    EPip,
-			PxPim,    PyPim,    PzPim,    EPim,
-			PxProton, PyProton, PzProton, EProton,
+		const TVector3 v = analyzerVectorHf(
+			PxPA,     PyPA,     PzPA,     EPA,
+			PxPB,     PyPB,     PzPB,     EPB,
+			PxRecoil, PyRecoil, PzRecoil, ERecoil,
 			PxBeam,   PyBeam,   PzBeam,   EBeam
 		);
 		return v.Phi() * TMath::RadToDeg();
@@ -129,19 +141,23 @@ if __name__ == "__main__":
     weightTChain.Add(f"{dataFileName}.weights")
   dataTChain.AddFriend(weightTChain)
 
-  # read in real data in AmpTools format and plot RF-sideband subtracted distributions
-  lvBeam, lvRecoilP, lvPip, lvPim = lorentzVectors(realData = True)
+  # read in real data in AmpTools format and plot RF-sideband subtracted distributionss
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   df = ROOT.RDataFrame(dataTChain)
   # define columns
-  for pairLabel, pairLvs, lvRecoil in (
-    ("PiPi", (lvPip, lvPim    ), lvRecoilP),
-    ("PipP", (lvPip, lvRecoilP), lvPim    ),
-    ("PimP", (lvPim, lvRecoilP), lvPip    ),
+  #!NOTE! coordinate system definitions (all momenta in XRF):
+  #    HF: y_HF = p_beam x p_recoil
+  #    GJ for meson system:  z_GJ = p_beam   and y_HF = p_beam x p_recoil
+  #    GJ for baryon system: z_GJ = p_target and y_HF = p_recoil x p_beam
+  for pairLabel, pairLvs, lvRecoil, lvBeamGJ in (
+    ("PiPi", (lvPip, lvPim         ), lvRecoilProton, lvBeamPhoton),
+    ("PipP", (lvPip, lvRecoilProton), lvPim,          lvTargetProton),
+    ("PimP", (lvPim, lvRecoilProton), lvPip,          lvTargetProton),
   ):  # loop over two-body subsystems of pi+ pi- p final state
     for frame in ("Hf", "Gj"):  # loop over rest frame definitions
       df = defineAngleFormulas(
         df,
-        lvBeam, lvRecoil, pairLvs[0], pairLvs[1],
+        lvBeamPhoton if frame == "Hf" else lvBeamGJ, lvRecoil, pairLvs[0], pairLvs[1],
         frame,
         columnNames = {  # names of columns to define: key: column, value: name
           "cosThetaCol" : f"{frame}{pairLabel}CosTheta",
@@ -152,8 +168,10 @@ if __name__ == "__main__":
     df = (
       df.Define(f"Mass{pairLabel}",           f"massPair({pairLvs[0]}, {pairLvs[1]})")
         .Define(f"Mass{pairLabel}Sq",         f"std::pow(massPair({pairLvs[0]}, {pairLvs[1]}), 2)")
-        .Define(f"Hf{pairLabel}CosThetaDiff", f"Hf{pairLabel}CosTheta - helcostheta_Alex({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeam})")
-        .Define(f"Hf{pairLabel}PhiDegDiff",   f"Hf{pairLabel}PhiDeg   - helphideg_Alex  ({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeam})")
+        .Define(f"Hf{pairLabel}CosThetaDiff", f"Hf{pairLabel}CosTheta - HfCosTheta_Alex({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
+        .Define(f"Hf{pairLabel}PhiDegDiff",   f"Hf{pairLabel}PhiDeg   - HfPhiDeg_Alex  ({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
+        # .Define(f"Hf{pairLabel}CosThetaDiff", f"Gj{pairLabel}CosTheta - HfCosTheta_Alex({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
+        # .Define(f"Hf{pairLabel}PhiDegDiff",   f"Gj{pairLabel}PhiDeg   - HfPhiDeg_Alex  ({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
     )
 
   yAxisLabel = "RF-Sideband Subtracted Combos"
