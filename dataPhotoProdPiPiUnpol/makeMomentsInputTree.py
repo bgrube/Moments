@@ -22,11 +22,13 @@ massPair(
 """
 
 
-def lorentzVectors(realData: bool = True) -> tuple[str, str, str, str]:
-  """Returns Lorentz-vectors for beam photon, recoil proton, pi+, and pi-"""
+def lorentzVectors(realData: bool = True) -> tuple[str, str, str, str, str]:
+  """Returns Lorentz-vectors for beam photon, target proton, recoil proton, pi+, and pi-"""
+  targetProton = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
   if realData:
     return (
       "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",  # beam photon
+      targetProton,
       "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",     # recoil proton
       "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",   # pi+
       "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",   # pi-
@@ -34,6 +36,7 @@ def lorentzVectors(realData: bool = True) -> tuple[str, str, str, str]:
   else:
     return(
       "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",           # beam photon
+      targetProton,
       "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",  # recoil proton
       "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  # pi+  #TODO not clear whether correct index is 1 or 2
       "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  # pi-  #TODO not clear whether correct index is 1 or 2
@@ -61,10 +64,14 @@ def defineAngleFormulas(
   phiDegCol   = columnNames["phiCol"     ] + "Deg"
   print(f"Defining columns {cosThetaCol}, {thetaCol}, {phiCol}, and {phiDegCol}")
   return (
-    df.Define(cosThetaCol, f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})"      if frame == "Hf" else f"FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})" )  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
+    df.Define(cosThetaCol, f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == "Hf" else f"FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})" )  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
       .Define(thetaCol,    f"std::acos({cosThetaCol})")
-      .Define(phiCol,      f"FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})" if frame == "Hf" else f"FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam})")
-      #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoilP, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoilP, lvBeam)
+      .Define(
+        phiCol,
+        # f"FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})" if frame == "Hf"  # use y_HF = recoil x beam (see Mathieu et al., PRD 100 (2019) 054017, Appendix A and GlueX, PRC 108 (2023) 055204)
+        f"FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam})" if frame == "Hf"  # use y_HF = p_beam x p_recoil
+        else f"FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam})"               # use y_GJ = p_beam x p_recoil and z_GJ = p_beam
+      )
       .Define(phiDegCol,   f"{phiCol} * TMath::RadToDeg()")
   )
 
@@ -102,16 +109,16 @@ if __name__ == "__main__":
     dataTChain.Add(dataFileName)
     weightTChain.Add(f"{dataFileName}.weights")
   dataTChain.AddFriend(weightTChain)
-  lvBeam, lvRecoilP, lvPip, lvPim = lorentzVectors(realData = True)
+  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   realData = ROOT.RDataFrame(dataTChain)
-  for pairLabel, pairLvs, lvRecoil in (
-    ("PiPi", (lvPip, lvPim    ), lvRecoilP),
-    ("PipP", (lvPip, lvRecoilP), lvPim    ),
-    ("PimP", (lvPim, lvRecoilP), lvPip    ),
+  for pairLabel, pairLvs, lvRecoil, lvBeam in (
+    ("PiPi", (lvPip, lvPim         ), lvRecoilProton),
+    ("PipP", (lvPip, lvRecoilProton), lvPim         ),
+    ("PimP", (lvPim, lvRecoilProton), lvPip         ),
   ):  # loop over two-body subsystems of pi+ pi- p final state
     df = defineAngleFormulas(
       realData,
-      lvBeam, lvRecoil, pairLvs[0], pairLvs[1],
+      lvBeamPhoton, lvRecoil, pairLvs[0], pairLvs[1],
       frame = "Hf"
     )
     outFileName = f"data_flat.{pairLabel}.root"
@@ -121,18 +128,18 @@ if __name__ == "__main__":
       .Snapshot(outTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg", "eventWeight"))
 
   # convert MC data
-  lvBeam, lvRecoilP, lvPip, lvPim = lorentzVectors(realData = False)
+  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
   for inFileName, outFileBaseName in [(phaseSpaceAccFileName, "phaseSpace_acc_flat"), (phaseSpaceGenFileName, "phaseSpace_gen_flat")]:
     print(f"Reading MC data from '{inFileName}'")
     mcData = ROOT.RDataFrame(treeName, inFileName)
     for pairLabel, pairLvs, lvRecoil in (
-      ("PiPi", (lvPip, lvPim    ), lvRecoilP),
-      ("PipP", (lvPip, lvRecoilP), lvPim    ),
-      ("PimP", (lvPim, lvRecoilP), lvPip    ),
+      ("PiPi", (lvPip, lvPim         ), lvRecoilProton),
+      ("PipP", (lvPip, lvRecoilProton), lvPim         ),
+      ("PimP", (lvPim, lvRecoilProton), lvPip         ),
     ):  # loop over two-body subsystems of pi+ pi- p final state
       df = defineAngleFormulas(
         mcData,
-        lvBeam, lvRecoil, pairLvs[0], pairLvs[1],
+        lvBeamPhoton, lvRecoil, pairLvs[0], pairLvs[1],
         frame = "Hf"
       )
       outFileName = f"{outFileBaseName}.{pairLabel}.root"
