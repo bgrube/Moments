@@ -43,14 +43,38 @@ def lorentzVectors(realData: bool = True) -> tuple[str, str, str, str, str]:
     )
 
 
+CPP_CODE_FLIPYAXIS = """
+double
+flipYAxis(
+	double     phi,
+	const bool flip = false
+) {
+	if (not flip) {
+		return phi;
+	}
+	phi += TMath::Pi();
+	// ensure [-pi, +pi] range
+	while (phi > TMath::Pi()) {
+		phi -= TMath::TwoPi();
+	}
+	while (phi < -TMath::Pi()) {
+		phi += TMath::TwoPi();
+	}
+	return phi;
+}
+"""
+ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
+
+
 def defineAngleFormulas(
   df:          ROOT.RDataFrame,
   lvBeam:      str,  # argument list with Lorentz-vector components
   lvRecoil:    str,  # argument list with Lorentz-vector components
   lvA:         str,  # argument list with Lorentz-vector components
   lvB:         str,  # argument list with Lorentz-vector components
-  frame:       str = "Hf",  # can be either "Hf" for helicity or "Gj" for Gottfried Jackson frame
-  columnNames: dict[str, str] = {  # names of columns to define: key: column, value: name
+  frame:       str            = "Hf",   # can be either "Hf" for helicity or "Gj" for Gottfried-Jackson frame
+  flipYAxis:   bool           = False,  # if set y-axis is inverted
+  columnNames: dict[str, str] = {       # names of columns to define: key: column, value: name
     "cosThetaCol" : "cosTheta",
     "thetaCol"    : "theta",
     "phiCol"      : "phi",
@@ -68,9 +92,10 @@ def defineAngleFormulas(
       .Define(thetaCol,    f"std::acos({cosThetaCol})")
       .Define(
         phiCol,
-        # f"FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})" if frame == "Hf"  # use y_HF = recoil x beam (see Mathieu et al., PRD 100 (2019) 054017, Appendix A and GlueX, PRC 108 (2023) 055204)
-        f"FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam})" if frame == "Hf"  # use y_HF = p_beam x p_recoil
-        else f"FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam})"               # use y_GJ = p_beam x p_recoil and z_GJ = p_beam
+        # use A as analyzer
+        # y_HF/GJ = p_beam x p_recoil if flipYAxis is False else -yHF
+             f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
+        else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})"                   # use z_GJ = p_beam
       )
       .Define(phiDegCol,   f"{phiCol} * TMath::RadToDeg()")
   )
@@ -111,15 +136,16 @@ if __name__ == "__main__":
   dataTChain.AddFriend(weightTChain)
   lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   realData = ROOT.RDataFrame(dataTChain)
-  for pairLabel, pairLvs, lvRecoil, lvBeam in (
-    ("PiPi", (lvPip, lvPim         ), lvRecoilProton),
-    ("PipP", (lvPip, lvRecoilProton), lvPim         ),
-    ("PimP", (lvPim, lvRecoilProton), lvPip         ),
+  for pairLabel, pairLvs, lvRecoil, flipYAxis in (
+    ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
+    ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
+    ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
   ):  # loop over two-body subsystems of pi+ pi- p final state
     df = defineAngleFormulas(
       realData,
       lvBeamPhoton, lvRecoil, pairLvs[0], pairLvs[1],
-      frame = "Hf"
+      frame     = "Hf",
+      flipYAxis = flipYAxis,
     )
     outFileName = f"data_flat.{pairLabel}.root"
     outTreeName = pairLabel
@@ -132,15 +158,16 @@ if __name__ == "__main__":
   for inFileName, outFileBaseName in [(phaseSpaceAccFileName, "phaseSpace_acc_flat"), (phaseSpaceGenFileName, "phaseSpace_gen_flat")]:
     print(f"Reading MC data from '{inFileName}'")
     mcData = ROOT.RDataFrame(treeName, inFileName)
-    for pairLabel, pairLvs, lvRecoil in (
-      ("PiPi", (lvPip, lvPim         ), lvRecoilProton),
-      ("PipP", (lvPip, lvRecoilProton), lvPim         ),
-      ("PimP", (lvPim, lvRecoilProton), lvPip         ),
+    for pairLabel, pairLvs, lvRecoil, flipYAxis in (
+      ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
+      ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
+      ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
     ):  # loop over two-body subsystems of pi+ pi- p final state
       df = defineAngleFormulas(
         mcData,
         lvBeamPhoton, lvRecoil, pairLvs[0], pairLvs[1],
-        frame = "Hf"
+        frame     = "Hf",
+        flipYAxis = flipYAxis,
       )
       outFileName = f"{outFileBaseName}.{pairLabel}.root"
       outTreeName = pairLabel
