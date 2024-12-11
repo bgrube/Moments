@@ -76,8 +76,8 @@ if __name__ == "__main__":
 		// // Gottfried-Jackson frame for baryon resonances: z-axis along target (see Delta++ SDME Eq. (2))
 		// const TVector3 z = locTargetP3_XRF.Unit();
 		// y-axis: normal to the production plane
-		// const TVector3 y = (locRecoilP3_XRF.Cross(locBeamP3_XRF)).Unit();  // convention used in COMPASS; Mathieu et al., PRD 100 (2019) 054017, Appendix A; and in GlueX, PRC 108 (2023) 055204
-		const TVector3 y = (locBeamP3_XRF.Cross(locRecoilP3_XRF)).Unit();  // convention used in Yu et al., PRC 96 (2017) 025208, Appendix A; in GlueX, PRC 105 (2022) 035201, Eq. (1); and in Delta++ SDMEs, Eqs. (2) and (A.1)
+		const TVector3 y = (locRecoilP3_XRF.Cross(locBeamP3_XRF)).Unit();  // convention used in COMPASS; in Mathieu et al., PRD 100 (2019) 054017, Appendix A; in CLAS, PRD 80 (2009) 072005;and in GlueX, PRC 108 (2023) 055204
+		// const TVector3 y = (locBeamP3_XRF.Cross(locRecoilP3_XRF)).Unit();  // convention used in Yu et al., PRC 96 (2017) 025208, Appendix A; in GlueX, PRC 105 (2022) 035201, Eq. (1); and in Delta++ SDMEs, Eqs. (2) and (A.1)
 		// x-axis: right-handed coordinate system
 		const TVector3 x = y.Cross(z);
 		const TVector3 v(locAP3_XRF * x, locAP3_XRF * y, locAP3_XRF * z);
@@ -85,7 +85,7 @@ if __name__ == "__main__":
 	}
 
 	double
-	HfCosTheta_Alex(
+	cosTheta_Alex(
 		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
 		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
 		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 	}
 
 	double
-	HfPhiDeg_Alex(
+	phiDeg_Alex(
 		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
 		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
 		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
@@ -145,20 +145,22 @@ if __name__ == "__main__":
   lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   df = ROOT.RDataFrame(dataTChain)
   # define columns
-  #!NOTE! coordinate system definitions (all momenta in XRF):
-  #    HF: y_HF = p_beam x p_recoil
-  #    GJ for meson system:  z_GJ = p_beam   and y_HF = p_beam x p_recoil
-  #    GJ for baryon system: z_GJ = p_target and y_HF = p_recoil x p_beam
-  for pairLabel, pairLvs, lvRecoil, lvBeamGJ in (
-    ("PiPi", (lvPip, lvPim         ), lvRecoilProton, lvBeamPhoton),
-    ("PipP", (lvPip, lvRecoilProton), lvPim,          lvTargetProton),
-    ("PimP", (lvPim, lvRecoilProton), lvPip,          lvTargetProton),
+  #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
+  #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
+  #    HF for pi+- p  baryon system: use pi+- as analyzer and z_HF = -p_pi-+   and y_HF = p_beam   x p_pi-+
+  #    GJ for pi+ pi- meson system:  use pi+  as analyzer and z_GJ = p_beam    and y_HF = p_recoil x p_beam
+  #    GJ for pi+- p  baryon system: use pi+- as analyzer and z_GJ = p_target  and y_HF = p_beam   x p_pi-+
+  for pairLabel, pairLvs, lvRecoil, lvBeamGJ, flipYAxis in (
+    ("PiPi", (lvPip, lvPim         ), lvRecoilProton, lvBeamPhoton,   True),
+    ("PipP", (lvPip, lvRecoilProton), lvPim,          lvTargetProton, False),
+    ("PimP", (lvPim, lvRecoilProton), lvPip,          lvTargetProton, False),
   ):  # loop over two-body subsystems of pi+ pi- p final state
     for frame in ("Hf", "Gj"):  # loop over rest frame definitions
       df = defineAngleFormulas(
         df,
         lvBeamPhoton if frame == "Hf" else lvBeamGJ, lvRecoil, pairLvs[0], pairLvs[1],
         frame,
+        flipYAxis,
         columnNames = {  # names of columns to define: key: column, value: name
           "cosThetaCol" : f"{frame}{pairLabel}CosTheta",
           "thetaCol"    : f"{frame}{pairLabel}Theta",
@@ -166,13 +168,24 @@ if __name__ == "__main__":
         },
       )
     df = (
-      df.Define(f"Mass{pairLabel}",           f"massPair({pairLvs[0]}, {pairLvs[1]})")
-        .Define(f"Mass{pairLabel}Sq",         f"std::pow(massPair({pairLvs[0]}, {pairLvs[1]}), 2)")
-        .Define(f"Hf{pairLabel}CosThetaDiff", f"Hf{pairLabel}CosTheta - HfCosTheta_Alex({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
-        .Define(f"Hf{pairLabel}PhiDegDiff",   f"Hf{pairLabel}PhiDeg   - HfPhiDeg_Alex  ({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
-        # .Define(f"Hf{pairLabel}CosThetaDiff", f"Gj{pairLabel}CosTheta - HfCosTheta_Alex({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
-        # .Define(f"Hf{pairLabel}PhiDegDiff",   f"Gj{pairLabel}PhiDeg   - HfPhiDeg_Alex  ({pairLvs[0]}, {pairLvs[1]}, {lvRecoil}, {lvBeamPhoton})")
+      df.Define(f"Mass{pairLabel}",   f"massPair({pairLvs[0]}, {pairLvs[1]})")
+        .Define(f"Mass{pairLabel}Sq", f"std::pow(massPair({pairLvs[0]}, {pairLvs[1]}), 2)")
     )
+  df = (
+    #                                                                 [    two-body system    ]  [   "recoil"   ]  [   "beam"   ]
+    df.Define(f"HfPiPiCosThetaDiff", f"HfPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton})")
+      .Define(f"HfPiPiPhiDegDiff",   f"HfPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton})")
+      .Define(f"HfPipPCosThetaDiff", f"HfPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
+      .Define(f"HfPipPPhiDegDiff",   f"HfPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
+      .Define(f"HfPimPCosThetaDiff", f"HfPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
+      .Define(f"HfPimPPhiDegDiff",   f"HfPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
+    # df.Define(f"HfPiPiCosThetaDiff", f"GjPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
+    #   .Define(f"HfPiPiPhiDegDiff",   f"GjPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
+    #   .Define(f"HfPipPCosThetaDiff", f"GjPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
+    #   .Define(f"HfPipPPhiDegDiff",   f"GjPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
+    #   .Define(f"HfPimPCosThetaDiff", f"GjPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
+    #   .Define(f"HfPimPPhiDegDiff",   f"GjPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
+  )
 
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = [
