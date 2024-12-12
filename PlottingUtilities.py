@@ -409,7 +409,7 @@ def plotMoments(
   normalizedMoments: bool                          = True,  # indicates whether moment values were normalized to H_0(0, 0)
   momentLabel:       str                           = QnMomentIndex.momentSymbol,  # label used in output file name #TODO does this default value actually work?
   outFileNamePrefix: str                           = "",     # name prefix for output files
-  outFileNameType:   str                           = "pdf",  # file type for output files
+  outFileType:       str                           = "pdf",  # file type for output files
   histTitle:         str                           = "",     # histogram title
   plotLegend:        bool                          = True,
   legendLabels:      tuple[str | None, str | None] = (None, None),  # labels for legend entries; None = use defaults
@@ -503,7 +503,7 @@ def plotMoments(
     #   zeroLine.SetLineStyle(ROOT.kDashed)
     #   xAxis = histStack.GetXaxis()
     #   zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-    canv.SaveAs(f"{histStack.GetName()}.{outFileNameType}")
+    canv.SaveAs(f"{histStack.GetName()}.{outFileType}")
 
     if not trueValues:
       chi2Values[momentPart] = (None, None)
@@ -569,7 +569,7 @@ def plotMoments(
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
     label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {chi2Prob * 100:.0f}%")
-    canv.SaveAs(f"{histResidualName}.{outFileNameType}")
+    canv.SaveAs(f"{histResidualName}.{outFileType}")
     chi2Values[momentPart] = (chi2, ndf)
 
   return chi2Values
@@ -580,7 +580,7 @@ def plotMomentsInBin(
   normalizedMoments: bool                              = True,   # indicates whether moment values were normalized to H_0(0, 0)
   HTruth:            MomentResult | None               = None,   # true moments
   outFileNamePrefix: str                               = "",     # name prefix for output files
-  outFileNameType:   str                               = "pdf",  # file type for output files
+  outFileType:       str                               = "pdf",  # file type for output files
   plotLegend:        bool                              = True,
   legendLabels:      tuple[str | None, str | None]     = (None, None),  # labels for legend entries; None = use defaults
   plotTruthUncert:   bool                              = False,  # plot uncertainty of true moments
@@ -616,7 +616,7 @@ def plotMomentsInBin(
       normalizedMoments = normalizedMoments,
       momentLabel       = f"{QnMomentIndex.momentSymbol}{momentIndex}",
       outFileNamePrefix = outFileNamePrefix,
-      outFileNameType   = outFileNameType,
+      outFileType       = outFileType,
       plotLegend        = plotLegend,
       legendLabels      = legendLabels,
       plotTruthUncert   = plotTruthUncert,
@@ -633,7 +633,7 @@ def plotMoments1D(
   normalizedMoments: bool                                 = True,   # indicates whether moment values were normalized to H_0(0, 0)
   momentResultsTrue: MomentResultsKinematicBinning | None = None,   # true moments
   outFileNamePrefix: str                                  = "",     # name prefix for output files
-  outFileNameType:   str                                  = "pdf",  # file type for output files
+  outFileType:       str                                  = "pdf",  # file type for output files
   histTitle:         str                                  = "",     # histogram title
   plotLegend:        bool                                 = True,
   legendLabels:      tuple[str | None, str | None]        = (None, None),    # labels for legend entries; None = use defaults
@@ -657,7 +657,7 @@ def plotMoments1D(
     normalizedMoments = normalizedMoments,
     momentLabel       = qnIndex.label,
     outFileNamePrefix = f"{outFileNamePrefix}{binning.var.name}_",
-    outFileNameType   = outFileNameType,
+    outFileType       = outFileType,
     histTitle         = histTitle,
     plotLegend        = plotLegend,
     legendLabels      = legendLabels,
@@ -671,7 +671,7 @@ def plotMomentsBootstrapDistributions1D(
   HData:             MomentResult,  # moments extracted from data
   HTruth:            MomentResult | None = None,   # true moments
   outFileNamePrefix: str                 = "",     # name prefix for output files
-  outFileNameType:   str                 = "pdf",  # file type for output files
+  outFileType:       str                 = "pdf",  # file type for output files
   histTitle:         str                 = "",     # histogram title
   nmbBins:           int                 = 100,    # number of bins for bootstrap histograms
   HTruthLabel:       str                 = "True value",  # label for true value in legend
@@ -753,7 +753,7 @@ def plotMomentsBootstrapDistributions1D(
       if HVal.truth is not None:
         legend.AddEntry(lineTruth, HTruthLabel, "L")
       legend.Draw()
-      canv.SaveAs(f"{histBs.GetName()}.{outFileNameType}")
+      canv.SaveAs(f"{histBs.GetName()}.{outFileType}")
 
 
 def plotMomentPairBootstrapDistributions2D(
@@ -761,7 +761,7 @@ def plotMomentPairBootstrapDistributions2D(
   HData:             MomentResult,  # moments extracted from data
   HTruth:            MomentResult | None = None,   # true moments
   outFileNamePrefix: str                 = "",     # name prefix for output files
-  outFileNameType:   str                 = "pdf",  # file type for output files
+  outFileType:       str                 = "pdf",  # file type for output files
   histTitle:         str                 = "",     # histogram title
   nmbBins:           int                 = 20,     # number of bins for bootstrap histograms
   HTruthLabel:       str                 = "True value",  # label for true value in legend
@@ -853,14 +853,14 @@ def plotMomentPairBootstrapDistributions2D(
     if plotTruth:
       entry = legend.AddEntry(markerTruth, HTruthLabel, "P")
     legend.Draw()
-    canv.SaveAs(f"{histBs.GetName()}.{outFileNameType}")
+    canv.SaveAs(f"{histBs.GetName()}.{outFileType}")
 
 
 def plotMomentsBootstrapDistributions2D(
   HData:             MomentResult,  # moments extracted from data
   HTruth:            MomentResult | None = None,   # true moments
   outFileNamePrefix: str                 = "",     # name prefix for output files
-  outFileNameType:   str                 = "pdf",  # file type for output files
+  outFileType:       str                 = "pdf",  # file type for output files
   histTitle:         str                 = "",     # histogram title
   nmbBins:           int                 = 20,     # number of bins for bootstrap histograms
   HTruthLabel:       str                 = "True value",  # label for true value in legend
@@ -876,7 +876,7 @@ def plotMomentsBootstrapDistributions2D(
       HData             = HData,
       HTruth            = HTruth,
       outFileNamePrefix = outFileNamePrefix,
-      outFileNameType   = outFileNameType,
+      outFileType       = outFileType,
       histTitle         = histTitle,
       nmbBins           = nmbBins,
       HTruthLabel       = HTruthLabel,
@@ -964,7 +964,7 @@ def plotMomentsBootstrapDiff(
   momentLabel:       str,  # label used in graph names and output file name
   binning:           HistAxisBinning | None = None,   # binning to use for plot; if None moment index is used as x-axis
   outFileNamePrefix: str                    = "",     # name prefix for output files
-  outFileNameType:   str                    = "pdf",  # file type for output files
+  outFileType:       str                    = "pdf",  # file type for output files
   graphTitle:        str                    = "",     # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all given moments as function of moment index or binning variable"""
@@ -1026,7 +1026,7 @@ def plotMomentsBootstrapDiff(
     for g in graph.GetListOfGraphs():
       legend.AddEntry(g, g.GetTitle(), "P")
     legend.Draw()
-    canv.SaveAs(f"{graph.GetName()}.{outFileNameType}")
+    canv.SaveAs(f"{graph.GetName()}.{outFileType}")
 
 
 def plotMomentsBootstrapDiff1D(
@@ -1034,7 +1034,7 @@ def plotMomentsBootstrapDiff1D(
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
   outFileNamePrefix: str = "",     # name prefix for output files
-  outFileNameType:   str = "pdf",  # file type for output files
+  outFileType:       str = "pdf",  # file type for output files
   graphTitle:        str = "",     # graph title
 ) -> None:
   """Plots relative differences of estimates for moments and their uncertainties as a function of binning variable"""
@@ -1050,7 +1050,7 @@ def plotMomentsBootstrapDiff1D(
     momentLabel       = qnIndex.label,
     binning           = binning,
     outFileNamePrefix = f"{outFileNamePrefix}{binning.var.name}_",
-    outFileNameType   = outFileNameType,
+    outFileType       = outFileType,
     graphTitle        = graphTitle,
   )
 
@@ -1058,7 +1058,7 @@ def plotMomentsBootstrapDiff1D(
 def plotMomentsBootstrapDiffInBin(
   HData:             MomentResult,  # moment values extracted from data
   outFileNamePrefix: str = "",      # name prefix for output files
-  outFileNameType:   str = "pdf",   # file type for output files
+  outFileType:       str = "pdf",   # file type for output files
   graphTitle:        str = "",      # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all moments"""
@@ -1075,7 +1075,7 @@ def plotMomentsBootstrapDiffInBin(
       momentLabel       = f"{QnMomentIndex.momentSymbol}{momentIndex}",
       binning           = None,
       outFileNamePrefix = outFileNamePrefix,
-      outFileNameType   = outFileNameType,
+      outFileType       = outFileType,
       graphTitle        = graphTitle,
     )
 
@@ -1085,7 +1085,7 @@ def plotPullsForMoment(
   qnIndex:           QnMomentIndex,  # defines specific moment
   momentResultsTrue: MomentResultsKinematicBinning | None = None,   # true moments
   outFileNamePrefix: str                                  = "",     # name prefix for output files
-  outFileNameType:   str                                  = "pdf",  # file type for output files
+  outFileType:       str                                  = "pdf",  # file type for output files
   histTitle:         str                                  = "",     # histogram title
 ) -> dict[bool, tuple[tuple[float, float], tuple[float, float]]]:  # Gaussian mean and sigma with uncertainties, both for real and imaginary parts
   """Plots pulls of moment with given qnIndex estimated from moment values in kinematic bins"""
@@ -1133,14 +1133,14 @@ def plotPullsForMoment(
   label.SetTextColor(ROOT.kBlue + 1)
   label.DrawLatex(0.13, 0.80, f"Im: #it{{#mu}} = {gaussPars[False][0][0]:.2f} #pm {gaussPars[False][0][1]:.2f}, "
                                f"#it{{#sigma}} = {gaussPars[False][1][0]:.2f} #pm {gaussPars[False][1][1]:.2f}")
-  canv.SaveAs(f"{histStack.GetName()}.{outFileNameType}")
+  canv.SaveAs(f"{histStack.GetName()}.{outFileType}")
   return gaussPars
 
 
 def plotPullParameters(
   pullParameters:    dict[QnMomentIndex, dict[bool, tuple[tuple[float, float], tuple[float, float]]]],  # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
   outFileNamePrefix: str = "",     # name prefix for output files
-  outFileNameType:   str = "pdf",  # file type for output files
+  outFileType:       str = "pdf",  # file type for output files
   histTitle:         str = "",     # histogram title
 ) -> None:
   """Plots Gaussian means and sigmas of pull distributions for each moment"""
@@ -1180,7 +1180,7 @@ def plotPullParameters(
     xAxis = histStack.GetXaxis()
     line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
     line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 1, xAxis.GetBinUpEdge(xAxis.GetLast()), 1)
-    canv.SaveAs(f"{histStack.GetName()}.{outFileNameType}")
+    canv.SaveAs(f"{histStack.GetName()}.{outFileType}")
 
 
 def plotAngularDistr(
@@ -1189,7 +1189,7 @@ def plotAngularDistr(
   dataPsGen:         ROOT.RDataFrame | None = None,   # generated phase-space data
   dataSignalGen:     ROOT.RDataFrame | None = None,   # generated signal data
   outFileNamePrefix: str                    = "",     # name prefix for output files
-  outFileNameType:   str                    = "pdf",  # file type for output files
+  outFileType:       str                    = "pdf",  # file type for output files
   nmbBins3D:         int                    = 15,     # number of bins for 3D histograms
   nmbBins2D:         int                    = 40,     # number of bins for 2D histograms
 ):
@@ -1249,4 +1249,4 @@ def plotAngularDistr(
       hist.Draw("COLZ")
     else:
       raise TypeError(f"Unexpected histogram type '{histType}'")
-    canv.SaveAs(f"{outFileNamePrefix}{hist.GetName()}.{outFileNameType}")
+    canv.SaveAs(f"{outFileNamePrefix}{hist.GetName()}.{outFileType}")
