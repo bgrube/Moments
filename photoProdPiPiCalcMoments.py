@@ -173,8 +173,12 @@ def calculateAllMoments(
     dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
     if cfg.limitNmbPsAccEvents > 0:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
-    print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
-    dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+    dataPsGen = None
+    if cfg.psGenFileName is not None:
+      print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
+      dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+    else:
+      print("??? Warning: File name for generated phase-space data was not provided. Cannot calculate acceptance correctly.")
     for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
       massBinRange = cfg.massBinning.binValueRange(massBinIndex)
       print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex + 1} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
@@ -184,17 +188,21 @@ def calculateAllMoments(
       dataInBin = data.Filter(massBinFilter)
       print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
       dataPsAccInBin = dataPsAcc.Filter(massBinFilter)
-      dataPsGenInBin = dataPsGen.Filter(massBinFilter)
-      nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
       nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
-      print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
-            f"number accepted = {nmbPsAccEvents}, "
-            f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
+      nmbPsGenEvents = None
+      if dataPsGen is not None:
+        dataPsGenInBin = dataPsGen.Filter(massBinFilter)
+        nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
+        print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
+              f"number accepted = {nmbPsAccEvents}, "
+              f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
+      else:
+        print(f"Loaded phase-space events: number accepted = {nmbPsAccEvents}")
       # setup moment calculators for data
       dataSet = DataSet(
         data           = dataInBin,
         phaseSpaceData = dataPsAccInBin,
-        nmbGenEvents   = nmbPsGenEvents,
+        nmbGenEvents   = nmbPsGenEvents or nmbPsAccEvents,
         polarization   = cfg.polarization,
       )
       momentCalculators.append(
