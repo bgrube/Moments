@@ -239,7 +239,7 @@ def makeAllPlots(
           HData             = HPhys,
           normalizedMoments = cfg.normalizeMoments,
           HTruth            = HComp,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
@@ -249,7 +249,7 @@ def makeAllPlots(
             HData             = HMeas,
             normalizedMoments = cfg.normalizeMoments,
             HTruth            = None,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
             plotLegend        = False,
           )
         if cfg.plotCovarianceMatrices:
@@ -264,20 +264,20 @@ def makeAllPlots(
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
             HTruth            = HComp,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
             HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
             HTruth            = HComp,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
             HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             graphTitle        = binTitle,
           )
       # plot chi^2/ndf of physical moments w.r.t. true values as a function of mass
@@ -347,7 +347,7 @@ def makeAllPlots(
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
           momentResultsTrue = momentResultsCompare,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
+          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
           histTitle         = qnIndex.title,
           plotLegend        = True,
           legendLabels      = ("Moment", momentResultsCompareLabel),
@@ -372,7 +372,7 @@ def makeAllPlots(
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,
             momentResultsTrue = None,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -446,7 +446,7 @@ def makeAllPlots(
         binning           = cfg.massBinning,
         normalizedMoments = cfg.normalizeMoments,
         momentLabel       = H000Index.label,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
+        outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
         histTitle         = H000Index.title,
         legendLabels      = ("Measured Moment", "Measured Intensity"),
       )
@@ -467,7 +467,7 @@ def makeAllPlots(
         dataPsGen         = dataPsGen,
         dataSignalAcc     = data,
         dataSignalGen     = None,
-        pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
+        outFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
       )
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         # load data for mass bin
@@ -483,7 +483,7 @@ def makeAllPlots(
             dataPsGen         = None,
             # dataPsGen         = dataPsGenInBin,
             dataSignalGen     = None,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
             nmbBins2D         = 20,
           )
 
@@ -541,7 +541,7 @@ def makeAllPlots(
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,
             momentLabel       = qnIndex.label,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -558,7 +558,7 @@ def makeAllPlots(
             HData             = HMeas,
             normalizedMoments = cfg.normalizeMoments,
             HTruth            = None,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
             plotLegend        = False,
             forceYaxisRange   = (-0.1, +0.1) if cfg.normalizeMoments else (None, None),
           )
@@ -576,7 +576,7 @@ def makeAllPlots(
               HData             = HPhys,
               normalizedMoments = cfg.normalizeMoments,
               HTruth            = HTruthPs,
-              pdfFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
+              outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
             )
 
 

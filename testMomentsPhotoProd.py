@@ -292,7 +292,7 @@ if __name__ == "__main__":
     # plot moments in each kinematic bin
     for HData in moments:
       label = binLabel(HData)
-      plotMomentsInBin(HData = moments[0].HPhys, HTruth = HTruth, pdfFileNamePrefix = f"{outFileDirName}/h{label}_")
+      plotMomentsInBin(HData = moments[0].HPhys, HTruth = HTruth, outFileNamePrefix = f"{outFileDirName}/h{label}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.qnIndices:
       plotMoments1D(
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         binning           = massBinning,
         normalizedMoments = True,
         momentResultsTrue = momentsTruth.momentResultsPhys,
-        pdfFileNamePrefix = f"{outFileDirName}/h",
+        outFileNamePrefix = f"{outFileDirName}/h",
         histTitle         = qnIndex.title,
       )
     t.stop()

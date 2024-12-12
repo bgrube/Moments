@@ -295,10 +295,10 @@ if __name__ == "__main__":
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
       label = binLabel(moments[0])
-      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
       if nmbBootstrapSamples > 0:
-        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
-        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,         outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
 
     timer.stop("Total execution time")
     print(timer.summary)

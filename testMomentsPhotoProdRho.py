@@ -218,7 +218,7 @@ if __name__ == "__main__":
       # plot moments
       HTruthPs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
       HTruthPs._valsFlatIndex[momentIndices[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
-      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruthPs, pdfFileNamePrefix = f"{outFileDirName}/hPs_")
+      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruthPs, outFileNamePrefix = f"{outFileDirName}/hPs_")
 
     # calculate moments of signal data
     with timer.timeThis(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads"):
@@ -227,7 +227,7 @@ if __name__ == "__main__":
       print(f"Measured moments of signal data\n{momentCalculator.HMeas}")
       print(f"Physical moments of signal data\n{momentCalculator.HPhys}")
       # plot moments
-      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruth, pdfFileNamePrefix = f"{outFileDirName}/h_")
+      PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruth, outFileNamePrefix = f"{outFileDirName}/h_")
 
     timer.stop("Total execution time")
     print(timer.summary)

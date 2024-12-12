@@ -245,7 +245,7 @@ if __name__ == "__main__":
             dataPsGen         = dataPsGenInBin,
             dataSignalAcc     = dataInBin,
             dataSignalGen     = None,
-            pdfFileNamePrefix = f"{outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_",
+            outFileNamePrefix = f"{outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_",
           )
     moments    = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsPwa = MomentCalculatorsKinematicBinning(momentsInBinsPwa)
@@ -301,14 +301,14 @@ if __name__ == "__main__":
             HData             = momentResultInBin.HMeas,
             normalizedMoments = normalizeMoments,
             HTruth            = None,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_",
+            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_",
             plotLegend        = False,
           )
           # plotMomentsInBin(
           #   HData             = momentResultInBin.HPhys,
           #   normalizedMoments = normalizeMoments,
           #   HTruth            = HTruthPs,
-          #   pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_",
+          #   outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_",
           # )
         # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
@@ -318,7 +318,7 @@ if __name__ == "__main__":
             binning           = massBinning,
             normalizedMoments = normalizeMoments,
             momentLabel       = qnIndex.label,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_",
+            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -347,7 +347,7 @@ if __name__ == "__main__":
           dataPsGen         = dataPsGen,
           dataSignalAcc     = data,
           dataSignalGen     = None,
-          pdfFileNamePrefix = f"{outFileDirName}/angDistr_total_",
+          outFileNamePrefix = f"{outFileDirName}/angDistr_total_",
         )
 
       # load moment results from files
@@ -368,14 +368,14 @@ if __name__ == "__main__":
           HData             = HPhys,
           normalizedMoments = normalizeMoments,
           HTruth            = HTruth,
-          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "PWA Result"),
         )
         plotMomentsInBin(
           HData             = HMeas,
           normalizedMoments = normalizeMoments,
           HTruth            = None,
-          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
+          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
           plotLegend        = False,
         )
         #TODO also plot correlation matrices
@@ -390,17 +390,17 @@ if __name__ == "__main__":
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
             HTruth            = HTruth,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title)
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
             HTruth            = HTruth,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             histTitle         = title,
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
-            pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
             graphTitle        = title,
           )
 
@@ -412,7 +412,7 @@ if __name__ == "__main__":
           binning           = massBinning,
           normalizedMoments = normalizeMoments,
           momentResultsTrue = momentResultsTrue,
-          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
+          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
           histTitle         = qnIndex.title,
           legendLabels      = ("Moment", "PWA Result"),
         )
@@ -422,7 +422,7 @@ if __name__ == "__main__":
           binning           = massBinning,
           normalizedMoments = normalizeMoments,
           momentResultsTrue = None,
-          pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
+          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
           histTitle         = qnIndex.title,
           plotLegend        = False,
         )
@@ -468,7 +468,7 @@ if __name__ == "__main__":
         binning           = massBinning,
         normalizedMoments = normalizeMoments,
         momentLabel       = H000Index.label,
-        pdfFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_intensity_",
+        outFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_intensity_",
         histTitle         = H000Index.title,
         legendLabels      = ("Measured Moment", "Measured Intensity"),
       )
@@ -547,7 +547,7 @@ if __name__ == "__main__":
         binning           = massBinning,
         normalizedMoments = normalizeMoments,
         momentLabel       = H000Index.label,
-        pdfFileNamePrefix = f"{outFileDirName}/amptools_intensity_",
+        outFileNamePrefix = f"{outFileDirName}/amptools_intensity_",
         histTitle         = H000Index.title,
         legendLabels      = ("AmpTools Intensity", "My Intensity"),
       )
