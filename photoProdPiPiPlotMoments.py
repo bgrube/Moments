@@ -191,10 +191,12 @@ def makeAllPlots(
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
   # momentResultsCompare      = readMomentResultsClas(momentIndices, cfg.binVarMass)
-  # momentResultsCompareColor = ROOT.kGray + 1
   # momentResultsCompareLabel = "CLAS"
+  # momentResultsCompareColor = ROOT.kGray + 1
+  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
-  momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
+  # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
+  momentResultsCompare      = None
   momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D}"
   # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl")
   # momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}"
@@ -205,7 +207,7 @@ def makeAllPlots(
   overlayMomentResultsJpac  = False
 
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-  if not cfg.normalizeMoments:
+  if momentResultsCompare is not None and not cfg.normalizeMoments:
     # scale comparison and JPAC moments to match GlueX data
     normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
     if normalizeByIntegral:
@@ -233,7 +235,7 @@ def makeAllPlots(
       chi2ValuesInMassBins: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # index: mass-bin index; index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         HMeas = momentResultsMeas   [massBinIndex]
-        HComp = momentResultsCompare[massBinIndex]
+        HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
         # print(f"True moments for kinematic bin {title}:\n{HTruth}")
@@ -334,10 +336,10 @@ def makeAllPlots(
             histJpac.SetLineWidth(2)
             histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         histPwaTotalIntensity = None
-        if qnIndex == H000Index:
+        if False and qnIndex == H000Index:
           #TODO add this info to AnalysisConfig
-          # plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
-          plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiPol/PWA_S_P_D/pwa_plots_SPD.root", "READ")
+          plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
+          # plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiPol/PWA_S_P_D/pwa_plots_SPD.root", "READ")
           histPwaTotalIntensity = convertGraphToHist(
             graph     = plotFile.Get("Total"),
             binning   = cfg.massBinning.astuple,
