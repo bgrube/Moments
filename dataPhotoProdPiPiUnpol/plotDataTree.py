@@ -76,6 +76,7 @@ if __name__ == "__main__":
 		// // Gottfried-Jackson frame for baryon resonances: z-axis along target (see Delta++ SDME Eq. (2))
 		// const TVector3 z = locTargetP3_XRF.Unit();
 		// y-axis: normal to the production plane
+    // flipping the y-axis leads to sign flip of odd-M moments
 		const TVector3 y = (locRecoilP3_XRF.Cross(locBeamP3_XRF)).Unit();  // convention used in COMPASS; in Mathieu et al., PRD 100 (2019) 054017, Appendix A; in CLAS, PRD 80 (2009) 072005;and in GlueX, PRC 108 (2023) 055204
 		// const TVector3 y = (locBeamP3_XRF.Cross(locRecoilP3_XRF)).Unit();  // convention used in Yu et al., PRC 96 (2017) 025208, Appendix A; in GlueX, PRC 105 (2022) 035201, Eq. (1); and in Delta++ SDMEs, Eqs. (2) and (A.1)
 		// x-axis: right-handed coordinate system
@@ -141,7 +142,7 @@ if __name__ == "__main__":
     weightTChain.Add(f"{dataFileName}.weights")
   dataTChain.AddFriend(weightTChain)
 
-  # read in real data in AmpTools format and plot RF-sideband subtracted distributionss
+  # read in real data in AmpTools format and plot RF-sideband subtracted distributions
   lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   df = ROOT.RDataFrame(dataTChain)
   # define columns

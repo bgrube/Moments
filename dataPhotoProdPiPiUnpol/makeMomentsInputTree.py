@@ -38,8 +38,8 @@ def lorentzVectors(realData: bool = True) -> tuple[str, str, str, str, str]:
       "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",           # beam photon
       targetProton,
       "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",  # recoil proton
-      "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  # pi+  #TODO not clear whether correct index is 1 or 2
-      "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  # pi-  #TODO not clear whether correct index is 1 or 2
+      "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  # pi+
+      "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  # pi-
     )
 
 

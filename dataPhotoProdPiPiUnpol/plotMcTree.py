@@ -112,6 +112,32 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiMassVsGjCosThetaPimP", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 56, 0.28, 1.40, 72, -1, +1), f"MassPiPi", f"GjPimPCosTheta"),
     df.Filter("tAbs < 0.45").Histo2D(ROOT.RDF.TH2DModel(f"hMcPipPMassVsGjCosThetaCutT", ";m_{p#pi^{#plus}} [GeV];cos#theta_{GJ}", 72, 1, 2.8, 72, -1, +1), f"MassPipP", f"GjPipPCosTheta"),
   ]
+  # # check that for accepted MC the columns used for real data contain the same info as the ones used for MC data
+  # # also check that index 1 is pi+ and 2 pi-
+  # df = (
+  #   # df.Define("Delta_E",  "beam_p4_kin.Energy() -  E_Beam")
+  #   #   .Define("Delta_Px", "beam_p4_kin.Px()     - Px_Beam")
+  #   #   .Define("Delta_Py", "beam_p4_kin.Py()     - Py_Beam")
+  #   #   .Define("Delta_Pz", "beam_p4_kin.Pz()     - Pz_Beam")
+  #   # df.Define("Delta_E",  "p_p4_kin.Energy() -  E_FinalState[0]")
+  #   #   .Define("Delta_Px", "p_p4_kin.Px()     - Px_FinalState[0]")
+  #   #   .Define("Delta_Py", "p_p4_kin.Py()     - Py_FinalState[0]")
+  #   #   .Define("Delta_Pz", "p_p4_kin.Pz()     - Pz_FinalState[0]")
+  #   # df.Define("Delta_E",  "pip_p4_kin.Energy() -  E_FinalState[1]")  # confirms index assignment of 1 for pi+
+  #   #   .Define("Delta_Px", "pip_p4_kin.Px()     - Px_FinalState[1]")
+  #   #   .Define("Delta_Py", "pip_p4_kin.Py()     - Py_FinalState[1]")
+  #   #   .Define("Delta_Pz", "pip_p4_kin.Pz()     - Pz_FinalState[1]")
+  #   df.Define("Delta_E",  "pim_p4_kin.Energy() -  E_FinalState[2]")  # confirms index assignment of 2 for pi-
+  #     .Define("Delta_Px", "pim_p4_kin.Px()     - Px_FinalState[2]")
+  #     .Define("Delta_Py", "pim_p4_kin.Py()     - Py_FinalState[2]")
+  #     .Define("Delta_Pz", "pim_p4_kin.Pz()     - Pz_FinalState[2]")
+  # )
+  # hists += [
+  #   df.Histo1D(ROOT.RDF.TH1DModel("hMcDelta_E",  ";#Delta E [GeV];"     + yAxisLabel, 100, -1e-6, +1e-6), "Delta_E"),
+  #   df.Histo1D(ROOT.RDF.TH1DModel("hMcDelta_Px", ";#Delta p_{x} [GeV];" + yAxisLabel, 100, -1e-6, +1e-6), "Delta_Px"),
+  #   df.Histo1D(ROOT.RDF.TH1DModel("hMcDelta_Py", ";#Delta p_{y} [GeV];" + yAxisLabel, 100, -1e-6, +1e-6), "Delta_Py"),
+  #   df.Histo1D(ROOT.RDF.TH1DModel("hMcDelta_Pz", ";#Delta p_{z} [GeV];" + yAxisLabel, 100, -1e-6, +1e-6), "Delta_Pz"),
+  # ]
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
