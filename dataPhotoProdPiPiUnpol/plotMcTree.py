@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 
+from __future__ import annotations
+
 import os
 
 import ROOT
@@ -25,6 +27,19 @@ if __name__ == "__main__":
 	{
 		const TLorentzVector p(Px, Py, Pz, E);
 		return p.M();
+	}
+  """
+  # declare C++ function to calculate momentum transfer squared
+  ROOT.gInterpreter.Declare(CPP_CODE)
+  CPP_CODE = """
+  double
+	momTransferSq(
+		const double PxA, const double PyA, const double PzA, const double EA,
+		const double PxB, const double PyB, const double PzB, const double EB
+	)	{
+		const TLorentzVector pA(PxA, PyA, PzA, EA);
+		const TLorentzVector pB(PxB, PyB, PzB, EB);
+		return (pA - pB).M2();
 	}
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
@@ -63,15 +78,19 @@ if __name__ == "__main__":
     df.Define("FsMassRecoil", f"mass({lvRecoilProton})")
       .Define("FsMassPip",    f"mass({lvPip})")
       .Define("FsMassPim",    f"mass({lvPim})")
+      .Define("tAbs",         f"std::fabs(momTransferSq({lvTargetProton}, {lvRecoilProton}))")
   )
   yAxisLabel = "Events"
   hists = [
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,    2),    "FsMassPip"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,    2),    "FsMassPim"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiAlex", ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipPAlex", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimPAlex", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil",  ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",     ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,    2),    "FsMassPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",     ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,    2),    "FsMassPim"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiAlex",  ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipPAlex",  ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimPAlex",  ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMomTransferSq", ";|t| [GeV^{2}];"           + yAxisLabel,  50, 0,    1),    "tAbs"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPipPSq"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPimPSq"),
   ]
   # add histograms specific to subsystems
   for pairLabel, massAxisTitle, massBinning in (
@@ -88,6 +107,11 @@ if __name__ == "__main__":
       df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsHfCosTheta", f";{massAxisTitle}" + ";cos#theta_{HF}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Hf{pairLabel}CosTheta"),
       df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsHfPhiDeg",   f";{massAxisTitle}" + ";#phi_{HF}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Hf{pairLabel}PhiDeg"),
     ]
+  hists += [
+    df.Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiMassVsGjCosThetaPipP", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 56, 0.28, 1.40, 72, -1, +1), f"MassPiPi", f"GjPipPCosTheta"),
+    df.Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiMassVsGjCosThetaPimP", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 56, 0.28, 1.40, 72, -1, +1), f"MassPiPi", f"GjPimPCosTheta"),
+    df.Filter("tAbs < 0.45").Histo2D(ROOT.RDF.TH2DModel(f"hMcPipPMassVsGjCosThetaCutT", ";m_{p#pi^{#plus}} [GeV];cos#theta_{GJ}", 72, 1, 2.8, 72, -1, +1), f"MassPipP", f"GjPipPCosTheta"),
+  ]
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
