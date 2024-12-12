@@ -178,7 +178,9 @@ def makeAllPlots(
   timer: Utilities.Timer = Utilities.Timer(),
 ) -> None:
   """Generates all plots for the given analysis configuration"""
-  # load moments from files
+  outFileType = "pdf"
+  # outFileType = "root"
+  # load moments from files``
   momentIndices = MomentIndices(cfg.maxL)
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
@@ -348,6 +350,7 @@ def makeAllPlots(
           normalizedMoments = cfg.normalizeMoments,
           momentResultsTrue = momentResultsCompare,
           outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
+          outFileType       = outFileType,
           histTitle         = qnIndex.title,
           plotLegend        = True,
           legendLabels      = ("Moment", momentResultsCompareLabel),
