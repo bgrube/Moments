@@ -118,6 +118,15 @@ class AnalysisConfig:
 
 # configuration for unpolarized pi+ pi- data
 CFG_UNPOLARIZED_PIPI = AnalysisConfig()
+# configuration for unpolarized pi+ p data
+CFG_UNPOLARIZED_PIPP = AnalysisConfig(
+  dataFileName       = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
+  psAccFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
+  psGenFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
+  _maxL              = 4,
+  outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
+  massBinning        = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
+)
 # configuration for polarized pi+ pi- data
 CFG_POLARIZED_PIPI = AnalysisConfig(
   dataFileName       = "./dataPhotoProdPiPiPol/data_flat.root",
@@ -129,6 +138,23 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",
   # outFileDirBaseName = "./plotsPhotoProdPiPiPol_downsampled_0.1",
   massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
+)
+# configuration for Nizar's polarized eta pi0 data
+CFG_NIZAR = AnalysisConfig(
+  treeName           = "etaPi0",
+  dataFileName       = "./dataTestNizar/data_flat.root",
+  psAccFileName      = "./dataTestNizar/phaseSpace_acc_flat.root",
+  psGenFileName      = None,
+  polarization       = 0.0,  # read polarization from tree
+  _maxL              = 4,
+  outFileDirBaseName = "./plotsTestNizar",
+  binVarMass         = KinematicBinningVariable(
+    name  = "mass",
+    label = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
+    unit = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ),
+  massBinning        = HistAxisBinning(nmbBins = 21, minVal = 0.88, maxVal = 1.72),
 )
 
 
