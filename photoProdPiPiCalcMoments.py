@@ -47,9 +47,9 @@ print = functools.partial(print, flush = True)
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
   treeName:                 str                      = "PiPi"
-  dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.root"
-  psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.root"
-  psGenFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.root"
+  dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"
+  psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"
+  psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"
   polarization:             float | None             = None  # unpolarized data
   _maxL:                    int                      = 8
   # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
@@ -70,7 +70,7 @@ class AnalysisConfig:
   plotAccPsMoments:         bool                     = False
   # plotMeasuredMoments:      bool                     = True
   plotMeasuredMoments:      bool                     = False
-  # splotCovarianceMatrices:   bool                     = True
+  # plotCovarianceMatrices:   bool                     = True
   plotCovarianceMatrices:   bool                     = False
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
@@ -116,10 +116,10 @@ class AnalysisConfig:
     self.__post_init__()
 
 
-# configuration for unpolarized data
-CFG_UNPOLARIZED = AnalysisConfig()
-# configuration for polarized data
-CFG_POLARIZED = AnalysisConfig(
+# configuration for unpolarized pi+ pi- data
+CFG_UNPOLARIZED_PIPI = AnalysisConfig()
+# configuration for polarized pi+ pi- data
+CFG_POLARIZED_PIPI = AnalysisConfig(
   dataFileName       = "./dataPhotoProdPiPiPol/data_flat.root",
   # dataFileName       = "./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
   psAccFileName      = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
@@ -208,11 +208,11 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  # cfg = deepcopy(CFG_UNPOLARIZED)  # perform unpolarized analysis
-  cfg = deepcopy(CFG_POLARIZED)    # perform polarized analysis
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform unpolarized analysis
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)    # perform polarized analysis
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (4, ):
+  for maxL in (8, ):
     print(f"Performing moment analysis for L_max = {maxL}")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)

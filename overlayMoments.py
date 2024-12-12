@@ -15,8 +15,8 @@ from MomentCalculator import (
   QnMomentIndex,
 )
 from photoProdPiPiCalcMoments import (
-  CFG_POLARIZED,
-  CFG_UNPOLARIZED,
+  CFG_POLARIZED_PIPI,
+  CFG_UNPOLARIZED_PIPI,
 )
 from PlottingUtilities import (
   HistAxisBinning,
@@ -89,8 +89,8 @@ if __name__ == "__main__":
   timer.start("Total execution time")
 
   # define what to overlay
-  # cfg = deepcopy(CFG_UNPOLARIZED)  # perform unpolarized analysis
-  cfg = deepcopy(CFG_POLARIZED)    # perform polarized analysis
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform unpolarized analysis
+  cfg = deepcopy(CFG_POLARIZED_PIPI)    # perform polarized analysis
   fitResults: tuple[tuple[str, str, float | None], ...]  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
   # fitResults = (
   #   # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2",  None),
