@@ -89,8 +89,8 @@ if __name__ == "__main__":
   timer.start("Total execution time")
 
   # define what to overlay
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform unpolarized analysis
-  cfg = deepcopy(CFG_POLARIZED_PIPI)    # perform polarized analysis
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   fitResults: tuple[tuple[str, str, float | None], ...]  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
   # fitResults = (
   #   # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2",  None),

@@ -581,8 +581,8 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform unpolarized analysis
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)    # perform polarized analysis
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
   # for maxL in (2, 4, 5, 8, 10, 12, 20):
   for maxL in (8, ):
