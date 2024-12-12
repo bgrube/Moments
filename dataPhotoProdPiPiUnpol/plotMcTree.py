@@ -5,13 +5,19 @@ import os
 
 import ROOT
 
+from makeMomentsInputTree import (
+  CPP_CODE_MAKEPAIR,
+  defineAngleFormulas,
+  lorentzVectors,
+)
+
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("i")
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
-
+  ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
   # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
   double
@@ -19,19 +25,6 @@ if __name__ == "__main__":
 	{
 		const TLorentzVector p(Px, Py, Pz, E);
 		return p.M();
-	}
-  """
-  ROOT.gInterpreter.Declare(CPP_CODE)
-  # declare C++ function to calculate invariant mass of a pair of particles
-  CPP_CODE = """
-	double
-	massPair(
-		const double Px1, const double Py1, const double Pz1, const double E1,
-		const double Px2, const double Py2, const double Pz2, const double E2
-	)	{
-		const TLorentzVector p1(Px1, Py1, Pz1, E1);
-		const TLorentzVector p2(Px2, Py2, Pz2, E2);
-		return (p1 + p2).M();
 	}
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
@@ -43,43 +36,58 @@ if __name__ == "__main__":
   mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
   treeName = "kin"
 
-  lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"
-  lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
-  lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
-  lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
+  df = ROOT.RDataFrame(treeName, mcDataFileName)
+  for pairLabel, pairLvs, lvRecoil, lvBeamGJ, flipYAxis in (
+    ("PiPi", (lvPip, lvPim         ), lvRecoilProton, lvBeamPhoton,   True),
+    ("PipP", (lvPip, lvRecoilProton), lvPim,          lvTargetProton, False),
+    ("PimP", (lvPim, lvRecoilProton), lvPip,          lvTargetProton, False),
+  ):  # loop over two-body subsystems of pi+ pi- p final state
+    for frame in ("Hf", "Gj"):  # loop over rest frame definitions
+      df = defineAngleFormulas(
+        df,
+        lvBeamPhoton if frame == "Hf" else lvBeamGJ, lvRecoil, pairLvs[0], pairLvs[1],
+        frame,
+        flipYAxis,
+        columnNames = {  # names of columns to define: key: column, value: name
+          "cosThetaCol" : f"{frame}{pairLabel}CosTheta",
+          "thetaCol"    : f"{frame}{pairLabel}Theta",
+          "phiCol"      : f"{frame}{pairLabel}Phi",
+        },
+      )
+    df = (
+      df.Define(f"Mass{pairLabel}",   f"massPair({pairLvs[0]}, {pairLvs[1]})")
+        .Define(f"Mass{pairLabel}Sq", f"std::pow(massPair({pairLvs[0]}, {pairLvs[1]}), 2)")
+    )
   df = (
-    ROOT.RDataFrame(treeName, mcDataFileName)
-        .Define("FsMassRecoil", f"mass({lvRecoil})")
-        .Define("FsMassPip",    f"mass({lvPip})")
-        .Define("FsMassPim",    f"mass({lvPim})")
-        .Define("MassPiPi",     f"massPair({lvPip}, {lvPim})")
-        .Define("MassPipP",     f"massPair({lvPip}, {lvRecoil})")
-        .Define("MassPimP",     f"massPair({lvPim}, {lvRecoil})")
-        .Define("GjCosTheta",   f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
-        .Define("GjTheta",      "std::acos(GjCosTheta)")
-        .Define("GjPhi",        f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
-        .Define("GjPhiDeg",     "GjPhi * TMath::RadToDeg()")
-        .Define("HfCosTheta",   f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
-        .Define("HfTheta",      "std::acos(HfCosTheta)")
-        .Define("HfPhi",        f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
-        .Define("HfPhiDeg",     "HfPhi * TMath::RadToDeg()")
+    df.Define("FsMassRecoil", f"mass({lvRecoilProton})")
+      .Define("FsMassPip",    f"mass({lvPip})")
+      .Define("FsMassPim",    f"mass({lvPim})")
   )
   yAxisLabel = "Events"
-  hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,      2),      "FsMassRecoil"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,      2),      "FsMassPip"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,      2),      "FsMassPim"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",     ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28,   2.28),   "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiClas", ";m_{#pi#pi} [GeV];"        + yAxisLabel, 200, 0,      2),      "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipP",     ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,      5),      "MassPipP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipPClas", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel,  72, 1,      2.8),    "MassPipP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimP",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,      5),      "MassPimP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimPClas", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel,  72, 1,      2.8),    "MassPimP"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGj",         ";cos#theta_{GJ};#phi_{GJ} [deg]",   50, -1,   +1,   72, -180, +180), "GjCosTheta", "GjPhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHf",         ";cos#theta_{HF};#phi_{HF} [deg]",   50, -1,   +1,   72, -180, +180), "HfCosTheta", "HfPhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassVsHfCosTheta", ";m_{#pi#pi} [GeV];cos#theta_{HF}", 100, 0.28, 2.28, 72,   -1,   +1), "MassPiPi",   "HfCosTheta"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassVsHfPhiDeg",   ";m_{#pi#pi} [GeV];#phi_{HF}",      100, 0.28, 2.28, 72, -180, +180), "MassPiPi",   "HfPhiDeg"),
-  )
+  hists = [
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,    2),    "FsMassPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,    2),    "FsMassPim"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiAlex", ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipPAlex", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimPAlex", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
+  ]
+  # add histograms specific to subsystems
+  for pairLabel, massAxisTitle, massBinning in (
+    ("PiPi", "m_{#pi#pi} [GeV]",        (56, 0.28, 1.40)),
+    ("PipP", "m_{p#pi^{#plus}} [GeV]",  (72, 1,    2.8 )),
+    ("PimP", "m_{p#pi^{#minus}} [GeV]", (72, 1,    2.8 )),
+  ):
+    hists += [
+      df.Histo1D(ROOT.RDF.TH1DModel(f"hMc{pairLabel}MassPiPi", f";{massAxisTitle};" + yAxisLabel, *massBinning), f"Mass{pairLabel}"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}AnglesGj",         ";cos#theta_{GJ};#phi_{GJ} [deg]",       50, -1,   +1, 50, -180, +180), f"Gj{pairLabel}CosTheta", f"Gj{pairLabel}PhiDeg"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}AnglesHf",         ";cos#theta_{HF};#phi_{HF} [deg]",       50, -1,   +1, 50, -180, +180), f"Hf{pairLabel}CosTheta", f"Hf{pairLabel}PhiDeg"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsGjCosTheta", f";{massAxisTitle}" + ";cos#theta_{GJ}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Gj{pairLabel}CosTheta"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsGjPhiDeg",   f";{massAxisTitle}" + ";#phi_{GJ}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Gj{pairLabel}PhiDeg"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsHfCosTheta", f";{massAxisTitle}" + ";cos#theta_{HF}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Hf{pairLabel}CosTheta"),
+      df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsHfPhiDeg",   f";{massAxisTitle}" + ";#phi_{HF}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Hf{pairLabel}PhiDeg"),
+    ]
   for hist in hists:
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
