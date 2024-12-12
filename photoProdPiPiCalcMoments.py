@@ -46,16 +46,16 @@ print = functools.partial(print, flush = True)
 @dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
-  treeName:                 str                      = "PiPi"
-  dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"
-  psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"
-  psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"
+  treeName:                 str                      = "PiPi"  # name of tree to read from data and MC files
+  dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
+  psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
+  psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | None             = None  # unpolarized data
-  _maxL:                    int                      = 8
-  # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"
-  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"
-  outFileDirName:           str                      = field(init = False)
-  outFileNamePrefix:        str                      = field(init = False)
+  _maxL:                    int                      = 8  # maximum L of physical and measured moments
+  # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
+  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"  # base name of directory into which all output will be written
+  outFileDirName:           str                      = field(init = False)  # directory into which all output will be written
+  outFileNamePrefix:        str                      = field(init = False)  # name prefix prepended to output file names
   # _normalizeMoments:        bool                     = True
   _normalizeMoments:        bool                     = False
   nmbBootstrapSamples:      int                      = 0
@@ -154,7 +154,7 @@ CFG_NIZAR = AnalysisConfig(
     unit = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ),
-  massBinning        = HistAxisBinning(nmbBins = 21, minVal = 0.88, maxVal = 1.72),
+  massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
 )
 
 
