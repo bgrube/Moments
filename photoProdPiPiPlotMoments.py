@@ -195,8 +195,8 @@ def makeAllPlots(
   # momentResultsCompareColor = ROOT.kGray + 1
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
-  # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
-  momentResultsCompare      = None
+  momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
+  # momentResultsCompare      = None
   momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D}"
   # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl")
   # momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}"
@@ -304,8 +304,8 @@ def makeAllPlots(
           canv = ROOT.TCanvas()
           histChi2.SetLineColor(ROOT.kBlue + 1)
           histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-          # histChi2.SetMaximum(10)
-          histChi2.SetMaximum(3)
+          histChi2.SetMaximum(20)
+          # histChi2.SetMaximum(3)
           histChi2.Draw("HIST")
           # add line at nominal chi2/ndf value to guide the eye
           line = ROOT.TLine()
@@ -403,8 +403,8 @@ def makeAllPlots(
           canv = ROOT.TCanvas()
           histChi2.SetLineColor(ROOT.kBlue + 1)
           histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-          # histChi2.SetMaximum(10)
-          histChi2.SetMaximum(3)
+          histChi2.SetMaximum(10)
+          # histChi2.SetMaximum(3)
           histChi2.Draw("HIST")
           # add line at nominal chi2/ndf value to guide the eye
           line = ROOT.TLine()
@@ -506,7 +506,7 @@ def makeAllPlots(
             data           = None,
             phaseSpaceData = None,
             nmbGenEvents   = 0,
-            polarization   = None,
+            polarization   = 0.0 if HPhys.indices.polarized else None,
           ),
         )  # dummy matrix without dataset
         accIntMatrix.load(f"{cfg.outFileDirName}/integralMatrix_{binLabel}.npy")
