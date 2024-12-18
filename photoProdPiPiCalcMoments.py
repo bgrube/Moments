@@ -52,8 +52,7 @@ class AnalysisConfig:
   psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | None             = None  # unpolarized data
   _maxL:                    int                      = 8  # maximum L of physical and measured moments
-  # outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
-  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpolPwa"  # base name of directory into which all output will be written
+  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
   outFileDirName:           str                      = field(init = False)  # directory into which all output will be written
   outFileNamePrefix:        str                      = field(init = False)  # name prefix prepended to output file names
   # _normalizeMoments:        bool                     = True
@@ -148,6 +147,7 @@ CFG_NIZAR = AnalysisConfig(
   polarization       = 0.0,  # read polarization from tree
   _maxL              = 4,
   outFileDirBaseName = "./plotsTestNizar",
+  # _normalizeMoments  = True,
   binVarMass         = KinematicBinningVariable(
     name  = "mass",
     label = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
