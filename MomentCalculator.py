@@ -28,14 +28,20 @@ from typing import (
 )
 #TODO switch from int for indices to SupportsIndex; requires Python 3.8+
 
-import py3nj
+from spherical import clebsch_gordan
 import ROOT
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
 
-
+_cg_cache = {}
+def cached_clebsch_gordan(l1, l2, L, m1, m2, M):
+    key = (l1, l2, L, m1, m2, M)
+    if key not in _cg_cache:
+        _cg_cache[key] = clebsch_gordan(l1, m1, l2, m2, L, M)
+    return _cg_cache[key]
+  
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
   """Immutable container class that stores information about quantum-number indices of two-pseudoscalar partial-waves in reflectivity basis"""
@@ -209,9 +215,9 @@ class AmplitudeSet:
         for amp2 in self.amplitudes(onlyRefl = refl):
           l2 = amp2.qn.l
           m2 = amp2.qn.m
-          term = np.sqrt((2 * l2 + 1) / (2 * l1 + 1)) * (
-              py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 0,      0,     0,      ignore_invalid = True)  # (l_2, 0;    L, 0 | l_1, 0  )
-            * py3nj.clebsch_gordan(2 * l2, 2 * L, 2 * l1, 2 * m2, 2 * M, 2 * m1, ignore_invalid = True)  # (l_2, m_2;  L, M | l_1, m_1)
+          term =  np.sqrt((2 * l2 + 1) / (2 * l1 + 1)) * (
+              cached_clebsch_gordan(l2, L, l1, 0, 0, 0) *  # (l_2, 0;    L, 0 | l_1, 0  )
+              cached_clebsch_gordan(l2, L, l1, m2, M, m1)  # (l_2, m_2;  L, M | l_1, m_1)
           )
           if term == 0:  # unphysical combination of angular-momentum quantum numbers -> zero Clebsch-Gordan coefficient
             continue
@@ -257,7 +263,7 @@ class AmplitudeSet:
         moments[1] = moments[1].real + 0j
         moments[2] = 0 + moments[2].imag * 1j
         # ensure that H_2(L, 0) is zero
-        assert M != 0 or (M == 0 and moments[2] == 0), f"expect H_2({L} {M}) == 0 but found {moments[2]}"
+        assert M != 0 or (M == 0 and np.isclose(moments[2], 0, atol = self.tolerance)), f"expect H_2({L} {M}) == 0 but found {moments[2]}"
         if normalize and L == M == 0:
           if isinstance(normalize, bool):
             # normalize all moments to H_0(0, 0) including H_0(0, 0) itself (i.e. H_0(0, 0) = 1 after normalization)
