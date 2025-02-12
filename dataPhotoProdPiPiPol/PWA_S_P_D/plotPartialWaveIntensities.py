@@ -12,7 +12,8 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   PlottingUtilities.setupPlotStyle(rootlogonPath = "../../rootlogon.C")
 
-  plotFileName = "./pwa_plots_SPD.root"
+  # plotFileName = "./pwa_plots_SPD.root"
+  plotFileName = "./pwa_plots_SPD_100M.root"
   plotFile = ROOT.TFile.Open(plotFileName, "READ")
 
   graphNamesToLabels = {
@@ -21,7 +22,7 @@ if __name__ == "__main__":
     "P0"    : "#it{P}_{#kern[-0.3]{0}}",
     "P1"    : "#it{P}_{#kern[-0.3]{#plus 1}}",
     "Dm2"   : "#it{D}_{#minus 2}",
-    "Dm2"   : "#it{D}_{#minus 2}",
+    "Dm1"   : "#it{D}_{#minus 1}",
     "D0"    : "#it{D}_{0}",
     "D1"    : "#it{D}_{#plus 1}",
     "D2"    : "#it{D}_{#plus 2}",
