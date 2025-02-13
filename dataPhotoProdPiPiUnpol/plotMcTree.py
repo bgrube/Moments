@@ -85,12 +85,12 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil",  ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",     ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,    2),    "FsMassPip"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",     ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,    2),    "FsMassPim"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiAlex",  ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipPAlex",  ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimPAlex",  ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcPiPiMassAlex",  ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcPipPMassAlex",  ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcPimPMassAlex",  ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMomTransferSq", ";|t| [GeV^{2}];"           + yAxisLabel,  50, 0,    1),    "tAbs"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPipPSq"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPimPSq"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz1", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPipPSq"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz2", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPimPSq"),
   ]
   # add histograms specific to subsystems
   for pairLabel, massAxisTitle, massBinning in (
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     ("PimP", "m_{p#pi^{#minus}} [GeV]", (72, 1,    2.8 )),
   ):
     hists += [
-      df.Histo1D(ROOT.RDF.TH1DModel(f"hMc{pairLabel}MassPiPi", f";{massAxisTitle};" + yAxisLabel, *massBinning), f"Mass{pairLabel}"),
+      df.Histo1D(ROOT.RDF.TH1DModel(f"hMc{pairLabel}Mass", f";{massAxisTitle};" + yAxisLabel, *massBinning), f"Mass{pairLabel}"),
       df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}AnglesGj",         ";cos#theta_{GJ};#phi_{GJ} [deg]",       50, -1,   +1, 50, -180, +180), f"Gj{pairLabel}CosTheta", f"Gj{pairLabel}PhiDeg"),
       df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}AnglesHf",         ";cos#theta_{HF};#phi_{HF} [deg]",       50, -1,   +1, 50, -180, +180), f"Hf{pairLabel}CosTheta", f"Hf{pairLabel}PhiDeg"),
       df.Histo2D(ROOT.RDF.TH2DModel(f"hMc{pairLabel}MassVsGjCosTheta", f";{massAxisTitle}" + ";cos#theta_{GJ}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Gj{pairLabel}CosTheta"),
