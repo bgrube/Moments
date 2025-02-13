@@ -197,6 +197,7 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hDataPipPMassClas", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel,  72, 1,    2.8),  "MassPipP", "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataPimPMass",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP", "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataPimPMassClas", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel,  72, 1,    2.8),  "MassPimP", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataPipPMassVsPiPiMassClas",   ";m_{#pi#pi} [GeV];m_{p#pi^{#plus}} [GeV]",                  100, 0.2,  1.8,  100,    1,  2.8), "MassPiPi",   "MassPipP",       "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0,    3.5,  100,    1,  7.5), "MassPiPiSq", "MassPipPSq",     "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0,    3.5,  100,    1,  7.5), "MassPiPiSq", "MassPimPSq",     "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataPiPiMassVsHfCosThetaAlex", ";m_{#pi#pi} [GeV];cos#theta_{HF}",                          100, 0.28, 2.28,  72,   -1,   +1), "MassPiPi",   "HfPiPiCosTheta", "eventWeight"),
@@ -218,9 +219,21 @@ if __name__ == "__main__":
       df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsHfCosTheta", f";{massAxisTitle}" + ";cos#theta_{HF}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Hf{pairLabel}CosTheta", "eventWeight"),
       df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsHfPhiDeg",   f";{massAxisTitle}" + ";#phi_{HF}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Hf{pairLabel}PhiDeg",   "eventWeight"),
     ]
+
+  # draw histograms
+  histNameLogScale = ("hDataPipPMassVsPiPiMassClas", )
   for hist in hists:
     canv = ROOT.TCanvas()
-    hist.SetMinimum(0)
+    if hist.GetName() in histNameLogScale:
+      histType = hist.IsA().GetName()
+      if histType.startswith("TH1"):
+        canv.SetLogy()
+      elif histType.startswith("TH2"):
+        canv.SetLogz()
+      else:
+        pass # do nothing for other histogram types
+    else:
+      hist.SetMinimum(0)
     hist.Draw("COLZ")
     canv.SaveAs(f"{hist.GetName()}.pdf")
 
@@ -260,10 +273,10 @@ if __name__ == "__main__":
   )
   # histMassPiPiPwa.Scale(0.5)
   canv = ROOT.TCanvas()
-  histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
+  histStack = ROOT.THStack("hPiPiMassDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
   histStack.Add(histMassPiPiMc.GetValue())
   histStack.Add(histMassPiPiData.GetValue())
-  histStack.Add(histMassPiPiPwa)
+  # histStack.Add(histMassPiPiPwa)
   histMassPiPiMc.SetLineColor    (ROOT.kBlue  + 1)
   histMassPiPiMc.SetMarkerColor  (ROOT.kBlue  + 1)
   histMassPiPiData.SetLineColor  (ROOT.kRed   + 1)
