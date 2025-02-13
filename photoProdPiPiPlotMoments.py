@@ -190,44 +190,58 @@ def makeAllPlots(
   momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
-  # momentResultsCompare      = readMomentResultsClas(momentIndices, cfg.binVarMass)
-  # momentResultsCompareLabel = "CLAS"
-  # momentResultsCompareColor = ROOT.kGray + 1
-  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-  print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
-  momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
-  # momentResultsCompare      = None
-  momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D}"
-  # momentResultsCompare      = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl")
-  # momentResultsCompareLabel = "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}"
-  momentResultsCompareColor = ROOT.kBlue + 1
-  momentResultsJpac         = readMomentResultsJpac(momentIndices, cfg.binVarMass)
-  momentResultsJpacLabel    = "JPAC"
-  # overlayMomentResultsJpac  = True
-  overlayMomentResultsJpac  = False
+  compareTo = "CLAS"
+  # compareTo = "PWA"
+  # compareTo = None
+  if compareTo == "PWA":
+    print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
+  momentResultsCompare, momentResultsCompareLabel, momentResultsCompareColor = (
+    (
+      readMomentResultsClas(momentIndices, cfg.binVarMass),
+      "CLAS",
+      ROOT.kGray + 2,
+    ) if compareTo == "CLAS" else
+    (
+      MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl"),
+      "PWA #it{S} #plus #it{P} #plus #it{D}",
+      # MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl"),
+      # "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}",
+      ROOT.kBlue + 1,
+    ) if compareTo == "PWA" else
+    (
+      None,
+      "",
+      ROOT.kBlack,
+    )
+  )
+  momentResultsJpac        = readMomentResultsJpac(momentIndices, cfg.binVarMass)
+  momentResultsJpacLabel   = "JPAC"
+  overlayMomentResultsJpac = True
+  # overlayMomentResultsJpac = False
 
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
   if momentResultsCompare is not None and not cfg.normalizeMoments:
-    # scale comparison and JPAC moments to match GlueX data
-    normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
-    if normalizeByIntegral:
-      # loop over mass bins and sum up H(0, 0) values
-      H000Sum = H000SumComp = H000SumJpac = 0.0
-      for HPhys, HComp, HJpac in zip(momentResultsPhys, momentResultsCompare, momentResultsJpac):
-        H000Sum     += HPhys[H000Index].val.real
-        H000SumComp += HComp[H000Index].val.real
-        # H000SumJpac += HJpac[H000Index].val.real
-      momentResultsCompare.scaleBy(1 / (8 * math.pi))  # this works for PWA result
-      print(f"!!! scale factor = {H000Sum / H000SumComp}")
-      # momentResultsCompare.scaleBy(H000Sum / H000SumComp)
-      momentResultsJpac.scaleBy   (H000Sum / H000SumComp)  # use same factor as for comparison moments
-      # momentResultsJpac.scaleBy(H000Sum / H000SumJpac)
-    else:
-      normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
-      H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
-      momentResultsCompare.scaleBy(H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)
-      momentResultsJpac.scaleBy   (H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real)  # use same factor as for comparison moments
-      # momentResultsJpac.scaleBy(H000Value / momentResultsJpac[normMassBinIndex][H000Index].val.real)
+    if compareTo == "CLAS":
+      # scale CLAS and JPAC moments to match GlueX data
+      scaleFactorClas = 1.0
+      normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
+      if normalizeByIntegral:
+        # loop over mass bins and sum up H(0, 0) values
+        H000Sum = H000SumComp = 0.0
+        for HPhys, HComp in zip(momentResultsPhys, momentResultsCompare):
+          H000Sum     += HPhys[H000Index].val.real
+          H000SumComp += HComp[H000Index].val.real
+        scaleFactorClas = H000Sum / H000SumComp
+      else:
+        normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
+        H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
+        scaleFactorClas = H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real
+      print(f"Scale CLAS moments by factor {scaleFactorClas}")
+      momentResultsCompare.scaleBy(scaleFactorClas)
+      momentResultsJpac.scaleBy   (scaleFactorClas)  # use same factor as for CLAS moments
+    elif compareTo == "PWA":
+      # scale moments from PWA result
+      momentResultsCompare.scaleBy(1 / (8 * math.pi))  #TODO unclear where this factor comes from; could it be the kappa term in the intensity function?
 
   if True:
     with timer.timeThis(f"Time to plot results from analysis of real data"):
@@ -245,7 +259,7 @@ def makeAllPlots(
           HData             = HPhys,
           normalizedMoments = cfg.normalizeMoments,
           HTruth            = HComp,
-          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
@@ -353,24 +367,24 @@ def makeAllPlots(
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
           momentResultsTrue = momentResultsCompare,
-          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_",
+          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_",
           outFileType       = outFileType,
           histTitle         = qnIndex.title,
           plotLegend        = True,
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
-          # histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
-          #   "Re" : [
-          #     (histJpac,     "HIST L", histJpac.GetName()),
-          #     (histJpacBand,     "E3", ""),
-          #   ],
-          # },
-          histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
-              (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
+              (histJpac,     "HIST L", histJpac.GetName()),
+              (histJpacBand, "E3",     ""),
             ],
           },
+          # histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          #   "Re" : [
+          #     (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
+          #   ],
+          # },
         )
         if cfg.plotMeasuredMoments:
           plotMoments1D(
@@ -590,11 +604,11 @@ def makeAllPlots(
 if __name__ == "__main__":
   cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (8, ):
+  for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  # for maxL in (8, ):
     print(f"Plotting moments for L_max = {maxL}")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
@@ -605,10 +619,8 @@ if __name__ == "__main__":
       timer = Utilities.Timer()
       ROOT.gROOT.SetBatch(True)
       setupPlotStyle()
-
+      print(f"Using configuration:\n{cfg}")
       timer.start("Total execution time")
-
       makeAllPlots(cfg, timer)
-
       timer.stop("Total execution time")
       print(timer.summary)
