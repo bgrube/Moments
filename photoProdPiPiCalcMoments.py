@@ -79,9 +79,9 @@ class AnalysisConfig:
     unit = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ))
-  # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4))  # same binning as used by CLAS
+  massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4))  # same binning as used by CLAS
   # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29))  # f_2(1270) region
-  massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40))  # binning used in PWA of unpolarized data
+  # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40))  # binning used in PWA of unpolarized data
 
   def __post_init__(self) -> None:
     """Creates output directory and initializes member variables"""
@@ -214,7 +214,7 @@ def calculateAllMoments(
         )
       )
 
-  # calculate and plot integral matrix for all mass bins
+  # calculate integral matrix for all mass bins
   nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
   with timer.timeThis(f"Time to calculate integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):
     print(f"Calculating acceptance integral matrices for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
@@ -223,9 +223,9 @@ def calculateAllMoments(
     eigenVals, _ = momentCalculators[0].integralMatrix.eigenDecomp
     print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
 
+  # calculate moments of accepted phase-space data
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
-    # calculate moments of accepted phase-space data
     with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of phase-space MC data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
       momentCalculators.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
@@ -243,12 +243,12 @@ def calculateAllMoments(
 
 if __name__ == "__main__":
   cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (8, ):
+  for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  # for maxL in (8, ):
     print(f"Performing moment analysis for L_max = {maxL}")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
@@ -263,10 +263,8 @@ if __name__ == "__main__":
       print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
       with threadController.limit(limits = 4):
         print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
-
         timer.start("Total execution time")
-
+        print(f"Using configuration:\n{cfg}")
         calculateAllMoments(cfg, timer)
-
         timer.stop("Total execution time")
         print(timer.summary)
