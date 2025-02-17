@@ -40,6 +40,8 @@ if __name__ == "__main__":
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+
+  # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
   # Alex' code to calculate helicity angles of A for beam + target -> X + recoil with X -> A + B
   CPP_CODE = """

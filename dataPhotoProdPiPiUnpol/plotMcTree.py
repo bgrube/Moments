@@ -20,6 +20,8 @@ if __name__ == "__main__":
   ROOT.gROOT.LoadMacro("../rootlogon.C")
   ROOT.gStyle.SetOptStat("i")
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+
+  # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
   # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
