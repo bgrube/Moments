@@ -27,7 +27,8 @@ from photoProdPiPiCalcMoments import (
   AnalysisConfig,
   CFG_NIZAR,
   CFG_POLARIZED_PIPI,
-  CFG_UNPOLARIZED_PIPI,
+  CFG_UNPOLARIZED_PIPI_CLAS,
+  CFG_UNPOLARIZED_PIPI_PWA,
   CFG_UNPOLARIZED_PIPP,
 )
 import MomentCalculator
@@ -602,12 +603,16 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
+  # compareTo = "CLAS"
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  compareTo = "PWA"
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  for maxL in (4, 8, 14):
   # for maxL in (8, ):
     print(f"Plotting moments for L_max = {maxL}")
     cfg.maxL = maxL

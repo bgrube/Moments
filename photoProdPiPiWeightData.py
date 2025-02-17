@@ -23,7 +23,8 @@ from wurlitzer import pipes, STDOUT
 from photoProdPiPiCalcMoments import (
   AnalysisConfig,
   CFG_POLARIZED_PIPI,
-  CFG_UNPOLARIZED_PIPI,
+  CFG_UNPOLARIZED_PIPI_CLAS,
+  CFG_UNPOLARIZED_PIPI_PWA,
 )
 from MomentCalculator import MomentResultsKinematicBinning
 from PlottingUtilities import setupPlotStyle
@@ -65,11 +66,12 @@ def weightAccPhaseSpaceWithIntensity(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
-  # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (8, ):
+  for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  # for maxL in (2, ):
     print(f"Generating weighted MC for L_max = {maxL}")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
@@ -82,10 +84,11 @@ if __name__ == "__main__":
       setupPlotStyle()
 
       timer.start("Total execution time")
+      print(f"Using configuration:\n{cfg}")
 
       momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-      # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
-      momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
+      momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
+      # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
       for momentResult in momentResults:
         intensityFormula = momentResult.intensityFormula(
           polarization = cfg.polarization,
@@ -97,8 +100,8 @@ if __name__ == "__main__":
         massBinCenter = momentResult.binCenters[cfg.massBinning.var]
         massBinIndex  = cfg.massBinning.findBin(massBinCenter)
         assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} GeV"
-        # outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_flat"
-        outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_pwa_SPD_flat"
+        outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_flat"
+        # outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_pwa_SPD_flat"
         outFileName     = f"{outFileBaseName}_{massBinIndex}.root"
         print(f"Weighting accepted phase-space events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit}")
         weightAccPhaseSpaceWithIntensity(

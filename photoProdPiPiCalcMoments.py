@@ -46,6 +46,7 @@ print = functools.partial(print, flush = True)
 @dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
+  # defaults are for unpolarized pipi analysis
   treeName:                 str                      = "PiPi"  # name of tree to read from data and MC files
   dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
   psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
@@ -74,14 +75,12 @@ class AnalysisConfig:
   limitNmbPsAccEvents:      int                      = 0
   # limitNmbPsAccEvents:      int                      = 100000
   binVarMass:               KinematicBinningVariable = field(default_factory=lambda: KinematicBinningVariable(
-    name  = "mass",
-    label = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
-    unit = "GeV/#it{c}^{2}",
+    name      = "mass",
+    label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+    unit      = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ))
   massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 100, minVal = 0.4, maxVal = 1.4))  # same binning as used by CLAS
-  # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 1, minVal = 1.25, maxVal = 1.29))  # f_2(1270) region
-  # massBinning:              HistAxisBinning          = field(default_factory=lambda: HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40))  # binning used in PWA of unpolarized data
 
   def __post_init__(self) -> None:
     """Creates output directory and initializes member variables"""
@@ -115,8 +114,12 @@ class AnalysisConfig:
     self.__post_init__()
 
 
-# configuration for unpolarized pi+ pi- data
-CFG_UNPOLARIZED_PIPI = AnalysisConfig()
+# configurations for unpolarized pi+ pi- data
+CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
+CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
+  outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
+  massBinning        = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40),  # binning used in PWA of unpolarized data
+)
 # configuration for unpolarized pi+ p data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   dataFileName       = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
@@ -242,12 +245,14 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  for maxL in (4, 8, 14):
   # for maxL in (8, ):
     print(f"Performing moment analysis for L_max = {maxL}")
     cfg.maxL = maxL

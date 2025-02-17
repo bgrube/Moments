@@ -31,7 +31,7 @@ from MomentCalculator import (
 )
 from photoProdPiPiCalcMoments import (
   CFG_POLARIZED_PIPI,
-  CFG_UNPOLARIZED_PIPI,
+  CFG_UNPOLARIZED_PIPI_PWA,
 )
 from PlottingUtilities import setupPlotStyle
 import Utilities
@@ -87,11 +87,11 @@ def readMomentResultsPwa(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
-  # for maxL in (2, 4, 5, 8, 10, 12, 20):
-  for maxL in (8, ):
+  for maxL in (4, 8, 14):
+  # for maxL in (8, ):
     print(f"Calculating moment values with L_max = {maxL} from partial-wave amplitudes")
     cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
@@ -108,6 +108,7 @@ if __name__ == "__main__":
         print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
 
         timer.start("Total execution time")
+        print(f"Using configuration:\n{cfg}")
 
         pwaAmplitudesFileName = None
         waves: list[tuple[str, QnWaveIndex]] = []
@@ -140,7 +141,8 @@ if __name__ == "__main__":
           ]
         else:
           # polarized data
-          pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD.txt"
+          # pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD.txt"
+          pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD_100M.txt"
           waves = [  # order must match columns in file with partial-wave amplitudes
             # S-waves
             ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),
