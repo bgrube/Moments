@@ -263,15 +263,11 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   ROOT.gROOT.ForceStyle()
   ROOT.gStyle.SetCanvasDefW(600)
   ROOT.gStyle.SetCanvasDefH(600)
-  ROOT.gStyle.SetPalette(ROOT.kBird)
-  # ROOT.gStyle.SetPalette(ROOT.kViridis)
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
   ROOT.gStyle.SetLegendBorderSize(1)
   # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
   # ROOT.gStyle.SetOptStat("i")  # show only integral
   ROOT.gStyle.SetOptStat("")
   ROOT.gStyle.SetStatFormat("8.8g")
-  ROOT.gStyle.SetTitleColor(1, "X")  # fix that for some mysterious reason x-axis titles of 2D plots and graphs are white
   ROOT.gStyle.SetTitleOffset(1.35, "Y")
 
 
