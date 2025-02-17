@@ -98,9 +98,9 @@ def plotDistributions1D(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  ROOT.gROOT.LoadMacro("../rootlogon.C")
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
-  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
   dataFileName = "./data_flat.PiPi.root"  # real data

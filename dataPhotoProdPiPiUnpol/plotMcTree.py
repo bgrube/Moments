@@ -16,8 +16,9 @@ from makeMomentsInputTree import (
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  ROOT.gROOT.LoadMacro("../rootlogon.C")
   ROOT.gStyle.SetOptStat("i")
-  ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
   # declare C++ function to calculate invariant mass of a particle
