@@ -177,8 +177,9 @@ def readMomentResultsJpac(
 
 
 def makeAllPlots(
-  cfg:   AnalysisConfig,
-  timer: Utilities.Timer = Utilities.Timer(),
+  cfg:       AnalysisConfig,
+  timer:     Utilities.Timer = Utilities.Timer(),
+  compareTo: str = "CLAS",  # "CLAS" or "PWA"; None means no comparison moments are plotted
 ) -> None:
   """Generates all plots for the given analysis configuration"""
   outFileType = "pdf"
@@ -191,9 +192,6 @@ def makeAllPlots(
   momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
-  compareTo = "CLAS"
-  # compareTo = "PWA"
-  # compareTo = None
   if compareTo == "PWA":
     print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
   momentResultsCompare, momentResultsCompareLabel, momentResultsCompareColor = (
@@ -217,8 +215,7 @@ def makeAllPlots(
   )
   momentResultsJpac        = readMomentResultsJpac(momentIndices, cfg.binVarMass)
   momentResultsJpacLabel   = "JPAC"
-  overlayMomentResultsJpac = True
-  # overlayMomentResultsJpac = False
+  overlayMomentResultsJpac = (compareTo == "CLAS")
 
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
   if momentResultsCompare is not None and not cfg.normalizeMoments:
@@ -626,6 +623,6 @@ if __name__ == "__main__":
       setupPlotStyle()
       print(f"Using configuration:\n{cfg}")
       timer.start("Total execution time")
-      makeAllPlots(cfg, timer)
+      makeAllPlots(cfg, timer, compareTo)
       timer.stop("Total execution time")
       print(timer.summary)
