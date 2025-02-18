@@ -94,25 +94,26 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   fitResults: tuple[tuple[str, str, float | None], ...]  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
-  # fitResults = (
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_2",  "#it{L}_{max} = 2",  None),
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_4",  "#it{L}_{max} = 4",  None),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_5",  "#it{L}_{max} = 5",  None),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_8",  "#it{L}_{max} = 8",  None),
-  #   ("./plotsPhotoProdPiPiUnpol.maxL_10", "#it{L}_{max} = 10", None),
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_12", "#it{L}_{max} = 12", None),
-  #   # ("./plotsPhotoProdPiPiUnpol.maxL_20", "#it{L}_{max} = 20", None),
-  # )
   fitResults = (
-    # ("./plotsPhotoProdPiPiPol.maxL_4.oldMc", "Old MC",   0.03228842737363692 * (8 * math.pi)),
-    # ("./plotsPhotoProdPiPiPol.maxL_4",       "New MC", None),
-    ("./plotsPhotoProdPiPiPol.maxL_4", "#it{L}_{max} = 4", None),
-    ("./plotsPhotoProdPiPiPol.maxL_5", "#it{L}_{max} = 5", None),
-    ("./plotsPhotoProdPiPiPol.maxL_6", "#it{L}_{max} = 6", None),
-    ("./plotsPhotoProdPiPiPol.maxL_7", "#it{L}_{max} = 7", None),
-    ("./plotsPhotoProdPiPiPol.maxL_8", "#it{L}_{max} = 8", None),
+    # (f"{cfg.outFileDirBaseName}.maxL_2",  "#it{L}_{max} = 2",  None),
+    (f"{cfg.outFileDirBaseName}.maxL_4",  "#it{L}_{max} = 4",  None),
+    # (f"{cfg.outFileDirBaseName}.maxL_5",  "#it{L}_{max} = 5",  None),
+    (f"{cfg.outFileDirBaseName}.maxL_6",  "#it{L}_{max} = 6",  None),
+    (f"{cfg.outFileDirBaseName}.maxL_8",  "#it{L}_{max} = 8",  None),
+    # (f"{cfg.outFileDirBaseName}.maxL_10", "#it{L}_{max} = 10", None),
+    (f"{cfg.outFileDirBaseName}.maxL_12", "#it{L}_{max} = 12", None),
+    # (f"{cfg.outFileDirBaseName}.maxL_14", "#it{L}_{max} = 14", None),
   )
-  outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}Overlay")
+  # fitResults = (
+  #   # (f"{cfg.outFileDirBaseName}.maxL_4.oldMc", "Old MC",   0.03228842737363692 * (8 * math.pi)),
+  #   # (f"{cfg.outFileDirBaseName}.maxL_4",       "New MC", None),
+  #   (f"{cfg.outFileDirBaseName}.maxL_4", "#it{L}_{max} = 4", None),
+  #   (f"{cfg.outFileDirBaseName}.maxL_5", "#it{L}_{max} = 5", None),
+  #   (f"{cfg.outFileDirBaseName}.maxL_6", "#it{L}_{max} = 6", None),
+  #   (f"{cfg.outFileDirBaseName}.maxL_7", "#it{L}_{max} = 7", None),
+  #   (f"{cfg.outFileDirBaseName}.maxL_8", "#it{L}_{max} = 8", None),
+  # )
+  outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}.overlay")
 
   # load moment results
   momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
@@ -140,7 +141,7 @@ if __name__ == "__main__":
       qnIndex                = qnIndex,
       binning                = cfg.massBinning,
       normalizedMoments      = cfg.normalizeMoments,
-      pdfFileNamePrefix      = f"{outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_",
+      pdfFileNamePrefix      = f"{outFileDirName}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
     )
 
   timer.stop("Total execution time")
