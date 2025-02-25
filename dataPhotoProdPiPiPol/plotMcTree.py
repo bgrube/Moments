@@ -31,17 +31,31 @@ if __name__ == "__main__":
 	}
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
+  CPP_CODE = """
+	double
+	mandelstamT(
+		const double Px1, const double Py1, const double Pz1, const double E1,
+		const double Px2, const double Py2, const double Pz2, const double E2
+	) {
+		const TLorentzVector p1(Px1, Py1, Pz1, E1);
+		const TLorentzVector p2(Px2, Py2, Pz2, E2);
+		return (p1 - p2).M2();
+	}
+  """
+  ROOT.gInterpreter.Declare(CPP_CODE)
 
   # data for lowest t bin [0.1, 0.2] GeV^2
   beamPolAngle = 0.0
   # mcDataFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
   # mcDataFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
-  mcDataFileName = "./MC_100M/amptools_tree_thrown_30274_31057.root"
-  # mcDataFileName = "./MC_100M/amptools_tree_accepted_30274_31057.root"
+  # mcDataFileName = "./MC_100M/amptools_tree_thrown_30274_31057.root"
+  # mcDataFileName = "./MC_100M/amptools_tree_acc_thrown_30274_31057.root"
+  mcDataFileName = "./MC_100M/amptools_tree_accepted_30274_31057.root"
   treeName = "kin"
 
-  # read MC data in AmpTools formatand plot distributions
+  # read MC data in AmpTools format and plot distributions
   lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"
+  lvTarget = "0,                0,                0,                0.93827208816"    # proton at rest in lab frame
   lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
   lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
   lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
@@ -53,6 +67,7 @@ if __name__ == "__main__":
         .Define("MassPiPi",     f"massPair({lvPip}, {lvPim})")
         .Define("MassPipP",     f"massPair({lvPip}, {lvRecoil})")
         .Define("MassPimP",     f"massPair({lvPim}, {lvRecoil})")
+        .Define("minusT",       f"-mandelstamT({lvTarget}, {lvRecoil})")
         .Define("PhiDeg",       f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle}) * TMath::RadToDeg()")
         # pi+pi- system
         .Define("GjCosThetaPiPi", f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
@@ -69,6 +84,7 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiPwa",  ";m_{#pi#pi} [GeV];"        + yAxisLabel,  50, 0.28,   2.28), "MassPiPi"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipP",     ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,      5),    "MassPipP"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimP",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,      5),    "MassPimP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",       ";#minus t [GeV^{2}];"      + yAxisLabel, 100, 0,      1),    "minusT"),
     # pi+pi- system
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",  100, -1,   +1,    72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",  100, -1,   +1,    72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
