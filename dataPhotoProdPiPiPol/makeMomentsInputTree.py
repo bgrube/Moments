@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 
+from __future__ import annotations
+from collections.abc import Sequence
+
 import os
 
 import ROOT
@@ -20,7 +23,7 @@ massPair(
 """
 
 # C++ function to calculate mandelstam t = (p1 - p2)^2
-CPP_CODE_MANDELSTAMT = """
+CPP_CODE_MANDELSTAM_T = """
 double
 mandelstamT(
   const double Px1, const double Py1, const double Pz1, const double E1,
@@ -61,6 +64,40 @@ bigPhi(
 """
 
 
+DATA_TCHAIN = ROOT.TChain()  # use global variables to avoid garbage collection
+def getDataFrameWithFixedEventWeights(
+  dataSigRegionFileNames:    Sequence[str],
+  dataBkgRegionFileNames:    Sequence[str],
+  treeName:                  str,
+  friendSigRegionFileName:   str  = "data_sig.root.weights",
+  friendBkgRegionFileName:   str  = "data_bkg.root.weights",
+  forceOverwriteFriendFiles: bool = True,
+) -> ROOT.RDataFrame:
+  """ Create friend trees with correct event weights and attach them to data tree"""
+  for dataFileNames, weightFormula, friendFileName in (
+    (dataSigRegionFileNames,  "Weight", friendSigRegionFileName),
+    (dataBkgRegionFileNames, "-Weight", friendBkgRegionFileName),
+  ):
+    if not forceOverwriteFriendFiles and os.path.exists(friendFileName):
+      print(f"File '{friendFileName}' already exists, skipping creation of event-weight friend tree")
+      continue
+    print(f"Creating file '{friendFileName}' that contains friend tree with event weights for file '{dataFileNames}'")
+    ROOT.RDataFrame(treeName, dataFileNames) \
+        .Define("eventWeight", weightFormula) \
+        .Snapshot(treeName, friendFileName, ["eventWeight"])
+  DATA_TCHAIN.SetName(treeName)
+  weightTChain = ROOT.TChain(treeName)
+  for dataFileNames, friendFileName in (
+    (dataSigRegionFileNames, friendSigRegionFileName),
+    (dataBkgRegionFileNames, friendBkgRegionFileName),
+  ):
+    for dataFileName in dataFileNames:
+      DATA_TCHAIN.Add(dataFileName)
+    weightTChain.Add(friendFileName)
+  DATA_TCHAIN.AddFriend(weightTChain)
+  return ROOT.RDataFrame(DATA_TCHAIN)
+
+
 def defineDataFrameColumns(
   df:           ROOT.RDataFrame,
   beamPol:      float,  # photon beam polarization
@@ -92,16 +129,25 @@ if __name__ == "__main__":
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAMT)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
   # data for lowest t bin [0.1, 0.2] GeV^2
   beamPol                = 0.3519
   beamPolAngle           = 0.0
-  # dataSigRegionFileName  = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
-  # dataBkgRegionFileName  = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
-  dataSigRegionFileName  = "./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root"
-  dataBkgRegionFileName  = "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root"
+  # dataSigRegionFileNames  = ("./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root", )
+  # dataBkgRegionFileNames  = ("./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
+  dataSigRegionFileNames  = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root", )
+  dataBkgRegionFileNames  = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
+  # beamPolAngle           = 135.0
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", )
+  # beamPolAngle           = 45.0
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root", )
+  # beamPolAngle           = 90.0
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
   # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
   # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
@@ -113,27 +159,10 @@ if __name__ == "__main__":
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   # convert real data
-  # create friend trees with correct weights
-  for dataFileName, weightFormula in [(dataSigRegionFileName, "Weight"), (dataBkgRegionFileName, "-Weight")]:
-    friendFileName = f"{os.path.basename(dataFileName)}.weights"
-    if os.path.exists(friendFileName):
-      print(f"File '{friendFileName}' already exists, skipping creation of friend tree")
-      continue
-    print(f"Creating file '{friendFileName}' that contains friend tree with weights for file '{dataFileName}'")
-    ROOT.RDataFrame(treeName, dataFileName) \
-        .Define("eventWeight", weightFormula) \
-        .Snapshot(treeName, friendFileName, ["eventWeight"])
-  # attach friend trees to data tree
-  dataTChain = ROOT.TChain(treeName)
-  weightTChain = ROOT.TChain(treeName)
-  for dataFileName in [dataSigRegionFileName, dataBkgRegionFileName]:
-    dataTChain.Add(dataFileName)
-    weightTChain.Add(f"{os.path.basename(dataFileName)}.weights")
-  dataTChain.AddFriend(weightTChain)
   outFileName = "data_flat.root"
   print(f"Writing file '{outFileName}' with real data")
   defineDataFrameColumns(
-    df           = ROOT.RDataFrame(dataTChain),
+    df           = getDataFrameWithFixedEventWeights(dataSigRegionFileNames, dataBkgRegionFileNames, treeName),
     beamPol      = beamPol,
     beamPolAngle = beamPolAngle,
     lvBeam       = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
