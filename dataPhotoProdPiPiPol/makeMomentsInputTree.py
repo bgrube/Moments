@@ -19,6 +19,18 @@ massPair(
 }
 """
 
+# C++ function to calculate mandelstam t = (p1 - p2)^2
+CPP_CODE_MANDELSTAMT = """
+double
+mandelstamT(
+  const double Px1, const double Py1, const double Pz1, const double E1,
+  const double Px2, const double Py2, const double Pz2, const double E2
+) {
+  const TLorentzVector p1(Px1, Py1, Pz1, E1);
+  const TLorentzVector p2(Px2, Py2, Pz2, E2);
+  return (p1 - p2).M2();
+}
+"""
 
 # C++ function to calculate azimuthal angle of photon polarization vector
 CPP_CODE_BIGPHI = """

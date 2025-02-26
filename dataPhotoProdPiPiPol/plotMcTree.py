@@ -6,8 +6,9 @@ import os
 import ROOT
 
 from makeMomentsInputTree import (
-  CPP_CODE_MASSPAIR,
   CPP_CODE_BIGPHI,
+  CPP_CODE_MANDELSTAMT,
+  CPP_CODE_MASSPAIR,
 )
 
 
@@ -20,6 +21,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAMT)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
   # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
@@ -31,26 +33,14 @@ if __name__ == "__main__":
 	}
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
-  CPP_CODE = """
-	double
-	mandelstamT(
-		const double Px1, const double Py1, const double Pz1, const double E1,
-		const double Px2, const double Py2, const double Pz2, const double E2
-	) {
-		const TLorentzVector p1(Px1, Py1, Pz1, E1);
-		const TLorentzVector p2(Px2, Py2, Pz2, E2);
-		return (p1 - p2).M2();
-	}
-  """
-  ROOT.gInterpreter.Declare(CPP_CODE)
 
   # data for lowest t bin [0.1, 0.2] GeV^2
   beamPolAngle = 0.0
   # mcDataFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
   # mcDataFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
-  # mcDataFileName = "./MC_100M/amptools_tree_thrown_30274_31057.root"
-  # mcDataFileName = "./MC_100M/amptools_tree_acc_thrown_30274_31057.root"
-  mcDataFileName = "./MC_100M/amptools_tree_accepted_30274_31057.root"
+  # mcDataFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root"
+  # mcDataFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root"
+  mcDataFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root"
   treeName = "kin"
 
   # read MC data in AmpTools format and plot distributions
