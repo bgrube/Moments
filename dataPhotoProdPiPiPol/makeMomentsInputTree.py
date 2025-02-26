@@ -133,21 +133,13 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
   # data for lowest t bin [0.1, 0.2] GeV^2
-  beamPol                = 0.3519
-  beamPolAngle           = 0.0
-  # dataSigRegionFileNames  = ("./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root", )
-  # dataBkgRegionFileNames  = ("./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
-  dataSigRegionFileNames  = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root", )
-  dataBkgRegionFileNames  = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
-  # beamPolAngle           = 135.0
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", )
-  # beamPolAngle           = 45.0
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root", )
-  # beamPolAngle           = 90.0
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
+  beamPol = 0.3519
+  data    = (
+    ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root",   "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root",     0.0),
+    ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", 135.0),
+    ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root",  "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root",   45.0),
+    ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root",  "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root",   90.0),
+  )
   # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
   # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
@@ -159,18 +151,25 @@ if __name__ == "__main__":
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   # convert real data
-  outFileName = "data_flat.root"
-  print(f"Writing file '{outFileName}' with real data")
-  defineDataFrameColumns(
-    df           = getDataFrameWithFixedEventWeights(dataSigRegionFileNames, dataBkgRegionFileNames, treeName),
-    beamPol      = beamPol,
-    beamPolAngle = beamPolAngle,
-    lvBeam       = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
-    lvRecoil     = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
-    lvPip        = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
-    lvPim        = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
-  ).Snapshot(outputTreeName, outFileName, outputColumns + ("eventWeight", ))
-  #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
+  for dataSigRegionFileName, dataBkgRegionFileName, beamPolAngle in data:
+    outFileName = f"data_flat_{beamPolAngle}.root"
+    print(f"Writing file '{outFileName}' with real data")
+    defineDataFrameColumns(
+      df = getDataFrameWithFixedEventWeights(
+        dataSigRegionFileNames  = (dataSigRegionFileName, ),
+        dataBkgRegionFileNames  = (dataBkgRegionFileName, ),
+        treeName                = treeName,
+        friendSigRegionFileName = f"data_sig_{beamPolAngle}.root.weights",
+        friendBkgRegionFileName = f"data_bkg_{beamPolAngle}.root.weights",
+      ),
+      beamPol      = beamPol,
+      beamPolAngle = beamPolAngle,
+      lvBeam       = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
+      lvRecoil     = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
+      lvPip        = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
+      lvPim        = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
+    ).Snapshot(outputTreeName, outFileName, outputColumns + ("eventWeight", ))
+    #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
   # convert MC data
   for mcFileName, outFileName in [(phaseSpaceAccFileNames, "phaseSpace_acc_flat.root"), (phaseSpaceGenFileNames, "phaseSpace_gen_flat.root")]:
