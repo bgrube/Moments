@@ -71,16 +71,18 @@ def defineDataFrameColumns(
   lvPim:        str,    # function-argument list with Lorentz-vector components of pi^-
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moments analysis"""
+  lvTarget = "0, 0, 0, 0.93827208816"    # proton at rest in lab frame
   return (
     df.Define("beamPol",    f"(Double32_t){beamPol}")
       .Define("beamPolPhi", f"(Double32_t){beamPolAngle}")
-      .Define("mass",       f"(Double32_t)massPair({lvPip}, {lvPim})")
       .Define("cosTheta",   f"(Double32_t)FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
       .Define("theta",       "(Double32_t)std::acos(cosTheta)")
       .Define("phi",        f"(Double32_t)FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
       .Define("phiDeg",      "(Double32_t)phi * TMath::RadToDeg()")
       .Define("Phi",        f"(Double32_t)bigPhi({lvRecoil}, {lvBeam}, beamPolPhi)")
       .Define("PhiDeg",      "(Double32_t)Phi * TMath::RadToDeg()")
+      .Define("mass",       f"(Double32_t)massPair({lvPip}, {lvPim})")
+      .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   )
 
 
@@ -90,20 +92,23 @@ if __name__ == "__main__":
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAMT)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
   # data for lowest t bin [0.1, 0.2] GeV^2
   beamPol               = 0.3519
   beamPolAngle          = 0.0
-  dataSigRegionFileName = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
-  dataBkgRegionFileName = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
+  # dataSigRegionFileName = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
+  # dataBkgRegionFileName = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
+  dataSigRegionFileName = "./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root"
+  dataBkgRegionFileName = "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root"
   # phaseSpaceAccFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
   # phaseSpaceGenFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
-  phaseSpaceAccFileName = "./MC_100M/amptools_tree_accepted_30274_31057.root"
-  phaseSpaceGenFileName = "./MC_100M/amptools_tree_thrown_30274_31057.root"
+  phaseSpaceAccFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root"
+  phaseSpaceGenFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root"
   treeName              = "kin"
   outputTreeName        = "PiPi"
-  outputColumns         = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi", "mass")
+  outputColumns         = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   # convert real data
   # create friend trees with correct weights
