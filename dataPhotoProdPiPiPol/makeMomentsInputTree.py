@@ -96,19 +96,21 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
   # data for lowest t bin [0.1, 0.2] GeV^2
-  beamPol               = 0.3519
-  beamPolAngle          = 0.0
-  # dataSigRegionFileName = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
-  # dataBkgRegionFileName = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
-  dataSigRegionFileName = "./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root"
-  dataBkgRegionFileName = "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root"
-  # phaseSpaceAccFileName = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
-  # phaseSpaceGenFileName = "./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root"
-  phaseSpaceAccFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root"
-  phaseSpaceGenFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root"
-  treeName              = "kin"
-  outputTreeName        = "PiPi"
-  outputColumns         = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
+  beamPol                = 0.3519
+  beamPolAngle           = 0.0
+  # dataSigRegionFileName  = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
+  # dataBkgRegionFileName  = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
+  dataSigRegionFileName  = "./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root"
+  dataBkgRegionFileName  = "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root"
+  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
+  # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
+  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
+  # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root", )
+  phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
+  phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho/amptools_tree_thrown_30274_31057.root")
+  treeName               = "kin"
+  outputTreeName         = "PiPi"
+  outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   # convert real data
   # create friend trees with correct weights
@@ -142,7 +144,7 @@ if __name__ == "__main__":
   #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
   # convert MC data
-  for mcFileName, outFileName in [(phaseSpaceAccFileName, "phaseSpace_acc_flat.root"), (phaseSpaceGenFileName, "phaseSpace_gen_flat.root")]:
+  for mcFileName, outFileName in [(phaseSpaceAccFileNames, "phaseSpace_acc_flat.root"), (phaseSpaceGenFileNames, "phaseSpace_gen_flat.root")]:
     print(f"Writing file '{outFileName}' with MC data")
     defineDataFrameColumns(
       df           = ROOT.RDataFrame(treeName, mcFileName),
