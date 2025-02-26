@@ -98,10 +98,11 @@ if __name__ == "__main__":
   dataBkgRegionFileName   = "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root"
   weightSigRegionFileName = "./amptools_tree_data_PARA_0_30274_31057.root.weights"
   weightBkgRegionFileName = "./amptools_tree_bkgnd_PARA_0_30274_31057.root.weights"
-  # mcDataFileName          = "./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root"
-  # mcDataFileName = "./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root"
-  mcDataFileName          = "./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root"
-  treeName = "kin"
+  # mcDataFileNames         = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames         = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames         = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root", )
+  mcDataFileNames         = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
+  treeName                = "kin"
 
   # attach friend trees with event weights to data tree
   dataTChain = ROOT.TChain(treeName)
@@ -122,6 +123,9 @@ if __name__ == "__main__":
         .Define("MassPiPi",           f"massPair({lvPip}, {lvPim})")
         .Define("MassPipP",           f"massPair({lvPip}, {lvRecoil})")
         .Define("MassPimP",           f"massPair({lvPim}, {lvRecoil})")
+        .Define("MassPiPiSq",         "std::pow(MassPiPi, 2)")
+        .Define("MassPipPSq",         "std::pow(MassPipP, 2)")
+        .Define("MassPimPSq",         "std::pow(MassPimP, 2)")
         .Define("minusT",             f"-mandelstamT({lvTarget}, {lvRecoil})")
         .Define("PhiDeg",             f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle}) * TMath::RadToDeg()")
         # pi+pi- system
@@ -143,13 +147,16 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hDataHfCosThetaPiPiDiff", ";#Delta cos#theta_{HF}",                1000, -3e-13, +3e-13), "HfCosThetaPiPiDiff", "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataHfPhiDegPiPiDiff",   ";#Delta #phi_{HF} [deg]",               1000, -1e-11, +1e-11), "HfPhiDegPiPiDiff",   "eventWeight"),
     # pi+pi- system
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1,   +1,     72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1,   +1,     72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsGjCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",       "GjCosThetaPiPi", "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsGjPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{GJ}",      50,  0.28, 2.28,  72, -180, +180), "MassPiPi",       "GjPhiDegPiPi",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsHfCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}", 50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",       "HfCosThetaPiPi", "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsHfPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{HF}",      50,  0.28, 2.28,  72, -180, +180), "MassPiPi",       "HfPhiDegPiPi",   "eventWeight"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsPhiDeg",         ";m_{#pi#pi} [GeV];#Phi",           50,  0.28, 2.28,  72, -180, +180), "MassPiPi",       "PhiDeg",         "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",     100, -1,   +1,     72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi",   "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",     100, -1,   +1,     72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi",   "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsGjCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{GJ}",     50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",       "GjCosThetaPiPi", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsGjPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{GJ}",          50,  0.28, 2.28,  72, -180, +180), "MassPiPi",       "GjPhiDegPiPi",   "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsHfCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}",     50,  0.28, 2.28, 100,   -1,   +1), "MassPiPi",       "HfCosThetaPiPi", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsHfPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{HF}",          50,  0.28, 2.28,  72, -180, +180), "MassPiPi",       "HfPhiDegPiPi",   "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsPhiDeg",         ";m_{#pi#pi} [GeV];#Phi",               50,  0.28, 2.28,  72, -180, +180), "MassPiPi",       "PhiDeg",         "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsMinusT",         ";m_{#pi#pi} [GeV];#minus t [GeV^{2}]", 50,  0.28, 2.28,  50,    0,    1), "MassPiPi",       "minusT",         "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPipPSq", "eventWeight"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq", "eventWeight"),
     df.Histo3D(ROOT.RDF.TH3DModel("hDataPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg", "eventWeight"),
   )
   for hist in hists:
@@ -170,8 +177,10 @@ if __name__ == "__main__":
   # overlay pipi mass distributions from data and accepted phase-space MC
   lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
   lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
-  dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
-             .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
+  dfMc = (
+    ROOT.RDataFrame(treeName, mcDataFileNames)
+        .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
+  )
   histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 50, 0.28, 2.28), "MassPiPi")
   histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 50, 0.28, 2.28), "MassPiPi", "eventWeight")
   canv = ROOT.TCanvas()
