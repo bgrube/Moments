@@ -8,9 +8,7 @@
 		"files.associations": {
 			".config": "Properties",
 			"*.config": "properties",
-			"testGsl.C": "cpp",
-			"wignerD.C": "cpp",
-			"Covariance.C": "cpp"
+			"*.C": "cpp"
 		},
 		"svn.ignoreMissingSvnWarning": true,
 		"cSpell.words": [
