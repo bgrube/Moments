@@ -85,6 +85,7 @@ def getDataFrameWithFixedEventWeights(
     ROOT.RDataFrame(treeName, dataFileNames) \
         .Define("eventWeight", weightFormula) \
         .Snapshot(treeName, friendFileName, ["eventWeight"])
+  DATA_TCHAIN.Reset()
   DATA_TCHAIN.SetName(treeName)
   weightTChain = ROOT.TChain(treeName)
   for dataFileNames, friendFileName in (
