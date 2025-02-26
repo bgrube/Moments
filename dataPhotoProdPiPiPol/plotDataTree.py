@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
 
-from __future__ import annotations
-
 import os
 
 import ROOT
 
 from makeMomentsInputTree import (
   CPP_CODE_BIGPHI,
-  CPP_CODE_MANDELSTAMT,
+  CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
+  getDataFrameWithFixedEventWeights,
 )
 
 
@@ -24,7 +23,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAMT)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
   # Alex' code to calculate helicity angles
   CPP_CODE = """
@@ -91,26 +90,25 @@ if __name__ == "__main__":
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
 
-  beamPolAngle            = 0.0
-  # dataSigRegionFileName   = "./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root"
-  # dataBkgRegionFileName   = "./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root"
-  dataSigRegionFileName   = "./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root"
-  dataBkgRegionFileName   = "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root"
-  weightSigRegionFileName = "./amptools_tree_data_PARA_0_30274_31057.root.weights"
-  weightBkgRegionFileName = "./amptools_tree_bkgnd_PARA_0_30274_31057.root.weights"
-  # mcDataFileNames         = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames         = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames         = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root", )
-  mcDataFileNames         = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
-  treeName                = "kin"
-
-  # attach friend trees with event weights to data tree
-  dataTChain = ROOT.TChain(treeName)
-  weightTChain = ROOT.TChain(treeName)
-  for dataFileName, weightFileName in [(dataSigRegionFileName, weightSigRegionFileName), (dataBkgRegionFileName, weightBkgRegionFileName)]:
-    dataTChain.Add(dataFileName)
-    weightTChain.Add(weightFileName)
-  dataTChain.AddFriend(weightTChain)
+  # beamPolAngle           = 0.0
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
+  # beamPolAngle           = 135.0
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", )
+  # beamPolAngle           = 45.0
+  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root", )
+  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root", )
+  beamPolAngle           = 90.0
+  dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root", )
+  dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
+  # mcDataFileNames        = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames        = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root", )
+  mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
+  treeName               = "kin"
 
   # read in real data in AmpTools format and plot RF-sideband subtracted distributions
   lvBeam   = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"
@@ -119,22 +117,27 @@ if __name__ == "__main__":
   lvPip    = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"
   lvPim    = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"
   df = (
-    ROOT.RDataFrame(dataTChain)
-        .Define("MassPiPi",           f"massPair({lvPip}, {lvPim})")
-        .Define("MassPipP",           f"massPair({lvPip}, {lvRecoil})")
-        .Define("MassPimP",           f"massPair({lvPim}, {lvRecoil})")
-        .Define("MassPiPiSq",         "std::pow(MassPiPi, 2)")
-        .Define("MassPipPSq",         "std::pow(MassPipP, 2)")
-        .Define("MassPimPSq",         "std::pow(MassPimP, 2)")
-        .Define("minusT",             f"-mandelstamT({lvTarget}, {lvRecoil})")
-        .Define("PhiDeg",             f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle}) * TMath::RadToDeg()")
-        # pi+pi- system
-        .Define("GjCosThetaPiPi",     f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
-        .Define("GjPhiDegPiPi",       f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
-        .Define("HfCosThetaPiPi",     f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
-        .Define("HfCosThetaPiPiDiff", f"HfCosThetaPiPi - helcostheta_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
-        .Define("HfPhiDegPiPi",       f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
-        .Define("HfPhiDegPiPiDiff",   f"HfPhiDegPiPi - helphideg_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+    getDataFrameWithFixedEventWeights(
+      dataSigRegionFileNames  = dataSigRegionFileNames,
+      dataBkgRegionFileNames  = dataBkgRegionFileNames,
+      treeName                = treeName,
+      friendSigRegionFileName = "data_sig.plot.root.weights",
+      friendBkgRegionFileName = "data_bkg.plot.root.weights",
+    ).Define("MassPiPi",           f"massPair({lvPip}, {lvPim})")
+     .Define("MassPipP",           f"massPair({lvPip}, {lvRecoil})")
+     .Define("MassPimP",           f"massPair({lvPim}, {lvRecoil})")
+     .Define("MassPiPiSq",         "std::pow(MassPiPi, 2)")
+     .Define("MassPipPSq",         "std::pow(MassPipP, 2)")
+     .Define("MassPimPSq",         "std::pow(MassPimP, 2)")
+     .Define("minusT",             f"-mandelstamT({lvTarget}, {lvRecoil})")
+     .Define("PhiDeg",             f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle}) * TMath::RadToDeg()")
+     # pi+pi- system
+     .Define("GjCosThetaPiPi",     f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
+     .Define("GjPhiDegPiPi",       f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
+     .Define("HfCosThetaPiPi",     f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
+     .Define("HfCosThetaPiPiDiff", f"HfCosThetaPiPi - helcostheta_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+     .Define("HfPhiDegPiPi",       f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
+     .Define("HfPhiDegPiPiDiff",   f"HfPhiDegPiPi - helphideg_Alex({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
   )
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = (
