@@ -7,7 +7,7 @@ import ROOT
 
 from makeMomentsInputTree import (
   CPP_CODE_BIGPHI,
-  CPP_CODE_MANDELSTAMT,
+  CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
 )
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAMT)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
   # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
