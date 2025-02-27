@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 import os
 
@@ -123,6 +124,21 @@ def defineDataFrameColumns(
       .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   )
 
+@dataclass
+class DataInfo:
+  """Stores information about input and output data"""
+  label:                   str              # data set label for polarization orientation
+  beamPol:                 float            # photon-beam polarization
+  beamPolPhi:              float            # azimuthal angle of photon beam polarization in lab [deg]
+  inputSigRegionFileNames: tuple[str, ...]  # AmpTools trees with reals data in signal region
+  inputBkgRegionFileNames: tuple[str, ...]  # AmpTools trees with reals data in background region
+  inputTreeName:           str = "kin"
+  outputTreeName:          str = "PiPi"
+
+  @property
+  def outputFileName(self) -> str:
+    return f"data_flat_{self.label}.root"
+
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
@@ -133,13 +149,37 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
-  # data for lowest t bin [0.1, 0.2] GeV^2
-  beamPol = 0.3519
-  data    = (
-    ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root",   "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root",     0.0),
-    ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", 135.0),
-    ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root",  "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root",   45.0),
-    ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root",  "./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root",   90.0),
+  # Spring 2017 data for lowest t bin [0.1, 0.2] GeV^2
+  # use azimuthal angles of photon beam polarization listed in Tab. 2 of https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=3977&version=6
+  realData = (
+    DataInfo(
+      label                   = "PARA_0",
+      beamPol                 = 0.3537,
+      beamPolPhi              = 1.77,
+      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root", ),
+      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root", ),
+    ),
+    DataInfo(
+      label                   = "PARA_135",
+      beamPol                 = 0.3512,
+      beamPolPhi              = -41.57,
+      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", ),
+      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", ),
+    ),
+    DataInfo(
+      label                   = "PERP_45",
+      beamPol                 = 0.3484,
+      beamPolPhi              = 47.85,
+      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root", ),
+      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root", ),
+    ),
+    DataInfo(
+      label                   = "PERP_90",
+      beamPol                 = 0.3472,
+      beamPolPhi              = 94.50,
+      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root", ),
+      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", ),
+    ),
   )
   # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
@@ -149,40 +189,40 @@ if __name__ == "__main__":
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
   phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root")
   phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
-  treeName               = "kin"
-  outputTreeName         = "PiPi"
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
-  # convert real data
-  for dataSigRegionFileName, dataBkgRegionFileName, beamPolPhi in data:
-    outFileName = f"data_flat_{beamPolPhi}.root"
-    print(f"Writing file '{outFileName}' with real data")
+  for dataInfo in realData:
+    # convert real data
+    print(f"Writing '{dataInfo.label}' real data from {dataInfo.inputSigRegionFileNames} and {dataInfo.inputBkgRegionFileNames} to file '{dataInfo.outputFileName}'")
     defineDataFrameColumns(
       df = getDataFrameWithFixedEventWeights(
-        dataSigRegionFileNames  = (dataSigRegionFileName, ),
-        dataBkgRegionFileNames  = (dataBkgRegionFileName, ),
-        treeName                = treeName,
-        friendSigRegionFileName = f"data_sig_{beamPolPhi}.root.weights",
-        friendBkgRegionFileName = f"data_bkg_{beamPolPhi}.root.weights",
+        dataSigRegionFileNames  = dataInfo.inputSigRegionFileNames,
+        dataBkgRegionFileNames  = dataInfo.inputBkgRegionFileNames,
+        treeName                = dataInfo.inputTreeName,
+        friendSigRegionFileName = f"data_sig_{dataInfo.label}.root.weights",
+        friendBkgRegionFileName = f"data_bkg_{dataInfo.label}.root.weights",
       ),
-      beamPol    = beamPol,
-      beamPolPhi = beamPolPhi,
+      beamPol    = dataInfo.beamPol,
+      beamPolPhi = dataInfo.beamPolPhi,
       lvBeam     = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
       lvRecoil   = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
       lvPip      = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
       lvPim      = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
-    ).Snapshot(outputTreeName, outFileName, outputColumns + ("eventWeight", ))
+    ).Snapshot(dataInfo.outputTreeName, dataInfo.outputFileName, outputColumns + ("eventWeight", ))
     #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
-  # convert MC data
-  for mcFileName, outFileName in [(phaseSpaceAccFileNames, "phaseSpace_acc_flat.root"), (phaseSpaceGenFileNames, "phaseSpace_gen_flat.root")]:
-    print(f"Writing file '{outFileName}' with MC data")
-    defineDataFrameColumns(
-      df         = ROOT.RDataFrame(treeName, mcFileName),
-      beamPol    = beamPol,
-      beamPolPhi = 0.0,  #TODO is this correct or do we need to generate separate files for different polarization orientation?
-      lvBeam     = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",
-      lvRecoil   = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",
-      lvPip      = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  #TODO not clear whether correct index is 1 or 2
-      lvPim      = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  #TODO not clear whether correct index is 1 or 2
-    ).Snapshot(outputTreeName, outFileName, outputColumns)
+    # convert MC data
+    for mcFileNames, mcOutFileName in [
+      (phaseSpaceAccFileNames, f"phaseSpace_acc_flat_{dataInfo.label}.root"),
+      (phaseSpaceGenFileNames, f"phaseSpace_gen_flat_{dataInfo.label}.root")
+    ]:
+      print(f"Writing '{dataInfo.label}' MC data from file(s) {mcFileNames} to file '{mcOutFileName}'")
+      defineDataFrameColumns(
+        df         = ROOT.RDataFrame(dataInfo.inputTreeName, mcFileNames),
+        beamPol    = dataInfo.beamPol,
+        beamPolPhi = dataInfo.beamPolPhi,
+        lvBeam     = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",
+        lvRecoil   = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",
+        lvPip      = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  #TODO not clear whether correct index is 1 or 2
+        lvPim      = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  #TODO not clear whether correct index is 1 or 2
+      ).Snapshot(dataInfo.outputTreeName, mcOutFileName, outputColumns)
