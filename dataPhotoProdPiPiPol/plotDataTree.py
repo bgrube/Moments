@@ -106,8 +106,8 @@ if __name__ == "__main__":
   dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
   # mcDataFileNames        = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
   # mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames        = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root", )
-  mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
+  # mcDataFileNames        = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root", )
+  mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root")
   treeName               = "kin"
 
   # read in real data in AmpTools format and plot RF-sideband subtracted distributions
@@ -116,6 +116,7 @@ if __name__ == "__main__":
   lvRecoil = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"
   lvPip    = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"
   lvPim    = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"
+  print(f"Reading data from tree '{treeName}' in signal file(s) '{dataSigRegionFileNames}' and background file(s) '{dataBkgRegionFileNames}'")
   df = (
     getDataFrameWithFixedEventWeights(
       dataSigRegionFileNames  = dataSigRegionFileNames,

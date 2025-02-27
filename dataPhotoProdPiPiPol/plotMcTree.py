@@ -41,12 +41,12 @@ if __name__ == "__main__":
   # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root", )
   # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", )
   # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_acc_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root", )
-  mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",     "./pipi_gluex_coh/MC_10M_rho/amptools_tree_thrown_30274_31057.root")
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_acc_thrown_30274_31057.root")
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057.root", )
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root", )
+  mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",     "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057.root")
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root")
   treeName        = "kin"
 
   # read MC data in AmpTools format and plot distributions
@@ -55,6 +55,7 @@ if __name__ == "__main__":
   lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
   lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
   lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
+  print(f"Reading MC data from tree '{treeName}' in file(s) '{mcDataFileNames}'")
   df = (
     ROOT.RDataFrame(treeName, mcDataFileNames)
         .Define("FsMassRecoil",   f"mass({lvRecoil})")
@@ -87,10 +88,10 @@ if __name__ == "__main__":
     # pi+pi- system
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",     100, -1,   +1,    72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",     100, -1,   +1,    72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}",     50, 0.28, 2.28, 100,   -1,   +1), "MassPiPi",   "HfCosThetaPiPi"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{HF}",          50, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "HfPhiDegPiPi"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsPhiDeg",         ";m_{#pi#pi} [GeV];#Phi",               50, 0.28, 2.28,  72, -180, +180), "MassPiPi",   "PhiDeg"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsMinusT",         ";m_{#pi#pi} [GeV];#minus t [GeV^{2}]", 50,  0.28, 2.28, 50,    0,    1), "MassPiPi",   "minusT"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfCosThetaPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}",     50, 0.28, 2.28, 100,   -1,   +1), "MassPiPi",       "HfCosThetaPiPi"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{HF}",          50, 0.28, 2.28,  72, -180, +180), "MassPiPi",       "HfPhiDegPiPi"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsPhiDeg",         ";m_{#pi#pi} [GeV];#Phi",               50, 0.28, 2.28,  72, -180, +180), "MassPiPi",       "PhiDeg"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsMinusT",         ";m_{#pi#pi} [GeV];#minus t [GeV^{2}]", 50,  0.28, 2.28, 50,    0,    1), "MassPiPi",       "minusT"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPipPSq"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq"),
     df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg"),

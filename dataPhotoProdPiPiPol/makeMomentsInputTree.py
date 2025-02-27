@@ -145,8 +145,10 @@ if __name__ == "__main__":
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
   # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root", )
-  phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho/amptools_tree_accepted_30274_31057.root")
-  phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho/amptools_tree_thrown_30274_31057.root")
+  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root", )
+  # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
+  phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root")
+  phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
   treeName               = "kin"
   outputTreeName         = "PiPi"
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
