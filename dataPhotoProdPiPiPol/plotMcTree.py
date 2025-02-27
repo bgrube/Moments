@@ -55,7 +55,7 @@ if __name__ == "__main__":
   lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
   lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
   lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
-  print(f"Reading MC data from tree '{treeName}' in file(s) '{mcDataFileNames}'")
+  print(f"Reading MC data from tree '{treeName}' in file(s) {mcDataFileNames}")
   df = (
     ROOT.RDataFrame(treeName, mcDataFileNames)
         .Define("FsMassRecoil",   f"mass({lvRecoil})")
@@ -85,6 +85,7 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipP",     ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,      5),    "MassPipP"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimP",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,      5),    "MassPimP"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",       ";#minus t [GeV^{2}];"      + yAxisLabel, 100, 0,      1),    "minusT"),
+    df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo1D(ROOT.RDF.TH1DModel("hMcMinusTRho", ";#minus t [GeV^{2}];" + yAxisLabel, 100, 0, 1), "minusT"),
     # pi+pi- system
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",     100, -1,   +1,    72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",     100, -1,   +1,    72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
@@ -100,6 +101,8 @@ if __name__ == "__main__":
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
+    if "TH2" in hist.ClassName() and str(hist.GetName()) =="hMcMassPiPiVsMinusT":
+      canv.SetLogz(1)
     if "TH3" in hist.ClassName():
       hist.GetXaxis().SetTitleOffset(1.5)
       hist.GetYaxis().SetTitleOffset(2)
