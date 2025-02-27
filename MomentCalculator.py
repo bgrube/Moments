@@ -28,20 +28,29 @@ from typing import (
 )
 #TODO switch from int for indices to SupportsIndex; requires Python 3.8+
 
-from spherical import clebsch_gordan
+import spherical
 import ROOT
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
 
-_cg_cache = {}
-def cached_clebsch_gordan(l1, l2, L, m1, m2, M):
-    key = (l1, l2, L, m1, m2, M)
-    if key not in _cg_cache:
-        _cg_cache[key] = clebsch_gordan(l1, m1, l2, m2, L, M)
-    return _cg_cache[key]
-  
+
+@functools.cache
+def cachedClebschGordan(
+  l1: int,
+  m1: int,
+  l2: int,
+  m2: int,
+  L:  int,
+  M:  int,
+) -> float:
+  """Cached function that returns Clebsch-Gordan coefficient <l1, m1; l2, m2 | L, M>; works only for integer quantum numbers"""
+  #!NOTE! `spherical` only supports integer angular-momentum quantum numbers
+  #       if half-integer quantum numbers are needed, use `py3nj.clebsch_gordan` or `sympy.physics.quantum.cg.CG`
+  return spherical.clebsch_gordan(l1, m1, l2, m2, L, M)
+
+
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
   """Immutable container class that stores information about quantum-number indices of two-pseudoscalar partial-waves in reflectivity basis"""
@@ -216,8 +225,8 @@ class AmplitudeSet:
           l2 = amp2.qn.l
           m2 = amp2.qn.m
           term =  np.sqrt((2 * l2 + 1) / (2 * l1 + 1)) * (
-              cached_clebsch_gordan(l2, L, l1, 0, 0, 0) *  # (l_2, 0;    L, 0 | l_1, 0  )
-              cached_clebsch_gordan(l2, L, l1, m2, M, m1)  # (l_2, m_2;  L, M | l_1, m_1)
+                cachedClebschGordan(l2, 0,  L, 0, l1, 0 )  # <l_2, 0;    L, 0 | l_1, 0  >
+              * cachedClebschGordan(l2, m2, L, M, l1, m1)  # <l_2, m_2;  L, M | l_1, m_1>
           )
           if term == 0:  # unphysical combination of angular-momentum quantum numbers -> zero Clebsch-Gordan coefficient
             continue
