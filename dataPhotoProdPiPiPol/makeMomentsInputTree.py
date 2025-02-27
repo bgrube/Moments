@@ -45,13 +45,13 @@ double
 bigPhi(
 	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // recoil
 	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // beam
-	const double polAngle = 0  // polarization angle [deg]
+	const double beamPolPhi = 0  // azimuthal angle of photon beam polarization in lab [deg]
 ) {
 	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
 	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
 	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
 	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-	double Phi = polAngle * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle in lab frame [rad]
+	double Phi = beamPolPhi * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
 	// ensure [-pi, +pi] range
 	while (Phi > TMath::Pi()) {
 		Phi -= TMath::TwoPi();
@@ -100,19 +100,19 @@ def getDataFrameWithFixedEventWeights(
 
 
 def defineDataFrameColumns(
-  df:           ROOT.RDataFrame,
-  beamPol:      float,  # photon beam polarization
-  beamPolAngle: float,  # photon beam polarization angle in lab [deg]
-  lvBeam:       str,    # function-argument list with Lorentz-vector components of beam photon
-  lvRecoil:     str,    # function-argument list with Lorentz-vector components of recoil proton
-  lvPip:        str,    # function-argument list with Lorentz-vector components of pi^+
-  lvPim:        str,    # function-argument list with Lorentz-vector components of pi^-
+  df:         ROOT.RDataFrame,
+  beamPol:    float,  # photon beam polarization
+  beamPolPhi: float,  # azimuthal angle of photon beam polarization in lab [deg]
+  lvBeam:     str,    # function-argument list with Lorentz-vector components of beam photon
+  lvRecoil:   str,    # function-argument list with Lorentz-vector components of recoil proton
+  lvPip:      str,    # function-argument list with Lorentz-vector components of pi^+
+  lvPim:      str,    # function-argument list with Lorentz-vector components of pi^-
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moments analysis"""
   lvTarget = "0, 0, 0, 0.93827208816"    # proton at rest in lab frame
   return (
     df.Define("beamPol",    f"(Double32_t){beamPol}")
-      .Define("beamPolPhi", f"(Double32_t){beamPolAngle}")
+      .Define("beamPolPhi", f"(Double32_t){beamPolPhi}")
       .Define("cosTheta",   f"(Double32_t)FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
       .Define("theta",       "(Double32_t)std::acos(cosTheta)")
       .Define("phi",        f"(Double32_t)FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
@@ -152,23 +152,23 @@ if __name__ == "__main__":
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   # convert real data
-  for dataSigRegionFileName, dataBkgRegionFileName, beamPolAngle in data:
-    outFileName = f"data_flat_{beamPolAngle}.root"
+  for dataSigRegionFileName, dataBkgRegionFileName, beamPolPhi in data:
+    outFileName = f"data_flat_{beamPolPhi}.root"
     print(f"Writing file '{outFileName}' with real data")
     defineDataFrameColumns(
       df = getDataFrameWithFixedEventWeights(
         dataSigRegionFileNames  = (dataSigRegionFileName, ),
         dataBkgRegionFileNames  = (dataBkgRegionFileName, ),
         treeName                = treeName,
-        friendSigRegionFileName = f"data_sig_{beamPolAngle}.root.weights",
-        friendBkgRegionFileName = f"data_bkg_{beamPolAngle}.root.weights",
+        friendSigRegionFileName = f"data_sig_{beamPolPhi}.root.weights",
+        friendBkgRegionFileName = f"data_bkg_{beamPolPhi}.root.weights",
       ),
-      beamPol      = beamPol,
-      beamPolAngle = beamPolAngle,
-      lvBeam       = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
-      lvRecoil     = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
-      lvPip        = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
-      lvPim        = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
+      beamPol    = beamPol,
+      beamPolPhi = beamPolPhi,
+      lvBeam     = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
+      lvRecoil   = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
+      lvPip      = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
+      lvPim      = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
     ).Snapshot(outputTreeName, outFileName, outputColumns + ("eventWeight", ))
     #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
@@ -176,11 +176,11 @@ if __name__ == "__main__":
   for mcFileName, outFileName in [(phaseSpaceAccFileNames, "phaseSpace_acc_flat.root"), (phaseSpaceGenFileNames, "phaseSpace_gen_flat.root")]:
     print(f"Writing file '{outFileName}' with MC data")
     defineDataFrameColumns(
-      df           = ROOT.RDataFrame(treeName, mcFileName),
-      beamPol      = beamPol,
-      beamPolAngle = beamPolAngle,
-      lvBeam       = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",
-      lvRecoil     = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",
-      lvPip        = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  #TODO not clear whether correct index is 1 or 2
-      lvPim        = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  #TODO not clear whether correct index is 1 or 2
+      df         = ROOT.RDataFrame(treeName, mcFileName),
+      beamPol    = beamPol,
+      beamPolPhi = 0.0,  #TODO is this correct or do we need to generate separate files for different polarization orientation?
+      lvBeam     = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",
+      lvRecoil   = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",
+      lvPip      = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  #TODO not clear whether correct index is 1 or 2
+      lvPim      = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  #TODO not clear whether correct index is 1 or 2
     ).Snapshot(outputTreeName, outFileName, outputColumns)
