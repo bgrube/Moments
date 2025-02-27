@@ -124,6 +124,7 @@ def defineDataFrameColumns(
       .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   )
 
+
 @dataclass
 class DataInfo:
   """Stores information about input and output data"""
@@ -181,14 +182,14 @@ if __name__ == "__main__":
       inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", ),
     ),
   )
-  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
+  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root", )
+  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
   # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
-  phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root")
+  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
   phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+  phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   for dataInfo in realData:

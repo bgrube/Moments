@@ -42,11 +42,11 @@ if __name__ == "__main__":
   # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", )
   # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
   # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root", )
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
   mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",     "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057.root")
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057.root")
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root")
+  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
   treeName        = "kin"
 
   # read MC data in AmpTools format and plot distributions
