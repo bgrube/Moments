@@ -53,7 +53,7 @@ class AnalysisConfig:
   psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | None             = None  # unpolarized data
   _maxL:                    int                      = 8  # maximum L of physical and measured moments
-  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
+  _outFileDirBaseName:      str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
   outFileDirName:           str                      = field(init = False)  # directory into which all output will be written
   outFileNamePrefix:        str                      = field(init = False)  # name prefix prepended to output file names
   # _normalizeMoments:        bool                     = True
@@ -84,7 +84,7 @@ class AnalysisConfig:
 
   def __post_init__(self) -> None:
     """Creates output directory and initializes member variables"""
-    self.outFileDirName    = Utilities.makeDirPath(f"{self.outFileDirBaseName}.maxL_{self.maxL}")
+    self.outFileDirName    = Utilities.makeDirPath(f"{self._outFileDirBaseName}.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
     self.massBinning.var   = self.binVarMass
 
@@ -99,6 +99,18 @@ class AnalysisConfig:
   ) -> None:
     assert value > 0, f"maxL must be > 0, but is {value}"
     self._maxL = value
+    self.__post_init__()
+
+  @property
+  def outFileDirBaseName(self) -> str:
+    return self._outFileDirBaseName
+
+  @outFileDirBaseName.setter
+  def outFileDirBaseName(
+    self,
+    value: str
+  ) -> None:
+    self._outFileDirBaseName = value
     self.__post_init__()
 
   @property
@@ -117,47 +129,45 @@ class AnalysisConfig:
 # configurations for unpolarized pi+ pi- data
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
-  outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
-  massBinning        = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40),  # binning used in PWA of unpolarized data
+  _outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
+  massBinning         = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40),  # binning used in PWA of unpolarized data
 )
 # configuration for unpolarized pi+ p data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
-  dataFileName       = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
-  psAccFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
-  psGenFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
-  _maxL              = 4,
-  outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
-  massBinning        = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
+  dataFileName        = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
+  psAccFileName       = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
+  psGenFileName       = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
+  _maxL               = 4,
+  _outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
+  massBinning         = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
 )
 # configuration for polarized pi+ pi- data
 CFG_POLARIZED_PIPI = AnalysisConfig(
-  dataFileName       = "./dataPhotoProdPiPiPol/data_flat.root",
-  # dataFileName       = "./dataPhotoProdPiPiPol/data_flat_downsampled_0.1.root",
-  psAccFileName      = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
-  psGenFileName      = "./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
-  polarization       = 0.3519,
-  _maxL              = 4,
-  outFileDirBaseName = "./plotsPhotoProdPiPiPol",
-  # outFileDirBaseName = "./plotsPhotoProdPiPiPol_downsampled_0.1",
-  massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
+  dataFileName        = "./dataPhotoProdPiPiPol/data_flat_0.0.root",
+  psAccFileName       = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
+  psGenFileName       = "./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
+  polarization        = 0.0, # read polarization from tree
+  _maxL               = 4,
+  _outFileDirBaseName = "./plotsPhotoProdPiPiPol",
+  massBinning         = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
 )
 # configuration for Nizar's polarized eta pi0 data
 CFG_NIZAR = AnalysisConfig(
-  treeName           = "etaPi0",
-  dataFileName       = "./dataTestNizar/data_flat.root",
-  psAccFileName      = "./dataTestNizar/phaseSpace_acc_flat.root",
-  psGenFileName      = None,
-  polarization       = 0.0,  # read polarization from tree
-  _maxL              = 4,
-  outFileDirBaseName = "./plotsTestNizar",
-  # _normalizeMoments  = True,
-  binVarMass         = KinematicBinningVariable(
+  treeName            = "etaPi0",
+  dataFileName        = "./dataTestNizar/data_flat.root",
+  psAccFileName       = "./dataTestNizar/phaseSpace_acc_flat.root",
+  psGenFileName       = None,
+  polarization        = 0.0,  # read polarization from tree
+  _maxL               = 4,
+  _outFileDirBaseName = "./plotsTestNizar",
+  # _normalizeMoments   = True,
+  binVarMass          = KinematicBinningVariable(
     name  = "mass",
     label = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
     unit = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ),
-  massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
+  massBinning         = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
 )
 
 
@@ -246,16 +256,22 @@ def calculateAllMoments(
 
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
-  for maxL in (4, 8, 14):
-  # for maxL in (8, ):
-    print(f"Performing moment analysis for L_max = {maxL}")
-    cfg.maxL = maxL
+  for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
+    print(f"Performing moment analysis for beam-polarization orientation '{beamPolLabel}'")
+    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_{beamPolLabel}.root"
+    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat_{beamPolLabel}.root"
+    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat_{beamPolLabel}.root"
+    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol_{beamPolLabel}"
+  # # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
+  # # for maxL in (4, 8, 14):
+  # for maxL in (4, ):
+  #   print(f"Performing moment analysis for L_max = {maxL}")
+  #   cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
     logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
     print(f"Writing output to log file '{logFileName}'")
