@@ -87,13 +87,19 @@ def readMomentResultsPwa(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
-  for maxL in (4, 8, 14):
-  # for maxL in (8, ):
-    print(f"Calculating moment values with L_max = {maxL} from partial-wave amplitudes")
-    cfg.maxL = maxL
+  for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
+    print(f"Performing moment analysis for beam-polarization orientation '{beamPolLabel}'")
+    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_{beamPolLabel}.root"
+    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat_{beamPolLabel}.root"
+    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat_{beamPolLabel}.root"
+    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol_{beamPolLabel}"
+  # # for maxL in (4, 8, 14):
+  # for maxL in (4, ):
+  #   print(f"Calculating moment values with L_max = {maxL} from partial-wave amplitudes")
+  #   cfg.maxL = maxL
     thisSourceFileName = os.path.basename(__file__)
     logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
     print(f"Writing output to log file '{logFileName}'")
