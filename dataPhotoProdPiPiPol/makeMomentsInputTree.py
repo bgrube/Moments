@@ -122,6 +122,7 @@ def defineDataFrameColumns(
       .Define("PhiDeg",      "(Double32_t)Phi * TMath::RadToDeg()")
       .Define("mass",       f"(Double32_t)massPair({lvPip}, {lvPim})")
       .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+      # .Range(100)  # limit number of entries for testing
   )
 
 
@@ -150,58 +151,63 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
-  # Spring 2017 data for lowest t bin [0.1, 0.2] GeV^2
+  # Spring 2017 data
   # use azimuthal angles of photon beam polarization listed in Tab. 2 of https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=3977&version=6
-  realData = (
+  # tBinDir         = "tbin_0.1_0.2"
+  tBinDir         = "tbin_0.2_0.3"
+  dataBaseDirName = f"./pipi_gluex_coh/{tBinDir}"
+  realDataInfo    = (
     DataInfo(
       label                   = "PARA_0",
       beamPol                 = 0.3537,
       beamPolPhi              = 1.77,
-      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root", ),
-      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root", ),
+      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_0_30274_31057.root", ),
+      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_0_30274_31057.root", ),
     ),
     DataInfo(
       label                   = "PARA_135",
       beamPol                 = 0.3512,
       beamPolPhi              = -41.57,
-      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", ),
-      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", ),
+      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_135_30274_31057.root", ),
+      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_135_30274_31057.root", ),
     ),
     DataInfo(
       label                   = "PERP_45",
       beamPol                 = 0.3484,
       beamPolPhi              = 47.85,
-      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root", ),
-      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root", ),
+      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_45_30274_31057.root", ),
+      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_45_30274_31057.root", ),
     ),
     DataInfo(
       label                   = "PERP_90",
       beamPol                 = 0.3472,
       beamPolPhi              = 94.50,
-      inputSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root", ),
-      inputBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", ),
+      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_90_30274_31057.root", ),
+      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_90_30274_31057.root", ),
     ),
   )
-  # phaseSpaceGenFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
-  # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
-  # phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
-  phaseSpaceGenFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
-  phaseSpaceAccFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root", )
+  # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
+  # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
+  # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
+  # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",          f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+  # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_thrown_30274_31057.root",   f"{dataBaseDirName}/MC_rho/amptools_tree_thrown_30274_31057.root")
+  phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
-  for dataInfo in realData:
+  os.makedirs(tBinDir, exist_ok = True)
+  for dataInfo in realDataInfo:
     # convert real data
-    print(f"Writing '{dataInfo.label}' real data from {dataInfo.inputSigRegionFileNames} and {dataInfo.inputBkgRegionFileNames} to file '{dataInfo.outputFileName}'")
+    outputFileName = f"{tBinDir}/{dataInfo.outputFileName}"
+    print(f"Writing '{dataInfo.label}' real data from {dataInfo.inputSigRegionFileNames} and {dataInfo.inputBkgRegionFileNames} to file '{outputFileName}'")
     defineDataFrameColumns(
       df = getDataFrameWithFixedEventWeights(
         dataSigRegionFileNames  = dataInfo.inputSigRegionFileNames,
         dataBkgRegionFileNames  = dataInfo.inputBkgRegionFileNames,
         treeName                = dataInfo.inputTreeName,
-        friendSigRegionFileName = f"data_sig_{dataInfo.label}.root.weights",
-        friendBkgRegionFileName = f"data_bkg_{dataInfo.label}.root.weights",
+        friendSigRegionFileName = f"{tBinDir}/data_sig_{dataInfo.label}.root.weights",
+        friendBkgRegionFileName = f"{tBinDir}/data_bkg_{dataInfo.label}.root.weights",
       ),
       beamPol    = dataInfo.beamPol,
       beamPolPhi = dataInfo.beamPolPhi,
@@ -209,13 +215,13 @@ if __name__ == "__main__":
       lvRecoil   = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
       lvPip      = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
       lvPim      = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
-    ).Snapshot(dataInfo.outputTreeName, dataInfo.outputFileName, outputColumns + ("eventWeight", ))
+    ).Snapshot(dataInfo.outputTreeName, outputFileName, outputColumns + ("eventWeight", ))
     #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
     # convert MC data
     for mcFileNames, mcOutFileName in [
-      (phaseSpaceAccFileNames, f"phaseSpace_acc_flat_{dataInfo.label}.root"),
-      (phaseSpaceGenFileNames, f"phaseSpace_gen_flat_{dataInfo.label}.root")
+      (phaseSpaceGenFileNames, f"{tBinDir}/phaseSpace_gen_flat_{dataInfo.label}.root"),
+      (phaseSpaceAccFileNames, f"{tBinDir}/phaseSpace_acc_flat_{dataInfo.label}.root"),
     ]:
       print(f"Writing '{dataInfo.label}' MC data from file(s) {mcFileNames} to file '{mcOutFileName}'")
       defineDataFrameColumns(

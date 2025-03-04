@@ -90,24 +90,28 @@ if __name__ == "__main__":
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
 
-  # beamPolAngle           = 0.0
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/amptools_tree_data_PARA_0_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_0_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
+  #TODO use same angles as in makeMomentsInputTree.py
+  beamPolAngle           = 0.0
+  # tBinDir                = "tbin_0.1_0.2"
+  tBinDir                = "tbin_0.2_0.3"
+  dataBaseDirName        = f"./pipi_gluex_coh/{tBinDir}"
+  dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_0_30274_31057.root", )
+  dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
   # beamPolAngle           = 135.0
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PARA_135_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PARA_135_30274_31057.root", )
+  # dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_135_30274_31057.root", )
+  # dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_135_30274_31057.root", )
   # beamPolAngle           = 45.0
-  # dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_45_30274_31057.root", )
-  # dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_45_30274_31057.root", )
-  beamPolAngle           = 90.0
-  dataSigRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_data_PERP_90_30274_31057.root", )
-  dataBkgRegionFileNames = ("./pipi_gluex_coh/ver70/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
-  # mcDataFileNames        = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames        = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
-  mcDataFileNames        = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_45_30274_31057.root", )
+  # dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_45_30274_31057.root", )
+  # beamPolAngle           = 90.0
+  # dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_90_30274_31057.root", )
+  # dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
+  # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
+  # mcDataFileNames        = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
+  # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # mcDataFileNames        = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames        = (f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root", )
+  mcDataFileNames        = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   treeName               = "kin"
 
   # read in real data in AmpTools format and plot RF-sideband subtracted distributions
@@ -163,6 +167,7 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq", "eventWeight"),
     df.Histo3D(ROOT.RDF.TH3DModel("hDataPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg", "eventWeight"),
   )
+  os.makedirs(tBinDir, exist_ok = True)
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
@@ -176,7 +181,7 @@ if __name__ == "__main__":
       hist.Draw("BOX2Z")
     else:
       hist.Draw("COLZ")
-    canv.SaveAs(f"{hist.GetName()}.pdf")
+    canv.SaveAs(f"{tBinDir}/{hist.GetName()}.pdf")
 
   # overlay pipi mass distributions from data and accepted phase-space MC
   lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
@@ -197,4 +202,4 @@ if __name__ == "__main__":
   histMassPiPiData.SetMarkerColor(ROOT.kRed + 1)
   histStack.Draw("NOSTACK")
   canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-  canv.SaveAs(f"{histStack.GetName()}.pdf")
+  canv.SaveAs(f"{tBinDir}/{histStack.GetName()}.pdf")

@@ -36,17 +36,21 @@ if __name__ == "__main__":
 
   # data for lowest t bin [0.1, 0.2] GeV^2
   beamPolAngle    = 0.0
-  # mcDataFileNames = ("./pipi_gluex_coh/amptools_tree_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root", )
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
-  mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_thrown_30274_31057.root",     "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_acc_thrown_30274_31057.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root")
-  # mcDataFileNames = ("./pipi_gluex_coh/MC_100M/amptools_tree_accepted_30274_31057.root",   "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # tBinDir         = "tbin_0.1_0.2"
+  tBinDir         = "tbin_0.2_0.3"
+  dataBaseDirName = f"./pipi_gluex_coh/{tBinDir}"
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root", )
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_acc_thrown_30274_31057_noMcut.root", )
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root", )
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",            f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_acc_thrown_30274_31057_noMcut.root", f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root")
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root",   f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_thrown_30274_31057.root",     f"{dataBaseDirName}/MC_rho/amptools_tree_thrown_30274_31057.root")
+  # mcDataFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_acc_thrown_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_acc_thrown_30274_31057.root")
+  mcDataFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root",   f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   treeName        = "kin"
 
   # read MC data in AmpTools format and plot distributions
@@ -97,6 +101,7 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq"),
     df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg"),
   )
+  os.makedirs(tBinDir, exist_ok = True)
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
@@ -110,4 +115,4 @@ if __name__ == "__main__":
       hist.Draw("BOX2Z")
     else:
       hist.Draw("COLZ")
-    canv.SaveAs(f"{hist.GetName()}.pdf")
+    canv.SaveAs(f"{tBinDir}/{hist.GetName()}.pdf")
