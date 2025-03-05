@@ -127,19 +127,31 @@ def defineDataFrameColumns(
 
 
 @dataclass
-class DataInfo:
+class BeamPolInfo:
   """Stores information about input and output data"""
-  label:                   str              # data set label for polarization orientation
-  beamPol:                 float            # photon-beam polarization
-  beamPolPhi:              float            # azimuthal angle of photon beam polarization in lab [deg]
-  inputSigRegionFileNames: tuple[str, ...]  # AmpTools trees with reals data in signal region
-  inputBkgRegionFileNames: tuple[str, ...]  # AmpTools trees with reals data in background region
-  inputTreeName:           str = "kin"
-  outputTreeName:          str = "PiPi"
+  beamPol:        float  # photon-beam polarization
+  beamPolPhi:     float  # azimuthal angle of photon beam polarization in lab [deg]
+  inputTreeName:  str = "kin"
+  outputTreeName: str = "PiPi"
 
-  @property
-  def outputFileName(self) -> str:
-    return f"data_flat_{self.label}.root"
+BEAM_POL_INFOS = {
+  "PARA_0" : BeamPolInfo(
+    beamPol    = 0.3537,
+    beamPolPhi = 1.77,
+  ),
+  "PARA_135" : BeamPolInfo(
+    beamPol    = 0.3512,
+    beamPolPhi = -41.57,
+  ),
+  "PERP_45" : BeamPolInfo(
+    beamPol    = 0.3484,
+    beamPolPhi = 47.85,
+  ),
+  "PERP_90" : BeamPolInfo(
+    beamPol    = 0.3472,
+    beamPolPhi = 94.50,
+  ),
+}
 
 
 if __name__ == "__main__":
@@ -153,39 +165,9 @@ if __name__ == "__main__":
 
   # Spring 2017 data
   # use azimuthal angles of photon beam polarization listed in Tab. 2 of https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=3977&version=6
-  # tBinDir         = "tbin_0.1_0.2"
-  tBinDir         = "tbin_0.2_0.3"
-  dataBaseDirName = f"./pipi_gluex_coh/{tBinDir}"
-  realDataInfo    = (
-    DataInfo(
-      label                   = "PARA_0",
-      beamPol                 = 0.3537,
-      beamPolPhi              = 1.77,
-      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_0_30274_31057.root", ),
-      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_0_30274_31057.root", ),
-    ),
-    DataInfo(
-      label                   = "PARA_135",
-      beamPol                 = 0.3512,
-      beamPolPhi              = -41.57,
-      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_135_30274_31057.root", ),
-      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_135_30274_31057.root", ),
-    ),
-    DataInfo(
-      label                   = "PERP_45",
-      beamPol                 = 0.3484,
-      beamPolPhi              = 47.85,
-      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_45_30274_31057.root", ),
-      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_45_30274_31057.root", ),
-    ),
-    DataInfo(
-      label                   = "PERP_90",
-      beamPol                 = 0.3472,
-      beamPolPhi              = 94.50,
-      inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_90_30274_31057.root", ),
-      inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_90_30274_31057.root", ),
-    ),
-  )
+  # tBinDir                = "tbin_0.1_0.2"
+  tBinDir                = "tbin_0.2_0.3"
+  dataBaseDirName        = f"./pipi_gluex_coh/{tBinDir}"
   # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root", )
   # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
   # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
@@ -197,17 +179,19 @@ if __name__ == "__main__":
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
 
   os.makedirs(tBinDir, exist_ok = True)
-  for dataInfo in realDataInfo:
+  for dataLabel, dataInfo in BEAM_POL_INFOS.items():
     # convert real data
-    outputFileName = f"{tBinDir}/{dataInfo.outputFileName}"
-    print(f"Writing '{dataInfo.label}' real data from {dataInfo.inputSigRegionFileNames} and {dataInfo.inputBkgRegionFileNames} to file '{outputFileName}'")
+    inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_{dataLabel}_30274_31057.root", )
+    inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_{dataLabel}_30274_31057.root", )
+    outputFileName          = f"{tBinDir}/data_flat_{dataLabel}.root"
+    print(f"Writing '{dataLabel}' real data from {inputSigRegionFileNames} and {inputBkgRegionFileNames} to file '{outputFileName}'")
     defineDataFrameColumns(
       df = getDataFrameWithFixedEventWeights(
-        dataSigRegionFileNames  = dataInfo.inputSigRegionFileNames,
-        dataBkgRegionFileNames  = dataInfo.inputBkgRegionFileNames,
+        dataSigRegionFileNames  = inputSigRegionFileNames,
+        dataBkgRegionFileNames  = inputBkgRegionFileNames,
         treeName                = dataInfo.inputTreeName,
-        friendSigRegionFileName = f"{tBinDir}/data_sig_{dataInfo.label}.root.weights",
-        friendBkgRegionFileName = f"{tBinDir}/data_bkg_{dataInfo.label}.root.weights",
+        friendSigRegionFileName = f"{tBinDir}/data_sig_{dataLabel}.root.weights",
+        friendBkgRegionFileName = f"{tBinDir}/data_bkg_{dataLabel}.root.weights",
       ),
       beamPol    = dataInfo.beamPol,
       beamPolPhi = dataInfo.beamPolPhi,
@@ -220,10 +204,10 @@ if __name__ == "__main__":
 
     # convert MC data
     for mcFileNames, mcOutFileName in [
-      (phaseSpaceGenFileNames, f"{tBinDir}/phaseSpace_gen_flat_{dataInfo.label}.root"),
-      (phaseSpaceAccFileNames, f"{tBinDir}/phaseSpace_acc_flat_{dataInfo.label}.root"),
+      (phaseSpaceGenFileNames, f"{tBinDir}/phaseSpace_gen_flat_{dataLabel}.root"),
+      (phaseSpaceAccFileNames, f"{tBinDir}/phaseSpace_acc_flat_{dataLabel}.root"),
     ]:
-      print(f"Writing '{dataInfo.label}' MC data from file(s) {mcFileNames} to file '{mcOutFileName}'")
+      print(f"Writing '{dataLabel}' MC data from file(s) {mcFileNames} to file '{mcOutFileName}'")
       defineDataFrameColumns(
         df         = ROOT.RDataFrame(dataInfo.inputTreeName, mcFileNames),
         beamPol    = dataInfo.beamPol,
