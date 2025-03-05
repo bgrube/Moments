@@ -10,6 +10,7 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   getDataFrameWithFixedEventWeights,
+  BEAM_POL_INFOS,
 )
 
 
@@ -90,22 +91,16 @@ if __name__ == "__main__":
   """
   ROOT.gInterpreter.Declare(CPP_CODE)
 
-  #TODO use same angles as in makeMomentsInputTree.py
-  beamPolAngle           = 0.0
+  beamPolLabel           = "PARA_0"
+  # beamPolLabel           = "PARA_135"
+  # beamPolLabel           = "PERP_45"
+  # beamPolLabel           = "PERP_90"
+  beamPolAngle           = BEAM_POL_INFOS[beamPolLabel].beamPolPhi
   # tBinDir                = "tbin_0.1_0.2"
   tBinDir                = "tbin_0.2_0.3"
   dataBaseDirName        = f"./pipi_gluex_coh/{tBinDir}"
-  dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_0_30274_31057.root", )
-  dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_0_30274_31057.root", )
-  # beamPolAngle           = 135.0
-  # dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PARA_135_30274_31057.root", )
-  # dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PARA_135_30274_31057.root", )
-  # beamPolAngle           = 45.0
-  # dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_45_30274_31057.root", )
-  # dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_45_30274_31057.root", )
-  # beamPolAngle           = 90.0
-  # dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_PERP_90_30274_31057.root", )
-  # dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_PERP_90_30274_31057.root", )
+  dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_{beamPolLabel}_30274_31057.root", )
+  dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_{beamPolLabel}_30274_31057.root", )
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
