@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from copy import deepcopy
 import functools
 import math
@@ -33,6 +34,25 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+def getHistFromMomentValues(
+  HVals:      Sequence[MomentValue],
+  binning:    HistAxisBinning,
+  momentPart: str,  # "Re" or "Im"
+  histName:   str = "",
+  histTitle:  str = "",
+) -> ROOT.TH1D:
+  """Creates histogram with given binning from moment values"""
+  histData = ROOT.TH1D(histName, histTitle, *binning.astuple)
+  for HVal in HVals:
+    if binning.var not in HVal.binCenters.keys():
+      continue
+    y, yErr = HVal.part(real = (momentPart == "Re"))
+    binIndex = histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
+    histData.SetBinContent(binIndex, y)
+    histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
+  return histData
+
+
 def overlayMoments1D(
   momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]],  # key: legend label, value: (moment results, optional scale factor)
   qnIndex:                QnMomentIndex,    # defines specific moment
@@ -50,15 +70,7 @@ def overlayMoments1D(
     for index, (legendLabel, (momentResults, scaleFactor)) in enumerate(momentResultsToOverlay.items()):
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(HPhys[qnIndex] for HPhys in momentResults if qnIndex in HPhys)
-      # create histogram with moments
-      histData = ROOT.TH1D(legendLabel, "", *binning.astuple)
-      for HVal in HVals:
-        if binning.var not in HVal.binCenters.keys():
-          continue
-        y, yErr = HVal.part(real = (momentPart == "Re"))
-        binIndex = histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
-        histData.SetBinContent(binIndex, y)
-        histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
+      histData = getHistFromMomentValues(HVals, binning, momentPart, legendLabel)
       setCbFriendlyStyle(histData, styleIndex = index)
       if scaleFactor is not None:
         histData.Scale(scaleFactor)
