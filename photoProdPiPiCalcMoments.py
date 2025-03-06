@@ -261,14 +261,15 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
+  # tBinLabel = "tbin_0.1_0.2"
+  tBinLabel = "tbin_0.2_0.3"
   for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
-    print(f"Performing moment analysis for beam-polarization orientation '{beamPolLabel}'")
-    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_{beamPolLabel}.root"
-    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat_{beamPolLabel}.root"
-    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat_{beamPolLabel}.root"
-    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol_{beamPolLabel}"
+    print(f"Performing moment analysis for t bin '{tBinLabel}' and beam-polarization orientation '{beamPolLabel}'")
+    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
   # # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
-  # # for maxL in (4, 8, 14):
   # for maxL in (4, ):
   #   print(f"Performing moment analysis for L_max = {maxL}")
   #   cfg.maxL = maxL
