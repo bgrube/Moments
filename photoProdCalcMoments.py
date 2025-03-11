@@ -132,15 +132,6 @@ CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
   _outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
   massBinning         = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40),  # binning used in PWA of unpolarized data
 )
-# configuration for unpolarized pi+ p data
-CFG_UNPOLARIZED_PIPP = AnalysisConfig(
-  dataFileName        = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
-  psAccFileName       = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
-  psGenFileName       = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
-  _maxL               = 4,
-  _outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
-  massBinning         = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
-)
 # configuration for polarized pi+ pi- data
 CFG_POLARIZED_PIPI = AnalysisConfig(
   dataFileName        = "./dataPhotoProdPiPiPol/data_flat_0.0.root",
@@ -150,6 +141,21 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   _maxL               = 4,
   _outFileDirBaseName = "./plotsPhotoProdPiPiPol",
   massBinning         = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
+)
+# configuration for unpolarized pi+ p data
+CFG_UNPOLARIZED_PIPP = AnalysisConfig(
+  dataFileName        = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
+  psAccFileName       = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
+  psGenFileName       = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
+  _maxL               = 4,
+  _outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
+  binVarMass          = KinematicBinningVariable(
+    name      = "mass",
+    label     = "#it{m}_{#it{#pi}^{#plus}#it{p}}",
+    unit      = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ),
+  massBinning         = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
 )
 # configuration for Nizar's polarized eta pi0 data
 CFG_NIZAR = AnalysisConfig(
@@ -162,9 +168,9 @@ CFG_NIZAR = AnalysisConfig(
   _outFileDirBaseName = "./plotsTestNizar",
   # _normalizeMoments   = True,
   binVarMass          = KinematicBinningVariable(
-    name  = "mass",
-    label = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
-    unit = "GeV/#it{c}^{2}",
+    name      = "mass",
+    label     = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
+    unit      = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ),
   massBinning         = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
