@@ -2,7 +2,7 @@
 """
 This module performs the moment analysis of unpolarized and polarized
 pi+ pi- photoproduction data. The calculated moments are written to
-files to be read by the plotting script `photoProdPiPiPlotMoments.py`.
+files to be read by the plotting script `photoProdPlotMoments.py`.
 
 Usage: Run this module as a script to perform the moment calculations
 and to generate the output files.

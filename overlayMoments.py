@@ -15,7 +15,7 @@ from MomentCalculator import (
   MomentResultsKinematicBinning,
   QnMomentIndex,
 )
-from photoProdPiPiCalcMoments import (
+from photoProdCalcMoments import (
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_PWA,

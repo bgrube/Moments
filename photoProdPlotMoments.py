@@ -2,7 +2,7 @@
 """
 This module plots the results of the moment analysis of unpolarized
 and polarized pi+ pi- photoproduction data. The moment values are read
-from files produced by the script `photoProdPiPiCalcMoments.py` that
+from files produced by the script `photoProdCalcMoments.py` that
 calculates the moments.
 
 Usage: Run this module as a script to generate the output files.
@@ -23,7 +23,7 @@ import pandas as pd
 import ROOT
 from wurlitzer import pipes, STDOUT
 
-from photoProdPiPiCalcMoments import (
+from photoProdCalcMoments import (
   AnalysisConfig,
   CFG_NIZAR,
   CFG_POLARIZED_PIPI,
