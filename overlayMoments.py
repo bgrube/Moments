@@ -106,19 +106,23 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first fit result
+  # normToFirstResult = False
+  # tBinLabel         = "tbin_0.1_0.2"
+  tBinLabel         = "tbin_0.2_0.3"
   fitResults: tuple[tuple[str, str, float | None], ...] = (  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
-    # (f"{cfg._outFileDirBaseName}.tbin_0.1_0.2.PARA_0.maxL_4",   "#Phi_{0} = 0#circ",   None),  # 1.419187e7 events, 4.345e6 combos
-    # (f"{cfg._outFileDirBaseName}.tbin_0.1_0.2.PARA_135.maxL_4", "#Phi_{0} = 135#circ", None),  # 1.387172e7 events, 4.209e6 combos
-    # (f"{cfg._outFileDirBaseName}.tbin_0.1_0.2.PERP_45.maxL_4",  "#Phi_{0} = 45#circ",  None),  # 1.335436e7 events, 4.100e6 combos
-    # (f"{cfg._outFileDirBaseName}.tbin_0.1_0.2.PERP_90.maxL_4",  "#Phi_{0} = 90#circ",  None),  # 1.529724e7 events, 4.672e6 combos
-    #
-    (f"{cfg._outFileDirBaseName}.tbin_0.2_0.3.PARA_0.maxL_4",   "#Phi_{0} = 0#circ",   None),
-    (f"{cfg._outFileDirBaseName}.tbin_0.2_0.3.PARA_135.maxL_4", "#Phi_{0} = 135#circ", None),
-    (f"{cfg._outFileDirBaseName}.tbin_0.2_0.3.PERP_45.maxL_4",  "#Phi_{0} = 45#circ",  None),
-    (f"{cfg._outFileDirBaseName}.tbin_0.2_0.3.PERP_90.maxL_4",  "#Phi_{0} = 90#circ",  None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.PARA_0.maxL_4",   "#Phi_{0} = 0#circ",   None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.PARA_135.maxL_4", "#Phi_{0} = 135#circ", None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.PERP_45.maxL_4",  "#Phi_{0} = 45#circ",  None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.PERP_90.maxL_4",  "#Phi_{0} = 90#circ",  None),
     #
     # (f"{cfg._outFileDirBaseName}.tbin_0.1_0.2.PARA_0.maxL_4", "0.1 < #minus t < 0.2 GeV^{2}", None),
     # (f"{cfg._outFileDirBaseName}.tbin_0.2_0.3.PARA_0.maxL_4", "0.2 < #minus t < 0.3 GeV^{2}", None),
+    #
+    (f"{cfg._outFileDirBaseName}.{tBinLabel}.0_90.maxL_4",          "0#circ and 90#circ",               None),
+    (f"{cfg._outFileDirBaseName}.{tBinLabel}.-45_45.maxL_4",        "#minus 45#circ and #plus 45#circ", None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.0_-45.maxL_4",         "0#circ and #minus 45#circ",        None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.45_90.maxL_4",         "45#circ and 90#circ",              None),
+    # (f"{cfg._outFileDirBaseName}.{tBinLabel}.4orientations.maxL_4", "4 Orientations",                   0.5),
   )
   outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}.overlay")
 
