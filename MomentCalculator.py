@@ -21,12 +21,13 @@ import pickle
 from typing import (
   Any,
   ClassVar,
-  Generator,
-  Iterator,
   overload,
-  Sequence,
 )
-#TODO switch from int for indices to SupportsIndex; requires Python 3.8+
+from collections.abc import (
+  Sequence,
+  Iterator,
+  Generator,
+)
 
 import spherical
 import ROOT
@@ -764,21 +765,32 @@ class MomentResult:
     self._V_ReImFlatIndex    = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
     self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = np.complex128)
 
-  def __eq__(
+  def hasSameMomentIndicesAndBinCenters(
     self,
-    other: object,
-  )-> bool:
-    # custom equality check needed because of NumPy arrays
+    other: MomentResult,
+  ) -> bool:
+    """Returns whether two `MomentResult` objects have the same indices and bin centers"""
     if not isinstance(other, MomentResult):
-      return NotImplemented
+      raise TypeError(f"Expect other to be of type 'MomentResult'; got {type(other)} instead")
     return (
       (self.indices == other.indices)
       and (self.binCenters == other.binCenters)
-      and (self._valsFlatIndex.shape == other._valsFlatIndex.shape)
+      and (self._valsFlatIndex.shape   == other._valsFlatIndex.shape)
       and (self._V_ReReFlatIndex.shape == other._V_ReReFlatIndex.shape)
       and (self._V_ImImFlatIndex.shape == other._V_ImImFlatIndex.shape)
       and (self._V_ReImFlatIndex.shape == other._V_ReImFlatIndex.shape)
-      and np.allclose(self._valsFlatIndex, other._valsFlatIndex)
+    )
+
+  def __eq__(
+    self,
+    other: object,
+  ) -> bool:
+    """Returns whether two `MomentResult` objects are equal in the sense that they have the same moment values and uncertainties"""
+    if not isinstance(other, MomentResult):
+      return NotImplemented
+    return (
+      self.hasSameMomentIndicesAndBinCenters(other)
+      and np.allclose(self._valsFlatIndex,   other._valsFlatIndex)
       and np.allclose(self._V_ReReFlatIndex, other._V_ReReFlatIndex)
       and np.allclose(self._V_ImImFlatIndex, other._V_ImImFlatIndex)
       and np.allclose(self._V_ReImFlatIndex, other._V_ReImFlatIndex)
@@ -982,7 +994,7 @@ class MomentResult:
     factor: float,
   ) -> None:
     """Scales moment values and uncertainties by given factor"""
-    self._valsFlatIndex *= factor
+    self._valsFlatIndex   *= factor
     self._V_ReReFlatIndex *= factor**2
     self._V_ImImFlatIndex *= factor**2
     self._V_ReImFlatIndex *= factor**2
@@ -1091,6 +1103,17 @@ class MomentResultsKinematicBinning:
   def __len__(self) -> int:
     """Returns number of kinematic bins"""
     return len(self.moments)
+
+  def __eq__(
+    self,
+    other: object,
+  ) -> bool:
+    """Returns whether two `MomentResultsKinematicBinning` objects are equal in the sense that they have the same moment values and uncertainties"""
+    if not isinstance(other, MomentResult):
+      return NotImplemented
+    if len(self) != len(other):
+      return False
+    return all(self[binIndex] == other[binIndex] for binIndex in range(len(self)))
 
   def __getitem__(
     self,
