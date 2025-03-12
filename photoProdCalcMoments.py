@@ -267,32 +267,29 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  # tBinLabel = "tbin_0.1_0.2"
-  tBinLabel = "tbin_0.2_0.3"
-  for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
-    print(f"Performing moment analysis for t bin '{tBinLabel}' and beam-polarization orientation '{beamPolLabel}'")
-    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
-    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
-  # # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
-  # for maxL in (4, ):
-  #   print(f"Performing moment analysis for L_max = {maxL}")
-  #   cfg.maxL = maxL
-    thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-    print(f"Writing output to log file '{logFileName}'")
-    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-      Utilities.printGitInfo()
-      timer = Utilities.Timer()
-      ROOT.gROOT.SetBatch(True)
-      setupPlotStyle()
-      threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
-      print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-      with threadController.limit(limits = 4):
-        print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
-        timer.start("Total execution time")
-        print(f"Using configuration:\n{cfg}")
-        calculateAllMoments(cfg, timer)
-        timer.stop("Total execution time")
-        print(timer.summary)
+  for tBinLabel in ("tbin_0.1_0.2", "tbin_0.2_0.3"):
+    for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
+      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
+      for maxL in (5, 6):
+        print(f"Performing moment analysis for t bin '{tBinLabel}' and beam-polarization orientation '{beamPolLabel}' using L_max = {maxL}")
+        cfg.maxL = maxL
+        thisSourceFileName = os.path.basename(__file__)
+        logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+        print(f"Writing output to log file '{logFileName}'")
+        with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          Utilities.printGitInfo()
+          timer = Utilities.Timer()
+          ROOT.gROOT.SetBatch(True)
+          setupPlotStyle()
+          threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
+          print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
+          with threadController.limit(limits = 4):
+            print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
+            timer.start("Total execution time")
+            print(f"Using configuration:\n{cfg}")
+            calculateAllMoments(cfg, timer)
+            timer.stop("Total execution time")
+            print(timer.summary)
