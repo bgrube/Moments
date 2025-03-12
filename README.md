@@ -2,12 +2,12 @@
 
 Currently, the repository contains 2 analyses that are based on real data:
 
-* **Unpolarized photoproduction of pi+ pi-**: Unpolarized moments of the $\pi^+ \pi^-$ final state are calculated from GlueX low-energy data in the mass range from 0.4 to 1.4 GeV and compared to results from a CLAS analysis or from a PWA.
-* **Polarized photoproduction of pi+ pi-**: Moments for linearly polarized photoproduction of the $\pi^+ \pi^-$ final state are calculated from real data and compared to the moments calculated from the partial-wave amplitudes obtained from a PWA fit to data.
+* **Unpolarized photoproduction of pi+ pi-**: Unpolarized moments of the $\pi^+ \pi^-$ final state are calculated from GlueX low-energy data in the mass range from 0.4 to 1.4 GeV and compared to results from a CLAS analysis or from a mass-independent PWA.
+* **Polarized photoproduction of pi+ pi-**: Moments for linearly polarized photoproduction of the $\pi^+ \pi^-$ final state are calculated from real data and compared to the moments calculated from the partial-wave amplitudes obtained from a mass-independent PWA.
 * Both analyses are implemented in a set of 6 scripts
   * `photoProdCalcMoments.py` calculates the moments and writes them to disk.
-  * `photoProdMomentsPwa.py` calculates the moments from the result of a mass-independent PWA.
-  * `photoProdPlotMoments.py` plots all moments.
+  * `photoProdMomentsPwa.py` calculates the moments from the result of a mass-independent PWA and writes the to disk.
+  * `photoProdPlotMoments.py` reads moments from disk and plots all moments.
   * `photoProdWeightData.py` weights accepted phase-space data with intensity distribution defined by moment values.
   * `photoProdCombineMoments.py` combines moment values from independent data sets, e.g. the 4 beam-polarization orientations.
   * `overlayMoments.py` creates overlay plots of moments.
