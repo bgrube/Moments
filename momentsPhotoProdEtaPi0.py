@@ -41,7 +41,7 @@ from PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
+import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
 

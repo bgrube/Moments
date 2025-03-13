@@ -31,6 +31,7 @@ def printRootACLiCSettings() -> None:
 
 def enableRootACLiCOpenMp() -> None:
   """Enables OpenMP support for ROOT macros compiled via ACLiC"""
+  #TODO protect against adding the same flags if function is called multiple times
   arch = ROOT.gSystem.GetBuildArch()
   if "macos" in arch.lower():
     #!NOTE! MacOS (Apple does not ship libomp; needs to be installed via MacPorts or Homebrew see testOpenMp.c)

@@ -22,7 +22,7 @@ import ROOT
 from PlottingUtilities import (
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads basisFunctions.C
+import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
 
@@ -455,7 +455,7 @@ def generateDataPwd(
       m:      int = wave[1]
       parity: int = (-1)**ell
       # see Eqs. (26) and (27) for rank = 1
-      V = f"complexT({prodAmps[refl][waveIndex].real}, {prodAmps[refl][waveIndex].imag})"  # complexT is a typedef for std::complex<double> in basisFunctions.C
+      V = f"complexT({prodAmps[refl][waveIndex].real}, {prodAmps[refl][waveIndex].imag})"  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
       A = f"std::sqrt((2 * {ell} + 1) / (4 * TMath::Pi())) * wignerDReflConj({2 * ell}, {2 * m}, 0, {parity}, {refl}, TMath::DegToRad() * y, std::acos(x))"
       coherentTerms.append(f"{V} * {A}")
     incoherentTerms.append(f"std::norm({' + '.join(coherentTerms)})")
