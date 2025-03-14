@@ -84,6 +84,7 @@ class AnalysisConfig:
 
   def __post_init__(self) -> None:
     """Creates output directory and initializes member variables"""
+    #TODO move creation of directory to separate function
     self.outFileDirName    = Utilities.makeDirPath(f"{self._outFileDirBaseName}.maxL_{self.maxL}")
     self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
     self.massBinning.var   = self.binVarMass

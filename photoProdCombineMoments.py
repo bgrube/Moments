@@ -71,39 +71,45 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
-  # tBinLabel              = "tbin_0.1_0.2"
-  tBinLabel              = "tbin_0.2_0.3"
-  momentsFileName        = "_moments_phys.pkl"
-  dataSetsToCombine      = {
-    "0_90"          : ("PARA_0",   "PERP_90"),
-    "-45_45"        : ("PARA_135", "PERP_45"),
-    "0_-45"         : ("PARA_0",   "PARA_135"),
-    "45_90"         : ("PERP_45",  "PERP_90"),
-    "4orientations" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
+  tBinLabels        = (
+    "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+  )
+  dataSetsToCombine = {
+    "0_90"      : ("PARA_0",   "PERP_90"),
+    "-45_45"    : ("PARA_135", "PERP_45"),
+    "0_-45"     : ("PARA_0",   "PARA_135"),
+    "45_90"     : ("PERP_45",  "PERP_90"),
+    "allOrient" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
   }
+  momentsFileName   = "_moments_phys.pkl"
 
   thisSourceFileName = os.path.basename(__file__)
-  for labelCombined, beamPolLabels in dataSetsToCombine.items():
-    # constructing input file names
-    momentResultsFileNames = []
-    for beamPolLabel in beamPolLabels:
-      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
-      momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
-    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{labelCombined}"
-    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-    print(f"Writing output to log file '{logFileName}'")
-    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-      Utilities.printGitInfo()
-      timer = Utilities.Timer()
-      timer.start("Total execution time")
-      print(f"Using configuration:\n{cfg}")
+  for tBinLabel in tBinLabels:
+    for maxL in (5, 6, 7, 8):
+      cfg.maxL = maxL
+      for labelCombined, beamPolLabels in dataSetsToCombine.items():
+        print(f"Combining moments for data sets '{beamPolLabels}' for t bin '{tBinLabel}' and L_max = {maxL}")
+        # constructing input file names
+        momentResultsFileNames = []
+        for beamPolLabel in beamPolLabels:
+          cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
+          momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
+        cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{labelCombined}"
+        logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+        print(f"Writing output to log file '{logFileName}'")
+        with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          Utilities.printGitInfo()
+          timer = Utilities.Timer()
+          timer.start("Total execution time")
+          print(f"Using configuration:\n{cfg}")
 
-      print(f"Combining moments from {momentResultsFileNames}")
-      momentResultsToCombine = tuple(MomentResultsKinematicBinning.load(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
-      momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
-      momentResultsCombinedFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}"
-      print(f"Writing PWA moments to file '{momentResultsCombinedFileName}'")
-      momentResultsCombined.save(momentResultsCombinedFileName)
+          print(f"Combining moments from {momentResultsFileNames}")
+          momentResultsToCombine = tuple(MomentResultsKinematicBinning.load(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
+          momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
+          momentResultsCombinedFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}"
+          print(f"Writing PWA moments to file '{momentResultsCombinedFileName}'")
+          momentResultsCombined.save(momentResultsCombinedFileName)
 
-      timer.stop("Total execution time")
-      print(timer.summary)
+          timer.stop("Total execution time")
+          print(timer.summary)
