@@ -98,18 +98,19 @@ if __name__ == "__main__":
   # beamPolLabel           = "PERP_45"
   # beamPolLabel           = "PERP_90"
   beamPolAngle           = BEAM_POL_INFOS[beamPolLabel].beamPolPhi
-  # tBinDir                = "tbin_0.1_0.2"
-  tBinDir                = "tbin_0.2_0.3"
-  dataBaseDirName        = f"./pipi_gluex_coh/{tBinDir}"
+  # tBinLabel              = "tbin_0.1_0.2"
+  tBinLabel              = "tbin_0.2_0.3"
+  dataBaseDirName        = f"./pipi_gluex_coh/{tBinLabel}"
   dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_{beamPolLabel}_30274_31057.root", )
   dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_{beamPolLabel}_30274_31057.root", )
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
-  # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", "./pipi_gluex_coh/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", )
   # mcDataFileNames        = (f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root", )
   mcDataFileNames        = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   treeName               = "kin"
+  outputDirName          = f"{tBinLabel}/{beamPolLabel}"
 
   # read in real data in AmpTools format and plot RF-sideband subtracted distributions
   lvBeam   = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"
@@ -181,7 +182,12 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDistFdcVsMomLabPim",       ";p_{#pi^{#minus}} [GeV];#Delta r_{#pi^{#minus}}^{FDC} [cm]", 100, 0, 10, 100, 0,   20),   "MomLabPim",  "DistFdcPim",  "eventWeight"),
     df.Histo3D(ROOT.RDF.TH3DModel("hDataPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg", "eventWeight"),
   )
-  os.makedirs(tBinDir, exist_ok = True)
+  os.makedirs(outputDirName, exist_ok = True)
+  outRootFileName = f"{outputDirName}/dataPlots.root"
+  outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
+  print(f"Writing histograms to '{outRootFileName}'")
+  outRootFile.cd()
+  # write real-data histograms to ROOT file and generate PDF plots
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
@@ -195,9 +201,10 @@ if __name__ == "__main__":
       hist.Draw("BOX2Z")
     else:
       hist.Draw("COLZ")
-    canv.SaveAs(f"{tBinDir}/{hist.GetName()}.pdf")
+    hist.Write()
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
-  if False:
+  if True:
     # overlay pipi mass distributions from data and accepted phase-space MC
     lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
     lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
@@ -216,5 +223,8 @@ if __name__ == "__main__":
     histMassPiPiMc.SetMarkerColor  (ROOT.kBlue + 1)
     histMassPiPiData.SetMarkerColor(ROOT.kRed + 1)
     histStack.Draw("NOSTACK")
+    histStack.Write()
     canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-    canv.SaveAs(f"{tBinDir}/{histStack.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
+
+  outRootFile.Close()
