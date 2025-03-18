@@ -68,6 +68,8 @@ class AnalysisConfig:
   calcAccPsMoments:         bool                     = False
   # plotAccPsMoments:         bool                     = True
   plotAccPsMoments:         bool                     = False
+  plotMomentsInBins:        bool                     = True
+  # plotMomentsInBins:        bool                     = False
   # plotMeasuredMoments:      bool                     = True
   plotMeasuredMoments:      bool                     = False
   # plotCovarianceMatrices:   bool                     = True
@@ -270,31 +272,32 @@ if __name__ == "__main__":
 
   tBinLabels = (
     # "tbin_0.1_0.2",
-    "tbin_0.2_0.3",
+    "tbin_0.1_0.2.trackDistFdc",
+    # "tbin_0.2_0.3",
   )
   beamPolLabels = (
-    # "PARA_0",
+    "PARA_0",
     "PARA_135",
     "PERP_45",
     "PERP_90",
   )
   maxLs = (
-    # 4,
+    4,
     # 5,
-    # 6,
-    7,
+    6,
+    # 7,
     8,
   )
 
   for tBinLabel in tBinLabels:
-    for beamPolLabel in beamPolLabels:
-      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
-      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
-      for maxL in maxLs:
+    for maxL in maxLs:
+      for beamPolLabel in beamPolLabels:
         print(f"Performing moment analysis for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        cfg.maxL = maxL
+        cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+        cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+        cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+        cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{beamPolLabel}"
+        cfg.maxL               = maxL
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
