@@ -192,9 +192,9 @@ if __name__ == "__main__":
 
   # Spring 2017 data
   # use azimuthal angles of photon beam polarization listed in Tab. 2 of https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=3977&version=6
-  tBinDir                = "tbin_0.1_0.2"
-  # tBinDir                = "tbin_0.2_0.3"
-  dataBaseDirName        = f"./pipi_gluex_coh/{tBinDir}"
+  tBinLabel              = "tbin_0.1_0.2"
+  # tBinLabel              = "tbin_0.2_0.3"
+  dataBaseDirName        = f"./pipi_gluex_coh/{tBinLabel}"
   # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root", )
   # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
   # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
@@ -206,20 +206,21 @@ if __name__ == "__main__":
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   applyAdditionalCuts    = True  # apply additional cuts to remove forward-going tracks
 
-  os.makedirs(tBinDir, exist_ok = True)
+  outputDirName = tBinLabel
+  os.makedirs(outputDirName, exist_ok = True)
   for dataLabel, dataInfo in BEAM_POL_INFOS.items():
     # convert real data
     inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_{dataLabel}_30274_31057.root", )
     inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_{dataLabel}_30274_31057.root", )
-    outputFileName          = f"{tBinDir}/data_flat_{dataLabel}.root"
-    print(f"Writing '{dataLabel}' real data from {inputSigRegionFileNames} and {inputBkgRegionFileNames} to file '{outputFileName}'")
+    realDataOutputFileName  = f"{outputDirName}/data_flat_{dataLabel}.root"
+    print(f"Writing '{dataLabel}' real data from {inputSigRegionFileNames} and {inputBkgRegionFileNames} to file '{realDataOutputFileName}'")
     defineDataFrameColumns(
       df = getDataFrameWithFixedEventWeights(
         dataSigRegionFileNames  = inputSigRegionFileNames,
         dataBkgRegionFileNames  = inputBkgRegionFileNames,
         treeName                = dataInfo.inputTreeName,
-        friendSigRegionFileName = f"{tBinDir}/data_sig_{dataLabel}.root.weights",
-        friendBkgRegionFileName = f"{tBinDir}/data_bkg_{dataLabel}.root.weights",
+        friendSigRegionFileName = f"{outputDirName}/data_sig_{dataLabel}.root.weights",
+        friendBkgRegionFileName = f"{outputDirName}/data_bkg_{dataLabel}.root.weights",
       ),
       beamPol             = dataInfo.beamPol,
       beamPolPhi          = dataInfo.beamPolPhi,
@@ -228,12 +229,12 @@ if __name__ == "__main__":
       lvPip               = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
       lvPim               = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
       applyAdditionalCuts = applyAdditionalCuts,
-    ).Snapshot(dataInfo.outputTreeName, outputFileName, outputColumns + ("eventWeight", ))
+    ).Snapshot(dataInfo.outputTreeName, realDataOutputFileName, outputColumns + ("eventWeight", ))
     #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
     # convert accepted phase-space MC data
-    phaseSpaceAccOutFileName = f"{tBinDir}/phaseSpace_acc_flat_{dataLabel}.root"
-    print(f"Writing '{dataLabel}' accepted phase-space MC data from file(s) {phaseSpaceAccFileNames} to file '{phaseSpaceAccOutFileName}'")
+    phaseSpaceAccOutputFileName = f"{outputDirName}/phaseSpace_acc_flat_{dataLabel}.root"
+    print(f"Writing '{dataLabel}' accepted phase-space MC data from file(s) {phaseSpaceAccFileNames} to file '{phaseSpaceAccOutputFileName}'")
     defineDataFrameColumns(
       df                  = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceAccFileNames),
       beamPol             = dataInfo.beamPol,
@@ -243,11 +244,11 @@ if __name__ == "__main__":
       lvPip               = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
       lvPim               = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
       applyAdditionalCuts = applyAdditionalCuts,
-    ).Snapshot(dataInfo.outputTreeName, phaseSpaceAccOutFileName, outputColumns)
+    ).Snapshot(dataInfo.outputTreeName, phaseSpaceAccOutputFileName, outputColumns)
 
     # convert thrown phase-space MC data
-    phaseSpaceGenOutFileName = f"{tBinDir}/phaseSpace_gen_flat_{dataLabel}.root"
-    print(f"Writing '{dataLabel}' thrown phase-space MC data from file(s) {phaseSpaceGenFileNames} to file '{phaseSpaceGenOutFileName}'")
+    phaseSpaceGenOutputFileName = f"{outputDirName}/phaseSpace_gen_flat_{dataLabel}.root"
+    print(f"Writing '{dataLabel}' thrown phase-space MC data from file(s) {phaseSpaceGenFileNames} to file '{phaseSpaceGenOutputFileName}'")
     defineDataFrameColumns(
       df         = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceGenFileNames),
       beamPol    = dataInfo.beamPol,
@@ -256,4 +257,4 @@ if __name__ == "__main__":
       lvRecoil   = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",
       lvPip      = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  #TODO not clear whether correct index is 1 or 2
       lvPim      = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  #TODO not clear whether correct index is 1 or 2
-    ).Snapshot(dataInfo.outputTreeName, phaseSpaceGenOutFileName, outputColumns)
+    ).Snapshot(dataInfo.outputTreeName, phaseSpaceGenOutputFileName, outputColumns)
