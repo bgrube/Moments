@@ -203,7 +203,7 @@ if __name__ == "__main__":
   phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
   # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_thrown_30274_31057.root",   f"{dataBaseDirName}/MC_rho/amptools_tree_thrown_30274_31057.root")
   # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
-  outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT", "DistFdcPip", "DistFdcPim")
+  outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   applyAdditionalCuts    = True  # apply additional cuts to remove forward-going tracks
 
   os.makedirs(tBinDir, exist_ok = True)
@@ -232,7 +232,7 @@ if __name__ == "__main__":
     #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
     # convert accepted phase-space MC data
-    phaseSpaceAccOutFileName = f"{tBinDir}/phaseSpace_gen_flat_{dataLabel}.root"
+    phaseSpaceAccOutFileName = f"{tBinDir}/phaseSpace_acc_flat_{dataLabel}.root"
     print(f"Writing '{dataLabel}' accepted phase-space MC data from file(s) {phaseSpaceAccFileNames} to file '{phaseSpaceAccOutFileName}'")
     defineDataFrameColumns(
       df                  = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceAccFileNames),
@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
     # convert thrown phase-space MC data
     phaseSpaceGenOutFileName = f"{tBinDir}/phaseSpace_gen_flat_{dataLabel}.root"
-    print(f"Writing '{dataLabel}' MC data from file(s) {phaseSpaceGenFileNames} to file '{phaseSpaceGenOutFileName}'")
+    print(f"Writing '{dataLabel}' thrown phase-space MC data from file(s) {phaseSpaceGenFileNames} to file '{phaseSpaceGenOutFileName}'")
     defineDataFrameColumns(
       df         = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceGenFileNames),
       beamPol    = dataInfo.beamPol,
