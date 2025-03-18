@@ -14,8 +14,8 @@ import ROOT
 CPP_CODE_MASSPAIR = """
 double
 massPair(
-	const double Px1, const double Py1, const double Pz1, const double E1,
-	const double Px2, const double Py2, const double Pz2, const double E2
+	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+	const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
 )	{
 	const TLorentzVector p1(Px1, Py1, Pz1, E1);
 	const TLorentzVector p2(Px2, Py2, Pz2, E2);
@@ -27,8 +27,8 @@ massPair(
 CPP_CODE_MANDELSTAM_T = """
 double
 mandelstamT(
-  const double Px1, const double Py1, const double Pz1, const double E1,
-  const double Px2, const double Py2, const double Pz2, const double E2
+  const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+  const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
 ) {
   const TLorentzVector p1(Px1, Py1, Pz1, E1);
   const TLorentzVector p2(Px2, Py2, Pz2, E2);
@@ -44,8 +44,8 @@ CPP_CODE_BIGPHI = """
 // code taken from https://github.com/JeffersonLab/halld_sim/blob/538677ee1347891ccefa5780e01b158e035b49b1/src/libraries/AMPTOOLS_AMPS/TwoPiAngles.cc#L94
 double
 bigPhi(
-	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // recoil
-	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // beam
+	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // 4-momentum of recoil [GeV]
+	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // 4-momentum of beam [GeV]
 	const double beamPolPhi = 0  // azimuthal angle of photon beam polarization in lab [deg]
 ) {
 	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
@@ -61,6 +61,24 @@ bigPhi(
 		Phi += TMath::TwoPi();
 	}
 	return Phi;
+}
+"""
+
+# C++ function to calculate radial distance of particle track at FDC position assuming straight tracks
+CPP_CODE_TRACKDISTFDC = """
+// Code used by Naomi to cut out events with very forward-going track
+// see https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6180
+//     https://halldweb.jlab.org/wiki-private/index.php/Tracking-9-7-2023
+//     https://halldweb.jlab.org/wiki-private/index.php/Tracking-12-12-2024
+double
+trackDistFdc(
+	const double primVertZ,  // z position of primary vertex [cm]
+  const double Px, const double Py, const double Pz, const double E  // 4-momentum of particle [GeV]
+) {
+  const TLorentzVector p(Px, Py, Pz, E);
+	const double deltaZ = 176.939 - primVertZ;  // distance along z of primary vertex and FDC [cm]
+	const double deltaR = deltaZ * tan(p.Theta());
+	return deltaR;
 }
 """
 
