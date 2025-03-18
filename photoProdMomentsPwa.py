@@ -90,101 +90,113 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
-  for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
-    print(f"Performing moment analysis for beam-polarization orientation '{beamPolLabel}'")
-    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_{beamPolLabel}.root"
-    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat_{beamPolLabel}.root"
-    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat_{beamPolLabel}.root"
-    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol_{beamPolLabel}"
-  # # for maxL in (4, 8, 14):
-  # for maxL in (4, ):
-  #   print(f"Calculating moment values with L_max = {maxL} from partial-wave amplitudes")
-  #   cfg.maxL = maxL
-    thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-    print(f"Writing output to log file '{logFileName}'")
-    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-      Utilities.printGitInfo()
-      timer = Utilities.Timer()
-      ROOT.gROOT.SetBatch(True)
-      setupPlotStyle()
-      threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
-      print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-      with threadController.limit(limits = 4):
-        print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
+  tBinLabels = (
+    # "tbin_0.1_0.2",
+    "tbin_0.2_0.3",
+  )
+  beamPolLabels = (
+    "PARA_0", "PARA_135", "PERP_45", "PERP_90",
+    "0_90", "-45_45", "0_-45", "45_90", "allOrient",
+  )
+  maxLs = (
+    4,
+    5,
+    6,
+    7,
+    8,
+  )
 
-        timer.start("Total execution time")
-        print(f"Using configuration:\n{cfg}")
+  for tBinLabel in tBinLabels:
+    for beamPolLabel in beamPolLabels:
+      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
+      for maxL in maxLs:
+        print(f"Calculating moment values from partial-wave amplitudes for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+        cfg.maxL = maxL
+        thisSourceFileName = os.path.basename(__file__)
+        logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+        print(f"Writing output to log file '{logFileName}'")
+        with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          Utilities.printGitInfo()
+          timer = Utilities.Timer()
+          ROOT.gROOT.SetBatch(True)
+          setupPlotStyle()
+          threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
+          print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
+          with threadController.limit(limits = 4):
+            print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
 
-        pwaAmplitudesFileName = None
-        waves: list[tuple[str, QnWaveIndex]] = []
+            timer.start("Total execution time")
+            print(f"Using configuration:\n{cfg}")
 
-        #TODO add this info to AnalysisConfig?
-        if cfg.polarization is None:
-          # unpolarized data
-          pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
-          # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
-          waves = [  # order must match columns in file with partial-wave amplitudes
-            ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
-            # P-waves
-            ("P_0",  QnWaveIndex(refl = None, l = 1, m =  0)),
-            ("P_+1", QnWaveIndex(refl = None, l = 1, m = +1)),
-            ("P_-1", QnWaveIndex(refl = None, l = 1, m = -1)),
-            # D-waves
-            ("D_0",  QnWaveIndex(refl = None, l = 2, m =  0)),
-            ("D_+1", QnWaveIndex(refl = None, l = 2, m = +1)),
-            ("D_+2", QnWaveIndex(refl = None, l = 2, m = +2)),
-            ("D_-1", QnWaveIndex(refl = None, l = 2, m = -1)),
-            ("D_-2", QnWaveIndex(refl = None, l = 2, m = -2)),
-            # # F-waves
-            # ("F_0",  QnWaveIndex(refl = None, l = 3, m =  0)),
-            # ("F_+1", QnWaveIndex(refl = None, l = 3, m = +1)),
-            # ("F_+2", QnWaveIndex(refl = None, l = 3, m = +2)),
-            # ("F_+3", QnWaveIndex(refl = None, l = 3, m = +3)),
-            # ("F_-1", QnWaveIndex(refl = None, l = 3, m = -1)),
-            # ("F_-2", QnWaveIndex(refl = None, l = 3, m = -2)),
-            # ("F_-3", QnWaveIndex(refl = None, l = 3, m = -3)),
-          ]
-        else:
-          # polarized data
-          # pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD.txt"
-          pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD_100M.txt"
-          waves = [  # order must match columns in file with partial-wave amplitudes
-            # S-waves
-            ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),
-            ("S_0-",  QnWaveIndex(refl = -1, l = 0, m =  0)),
-            # P-waves
-            ("P_0+",  QnWaveIndex(refl = +1, l = 1, m =  0)),
-            ("P_+1+", QnWaveIndex(refl = +1, l = 1, m = +1)),
-            ("P_-1+", QnWaveIndex(refl = +1, l = 1, m = -1)),
-            ("P_0-",  QnWaveIndex(refl = -1, l = 1, m =  0)),
-            ("P_+1-", QnWaveIndex(refl = -1, l = 1, m = +1)),
-            ("P_-1-", QnWaveIndex(refl = -1, l = 1, m = -1)),
-            # D-waves
-            ("D_0+",  QnWaveIndex(refl = +1, l = 2, m =  0)),
-            ("D_+1+", QnWaveIndex(refl = +1, l = 2, m = +1)),
-            ("D_+2+", QnWaveIndex(refl = +1, l = 2, m = +2)),
-            ("D_-1+", QnWaveIndex(refl = +1, l = 2, m = -1)),
-            ("D_-2+", QnWaveIndex(refl = +1, l = 2, m = -2)),
-            ("D_0-",  QnWaveIndex(refl = -1, l = 2, m =  0)),
-            ("D_+1-", QnWaveIndex(refl = -1, l = 2, m = +1)),
-            ("D_+2-", QnWaveIndex(refl = -1, l = 2, m = +2)),
-            ("D_-1-", QnWaveIndex(refl = -1, l = 2, m = -1)),
-            ("D_-2-", QnWaveIndex(refl = -1, l = 2, m = -2)),
-          ]
+            pwaAmplitudesFileName = None
+            waves: list[tuple[str, QnWaveIndex]] = []
 
-        print(f"Calculating PWA moments")
-        momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
-        # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl"
-        momentResultsPwa: MomentResultsKinematicBinning = readMomentResultsPwa(
-          dataFileName = pwaAmplitudesFileName,
-          maxL         = cfg.maxL,
-          waves        = waves,
-          binVarMass   = cfg.binVarMass,
-          normalize    = cfg.normalizeMoments
-        )
-        print(f"Writing PWA moments to file '{momentResultsFileName}'")
-        momentResultsPwa.save(momentResultsFileName)
+            #TODO add this info to AnalysisConfig?
+            if cfg.polarization is None:
+              # unpolarized data
+              pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
+              # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+              waves = [  # order must match columns in file with partial-wave amplitudes
+                ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
+                # P-waves
+                ("P_0",  QnWaveIndex(refl = None, l = 1, m =  0)),
+                ("P_+1", QnWaveIndex(refl = None, l = 1, m = +1)),
+                ("P_-1", QnWaveIndex(refl = None, l = 1, m = -1)),
+                # D-waves
+                ("D_0",  QnWaveIndex(refl = None, l = 2, m =  0)),
+                ("D_+1", QnWaveIndex(refl = None, l = 2, m = +1)),
+                ("D_+2", QnWaveIndex(refl = None, l = 2, m = +2)),
+                ("D_-1", QnWaveIndex(refl = None, l = 2, m = -1)),
+                ("D_-2", QnWaveIndex(refl = None, l = 2, m = -2)),
+                # # F-waves
+                # ("F_0",  QnWaveIndex(refl = None, l = 3, m =  0)),
+                # ("F_+1", QnWaveIndex(refl = None, l = 3, m = +1)),
+                # ("F_+2", QnWaveIndex(refl = None, l = 3, m = +2)),
+                # ("F_+3", QnWaveIndex(refl = None, l = 3, m = +3)),
+                # ("F_-1", QnWaveIndex(refl = None, l = 3, m = -1)),
+                # ("F_-2", QnWaveIndex(refl = None, l = 3, m = -2)),
+                # ("F_-3", QnWaveIndex(refl = None, l = 3, m = -3)),
+              ]
+            else:
+              # polarized data
+              # pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD.txt"
+              pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD_100M.txt"
+              waves = [  # order must match columns in file with partial-wave amplitudes
+                # S-waves
+                ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),
+                ("S_0-",  QnWaveIndex(refl = -1, l = 0, m =  0)),
+                # P-waves
+                ("P_0+",  QnWaveIndex(refl = +1, l = 1, m =  0)),
+                ("P_+1+", QnWaveIndex(refl = +1, l = 1, m = +1)),
+                ("P_-1+", QnWaveIndex(refl = +1, l = 1, m = -1)),
+                ("P_0-",  QnWaveIndex(refl = -1, l = 1, m =  0)),
+                ("P_+1-", QnWaveIndex(refl = -1, l = 1, m = +1)),
+                ("P_-1-", QnWaveIndex(refl = -1, l = 1, m = -1)),
+                # D-waves
+                ("D_0+",  QnWaveIndex(refl = +1, l = 2, m =  0)),
+                ("D_+1+", QnWaveIndex(refl = +1, l = 2, m = +1)),
+                ("D_+2+", QnWaveIndex(refl = +1, l = 2, m = +2)),
+                ("D_-1+", QnWaveIndex(refl = +1, l = 2, m = -1)),
+                ("D_-2+", QnWaveIndex(refl = +1, l = 2, m = -2)),
+                ("D_0-",  QnWaveIndex(refl = -1, l = 2, m =  0)),
+                ("D_+1-", QnWaveIndex(refl = -1, l = 2, m = +1)),
+                ("D_+2-", QnWaveIndex(refl = -1, l = 2, m = +2)),
+                ("D_-1-", QnWaveIndex(refl = -1, l = 2, m = -1)),
+                ("D_-2-", QnWaveIndex(refl = -1, l = 2, m = -2)),
+              ]
 
-        timer.stop("Total execution time")
-        print(timer.summary)
+            print(f"Calculating PWA moments")
+            momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
+            # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl"
+            momentResultsPwa: MomentResultsKinematicBinning = readMomentResultsPwa(
+              dataFileName = pwaAmplitudesFileName,
+              maxL         = cfg.maxL,
+              waves        = waves,
+              binVarMass   = cfg.binVarMass,
+              normalize    = cfg.normalizeMoments
+            )
+            print(f"Writing PWA moments to file '{momentResultsFileName}'")
+            momentResultsPwa.save(momentResultsFileName)
+
+            timer.stop("Total execution time")
+            print(timer.summary)
