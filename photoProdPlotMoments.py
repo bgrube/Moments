@@ -189,7 +189,7 @@ def makeAllPlots(
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
-  momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl")
+  momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl") if cfg.plotMeasuredMoments else None
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
   if compareTo == "PWA":
@@ -246,30 +246,31 @@ def makeAllPlots(
       # plot moments in each mass bin
       chi2ValuesInMassBins: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # index: mass-bin index; index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
-        HMeas = momentResultsMeas   [massBinIndex]
+        HMeas = None if momentResultsMeas    is None else momentResultsMeas   [massBinIndex]
         HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
         # print(f"True moments for kinematic bin {title}:\n{HTruth}")
         print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
-        chi2ValuesInMassBins[massBinIndex] = plotMomentsInBin(
-          HData             = HPhys,
-          normalizedMoments = cfg.normalizeMoments,
-          HTruth            = HComp,
-          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
-          legendLabels      = ("Moment", momentResultsCompareLabel),
-          plotTruthUncert   = True,
-          truthColor        = momentResultsCompareColor,
-        )
-        if cfg.plotMeasuredMoments:
-          plotMomentsInBin(
-            HData             = HMeas,
+        if cfg.plotMomentsInBins:
+          chi2ValuesInMassBins[massBinIndex] = plotMomentsInBin(
+            HData             = HPhys,
             normalizedMoments = cfg.normalizeMoments,
-            HTruth            = None,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
-            plotLegend        = False,
+            HTruth            = HComp,
+            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
+            legendLabels      = ("Moment", momentResultsCompareLabel),
+            plotTruthUncert   = True,
+            truthColor        = momentResultsCompareColor,
           )
+          if cfg.plotMeasuredMoments:
+            plotMomentsInBin(
+              HData             = HMeas,
+              normalizedMoments = cfg.normalizeMoments,
+              HTruth            = None,
+              outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
+              plotLegend        = False,
+            )
         if cfg.plotCovarianceMatrices:
           #TODO also plot correlation matrices
           plotMomentsCovMatrices(
@@ -426,32 +427,33 @@ def makeAllPlots(
           canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
-      H000s = (
-        tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
-        tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
-      )
-      hists = (
-        ROOT.TH1D(f"H000Meas", "", *cfg.massBinning.astuple),
-        ROOT.TH1D(f"H000Phys", "", *cfg.massBinning.astuple),
-      )
-      for indexMeasPhys, H000 in enumerate(H000s):
-        histIntensity = hists[indexMeasPhys]
-        for HVal in H000:
-          if (cfg.massBinning.var not in HVal.binCenters.keys()):
-            continue
-          y, yErr = HVal.part(True)
-          binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[cfg.massBinning.var])
-          histIntensity.SetBinContent(binIndex, y)
-          histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
-      histRatio = hists[0].Clone("H000Ratio")
-      histRatio.Divide(hists[1])
-      canv = ROOT.TCanvas()
-      histRatio.SetMarkerStyle(ROOT.kFullCircle)
-      histRatio.SetMarkerSize(0.75)
-      histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
-      histRatio.SetMaximum(0.4)
-      histRatio.Draw("PEX0")
-      canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
+      if cfg.plotMeasuredMoments:
+        H000s = (
+          tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
+          tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
+        )
+        hists = (
+          ROOT.TH1D(f"H000Meas", "", *cfg.massBinning.astuple),
+          ROOT.TH1D(f"H000Phys", "", *cfg.massBinning.astuple),
+        )
+        for indexMeasPhys, H000 in enumerate(H000s):
+          histIntensity = hists[indexMeasPhys]
+          for HVal in H000:
+            if (cfg.massBinning.var not in HVal.binCenters.keys()):
+              continue
+            y, yErr = HVal.part(True)
+            binIndex = histIntensity.GetXaxis().FindBin(HVal.binCenters[cfg.massBinning.var])
+            histIntensity.SetBinContent(binIndex, y)
+            histIntensity.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)
+        histRatio = hists[0].Clone("H000Ratio")
+        histRatio.Divide(hists[1])
+        canv = ROOT.TCanvas()
+        histRatio.SetMarkerStyle(ROOT.kFullCircle)
+        histRatio.SetMarkerSize(0.75)
+        histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
+        histRatio.SetMaximum(0.4)
+        histRatio.Draw("PEX0")
+        canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
       # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
       histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
