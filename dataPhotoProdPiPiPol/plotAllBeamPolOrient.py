@@ -8,7 +8,7 @@ import ROOT
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  # ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C")
   ROOT.gROOT.LoadMacro("../rootlogon.C")
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
