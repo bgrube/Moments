@@ -350,7 +350,6 @@ def makeAllPlots(
             histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         histPwaTotalIntensity = None
         if False and qnIndex == H000Index:
-          #TODO add this info to AnalysisConfig
           plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
           # plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiPol/PWA_S_P_D/pwa_plots_SPD.root", "READ")
           histPwaTotalIntensity = convertGraphToHist(
@@ -455,22 +454,26 @@ def makeAllPlots(
         histRatio.Draw("PEX0")
         canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
-      # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-      histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
-                        .Histo1D(
-                          ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
-                        ).GetValue()
-      for binIndex, H000Meas in enumerate(H000s[0]):
-        H000Meas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
-      plotMoments(
-        HVals             = H000s[0],
-        binning           = cfg.massBinning,
-        normalizedMoments = cfg.normalizeMoments,
-        momentLabel       = H000Index.label,
-        outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
-        histTitle         = H000Index.title,
-        legendLabels      = ("Measured Moment", "Measured Intensity"),
-      )
+      if not cfg.dataFileName or not os.path.exists(cfg.dataFileName):
+        print(f"Warning: cannot find data file '{cfg.dataFileName=}'. Cannot overlay H_0^meas(0, 0) and measured distribution.")
+      else:
+        print(f"Overlaying measured intensity distribution from file '{cfg.dataFileName}'")
+        # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
+        histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
+                          .Histo1D(
+                            ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
+                          ).GetValue()
+        for binIndex, H000Meas in enumerate(H000s[0]):
+          H000Meas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
+        plotMoments(
+          HVals             = H000s[0],
+          binning           = cfg.massBinning,
+          normalizedMoments = cfg.normalizeMoments,
+          momentLabel       = H000Index.label,
+          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
+          histTitle         = H000Index.title,
+          legendLabels      = ("Measured Moment", "Measured Intensity"),
+        )
 
   if cfg.plotAngularDistributions:
     with timer.timeThis(f"Time to plot angular distributions"):
@@ -602,6 +605,7 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
+  # compareTo = ""
   # compareTo = "CLAS"
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   compareTo = "PWA"

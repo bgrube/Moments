@@ -547,6 +547,8 @@ def plotMoments(
     histResidual.SetMarkerColor(ROOT.kBlue + 1)
     histResidual.SetLineColor(ROOT.kBlue + 1)
     histResidual.SetLineWidth(2)
+    #TODO indicate points that lie out of this range
+    # see https://root-forum.cern.ch/t/histogram-drawing-options-e-do-not-clip-errorbars/41857
     histResidual.SetMinimum(-3)
     histResidual.SetMaximum(+3)
     canv = ROOT.TCanvas()
