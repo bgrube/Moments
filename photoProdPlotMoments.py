@@ -614,26 +614,41 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
 
-  for beamPolLabel in ("PARA_0", "PARA_135", "PERP_45", "PERP_90"):
-    print(f"Performing moment analysis for beam-polarization orientation '{beamPolLabel}'")
-    cfg.dataFileName       = f"./dataPhotoProdPiPiPol/data_flat_{beamPolLabel}.root"
-    cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_acc_flat_{beamPolLabel}.root"
-    cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/phaseSpace_gen_flat_{beamPolLabel}.root"
-    cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol_{beamPolLabel}"
-  # # for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
-  # for maxL in (4, ):
-  #   print(f"Plotting moments for L_max = {maxL}")
-  #   cfg.maxL = maxL
-    thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-    print(f"Writing output to log file '{logFileName}'")
-    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-      Utilities.printGitInfo()
-      timer = Utilities.Timer()
-      ROOT.gROOT.SetBatch(True)
-      setupPlotStyle()
-      print(f"Using configuration:\n{cfg}")
-      timer.start("Total execution time")
-      makeAllPlots(cfg, timer, compareTo)
-      timer.stop("Total execution time")
-      print(timer.summary)
+  tBinLabels = (
+    "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+  )
+  beamPolLabels = (
+    # "PARA_0", "PARA_135", "PERP_45", "PERP_90",
+    "allOrient",
+  )
+  maxLs = (
+    4,
+    # 5,
+    6,
+    # 7,
+    8,
+  )
+
+  for tBinLabel in tBinLabels:
+    for beamPolLabel in beamPolLabels:
+      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{beamPolLabel}"
+      for maxL in maxLs:
+        print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+        cfg.maxL = maxL
+        thisSourceFileName = os.path.basename(__file__)
+        logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+        print(f"Writing output to log file '{logFileName}'")
+        with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          Utilities.printGitInfo()
+          timer = Utilities.Timer()
+          ROOT.gROOT.SetBatch(True)
+          setupPlotStyle()
+          print(f"Using configuration:\n{cfg}")
+          timer.start("Total execution time")
+          makeAllPlots(cfg, timer, compareTo)
+          timer.stop("Total execution time")
+          print(timer.summary)
