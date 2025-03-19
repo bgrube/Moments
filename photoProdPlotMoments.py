@@ -299,33 +299,35 @@ def makeAllPlots(
             outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             graphTitle        = binTitle,
           )
-      # plot chi^2/ndf of physical moments w.r.t. true values as a function of mass
-      for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
-        for momentPart in ("Re", "Im"):
-          _, ndf = chi2ValuesInMassBins[0][momentIndex][momentPart]  # assume that ndf is the same for all mass bins
-          histChi2 = ROOT.TH1D(
-            f"{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_chi2_H{momentIndex}_{momentPart}",
-            f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
-            *cfg.massBinning.astuple
-          )
-          for massBinIndex in range(len(chi2ValuesInMassBins)):
-            chi2, ndf = chi2ValuesInMassBins[massBinIndex][momentIndex][momentPart]
-            if chi2 is None or ndf is None:
-              continue
-            massBinCenter = momentResultsPhys.binCenters[massBinIndex][cfg.massBinning.var]
-            histChi2.SetBinContent(histChi2.FindBin(massBinCenter), chi2 / ndf)
-          canv = ROOT.TCanvas()
-          histChi2.SetLineColor(ROOT.kBlue + 1)
-          histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-          histChi2.SetMaximum(20)
-          # histChi2.SetMaximum(3)
-          histChi2.Draw("HIST")
-          # add line at nominal chi2/ndf value to guide the eye
-          line = ROOT.TLine()
-          line.SetLineColor(ROOT.kGray + 1)
-          line.SetLineStyle(ROOT.kDashed)
-          line.DrawLine(cfg.massBinning.minVal, 1, cfg.massBinning.maxVal, 1)
-          canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
+      if cfg.plotMomentsInBins:
+        #TODO move to separate function?
+        # plot average chi^2/ndf of all physical moments w.r.t. true values as a function of mass
+        for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
+          for momentPart in ("Re", "Im"):
+            _, ndf = chi2ValuesInMassBins[0][momentIndex][momentPart]  # assume that ndf is the same for all mass bins
+            histChi2 = ROOT.TH1D(
+              f"{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_chi2_H{momentIndex}_{momentPart}",
+              f"#LT#it{{#chi}}^{{2}}/ndf#GT for all {momentPart}[#it{{H}}_{{{momentIndex}}}], #it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
+              *cfg.massBinning.astuple
+            )
+            for massBinIndex in range(len(chi2ValuesInMassBins)):
+              chi2, ndf = chi2ValuesInMassBins[massBinIndex][momentIndex][momentPart]
+              if chi2 is None or ndf is None:
+                continue
+              massBinCenter = momentResultsPhys.binCenters[massBinIndex][cfg.massBinning.var]
+              histChi2.SetBinContent(histChi2.FindBin(massBinCenter), chi2 / ndf)
+            canv = ROOT.TCanvas()
+            histChi2.SetLineColor(ROOT.kBlue + 1)
+            histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
+            histChi2.SetMaximum(30)
+            # histChi2.SetMaximum(3)
+            histChi2.Draw("HIST")
+            # add line at nominal chi2/ndf value to guide the eye
+            line = ROOT.TLine()
+            line.SetLineColor(ROOT.kGray + 1)
+            line.SetLineStyle(ROOT.kDashed)
+            line.DrawLine(cfg.massBinning.minVal, 1, cfg.massBinning.maxVal, 1)
+            canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot mass dependences of all moments
       chi2ValuesForMoments: dict[QnMomentIndex, dict[str, tuple[float, float] | tuple[None, None]]] = {}  # key: quantum-number index of moment; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
@@ -395,7 +397,8 @@ def makeAllPlots(
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
-      # plot chi^2/ndf of physical moments w.r.t. true values as a function of mass
+      # plot chi^2/ndf of each physical moments w.r.t. true value, averaged over the mass bins
+      #TODO move to separate function?
       _, ndf = chi2ValuesForMoments[H000Index]["Re"]  # assume that ndf is the same for all moments; take value from Re[H_0(0, 0)]
       for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
         for momentPart in ("Re", "Im"):
@@ -403,7 +406,7 @@ def makeAllPlots(
           chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
           histChi2 = ROOT.TH1D(
             f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
-            f"#it{{L}}_{{max}} = {cfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
+            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {cfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
             len(chi2Values), 0, len(chi2Values)
           )
           for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
