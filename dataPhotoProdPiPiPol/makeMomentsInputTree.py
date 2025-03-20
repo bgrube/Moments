@@ -194,24 +194,25 @@ if __name__ == "__main__":
   # use azimuthal angles of photon beam polarization listed in Tab. 2 of https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=3977&version=6
   tBinLabel              = "tbin_0.1_0.2"
   # tBinLabel              = "tbin_0.2_0.3"
-  dataBaseDirName        = f"./pipi_gluex_coh/{tBinLabel}"
-  # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
-  # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
-  # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
-  phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",          f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
-  phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
-  # phaseSpaceGenFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_thrown_30274_31057.root",   f"{dataBaseDirName}/MC_rho/amptools_tree_thrown_30274_31057.root")
-  # phaseSpaceAccFileNames = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
+  dataInputDirName       = f"./pipi_gluex_coh/{tBinLabel}"
+  # phaseSpaceGenFileNames = (f"{dataInputDirName}/MC_100M/amptools_tree_thrown_30274_31057.root", )
+  # phaseSpaceAccFileNames = (f"{dataInputDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
+  # phaseSpaceGenFileNames = (f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root", )
+  # phaseSpaceAccFileNames = (f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
+  phaseSpaceGenFileNames = (f"{dataInputDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",          f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+  phaseSpaceAccFileNames = (f"{dataInputDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # phaseSpaceGenFileNames = (f"{dataInputDirName}/MC_ps/amptools_tree_thrown_30274_31057.root",   f"{dataInputDirName}/MC_rho/amptools_tree_thrown_30274_31057.root")
+  # phaseSpaceAccFileNames = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   outputColumns          = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
-  applyAdditionalCuts    = True  # apply additional cuts to remove forward-going tracks
+  # applyAdditionalCuts    = True  # apply additional cuts to remove forward-going tracks
+  applyAdditionalCuts    = False  # apply additional cuts to remove forward-going tracks
 
   outputDirName = tBinLabel
   os.makedirs(outputDirName, exist_ok = True)
   for dataLabel, dataInfo in BEAM_POL_INFOS.items():
     # convert real data
-    inputSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_{dataLabel}_30274_31057.root", )
-    inputBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_{dataLabel}_30274_31057.root", )
+    inputSigRegionFileNames = (f"{dataInputDirName}/amptools_tree_data_{dataLabel}_30274_31057.root", )
+    inputBkgRegionFileNames = (f"{dataInputDirName}/amptools_tree_bkgnd_{dataLabel}_30274_31057.root", )
     realDataOutputFileName  = f"{outputDirName}/data_flat_{dataLabel}.root"
     print(f"Writing '{dataLabel}' real data from {inputSigRegionFileNames} and {inputBkgRegionFileNames} to file '{realDataOutputFileName}'")
     defineDataFrameColumns(

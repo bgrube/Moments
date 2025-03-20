@@ -98,19 +98,19 @@ if __name__ == "__main__":
   # beamPolLabel           = "PERP_45"
   # beamPolLabel           = "PERP_90"
   beamPolAngle           = BEAM_POL_INFOS[beamPolLabel].beamPolPhi
-  # tBinLabel              = "tbin_0.1_0.2"
-  tBinLabel              = "tbin_0.2_0.3"
-  dataBaseDirName        = f"./pipi_gluex_coh/{tBinLabel}"
-  dataSigRegionFileNames = (f"{dataBaseDirName}/amptools_tree_data_{beamPolLabel}_30274_31057.root", )
-  dataBkgRegionFileNames = (f"{dataBaseDirName}/amptools_tree_bkgnd_{beamPolLabel}_30274_31057.root", )
-  # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
-  # mcDataFileNames        = (f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
-  # mcDataFileNames        = (f"{dataBaseDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataBaseDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
-  # mcDataFileNames        = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", )
-  # mcDataFileNames        = (f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root", )
-  mcDataFileNames        = (f"{dataBaseDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataBaseDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
+  tBinLabel              = "tbin_0.1_0.2"
+  # tBinLabel              = "tbin_0.2_0.3"
+  dataInputDirName       = f"./pipi_gluex_coh/{tBinLabel}"
+  dataSigRegionFileNames = (f"{dataInputDirName}/amptools_tree_data_{beamPolLabel}_30274_31057.root", )
+  dataBkgRegionFileNames = (f"{dataInputDirName}/amptools_tree_bkgnd_{beamPolLabel}_30274_31057.root", )
+  # mcDataFileNames        = (f"{dataInputDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", )
+  # mcDataFileNames        = (f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root", )
+  mcDataFileNames        = (f"{dataInputDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root", f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # mcDataFileNames        = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames        = (f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root", )
+  # mcDataFileNames        = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   treeName               = "kin"
-  outputDirName          = f"{tBinLabel}/{beamPolLabel}"
+  outputDirName          = f"{tBinLabel}/data_{beamPolLabel}"
 
   # read in real data in AmpTools format and plot RF-sideband subtracted distributions
   lvBeam   = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"
@@ -148,6 +148,7 @@ if __name__ == "__main__":
      .Define("ThetaLabPim",        f"TLorentzVector({lvPim}).Theta() * TMath::RadToDeg()")
      .Define("DistFdcPip",         f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
      .Define("DistFdcPim",         f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
+    #  .Filter("(DistFdcPip > 4) && (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
   )
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = (
@@ -182,12 +183,12 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDistFdcVsMomLabPim",       ";p_{#pi^{#minus}} [GeV];#Delta r_{#pi^{#minus}}^{FDC} [cm]", 100, 0, 10, 100, 0,   20),   "MomLabPim",  "DistFdcPim",  "eventWeight"),
     df.Histo3D(ROOT.RDF.TH3DModel("hDataPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg", "eventWeight"),
   )
+  # write real-data histograms to ROOT file and generate PDF plots
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/dataPlots.root"
   outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
   print(f"Writing histograms to '{outRootFileName}'")
   outRootFile.cd()
-  # write real-data histograms to ROOT file and generate PDF plots
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
