@@ -9,6 +9,7 @@ from makeMomentsInputTree import (
   CPP_CODE_BIGPHI,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
+  CPP_CODE_TRACKDISTFDC,
 )
 
 
@@ -23,6 +24,7 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
+  ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
   # declare C++ function to calculate invariant mass of a particle
   CPP_CODE = """
 	double
@@ -78,17 +80,31 @@ if __name__ == "__main__":
         .Define("GjPhiDegPiPi",   f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
         .Define("HfCosThetaPiPi", f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
         .Define("HfPhiDegPiPi",   f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
+        # track momenta
+        .Define("MomLabPip",      f"TLorentzVector({lvPip}).P()")
+        .Define("MomLabPim",      f"TLorentzVector({lvPim}).P()")
+        .Define("ThetaLabPip",    f"TLorentzVector({lvPip}).Theta() * TMath::RadToDeg()")
+        .Define("ThetaLabPim",    f"TLorentzVector({lvPim}).Theta() * TMath::RadToDeg()")
+        .Define("DistFdcPip",     f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
+        .Define("DistFdcPim",     f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
+        # .Filter("(DistFdcPip > 4) && (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
   )
   yAxisLabel = "Events"
   hists = (
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,      2),    "FsMassRecoil"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,      2),    "FsMassPip"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,      2),    "FsMassPim"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",     ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28,   2.28), "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiPwa",  ";m_{#pi#pi} [GeV];"        + yAxisLabel,  50, 0.28,   2.28), "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipP",     ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,      5),    "MassPipP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimP",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,      5),    "MassPimP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",       ";#minus t [GeV^{2}];"      + yAxisLabel, 100, 0,      1),    "minusT"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"                   + yAxisLabel, 100, 0,      2),    "FsMassRecoil"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"              + yAxisLabel, 100, 0,      2),    "FsMassPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"             + yAxisLabel, 100, 0,      2),    "FsMassPim"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",     ";m_{#pi#pi} [GeV];"                   + yAxisLabel, 400, 0.28,   2.28), "MassPiPi"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPiPwa",  ";m_{#pi#pi} [GeV];"                   + yAxisLabel,  50, 0.28,   2.28), "MassPiPi"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPipP",     ";m_{p#pi^{#plus}} [GeV];"             + yAxisLabel, 400, 1,      5),    "MassPipP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMassPimP",     ";m_{p#pi^{#minus}} [GeV];"            + yAxisLabel, 400, 1,      5),    "MassPimP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",       ";#minus t [GeV^{2}];"                 + yAxisLabel, 100, 0,      1),    "minusT"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMomLabPip",    ";p_{#pi^{#plus}} [GeV];"              + yAxisLabel, 100, 0,     10),    "MomLabPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMomLabPim",    ";p_{#pi^{#minus}} [GeV];"             + yAxisLabel, 100, 0,     10),    "MomLabPim"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcThetaLabPip",  ";#theta_{#pi^{#plus}}^{lab} [deg];"   + yAxisLabel, 100, 0,     30),    "ThetaLabPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcThetaLabPim",  ";#theta_{#pi^{#minus}}^{lab} [deg];"  + yAxisLabel, 100, 0,     30),    "ThetaLabPim"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcDistFdcPip",   ";#Delta r_{#pi^{#plus}}^{FDC} [cm];"  + yAxisLabel, 100, 0,     40),    "DistFdcPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcDistFdcPim",   ";#Delta r_{#pi^{#minus}}^{FDC} [cm];" + yAxisLabel, 100, 0,     40),    "DistFdcPim"),
     df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo1D(ROOT.RDF.TH1DModel("hMcMinusTRho", ";#minus t [GeV^{2}];" + yAxisLabel, 100, 0, 1), "minusT"),
     # pi+pi- system
     df.Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",     100, -1,   +1,    72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
@@ -97,8 +113,12 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsHfPhiDegPiPi",   ";m_{#pi#pi} [GeV];#phi_{HF}",          50, 0.28, 2.28,  72, -180, +180), "MassPiPi",       "HfPhiDegPiPi"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsPhiDeg",         ";m_{#pi#pi} [GeV];#Phi",               50, 0.28, 2.28,  72, -180, +180), "MassPiPi",       "PhiDeg"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsMinusT",         ";m_{#pi#pi} [GeV];#minus t [GeV^{2}]", 50,  0.28, 2.28, 50,    0,    1), "MassPiPi",       "minusT"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPipPSq"),
-    df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 6, 100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",   100, 0, 6,  100, 0.5, 16.5), "MassPiPiSq", "MassPipPSq"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]",  100, 0, 6,  100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcThetaLabVsMomLabPip",      ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",    100, 0, 10, 100, 0,   15),   "MomLabPip",  "ThetaLabPip"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcThetaLabVsMomLabPim",      ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]",  100, 0, 10, 100, 0,   15),   "MomLabPim",  "ThetaLabPim"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcDistFdcVsMomLabPip",       ";p_{#pi^{#plus}} [GeV];#Delta r_{#pi^{#plus}}^{FDC} [cm]",   100, 0, 10, 100, 0,   20),   "MomLabPip",  "DistFdcPip"),
+    df.Histo2D(ROOT.RDF.TH2DModel("hMcDistFdcVsMomLabPim",       ";p_{#pi^{#minus}} [GeV];#Delta r_{#pi^{#minus}}^{FDC} [cm]", 100, 0, 10, 100, 0,   20),   "MomLabPim",  "DistFdcPim"),
     df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg"),
   )
   # write MC histograms to ROOT file and generate PDF plots
