@@ -349,7 +349,7 @@ def drawTF3(
   # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead
   histName = os.path.splitext(os.path.basename(pdfFileName))[0]
-  fistFcn = ROOT.TH3F(histName, histTitle, *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
+  fistFcn = ROOT.TH3F(histName, histTitle if histTitle else fcn.GetTitle(), *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
   xAxis = fistFcn.GetXaxis()
   yAxis = fistFcn.GetYaxis()
   zAxis = fistFcn.GetZaxis()
