@@ -71,31 +71,39 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
-  tBinLabels        = (
-    "tbin_0.1_0.2",
+  tBinLabels = (
+    # "tbin_0.1_0.2",
+    "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
   )
   dataSetsToCombine = {
-    "0_90"      : ("PARA_0",   "PERP_90"),
-    "-45_45"    : ("PARA_135", "PERP_45"),
-    "0_-45"     : ("PARA_0",   "PARA_135"),
-    "45_90"     : ("PERP_45",  "PERP_90"),
+    # "0_90"      : ("PARA_0",   "PERP_90"),
+    # "-45_45"    : ("PARA_135", "PERP_45"),
+    # "0_-45"     : ("PARA_0",   "PARA_135"),
+    # "45_90"     : ("PERP_45",  "PERP_90"),
     "allOrient" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
   }
-  momentsFileName   = "_moments_phys.pkl"
+  maxLs = (
+    4,
+    # 5,
+    6,
+    # 7,
+    8,
+  )
+  momentsFileName = "_moments_phys.pkl"
 
   thisSourceFileName = os.path.basename(__file__)
   for tBinLabel in tBinLabels:
-    for maxL in (5, 6, 7, 8):
+    for maxL in maxLs:
       cfg.maxL = maxL
       for labelCombined, beamPolLabels in dataSetsToCombine.items():
         print(f"Combining moments for data sets '{beamPolLabels}' for t bin '{tBinLabel}' and L_max = {maxL}")
         # constructing input file names
         momentResultsFileNames = []
         for beamPolLabel in beamPolLabels:
-          cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
+          cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{beamPolLabel}"
           momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
-        cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{labelCombined}"
+        cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{labelCombined}"
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
         with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
