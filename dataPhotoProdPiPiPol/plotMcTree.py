@@ -122,8 +122,14 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDistFdcVsMomLabPip",       ";p_{#pi^{#plus}} [GeV];#Delta r_{#pi^{#plus}}^{FDC} [cm]",   100, 0, 10, 100, 0,   20),   "MomLabPip",  "DistFdcPip"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDistFdcVsMomLabPim",       ";p_{#pi^{#minus}} [GeV];#Delta r_{#pi^{#minus}}^{FDC} [cm]", 100, 0, 10, 100, 0,   20),   "MomLabPim",  "DistFdcPim"),
     df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg"),
-    df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPiRho", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
-    df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPiRho", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
+    df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPiRho",  ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
+    df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPiRho",  ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
+    df.Filter("(1.20 < MassPiPi) and (MassPiPi < 1.40)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi_1.3", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
+    df.Filter("(1.20 < MassPiPi) and (MassPiPi < 1.40)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi_1.3", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
+    df.Filter("(1.60 < MassPiPi) and (MassPiPi < 1.80)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi_1.7", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
+    df.Filter("(1.60 < MassPiPi) and (MassPiPi < 1.80)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi_1.7", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
+    df.Filter("(2.00 < MassPiPi) and (MassPiPi < 2.20)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi_2.1", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
+    df.Filter("(2.00 < MassPiPi) and (MassPiPi < 2.20)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi_2.1", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
   )
   # write MC histograms to ROOT file and generate PDF plots
   os.makedirs(outputDirName, exist_ok = True)
