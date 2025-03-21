@@ -147,7 +147,7 @@ def defineDataFrameColumns(
     df = (
       df.Define("DistFdcPip", f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
         .Define("DistFdcPim", f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
-        .Filter("(DistFdcPip > 4) && (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
+        .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
     )
   return df
 
