@@ -31,10 +31,7 @@ from MomentCalculator import (
   MomentCalculatorsKinematicBinning,
   MomentIndices,
 )
-from PlottingUtilities import (
-  HistAxisBinning,
-  setupPlotStyle,
-)
+from PlottingUtilities import HistAxisBinning
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
@@ -181,8 +178,9 @@ CFG_NIZAR = AnalysisConfig(
 
 
 def calculateAllMoments(
-  cfg:   AnalysisConfig,
-  timer: Utilities.Timer = Utilities.Timer(),
+  cfg:                   AnalysisConfig,
+  timer:                 Utilities.Timer        = Utilities.Timer(),
+  limitToDataEntryRange: tuple[int, int] | None = None,  # for debugging: limit analysis to entry range [begin, end) of real-data data tree
 ) -> None:
   """Performs the moment analysis for the given configuration"""
   # setup MomentCalculators for all mass bins
@@ -191,6 +189,10 @@ def calculateAllMoments(
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
     print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
     data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
+    if limitToDataEntryRange is not None:
+      print(f"Limiting analysis to entry range [{limitToDataEntryRange[0]}, {limitToDataEntryRange[1]}) of real data")
+      data = data.Range(*limitToDataEntryRange)
+    print(f"Loaded {data.Count().GetValue()} real-data events")
     print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
     dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
     if cfg.limitNmbPsAccEvents > 0:
@@ -305,7 +307,6 @@ if __name__ == "__main__":
           Utilities.printGitInfo()
           timer = Utilities.Timer()
           ROOT.gROOT.SetBatch(True)
-          setupPlotStyle()
           threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
           print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
           with threadController.limit(limits = 4):
