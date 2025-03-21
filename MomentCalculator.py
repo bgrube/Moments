@@ -692,7 +692,7 @@ class MomentValue:
 
   def __str__(self) -> str:
     momentSymbol = f"H{'^' + self.label if self.label else ''}_{self.qn.momentIndex}(L = {self.qn.L}, M = {self.qn.M})"
-    result = (f"Re[{momentSymbol}] = {self.val.real} +- {self.uncertRe}\n"
+    result = (f"Re[{momentSymbol}] = {self.val.real} +- {self.uncertRe}; "
               f"Im[{momentSymbol}] = {self.val.imag} +- {self.uncertIm}")
     return result
 
@@ -1020,11 +1020,12 @@ class MomentResult:
 
   def intensityFormula(
     self,
-    polarization: float | None,  # photon-beam polarization
-    thetaFormula: str,           # formula for polar angle theta [rad]
-    phiFormula:   str,           # formula for azimuthal angle phi [rad]
-    PhiFormula:   str,           # formula for angle Phi between photon polarization and production plane[rad]
-    printFormula: bool = False,  # if set formula for calculation of intensity is printed
+    polarization:     float | None,  # photon-beam polarization
+    thetaFormula:     str,           # formula for polar angle theta [rad]
+    phiFormula:       str,           # formula for azimuthal angle phi [rad]
+    PhiFormula:       str,           # formula for angle Phi between photon polarization and production plane[rad]
+    printFormula:     bool = False,  # if True formula for calculation of intensity is printed
+    useMomentSymbols: bool = False,  # if True insert TFormula parameter names "[Hi_L_M]" instead of moment values into formula
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
@@ -1035,10 +1036,10 @@ class MomentResult:
       M           = qnIndex.M
       HLM         = self[QnMomentIndex(momentIndex, L, M)].val
       YLM         = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
-      intensityComponentTerms[momentIndex].append(
-        f"{np.sqrt((2 * L + 1) / (4 * math.pi))} * {1 if M == 0 else 2} "
-        f"* {HLM.imag if momentIndex == 2 else HLM.real} * {'Im' if momentIndex == 2 else 'Re'}{YLM}"
-      )
+      term        = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "
+      term       += f"* [{qnIndex.label}] " if useMomentSymbols else f"* ({HLM.imag if momentIndex == 2 else HLM.real}) "
+      term       += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"
+      intensityComponentTerms[momentIndex].append(term)
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3
     for momentIndex, terms in enumerate(intensityComponentTerms):
