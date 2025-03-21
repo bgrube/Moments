@@ -671,7 +671,7 @@ if __name__ == "__main__":
     outFileDirName    = Utilities.makeDirPath("./plotsTestDiffractive")
     nmbEvents         = 1000
     nmbMcEvents       = 1000000
-    # formulas for detection efficiency: x = cos(theta), y = phi in [-180, +180] deg
+    # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
     # efficiencyFormula = "1"  # acc_perfect
     # efficiencyFormula = "2 - x * x"  # acc_1
     # efficiencyFormula = "1 - x * x"  # acc_2

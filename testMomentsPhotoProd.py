@@ -41,18 +41,18 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
-# default TH3 plotting options
-TH3_NMB_BINS = 25
-TH3_BINNINGS = (
-  HistAxisBinning(TH3_NMB_BINS,   -1,   +1),
-  HistAxisBinning(TH3_NMB_BINS, -180, +180),
-  HistAxisBinning(TH3_NMB_BINS, -180, +180),
+# default TH3 plotting options for angular distributions
+TH3_ANG_NMB_BINS = 25
+TH3_ANG_BINNINGS = (
+  HistAxisBinning(TH3_ANG_NMB_BINS,   -1,   +1),
+  HistAxisBinning(TH3_ANG_NMB_BINS, -180, +180),
+  HistAxisBinning(TH3_ANG_NMB_BINS, -180, +180),
 )
-TH3_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
+TH3_ANG_TITLE = ";cos#theta;#phi [deg];#Phi [deg]"
 class Th3PlotKwargsType(TypedDict):
   binnings:  tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning]
   histTitle: str
-TH3_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_TITLE, "binnings" : TH3_BINNINGS}
+TH3_ANG_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_ANG_TITLE, "binnings" : TH3_ANG_BINNINGS}
 
 
 def genDataFromWaves(
@@ -69,11 +69,11 @@ def genDataFromWaves(
 
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3(f"efficiencyGen{nameSuffix}", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, nmbPoints = 100, maxVal = 1.0,
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, nmbPoints = 100, maxVal = 1.0,
     pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
 
   # construct TF3 for intensity distribution in Eq. (171)
-  # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
+  # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
   intensityFormula = amplitudeSet.intensityFormula(
     polarization = polarization,
     thetaFormula = "std::acos(x)",
@@ -84,12 +84,12 @@ def genDataFromWaves(
   if efficiencyFormula:
     intensityFormula = f"{intensityFormula} * ({efficiencyFormula})"
   intensityFcn = ROOT.TF3(f"intensity{nameSuffix}", intensityFormula, -1, +1, -180, +180, -180, +180)
-  intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
+  # intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-  drawTF3(intensityFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.pdf")
+  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.pdf")
   #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
   # generate random data that follow intensity given by partial-wave amplitudes
@@ -100,26 +100,26 @@ def genDataFromWaves(
     return ROOT.RDataFrame(treeName, fileName)
   print(f"Generating partial-wave MC data and writing them to '{fileName}'")
   RootUtilities.declareInCpp(**{intensityFcn.GetName() : intensityFcn})  # use Python object in C++
-  pointFunc = f"""
+  dataPointFcn = f"""
     double cosTheta, phiDeg, PhiDeg;
     PyVars::{intensityFcn.GetName()}.GetRandom3(cosTheta, phiDeg, PhiDeg);
-    std::vector<double> point = {{cosTheta, phiDeg, PhiDeg}};
-    return point;
+    std::vector<double> dataPoint = {{cosTheta, phiDeg, PhiDeg}};
+    return dataPoint;
   """  # C++ code that throws random point in angular space
   df = (
     ROOT.RDataFrame(nmbEvents)
-        .Define("point",    pointFunc)
-        .Define("cosTheta", "point[0]")
-        .Define("theta",    "std::acos(cosTheta)")
-        .Define("phiDeg",   "point[1]")
-        .Define("phi",      "TMath::DegToRad() * phiDeg")
-        .Define("PhiDeg",   "point[2]")
-        .Define("Phi",      "TMath::DegToRad() * PhiDeg")
+        .Define("dataPoint", dataPointFcn)
+        .Define("cosTheta",  "dataPoint[0]")
+        .Define("theta",     "std::acos(cosTheta)")
+        .Define("phiDeg",    "dataPoint[1]")
+        .Define("phi",       "TMath::DegToRad() * phiDeg")
+        .Define("PhiDeg",    "dataPoint[2]")
+        .Define("Phi",       "TMath::DegToRad() * PhiDeg")
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')
         .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
   )
-    # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-    # noop filter before snapshot logs when event loop is running
+    # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
+    # the noop filter before snapshot logs when event loop is running
     #!NOTE! for some reason, this is very slow
   return df
 
@@ -134,7 +134,7 @@ def genAccepted2BodyPsPhotoProd(
   print(f"Generating {nmbEvents} events distributed according to two-body phase-space weighted by efficiency {efficiencyFormula}")
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawTF3(efficiencyFcn, **TH3_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName   = Utilities.makeDirPath("./plotsTestPhotoProd")
+    outputDirName    = Utilities.makeDirPath("./plotsTestPhotoProd")
     nmbPwaMcEvents   = 1000
     nmbPsMcEvents    = 1000000
     beamPolarization = 1.0
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     ]
     amplitudeSet = AmplitudeSet(partialWaveAmplitudes)
     # formulas for detection efficiency
-    # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
+    # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     # efficiencyFormulaGen = "1"  # acc_perfect
     efficiencyFormulaGen = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
     # efficiencyFormulaGen = "(0.75 + 0.25 * x) * (0.75 + 0.25 * (y / 180)) * (0.75 + 0.25 * (z / 180))"  # acc_2; odd in all variables
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
     if efficiencyFormulaDetune:
       efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-      drawTF3(efficiencyFcnDetune, **TH3_PLOT_KWARGS, pdfFileName = f"{outFileDirName}/hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
+      drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
       efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
     else:
       efficiencyFormulaReco = efficiencyFormulaGen
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     t = timer.start("Time to generate MC data from partial waves")
     HTruth: MomentResult = amplitudeSet.photoProdMomentSet(maxL)
     print(f"True moment values\n{HTruth}")
-    dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
+    dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, outFileNamePrefix = f"{outputDirName}/", regenerateData = True)
     t.stop()
 
     # plot data generated from partial-wave amplitudes
@@ -247,11 +247,11 @@ if __name__ == "__main__":
     hist.GetYaxis().SetTitleOffset(2)
     hist.GetZaxis().SetTitleOffset(1.5)
     hist.Draw("BOX2Z")
-    canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
     # generate accepted phase-space data
     t = timer.start("Time to generate phase-space MC data")
-    dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco, outFileNamePrefix = f"{outFileDirName}/", regenerateData = True)
+    dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco, outFileNamePrefix = f"{outputDirName}/", regenerateData = True)
     t.stop()
 
     # setup moment calculator
@@ -263,7 +263,7 @@ if __name__ == "__main__":
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
       dataSet = DataSet(dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents, polarization = beamPolarization)  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
-      momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
+      momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outputDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # dummy truth values; identical for all bins
       momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTruth))
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
@@ -279,8 +279,8 @@ if __name__ == "__main__":
     # plot acceptance integral matrices for all kinematic bins
     for HData in moments:
       label = binLabel(HData)
-      plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{label}")
-      plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{label}")
+      plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirName}/I_acc_{label}")
+      plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirName}/I_inv_{label}")
     t.stop()
 
     # calculate moments of data generated from partial-wave amplitudes
@@ -292,7 +292,7 @@ if __name__ == "__main__":
     # plot moments in each kinematic bin
     for HData in moments:
       label = binLabel(HData)
-      plotMomentsInBin(HData = moments[0].HPhys, HTruth = HTruth, outFileNamePrefix = f"{outFileDirName}/h{label}_")
+      plotMomentsInBin(HData = moments[0].HPhys, HTruth = HTruth, outFileNamePrefix = f"{outputDirName}/h{label}_")
     # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
     for qnIndex in momentIndices.qnIndices:
       plotMoments1D(
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         binning           = massBinning,
         normalizedMoments = True,
         momentResultsTrue = momentsTruth.momentResultsPhys,
-        outFileNamePrefix = f"{outFileDirName}/h",
+        outFileNamePrefix = f"{outputDirName}/h",
         histTitle         = qnIndex.title,
       )
     t.stop()

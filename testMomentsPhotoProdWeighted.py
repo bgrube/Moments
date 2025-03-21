@@ -35,8 +35,8 @@ import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C
 from testMomentsPhotoProd import (
   genAccepted2BodyPsPhotoProd,
   genDataFromWaves,
-  TH3_NMB_BINS,
-  TH3_TITLE,
+  TH3_ANG_NMB_BINS,
+  TH3_ANG_TITLE,
 )
 import Utilities
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     ]
     amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
     # formulas for detection efficiency
-    # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
+    # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     # efficiencyFormula = "1"  # acc_perfect
     efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
@@ -203,15 +203,15 @@ if __name__ == "__main__":
       canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
 
     # plot angular distributions of data generated from partial-wave amplitudes
-    histBinning = (TH3_NMB_BINS, -1, +1, TH3_NMB_BINS, -180, +180, TH3_NMB_BINS, -180, +180)
+    histBinning = (TH3_ANG_NMB_BINS, -1, +1, TH3_ANG_NMB_BINS, -180, +180, TH3_ANG_NMB_BINS, -180, +180)
     hists = (
       (dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})")
-                      .Histo3D(ROOT.RDF.TH3DModel("dataSig", TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
+                      .Histo3D(ROOT.RDF.TH3DModel("dataSig", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
       (dataPwaModelBkg.Filter(f"(({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))"
                            f"or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]}))")
-                      .Histo3D(ROOT.RDF.TH3DModel("dataBkg", TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
-      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
-      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
+                      .Histo3D(ROOT.RDF.TH3DModel("dataBkg", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
+      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
     )
     for hist in hists:
       hist.SetMinimum(0)

@@ -36,7 +36,7 @@ def genDataFromWaves(
   print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency histogram {efficiencyHist}")
 
   # construct TF3 for intensity distribution in Eq. (171)
-  # x = cos(theta) in [-1, +1], y = phi in [-180, +180] deg, z = Phi in [-180, +180] deg
+  # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
   intensityFormula = amplitudeSet.intensityFormula(
     polarization = polarization,
     thetaFormula = "std::acos(x)",
@@ -50,7 +50,7 @@ def genDataFromWaves(
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-  PlottingUtilities.drawTF3(intensityFcn, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hIntensity.pdf")
+  PlottingUtilities.drawTF3(intensityFcn, **testMomentsPhotoProd.TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hIntensity.pdf")
 
   # intensity as calculated from Eqs. (9) to (12) in https://arxiv.org/abs/2305.09047 assuming P_\gamma = 1, and SCHC with NPE
   # i.e. rho^1_{1 -1} = +1/2 and rho^2_{1 -1} = -i/2 (and rho^0_{1 1} = +1/2)
@@ -66,7 +66,7 @@ def genDataFromWaves(
   intensityFcn2.SetNpy(100)
   intensityFcn2.SetNpz(100)
   intensityFcn2.SetMinimum(0)
-  PlottingUtilities.drawTF3(intensityFcn2, **testMomentsPhotoProd.TH3_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hIntensity2.pdf")
+  PlottingUtilities.drawTF3(intensityFcn2, **testMomentsPhotoProd.TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hIntensity2.pdf")
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
