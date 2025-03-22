@@ -16,6 +16,7 @@ import threadpoolctl
 
 import ROOT
 import iminuit as im
+import iminuit.cost as cost
 from wurlitzer import pipes, STDOUT
 
 from MomentCalculator import (
@@ -94,28 +95,30 @@ if __name__ == "__main__":
       # calculate true moment values and generate data from partial-wave amplitudes
       HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
       print(f"True moment values\n{HTruth}")
-      with timer.timeThis("Time to generate MC data from partial waves"):
-        dataPwaModel = genDataFromWaves(
-          nmbEvents         = nmbPwaMcEvents,
-          polarization      = beamPolarization,
-          amplitudeSet      = amplitudeSetSig,
-          efficiencyFormula = None,
-          regenerateData    = True,
-          outFileNamePrefix = f"{outputDirName}/",
-        )
-        # plot data generated from partial-wave amplitudes
-        canv = ROOT.TCanvas()
-        nmbBins = 25
-        hist = dataPwaModel.Histo3D(
-          ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
-          "cosTheta", "phiDeg", "PhiDeg")
-        hist.SetMinimum(0)
-        hist.GetXaxis().SetTitleOffset(1.5)
-        hist.GetYaxis().SetTitleOffset(2)
-        hist.GetZaxis().SetTitleOffset(1.5)
-        hist.Draw("BOX2Z")
-        canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+      timer.start("Time to generate MC data from partial waves")
+      dataPwaModel = genDataFromWaves(
+        nmbEvents         = nmbPwaMcEvents,
+        polarization      = beamPolarization,
+        amplitudeSet      = amplitudeSetSig,
+        efficiencyFormula = None,
+        regenerateData    = False,
+        outFileNamePrefix = f"{outputDirName}/",
+      )
+      # plot data generated from partial-wave amplitudes
+      canv = ROOT.TCanvas()
+      nmbBins = 25
+      hist = dataPwaModel.Histo3D(
+        ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg")
+      hist.SetMinimum(0)
+      hist.GetXaxis().SetTitleOffset(1.5)
+      hist.GetYaxis().SetTitleOffset(2)
+      hist.GetZaxis().SetTitleOffset(1.5)
+      hist.Draw("BOX2Z")
+      canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+      timer.stop("Time to generate MC data from partial waves")
 
+      timer.start("Time to construct functions")
       # construct and draw intensity function with moments as parameters from formula
       # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
       intensityFormula = HTruth.intensityFormula(
@@ -187,7 +190,9 @@ if __name__ == "__main__":
           np.ascontiguousarray(Phis),
           moments,
         ))
-        return (0.0, intensities)
+        # for perfect acceptance H_0(0, 0) is predicted number of measured events
+        integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
+        return (integral, intensities)
       momentValues = np.array([HTruth[qnIndex].val.imag if qnIndex.momentIndex == 2 else HTruth[qnIndex].val.real for qnIndex in HTruth.indices.qnIndices])
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    np.double)
@@ -198,6 +203,23 @@ if __name__ == "__main__":
       #   intensityFcn.SetParameter(momentLabels[parIndex], momentValues[parIndex])
       for theta, phi, Phi in zip(thetas, phis, Phis):
         print(f"{intensityFcn.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi))=}")
+      timer.stop("Time to construct functions")
+
+      # load data and setup unbinned likelihood function
+      thetas = dataPwaModel.AsNumpy(columns = ["theta", ])["theta"]
+      phis   = dataPwaModel.AsNumpy(columns = ["phi",   ])["phi"]
+      Phis   = dataPwaModel.AsNumpy(columns = ["Phi",   ])["Phi"]
+      print(f"Fitting {len(thetas)} events")
+      extUnbinnedNllFcn = cost.ExtendedUnbinnedNLL(
+        data       = (thetas, phis, Phis),
+        scaled_pdf = intensityFcnVectorized,
+        verbose    = 1,
+      )
+      minuit = im.Minuit(extUnbinnedNllFcn, momentValues, name = momentLabels)
+      with timer.timeThis("Time needed by MIGRAD"):
+        minuit.migrad()
+      with timer.timeThis("Time needed by HESSE"):
+        minuit.hesse()
 
       timer.stop("Total execution time")
       print(timer.summary)
