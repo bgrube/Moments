@@ -23,11 +23,12 @@ from MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
   MomentResult,
+  QnMomentIndex,
   QnWaveIndex,
 )
 from PlottingUtilities import (
   drawTF3,
-  HistAxisBinning,
+  plotMomentsInBin,
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
@@ -44,22 +45,22 @@ print = functools.partial(print, flush = True)
 
 if __name__ == "__main__":
   # set parameters of test case
-  nmbPwaMcEvents   = 1000000 # number of "data" events to generate from partial-wave amplitudes
+  nmbPwaMcEvents   = 10000   # number of "data" events to generate from partial-wave amplitudes
   nmbPsMcEvents    = 100000  # number of phase-space events to generate
   beamPolarization = 1.0     # polarization of photon beam
   maxL             = 4       # maximum L quantum number of moments
-  outputDirName    = Utilities.makeDirPath("./plotsTestFitMoments")
+  outputDirName    = Utilities.makeDirPath("./plotsTestFitMoments2")
 
   thisSourceFileName = os.path.basename(__file__)
-  # logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
-  # print(f"Writing output to log file '{logFileName}'")
-  # with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-  if True:
+  logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
+  print(f"Writing output to log file '{logFileName}'")
+  with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+  # if True:
     print(f"Using iminuit version {im.__version__}")
     Utilities.printGitInfo()
     timer = Utilities.Timer()
     ROOT.gROOT.SetBatch(True)
-    ROOT.gRandom.SetSeed(1234567890)
+    ROOT.gRandom.SetSeed(123456789)
     setupPlotStyle()
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
@@ -92,7 +93,7 @@ if __name__ == "__main__":
       )
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
 
-      # calculate true moment values and generate data from partial-wave amplitudes
+      print("Calculating true moment values and generating data from partial-wave amplitudes")
       HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
       print(f"True moment values\n{HTruth}")
       timer.start("Time to generate MC data from partial waves")
@@ -101,10 +102,11 @@ if __name__ == "__main__":
         polarization      = beamPolarization,
         amplitudeSet      = amplitudeSetSig,
         efficiencyFormula = None,
+        # regenerateData    = True,
         regenerateData    = False,
         outFileNamePrefix = f"{outputDirName}/",
       )
-      # plot data generated from partial-wave amplitudes
+      print("Plotting data generated from partial-wave amplitudes")
       canv = ROOT.TCanvas()
       nmbBins = 25
       hist = dataPwaModel.Histo3D(
@@ -119,7 +121,7 @@ if __name__ == "__main__":
       timer.stop("Time to generate MC data from partial waves")
 
       timer.start("Time to construct functions")
-      # construct and draw intensity function with moments as parameters from formula
+      print("Constructing intensity function with moments as parameters from formula")
       # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
       intensityFormula = HTruth.intensityFormula(
         polarization     = beamPolarization,
@@ -132,15 +134,16 @@ if __name__ == "__main__":
       intensityFcn = ROOT.TF3("intensityMoments", intensityFormula, -1, +1, -180, +180, -180, +180)
       for qnIndex in HTruth.indices.qnIndices:
         Hval = HTruth[qnIndex].val
-        print(f"{qnIndex.label} = {Hval}")
+        print(f"!!! {qnIndex.label} = {Hval}")
         intensityFcn.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
+      print("Drawing intensity function")
       intensityFcn.SetNpx(100)
       intensityFcn.SetNpy(100)
       intensityFcn.SetNpz(100)
       intensityFcn.SetMinimum(0)
       drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf")
 
-      # construct vectorized intensity function using TFormula and OpenMP
+      print("Constructing vectorized intensity function using TFormula and OpenMP")
       # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
       intensityFormula = HTruth.intensityFormula(
         polarization     = beamPolarization,
@@ -198,28 +201,64 @@ if __name__ == "__main__":
       thetas = np.array([0,    1,    2],    np.double)
       phis   = np.array([0.5,  1.5,  2.5],  np.double)
       Phis   = np.array([0.75, 1.75, 2.75], np.double)
-      print(f"{intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = momentValues)=}")
+      print(f"!!! {intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = momentValues)=}")
       # for parIndex in range(len(momentValues)):
       #   intensityFcn.SetParameter(momentLabels[parIndex], momentValues[parIndex])
       for theta, phi, Phi in zip(thetas, phis, Phis):
-        print(f"{intensityFcn.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi))=}")
+        print(f"!!! {intensityFcn.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi))=}")
       timer.stop("Time to construct functions")
 
-      # load data and setup unbinned likelihood function
+      print("Loading data and setting up unbinned likelihood function and minimizer")
       thetas = dataPwaModel.AsNumpy(columns = ["theta", ])["theta"]
       phis   = dataPwaModel.AsNumpy(columns = ["phi",   ])["phi"]
       Phis   = dataPwaModel.AsNumpy(columns = ["Phi",   ])["Phi"]
-      print(f"Fitting {len(thetas)} events")
       extUnbinnedNllFcn = cost.ExtendedUnbinnedNLL(
         data       = (thetas, phis, Phis),
         scaled_pdf = intensityFcnVectorized,
-        verbose    = 1,
+        verbose    = 0,
       )
-      minuit = im.Minuit(extUnbinnedNllFcn, momentValues, name = momentLabels)
+      minuit = im.Minuit(extUnbinnedNllFcn, 1.01 * momentValues, name = momentLabels)
+      print(f"Fitting {len(thetas)} events")
       with timer.timeThis("Time needed by MIGRAD"):
-        minuit.migrad()
+        migrad = minuit.migrad()
+        print(f"!!! {migrad=}")
       with timer.timeThis("Time needed by HESSE"):
-        minuit.hesse()
+        hesse = minuit.hesse()
+        print(f"!!! {hesse=}")
+      # with timer.timeThis("Time needed by draw_mnmatrix"):
+      #   figure, axes = minuit.draw_mnmatrix()
+      #   figure.savefig(f"{outputDirName}/minuit_mnmatrix.pdf")
+
+      print("Transforming iminuit result into `MomentResult` object")
+      HPhys = MomentResult(HTruth.indices)
+      # construct index ranges for of purely real and purely imaginary moments
+      indices = HPhys.indices
+      reIndexRange = (QnMomentIndex(momentIndex = 0, L = 0, M = 0), QnMomentIndex(momentIndex = 1, L = maxL, M = maxL))  # all H_0 and H_1 moments are real-valued
+      imIndexRange = (QnMomentIndex(momentIndex = 2, L = 1, M = 1), QnMomentIndex(momentIndex = 2, L = maxL, M = maxL))  # all H_2 moments are purely imaginary
+      # convert to flat indices
+      reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
+      imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
+      print(f"!!! reSlice = {reSlice}, imSlice = {imSlice}")
+      # copy values
+      par = np.array(minuit.values)
+      HPhys._valsFlatIndex[reSlice] = par[reSlice]
+      HPhys._valsFlatIndex[imSlice] = par[imSlice] * 1j  # convert to purely imaginary
+      # copy covariance matrix
+      cov = minuit.covariance
+      HPhys._V_ReReFlatIndex[reSlice, reSlice] = np.array(cov[reSlice, reSlice])
+      HPhys._V_ImImFlatIndex[imSlice, imSlice] = np.array(cov[imSlice, imSlice])
+      HPhys._V_ReImFlatIndex[reSlice, imSlice] = np.array(cov[reSlice, imSlice])
+
+      print("Plotting fit results")
+      plotMomentsInBin(
+        HData             = HPhys,
+        normalizedMoments = False,
+        HTruth            = HTruth,
+        outFileNamePrefix = f"{outputDirName}/unnorm_phys_",
+        legendLabels      = ("Moment", "Truth"),
+        plotTruthUncert   = True,
+        truthColor        = ROOT.kBlue + 1,
+      )
 
       timer.stop("Total execution time")
       print(timer.summary)
