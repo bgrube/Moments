@@ -22,6 +22,7 @@ from wurlitzer import pipes, STDOUT
 from MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
+  MomentIndices,
   MomentResult,
   QnMomentIndex,
   QnWaveIndex,
@@ -43,13 +44,47 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+# TINY_FLOAT = np.finfo(dtype = np.double).tiny
+TINY_FLOAT = np.finfo(dtype = float).tiny
+
+
+def convertIminuitToMomentResult(
+  minuit:  im.Minuit,      # iminuit object containing fit result
+  indices: MomentIndices,  # moment indices for which the fit was performed
+) -> MomentResult:
+    """Converts iminuit result into `MomentResult` object"""
+    HPhys = MomentResult(indices)
+    # construct index ranges for purely real and purely imaginary moments
+    reIndexRange = (
+      QnMomentIndex(momentIndex = 0, L = 0,            M = 0),
+      QnMomentIndex(momentIndex = 1, L = indices.maxL, M = indices.maxL),
+    )  # all H_0 and H_1 moments are real-valued
+    imIndexRange = (
+      QnMomentIndex(momentIndex = 2, L = 1,            M = 1),
+      QnMomentIndex(momentIndex = 2, L = indices.maxL, M = indices.maxL)
+    )  # all H_2 moments are purely imaginary
+    # convert to flat indices
+    reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
+    imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
+    # copy values
+    par = np.array(minuit.values)
+    HPhys._valsFlatIndex[reSlice] = par[reSlice]
+    HPhys._valsFlatIndex[imSlice] = par[imSlice] * 1j  # convert to purely imaginary
+    # copy covariance matrix
+    cov = minuit.covariance
+    HPhys._V_ReReFlatIndex[reSlice, reSlice] = np.array(cov[reSlice, reSlice])
+    HPhys._V_ImImFlatIndex[imSlice, imSlice] = np.array(cov[imSlice, imSlice])
+    HPhys._V_ReImFlatIndex[reSlice, imSlice] = np.array(cov[reSlice, imSlice])
+    return HPhys
+
+
 if __name__ == "__main__":
   # set parameters of test case
   nmbPwaMcEvents   = 10000   # number of "data" events to generate from partial-wave amplitudes
   nmbPsMcEvents    = 100000  # number of phase-space events to generate
   beamPolarization = 1.0     # polarization of photon beam
   maxL             = 4       # maximum L quantum number of moments
-  outputDirName    = Utilities.makeDirPath("./plotsTestFitMoments2")
+  outputDirName    = Utilities.makeDirPath("./plotsTestFitMoments")
 
   thisSourceFileName = os.path.basename(__file__)
   logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
@@ -198,9 +233,9 @@ if __name__ == "__main__":
         return (integral, intensities)
       momentValues = np.array([HTruth[qnIndex].val.imag if qnIndex.momentIndex == 2 else HTruth[qnIndex].val.real for qnIndex in HTruth.indices.qnIndices])
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
-      thetas = np.array([0,    1,    2],    np.double)
-      phis   = np.array([0.5,  1.5,  2.5],  np.double)
-      Phis   = np.array([0.75, 1.75, 2.75], np.double)
+      thetas = np.array([0,    1,    2],    dtype = np.double)
+      phis   = np.array([0.5,  1.5,  2.5],  dtype = np.double)
+      Phis   = np.array([0.75, 1.75, 2.75], dtype = np.double)
       print(f"!!! {intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = momentValues)=}")
       # for parIndex in range(len(momentValues)):
       #   intensityFcn.SetParameter(momentLabels[parIndex], momentValues[parIndex])
@@ -220,42 +255,62 @@ if __name__ == "__main__":
       minuit = im.Minuit(extUnbinnedNllFcn, 1.01 * momentValues, name = momentLabels)
       print(f"Fitting {len(thetas)} events")
       with timer.timeThis("Time needed by MIGRAD"):
-        migrad = minuit.migrad()
-        print(f"!!! {migrad=}")
+        minuit.migrad()
       with timer.timeThis("Time needed by HESSE"):
-        hesse = minuit.hesse()
-        print(f"!!! {hesse=}")
+        minuit.hesse()
+      # print(minuit)
+      print(minuit.fmin)
+      print(minuit.params)
+      print(minuit.merrors)
       # with timer.timeThis("Time needed by draw_mnmatrix"):
       #   figure, axes = minuit.draw_mnmatrix()
       #   figure.savefig(f"{outputDirName}/minuit_mnmatrix.pdf")
 
-      print("Transforming iminuit result into `MomentResult` object")
-      HPhys = MomentResult(HTruth.indices)
-      # construct index ranges for of purely real and purely imaginary moments
-      indices = HPhys.indices
-      reIndexRange = (QnMomentIndex(momentIndex = 0, L = 0, M = 0), QnMomentIndex(momentIndex = 1, L = maxL, M = maxL))  # all H_0 and H_1 moments are real-valued
-      imIndexRange = (QnMomentIndex(momentIndex = 2, L = 1, M = 1), QnMomentIndex(momentIndex = 2, L = maxL, M = maxL))  # all H_2 moments are purely imaginary
-      # convert to flat indices
-      reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
-      imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
-      print(f"!!! reSlice = {reSlice}, imSlice = {imSlice}")
-      # copy values
-      par = np.array(minuit.values)
-      HPhys._valsFlatIndex[reSlice] = par[reSlice]
-      HPhys._valsFlatIndex[imSlice] = par[imSlice] * 1j  # convert to purely imaginary
-      # copy covariance matrix
-      cov = minuit.covariance
-      HPhys._V_ReReFlatIndex[reSlice, reSlice] = np.array(cov[reSlice, reSlice])
-      HPhys._V_ImImFlatIndex[imSlice, imSlice] = np.array(cov[imSlice, imSlice])
-      HPhys._V_ReImFlatIndex[reSlice, imSlice] = np.array(cov[reSlice, imSlice])
-
       print("Plotting fit results")
+      HPhys = convertIminuitToMomentResult(minuit, HTruth.indices)
       plotMomentsInBin(
         HData             = HPhys,
         normalizedMoments = False,
         HTruth            = HTruth,
         outFileNamePrefix = f"{outputDirName}/unnorm_phys_",
         legendLabels      = ("Moment", "Truth"),
+        plotTruthUncert   = True,
+        truthColor        = ROOT.kBlue + 1,
+      )
+
+      # perform same fit using own function for the negative log-likelihood (NLL)
+      def nll(moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]) -> float:
+        """Negative log-likelihood function for intensity as a function of moment parameters"""
+        integral, intensities = intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = moments)
+        nonPositiveIntensities = intensities[intensities <= 0]
+        if nonPositiveIntensities.size > 0:
+          print(f"!!! non-positive intensities: {nonPositiveIntensities}")
+        # sort logs of intensities to make sum more accurate and protect against 0 intensities
+        # return integral - np.sum(np.sort(np.log(intensities + TINY_FLOAT)))
+        # return integral - np.sum(np.sort(np.log(intensities)))
+        # return -(np.sum(np.sort(np.log(intensities + TINY_FLOAT))) - integral)
+        return -(np.sum(np.log(intensities)) - integral)
+      print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
+      print(f"Fitting {len(thetas)} events using custom NLL function")
+      minuit2 = im.Minuit(nll, 1.01 * momentValues, name = momentLabels)
+      minuit2.errordef = im.Minuit.LIKELIHOOD
+      with timer.timeThis("Time needed by MIGRAD2"):
+        minuit2.migrad()
+      with timer.timeThis("Time needed by HESSE2"):
+        minuit2.hesse()
+      # print(minuit2)
+      print(minuit2.fmin)
+      print(minuit2.params)
+      print(minuit2.merrors)
+
+      print("Plotting fit results")
+      HPhys2 = convertIminuitToMomentResult(minuit2, HTruth.indices)
+      plotMomentsInBin(
+        HData             = HPhys2,
+        normalizedMoments = False,
+        HTruth            = HPhys,
+        outFileNamePrefix = f"{outputDirName}/unnorm_phys2_",
+        legendLabels      = ("iminuit NLL", "Custom NLL"),
         plotTruthUncert   = True,
         truthColor        = ROOT.kBlue + 1,
       )
