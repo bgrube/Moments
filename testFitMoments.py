@@ -80,7 +80,7 @@ def intensityFcnVectorized(
   dataPoints: tuple[
     npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
     npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
   ],
   moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
 ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
@@ -95,6 +95,37 @@ def intensityFcnVectorized(
   # for perfect acceptance H_0(0, 0) is predicted number of measured events
   integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
   return (integral, intensities)
+
+
+class IntensityFcnVectorized:
+  """Functor that calculates intensities from real data and integrals from accepted phase-space MC data"""
+  def __init__(
+    self,
+    intensityFormula: str,  # formula for the intensity function
+  ) -> None:
+    """Constructor that defines the vectorized C++ intensity function"""
+    defineIntensityFcnVectorizedCpp(intensityFormula)
+
+  def __call__(
+    self,
+    dataPoints: tuple[
+      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+    ],
+    moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
+  ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
+    """Wrapper function that calls the vectorized C++ intensity function"""
+    thetas, phis, Phis = dataPoints
+    intensities = np.array(ROOT.intensityFcnVectorized(
+      np.ascontiguousarray(thetas),
+      np.ascontiguousarray(phis),
+      np.ascontiguousarray(Phis),
+      moments,
+    ))
+    # for perfect acceptance H_0(0, 0) is predicted number of measured events
+    integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
+    return (integral, intensities)
 
 
 def convertIminuitToMomentResult(
@@ -237,8 +268,9 @@ if __name__ == "__main__":
         printFormula     = True,
         useMomentSymbols = True,
       )
-      defineIntensityFcnVectorizedCpp(intensityFormula)
-      intensityFcn = intensityFcnVectorized
+      # defineIntensityFcnVectorizedCpp(intensityFormula)
+      # intensityFcn = intensityFcnVectorized
+      intensityFcn = IntensityFcnVectorized(intensityFormula)
       momentValues = np.array([HTruth[qnIndex].val.imag if qnIndex.momentIndex == 2 else HTruth[qnIndex].val.real for qnIndex in HTruth.indices.qnIndices])
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
