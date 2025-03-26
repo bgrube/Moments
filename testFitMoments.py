@@ -48,6 +48,55 @@ print = functools.partial(print, flush = True)
 TINY_FLOAT = np.finfo(dtype = float).tiny
 
 
+def defineIntensityFcnVectorizedCpp(intensityFormula: str) -> None:
+  """Defines the vectorized C++ intensity function using TFormula and OpenMP"""
+  ROOT.gInterpreter.ProcessLine(f'TFormula intensityFormula = TFormula("intensity", "{intensityFormula}");')
+  ROOT.gInterpreter.ProcessLine(
+    """
+    std::vector<double>
+    intensityFcnVectorized(
+      const std::vector<double>& thetas,  // polar angles of analyzer [rad]
+      const std::vector<double>& phis,    // azimuthal angles of analyzer [rad]
+      const std::vector<double>& Phis,    // azimuthal angle of beam-polarization vector w.r.t. production plane [rad]
+      const std::vector<double>& moments
+    ) {
+      const size_t nmbEvents = thetas.size();
+      assert(phis.size() == nmbEvents);
+      assert(Phis.size() == nmbEvents);
+      auto intensities = std::vector<double>(nmbEvents);
+      // multi-threaded loop over events using OpenMP
+      #pragma omp parallel for
+      for (size_t i = 0; i < nmbEvents; ++i) {
+        const double angles[3] = {thetas[i], phis[i], Phis[i]};
+        intensities[i] = intensityFormula.EvalPar(angles, moments.data());
+      }
+      return intensities;
+    }
+    """
+  )
+
+
+def intensityFcnVectorized(
+  dataPoints: tuple[
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
+  ],
+  moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
+) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
+  """Wrapper function that calls the vectorized C++ intensity function"""
+  thetas, phis, Phis = dataPoints
+  intensities = np.array(ROOT.intensityFcnVectorized(
+    np.ascontiguousarray(thetas),
+    np.ascontiguousarray(phis),
+    np.ascontiguousarray(Phis),
+    moments,
+  ))
+  # for perfect acceptance H_0(0, 0) is predicted number of measured events
+  integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
+  return (integral, intensities)
+
+
 def convertIminuitToMomentResult(
   minuit:  im.Minuit,      # iminuit object containing fit result
   indices: MomentIndices,  # moment indices for which the fit was performed
@@ -166,17 +215,17 @@ if __name__ == "__main__":
         printFormula     = True,
         useMomentSymbols = True,
       )
-      intensityFcn = ROOT.TF3("intensityMoments", intensityFormula, -1, +1, -180, +180, -180, +180)
+      intensityTF3 = ROOT.TF3("intensityMoments", intensityFormula, -1, +1, -180, +180, -180, +180)
       for qnIndex in HTruth.indices.qnIndices:
         Hval = HTruth[qnIndex].val
         print(f"!!! {qnIndex.label} = {Hval}")
-        intensityFcn.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
+        intensityTF3.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
       print("Drawing intensity function")
-      intensityFcn.SetNpx(100)
-      intensityFcn.SetNpy(100)
-      intensityFcn.SetNpz(100)
-      intensityFcn.SetMinimum(0)
-      drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf")
+      intensityTF3.SetNpx(100)
+      intensityTF3.SetNpy(100)
+      intensityTF3.SetNpz(100)
+      intensityTF3.SetMinimum(0)
+      drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
 
       print("Constructing vectorized intensity function using TFormula and OpenMP")
       # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
@@ -188,59 +237,16 @@ if __name__ == "__main__":
         printFormula     = True,
         useMomentSymbols = True,
       )
-      ROOT.gInterpreter.ProcessLine(f'TFormula intensityFormula = TFormula("intensity", "{intensityFormula}");')
-      ROOT.gInterpreter.ProcessLine(
-        """
-        std::vector<double>
-        intensityFcnVectorized(
-          const std::vector<double>& thetas,  // polar angles of analyzer [rad]
-          const std::vector<double>& phis,    // azimuthal angles of analyzer [rad]
-          const std::vector<double>& Phis,    // azimuthal angle of beam-polarization vector w.r.t. production plane [rad]
-          const std::vector<double>& moments
-        ) {
-          const size_t nmbEvents = thetas.size();
-          assert(phis.size() == nmbEvents);
-          assert(Phis.size() == nmbEvents);
-          auto intensities = std::vector<double>(nmbEvents);
-          // multi-threaded loop over events using OpenMP
-          #pragma omp parallel for
-          for (size_t i = 0; i < nmbEvents; ++i) {
-            const double angles[3] = {thetas[i], phis[i], Phis[i]};
-            intensities[i] = intensityFormula.EvalPar(angles, moments.data());
-          }
-          return intensities;
-        }
-        """
-      )
-      def intensityFcnVectorized(
-        dataPoints: tuple[
-          npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-          npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-          npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
-        ],
-        moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
-      ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
-        """Wrapper function that calls the vectorized intensity function defined in C++"""
-        thetas, phis, Phis = dataPoints
-        intensities = np.array(ROOT.intensityFcnVectorized(
-          np.ascontiguousarray(thetas),
-          np.ascontiguousarray(phis),
-          np.ascontiguousarray(Phis),
-          moments,
-        ))
-        # for perfect acceptance H_0(0, 0) is predicted number of measured events
-        integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
-        return (integral, intensities)
+      defineIntensityFcnVectorizedCpp(intensityFormula)
+      intensityFcn = intensityFcnVectorized
       momentValues = np.array([HTruth[qnIndex].val.imag if qnIndex.momentIndex == 2 else HTruth[qnIndex].val.real for qnIndex in HTruth.indices.qnIndices])
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
       phis   = np.array([0.5,  1.5,  2.5],  dtype = np.double)
       Phis   = np.array([0.75, 1.75, 2.75], dtype = np.double)
-      print(f"!!! {intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = momentValues)=}")
-      # for parIndex in range(len(momentValues)):
-      #   intensityFcn.SetParameter(momentLabels[parIndex], momentValues[parIndex])
+      print(f"!!! {intensityFcn(dataPoints = (thetas, phis, Phis), moments = momentValues)=}")
       for theta, phi, Phi in zip(thetas, phis, Phis):
-        print(f"!!! {intensityFcn.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi))=}")
+        print(f"!!! {intensityTF3.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi))=}")
       timer.stop("Time to construct functions")
 
       print("Loading data and setting up unbinned likelihood function and minimizer")
@@ -249,7 +255,7 @@ if __name__ == "__main__":
       Phis   = dataPwaModel.AsNumpy(columns = ["Phi",   ])["Phi"]
       extUnbinnedNllFcn = cost.ExtendedUnbinnedNLL(
         data       = (thetas, phis, Phis),
-        scaled_pdf = intensityFcnVectorized,
+        scaled_pdf = intensityFcn,
         verbose    = 0,
       )
       minuit = im.Minuit(extUnbinnedNllFcn, 1.01 * momentValues, name = momentLabels)
