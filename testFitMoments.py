@@ -284,42 +284,42 @@ if __name__ == "__main__":
         truthColor        = ROOT.kBlue + 1,
       )
 
-      # perform same fit using own function for the negative log-likelihood (NLL)
-      def nll(moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]) -> float:
-        """Negative log-likelihood function for intensity as a function of moment parameters"""
-        integral, intensities = intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = moments)
-        nonPositiveIntensities = intensities[intensities <= 0]
-        if nonPositiveIntensities.size > 0:
-          print(f"!!! non-positive intensities: {nonPositiveIntensities}")
-        # sort logs of intensities to make sum more accurate and protect against 0 intensities
-        # return integral - np.sum(np.sort(np.log(intensities + TINY_FLOAT)))
-        # return integral - np.sum(np.sort(np.log(intensities)))
-        # return -(np.sum(np.sort(np.log(intensities + TINY_FLOAT))) - integral)
-        return -(np.sum(np.log(intensities)) - integral)
-      print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
-      print(f"Fitting {len(thetas)} events using custom NLL function")
-      minuit2 = im.Minuit(nll, 1.01 * momentValues, name = momentLabels)
-      minuit2.errordef = im.Minuit.LIKELIHOOD
-      with timer.timeThis("Time needed by MIGRAD2"):
-        minuit2.migrad()
-      with timer.timeThis("Time needed by HESSE2"):
-        minuit2.hesse()
-      # print(minuit2)
-      print(minuit2.fmin)
-      print(minuit2.params)
-      print(minuit2.merrors)
+      if False:
+        # perform same fit using own function for the negative log-likelihood (NLL)
+        def nll(moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]) -> float:
+          """Negative log-likelihood function for intensity as a function of moment parameters"""
+          integral, intensities = intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = moments)
+          nonPositiveIntensities = intensities[intensities <= 0]
+          if nonPositiveIntensities.size > 0:
+            print(f"!!! non-positive intensities: {nonPositiveIntensities}")
+          return -(np.sum(np.log(intensities)) - integral)
+          #TODO why the options below lead to "INVALID Minimum", "ABOVE EDM threshold"? the same calculations are performed by iminuit's ExtendedUnbinnedNLL
+          # return -(np.sum(np.sort(np.log(intensities))) - integral)  # sort logs of intensities to make sum more accurate
+          # return -(np.sum(np.sort(np.log(intensities + TINY_FLOAT))) - integral)  # sort logs of intensities to make sum more accurate and protect against 0 intensities
+        print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
+        print(f"Fitting {len(thetas)} events using custom NLL function")
+        minuit2 = im.Minuit(nll, 1.01 * momentValues, name = momentLabels)
+        minuit2.errordef = im.Minuit.LIKELIHOOD
+        with timer.timeThis("Time needed by MIGRAD2"):
+          minuit2.migrad()
+        with timer.timeThis("Time needed by HESSE2"):
+          minuit2.hesse()
+        # print(minuit2)
+        print(minuit2.fmin)
+        print(minuit2.params)
+        print(minuit2.merrors)
 
-      print("Plotting fit results")
-      HPhys2 = convertIminuitToMomentResult(minuit2, HTruth.indices)
-      plotMomentsInBin(
-        HData             = HPhys2,
-        normalizedMoments = False,
-        HTruth            = HPhys,
-        outFileNamePrefix = f"{outputDirName}/unnorm_phys2_",
-        legendLabels      = ("iminuit NLL", "Custom NLL"),
-        plotTruthUncert   = True,
-        truthColor        = ROOT.kBlue + 1,
-      )
+        print("Plotting fit results")
+        HPhys2 = convertIminuitToMomentResult(minuit2, HTruth.indices)
+        plotMomentsInBin(
+          HData             = HPhys2,
+          normalizedMoments = False,
+          HTruth            = HPhys,
+          outFileNamePrefix = f"{outputDirName}/unnorm_phys2_",
+          legendLabels      = ("iminuit NLL", "Custom NLL"),
+          plotTruthUncert   = True,
+          truthColor        = ROOT.kBlue + 1,
+        )
 
       timer.stop("Total execution time")
       print(timer.summary)
