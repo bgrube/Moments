@@ -38,6 +38,7 @@ from PlottingUtilities import (
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 from testMomentsPhotoProd import (
+  genAccepted2BodyPsPhotoProd,
   genDataFromWaves,
   TH3_ANG_PLOT_KWARGS,
 )
@@ -304,6 +305,8 @@ if __name__ == "__main__":
         AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
       )
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
+      efficiencyFormula = "1"  # perfect acceptance
+      # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
       HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
@@ -313,7 +316,7 @@ if __name__ == "__main__":
         nmbEvents         = nmbPwaMcEvents,
         polarization      = beamPolarization,
         amplitudeSet      = amplitudeSetSig,
-        efficiencyFormula = None,
+        efficiencyFormula = efficiencyFormula,
         # regenerateData    = True,
         regenerateData    = False,
         outFileNamePrefix = f"{outputDirName}/",
@@ -331,6 +334,17 @@ if __name__ == "__main__":
       hist.Draw("BOX2Z")
       canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
       timer.stop("Time to generate MC data from partial waves")
+
+      print(f"Generating {nmbPsMcEvents} accepted phase-space MC events")
+      timer.start("Time to generate accepted phase-space MC data")
+      dataAcceptedPs = genAccepted2BodyPsPhotoProd(
+        nmbEvents         = nmbPsMcEvents,
+        efficiencyFormula = efficiencyFormula,
+        outFileNamePrefix = f"{outputDirName}/",
+        # regenerateData    = True,
+        regenerateData    = False,
+      )
+      timer.stop("Time to generate accepted phase-space MC data")
 
       timer.start("Time to construct functions")
       print("Constructing intensity function with moments as parameters from formula")
