@@ -164,39 +164,36 @@ class IntensityFcnVectorized:
   indices:      MomentIndices  # indices that define set of moments to fit
   beamPol:      float  # polarization of photon beam
   # arrays with real-data values for theta, phi, and Phi angles
-  thetas:       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
-  phis:         npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
-  Phis:         npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]
-  _baseFcnVals: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated values of basis functions for all events
+  _thetas:      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _phis:        npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _Phis:        npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _baseFcnVals: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] | None = None  # precalculated real-data values of basis functions
 
-  def setRealData(
+  def precalcBasisFcnValues(
     self,
     thetas: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
     phis:   npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
     Phis:   npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
   ) -> None:
-    """Sets real data member variales and precalulates values and integrals of basis functions"""
-    self.thetas = np.ascontiguousarray(thetas).copy()
-    self.phis   = np.ascontiguousarray(phis).copy()
-    self.Phis   = np.ascontiguousarray(Phis).copy()
+    """Copies real data and precalculates values of basis functions for all real-data events"""
+    self._thetas = np.ascontiguousarray(thetas).copy()
+    self._phis   = np.ascontiguousarray(phis).copy()
+    self._Phis   = np.ascontiguousarray(Phis).copy()
     # check that all data arrays have the same length
-    nmbEvents  = len(self.thetas)
-    assert nmbEvents == len(self.phis) == len(self.Phis), f"Data arrays must have same length; but got {len(self.thetas)=} vs. {len(self.phis)=} vs. {len(self.Phis)=}"
+    nmbEvents  = len(self._thetas)
+    assert nmbEvents == len(self._phis) == len(self._Phis), f"Data arrays must have same length; but got {len(self._thetas)=} vs. {len(self._phis)=} vs. {len(self._Phis)=}"
     nmbMoments = len(self.indices)
-    # calculate values of basis functions for all events
+    # precalculate real-data values of basis functions
     self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
       self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_base(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
-        self.thetas,
-        self.phis,
-        self.Phis,
+        self._thetas,
+        self._phis,
+        self._Phis,
         self.beamPol,
       ))
-
-  def __post_init__(self) -> None:
-    self.setRealData(self.thetas, self.phis, self.Phis)
 
   def __call__(
     self,
@@ -204,19 +201,24 @@ class IntensityFcnVectorized:
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-    ],  #!Note! this is an unused dummy argument kept for interface compatibility; the real data need to be passed already in the constructor or using `self.setRealData()` before calling this function
-    #TODO change the logic such that precalculation is performed at first call when new data is passed?
+    ],
     moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
   ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
     """Wrapper function that calculates intensities for each event and normalization integral of intensity function"""
     thetas, phis, Phis = dataPoints
-    # ensure that data passed to function are identical to the data used to precalculate the basis-function values
-    assert not np.may_share_memory(thetas, self.thetas), f"Argument and cached array for theta must not share memory"
-    assert not np.may_share_memory(phis,   self.phis),   f"Argument and cached array for phi must not share memory"
-    assert not np.may_share_memory(Phis,   self.Phis),   f"Argument and cached array for Phi must not share memory"
-    assert np.array_equal(thetas, self.thetas), f"Argument and cached array for theta must be identical"
-    assert np.array_equal(phis,   self.phis),   f"Argument and cached array for phi must be identical"
-    assert np.array_equal(Phis,   self.Phis),   f"Argument and cached array for Phi must be identical"
+    # precalculate the basis-function values if input data are not set and whenever input data change
+    if (   (self._baseFcnVals is None)
+        or (self._thetas      is None)
+        or (self._phis        is None)
+        or (self._Phis        is None)
+        or (not np.array_equal(thetas, self._thetas))
+        or (not np.array_equal(phis,   self._phis))
+        or (not np.array_equal(Phis,   self._Phis))):
+      print("Input data where not yet set or they changed. Precalculating real-data values of basis functions. This should happen only once at the start of the minimization.")
+      self.precalcBasisFcnValues(thetas, phis, Phis)
+    assert not np.may_share_memory(thetas, self._thetas), f"Argument and cached array for theta must not share memory"
+    assert not np.may_share_memory(phis,   self._phis),   f"Argument and cached array for phi must not share memory"
+    assert not np.may_share_memory(Phis,   self._Phis),   f"Argument and cached array for Phi must not share memory"
     intensities = np.dot(moments, self._baseFcnVals)  # calculate intensities for all events
     # for perfect acceptance H_0(0, 0) is predicted number of measured events
     integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
@@ -225,7 +227,7 @@ class IntensityFcnVectorized:
 
 def convertIminuitToMomentResult(
   minuit:  im.Minuit,      # iminuit object containing fit result
-  indices: MomentIndices,  # moment indices for which the fit was performed
+  indices: MomentIndices,  # indices that define set of moments that was fit
 ) -> MomentResult:
     """Converts iminuit result into `MomentResult` object"""
     HPhys = MomentResult(indices)
@@ -355,28 +357,22 @@ if __name__ == "__main__":
 
       print("Constructing vectorized intensity function using TFormula and OpenMP")
       # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
-      intensityFormula = HTruth.intensityFormula(
-        polarization     = beamPolarization,
-        thetaFormula     = "x",
-        phiFormula       = "y",
-        PhiFormula       = "z",
-        printFormula     = True,
-        useMomentSymbols = True,
-      )
-      momentValues = np.array([HTruth[qnIndex].val.imag if qnIndex.momentIndex == 2 else HTruth[qnIndex].val.real for qnIndex in HTruth.indices.qnIndices])
+      # intensityFormula = HTruth.intensityFormula(
+      #   polarization     = beamPolarization,
+      #   thetaFormula     = "x",
+      #   phiFormula       = "y",
+      #   PhiFormula       = "z",
+      #   printFormula     = True,
+      #   useMomentSymbols = True,
+      # )
+      # defineIntensityFcnVectorizedCpp(intensityFormula)
+      # intensityFcn = intensityFcnVectorized
+      intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
+      momentValues = np.array([HTruth[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruth[qnIndex].val.imag for qnIndex in HTruth.indices.qnIndices])  # make all moment values real-valued
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
       phis   = np.array([0.5,  1.5,  2.5],  dtype = np.double)
       Phis   = np.array([0.75, 1.75, 2.75], dtype = np.double)
-      # defineIntensityFcnVectorizedCpp(intensityFormula)
-      # intensityFcn = intensityFcnVectorized
-      intensityFcn = IntensityFcnVectorized(
-        indices = HTruth.indices,
-        beamPol = beamPolarization,
-        thetas  = thetas,
-        phis    = phis,
-        Phis    = Phis,
-      )
       intensitiesFcn = intensityFcn(dataPoints = (thetas, phis, Phis), moments = momentValues)
       intensitiesTF3 = []
       for theta, phi, Phi in zip(thetas, phis, Phis):
@@ -389,7 +385,6 @@ if __name__ == "__main__":
       thetas = dataPwaModel.AsNumpy(columns = ["theta", ])["theta"]
       phis   = dataPwaModel.AsNumpy(columns = ["phi",   ])["phi"]
       Phis   = dataPwaModel.AsNumpy(columns = ["Phi",   ])["Phi"]
-      intensityFcn.setRealData(thetas, phis, Phis)
       extUnbinnedNllFcn = cost.ExtendedUnbinnedNLL(
         data       = (thetas, phis, Phis),
         scaled_pdf = intensityFcn,
