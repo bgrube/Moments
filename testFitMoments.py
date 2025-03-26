@@ -176,9 +176,9 @@ class IntensityFcnVectorized:
     Phis:   npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
   ) -> None:
     """Sets real data member variales and precalulates values and integrals of basis functions"""
-    self.thetas = np.ascontiguousarray(thetas)
-    self.phis   = np.ascontiguousarray(phis)
-    self.Phis   = np.ascontiguousarray(Phis)
+    self.thetas = np.ascontiguousarray(thetas).copy()
+    self.phis   = np.ascontiguousarray(phis).copy()
+    self.Phis   = np.ascontiguousarray(Phis).copy()
     # check that all data arrays have the same length
     nmbEvents  = len(self.thetas)
     assert nmbEvents == len(self.phis) == len(self.Phis), f"Data arrays must have same length; but got {len(self.thetas)=} vs. {len(self.phis)=} vs. {len(self.Phis)=}"
@@ -204,11 +204,19 @@ class IntensityFcnVectorized:
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-    ],
+    ],  #!Note! this is an unused dummy argument kept for interface compatibility; the real data need to be passed already in the constructor or using `self.setRealData()` before calling this function
+    #TODO change the logic such that precalculation is performed at first call when new data is passed?
     moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
   ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
     """Wrapper function that calculates intensities for each event and normalization integral of intensity function"""
     thetas, phis, Phis = dataPoints
+    # ensure that data passed to function are identical to the data used to precalculate the basis-function values
+    assert not np.may_share_memory(thetas, self.thetas), f"Argument and cached array for theta must not share memory"
+    assert not np.may_share_memory(phis,   self.phis),   f"Argument and cached array for phi must not share memory"
+    assert not np.may_share_memory(Phis,   self.Phis),   f"Argument and cached array for Phi must not share memory"
+    assert np.array_equal(thetas, self.thetas), f"Argument and cached array for theta must be identical"
+    assert np.array_equal(phis,   self.phis),   f"Argument and cached array for phi must be identical"
+    assert np.array_equal(Phis,   self.Phis),   f"Argument and cached array for Phi must be identical"
     intensities = np.dot(moments, self._baseFcnVals)  # calculate intensities for all events
     # for perfect acceptance H_0(0, 0) is predicted number of measured events
     integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
