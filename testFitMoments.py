@@ -162,13 +162,18 @@ f_base(
 @dataclass
 class IntensityFcnVectorized:
   """Functor that calculates intensities from real data and integrals from accepted phase-space MC data"""
-  indices:      MomentIndices  # indices that define set of moments to fit
-  beamPol:      float  # polarization of photon beam
+  indices:           MomentIndices  # indices that define set of moments to fit
+  beamPol:           float  # polarization of photon beam
   # arrays with real-data values for theta, phi, and Phi angles
-  _thetas:      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
-  _phis:        npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
-  _Phis:        npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
-  _baseFcnVals: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] | None = None  # precalculated real-data values of basis functions
+  _thetas:           npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _phis:             npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _Phis:             npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  # arrays with accepted phase-space values for theta, phi, and Phi angles
+  _thetasAccPs:      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _phisAccPs:        npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _PhisAccPs:        npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None             = None
+  _baseFcnVals:      npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] | None = None  # precalculated real-data values of basis functions
+  _baseFcnIntegrals: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64] | None            = None  # precalculated accepted phase-space integrals of basis functions
 
   def precalcBasisFcnValues(
     self,
@@ -193,8 +198,40 @@ class IntensityFcnVectorized:
         self._thetas,
         self._phis,
         self._Phis,
-        self.beamPol,
+        self.beamPol,  #TODO add signature with event-by-event polarization
       ))
+
+  def precalcBasisFcnAccPsIntegrals(
+    self,
+    thetas:       npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64],
+    phis:         npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64],
+    Phis:         npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64],
+    nmbGenEvents: int,  # number of generated phase-space events
+  ) -> None:
+    """Stores reference to accepted phase-space data and precalculates accepted phase-space integrals for all basis functions"""
+    #TODO do we really need these member variables?
+    self._thetasAccPs = np.ascontiguousarray(thetas)
+    self._phisAccPs   = np.ascontiguousarray(phis)
+    self._PhisAccPs   = np.ascontiguousarray(Phis)
+    # check that all data arrays have the same length
+    nmbAccEvents  = len(self._thetasAccPs)
+    assert nmbAccEvents == len(self._phisAccPs) == len(self._PhisAccPs), f"Data arrays must have same length; but got {len(self._thetasAccPs)=} vs. {len(self._phisAccPs)=} vs. {len(self._PhisAccPs)=}"
+    nmbMoments = len(self.indices)
+    self._baseFcnIntegrals = np.zeros((nmbMoments, ), dtype = np.double)
+    for flatIndex in self.indices.flatIndices:
+      # calculate basis-functions value for each accepted phase-space event
+      qnIndex = self.indices[flatIndex]
+      baseFcnValsAccPs = np.asarray(ROOT.f_base(
+        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+        self._thetasAccPs,
+        self._phisAccPs,
+        self._PhisAccPs,
+        self.beamPol,  #TODO add signature with event-by-event polarization
+      ))
+      # calculate accepted phase-space integral by summing basis-functions values over accepted phase-space events
+      #TODO add event weights
+      self._baseFcnIntegrals[flatIndex] = (4 * np.pi / nmbGenEvents) * np.sum(np.sort(baseFcnValsAccPs))  # sort values to make sum more accurate  #TODO why not 8 * np.pi**2?
+    print(f"!!! {self._baseFcnIntegrals=}")
 
   def __call__(
     self,
@@ -205,7 +242,7 @@ class IntensityFcnVectorized:
     ],
     moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
   ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
-    """Wrapper function that calculates intensities for each event and normalization integral of intensity function"""
+    """Wrapper function that returns the normalization integral of intensity function and the intensities for each event"""
     thetas, phis, Phis = dataPoints
     # precalculate the basis-function values if input data are not set and whenever input data change
     if (   (self._baseFcnVals is None)
@@ -222,8 +259,11 @@ class IntensityFcnVectorized:
     assert not np.may_share_memory(Phis,   self._Phis),   f"Argument and cached array for Phi must not share memory"
     intensities = np.dot(moments, self._baseFcnVals)  # calculate intensities for all events
     # for perfect acceptance H_0(0, 0) is predicted number of measured events
+    assert self._baseFcnIntegrals is not None, "Need to call `IntensityFcnVectorized.precalcBasisFcnAccPsIntegrals()` before calling the functor"
+    integralNew = np.dot(moments, self._baseFcnIntegrals) * thetas.shape[0]
     integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
-    return (integral, intensities)
+    print(f"!!! {integral=} vs. {integralNew=}, delta = {integral - integralNew}; {moments[0]=}")
+    return (integralNew, intensities)
 
 
 def convertIminuitToMomentResult(
@@ -382,6 +422,12 @@ if __name__ == "__main__":
       # defineIntensityFcnVectorizedCpp(intensityFormula)
       # intensityFcn = intensityFcnVectorized
       intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
+      intensityFcn.precalcBasisFcnAccPsIntegrals(
+        thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
+        phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
+        Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
+        nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
+      )
       momentValues = np.array([HTruth[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruth[qnIndex].val.imag for qnIndex in HTruth.indices.qnIndices])  # make all moment values real-valued
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
@@ -394,7 +440,6 @@ if __name__ == "__main__":
       print(f"!!! {intensitiesFcn=} vs. {intensitiesTF3=}, delta = {np.array(intensitiesTF3) - intensitiesFcn[1]}")
       timer.stop("Time to construct functions")
 
-      timer.start("Time to load data and construct NLL function")
       print("Loading data and setting up unbinned likelihood function and minimizer")
       thetas = dataPwaModel.AsNumpy(columns = ["theta", ])["theta"]
       phis   = dataPwaModel.AsNumpy(columns = ["phi",   ])["phi"]
@@ -405,8 +450,6 @@ if __name__ == "__main__":
         verbose    = 0,
       )
       minuit = im.Minuit(extUnbinnedNllFcn, 1.01 * momentValues, name = momentLabels)
-      timer.stop("Time to load data and construct NLL function")
-
       print(f"Fitting {len(thetas)} events")
       with timer.timeThis("Time needed by MIGRAD"):
         minuit.migrad()
