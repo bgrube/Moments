@@ -224,11 +224,11 @@ f_phys(
 	const double commonTerm = std::sqrt((2 * L + 1) / (4 * TMath::Pi())) * ((M == 0) ? 1 : 2) * ylm(L, M, theta);
 	switch (momentIndex) {
 	case 0:
-		return commonTerm * std::cos(M * phi);
+		return     commonTerm * std::cos(M * phi);
 	case 1:
-		return commonTerm * polarization * std::cos(M * phi) * std::cos(2 * Phi);
+		return     commonTerm * std::cos(M * phi) * polarization * std::cos(2 * Phi);
 	case 2:
-		return commonTerm * I * polarization * std::sin(M * phi) * std::sin(2 * Phi);
+		return I * commonTerm * std::sin(M * phi) * polarization * std::sin(2 * Phi);
 	default:
 		throw std::domain_error("f_phys() unknown moment index.");
 	}

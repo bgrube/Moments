@@ -162,8 +162,8 @@ def genAccepted2BodyPsPhotoProd(
            .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPSPhotoProd()" << endl; } return true;') \
            .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
           #  .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))
-    # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-    # noop filter before snapshot logs when event loop is running
+          # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+          # noop filter before snapshot logs when event loop is running
   return df
 
 
