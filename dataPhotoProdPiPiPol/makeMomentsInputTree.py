@@ -83,8 +83,42 @@ trackDistFdc(
 """
 
 
+def defineDataFrameColumns(
+  df:                  ROOT.RDataFrame,
+  beamPol:             float,  # photon beam polarization
+  beamPolPhi:          float,  # azimuthal angle of photon beam polarization in lab [deg]
+  lvTarget:            str,    # function-argument list with Lorentz-vector components of target proton
+  lvBeam:              str,    # function-argument list with Lorentz-vector components of beam photon
+  lvRecoil:            str,    # function-argument list with Lorentz-vector components of recoil proton
+  lvPip:               str,    # function-argument list with Lorentz-vector components of pi^+
+  lvPim:               str,    # function-argument list with Lorentz-vector components of pi^-
+  applyAdditionalCuts: bool = False,  # apply additional cuts to remove forward-going tracks
+) -> ROOT.RDataFrame:
+  """Returns RDataFrame with additional columns for moments analysis"""
+  df = (
+    df.Define("beamPol",    f"(Double32_t){beamPol}")
+      .Define("beamPolPhi", f"(Double32_t){beamPolPhi}")
+      .Define("cosTheta",   f"(Double32_t)FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
+      .Define("theta",       "(Double32_t)std::acos(cosTheta)")
+      .Define("phi",        f"(Double32_t)FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
+      .Define("phiDeg",      "(Double32_t)phi * TMath::RadToDeg()")
+      .Define("Phi",        f"(Double32_t)bigPhi({lvRecoil}, {lvBeam}, beamPolPhi)")
+      .Define("PhiDeg",      "(Double32_t)Phi * TMath::RadToDeg()")
+      .Define("mass",       f"(Double32_t)massPair({lvPip}, {lvPim})")
+      .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+      # .Range(100)  # limit number of entries for testing
+  )
+  if applyAdditionalCuts:
+    df = (
+      df.Define("DistFdcPip", f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
+        .Define("DistFdcPim", f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
+        .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
+    )
+  return df
+
+
 DATA_TCHAIN = ROOT.TChain()  # use global variables to avoid garbage collection
-def getDataFrameWithFixedEventWeights(
+def getDataFrameWithCorrectEventWeights(
   dataSigRegionFileNames:    Sequence[str],
   dataBkgRegionFileNames:    Sequence[str],
   treeName:                  str,
@@ -92,7 +126,7 @@ def getDataFrameWithFixedEventWeights(
   friendBkgRegionFileName:   str  = "data_bkg.root.weights",
   forceOverwriteFriendFiles: bool = True,
 ) -> ROOT.RDataFrame:
-  """ Create friend trees with correct event weights and attach them to data tree"""
+  """Create friend trees with correct event weights and attach them to data tree"""
   for dataFileNames, weightFormula, friendFileName in (
     (dataSigRegionFileNames,  "Weight", friendSigRegionFileName),
     (dataBkgRegionFileNames, "-Weight", friendBkgRegionFileName),
@@ -118,38 +152,21 @@ def getDataFrameWithFixedEventWeights(
   return ROOT.RDataFrame(DATA_TCHAIN)
 
 
-def defineDataFrameColumns(
-  df:                  ROOT.RDataFrame,
-  beamPol:             float,  # photon beam polarization
-  beamPolPhi:          float,  # azimuthal angle of photon beam polarization in lab [deg]
-  lvBeam:              str,    # function-argument list with Lorentz-vector components of beam photon
-  lvRecoil:            str,    # function-argument list with Lorentz-vector components of recoil proton
-  lvPip:               str,    # function-argument list with Lorentz-vector components of pi^+
-  lvPim:               str,    # function-argument list with Lorentz-vector components of pi^-
-  applyAdditionalCuts: bool = False,  # apply additional cuts to remove forward-going tracks
-) -> ROOT.RDataFrame:
-  """Returns RDataFrame with additional columns for moments analysis"""
-  lvTarget = "0, 0, 0, 0.93827208816"    # proton at rest in lab frame
-  df = (
-    df.Define("beamPol",    f"(Double32_t){beamPol}")
-      .Define("beamPolPhi", f"(Double32_t){beamPolPhi}")
-      .Define("cosTheta",   f"(Double32_t)FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
-      .Define("theta",       "(Double32_t)std::acos(cosTheta)")
-      .Define("phi",        f"(Double32_t)FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})")
-      .Define("phiDeg",      "(Double32_t)phi * TMath::RadToDeg()")
-      .Define("Phi",        f"(Double32_t)bigPhi({lvRecoil}, {lvBeam}, beamPolPhi)")
-      .Define("PhiDeg",      "(Double32_t)Phi * TMath::RadToDeg()")
-      .Define("mass",       f"(Double32_t)massPair({lvPip}, {lvPim})")
-      .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
-      # .Range(100)  # limit number of entries for testing
-  )
-  if applyAdditionalCuts:
-    df = (
-      df.Define("DistFdcPip", f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
-        .Define("DistFdcPim", f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
-        .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
-    )
-  return df
+def lorentzVectors(realData: bool = True) -> dict[str, str]:
+  """Returns Lorentz-vectors for beam photon ("lvBeam"), target proton ("lvTarget"), recoil proton ("lvRecoil"), pi+ ("lvPip"), and pi- ("lvPim")"""
+  lvs = {}
+  lvs["lvTarget"] = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
+  if realData:
+    lvs["lvBeam"]   = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"  # beam photon
+    lvs["lvRecoil"] = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"     # recoil proton
+    lvs["lvPip"]    = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"   # pi+
+    lvs["lvPim"]    = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"   # pi-
+  else:
+    lvs["lvBeam"]   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
+    lvs["lvRecoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
+    lvs["lvPip"]    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+  #TODO not clear whether correct index is 1 or 2
+    lvs["lvPim"]    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-  #TODO not clear whether correct index is 1 or 2
+  return lvs
 
 
 @dataclass
@@ -216,7 +233,7 @@ if __name__ == "__main__":
     realDataOutputFileName  = f"{outputDirName}/data_flat_{dataLabel}.root"
     print(f"Writing '{dataLabel}' real data from {inputSigRegionFileNames} and {inputBkgRegionFileNames} to file '{realDataOutputFileName}'")
     defineDataFrameColumns(
-      df = getDataFrameWithFixedEventWeights(
+      df = getDataFrameWithCorrectEventWeights(
         dataSigRegionFileNames  = inputSigRegionFileNames,
         dataBkgRegionFileNames  = inputBkgRegionFileNames,
         treeName                = dataInfo.inputTreeName,
@@ -225,11 +242,8 @@ if __name__ == "__main__":
       ),
       beamPol             = dataInfo.beamPol,
       beamPolPhi          = dataInfo.beamPolPhi,
-      lvBeam              = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
-      lvRecoil            = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
-      lvPip               = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
-      lvPim               = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
       applyAdditionalCuts = applyAdditionalCuts,
+      **lorentzVectors(realData = True),
     ).Snapshot(dataInfo.outputTreeName, realDataOutputFileName, outputColumns + ("eventWeight", ))
     #TODO investigate why FSMath::helphi(lvA, lvB, lvRecoil, lvBeam) yields value that differs by 180 deg from helphideg_Alex(lvA, lvB, lvRecoil, lvBeam)
 
@@ -240,22 +254,17 @@ if __name__ == "__main__":
       df                  = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceAccFileNames),
       beamPol             = dataInfo.beamPol,
       beamPolPhi          = dataInfo.beamPolPhi,
-      lvBeam              = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()",
-      lvRecoil            = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()",
-      lvPip               = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()",
-      lvPim               = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()",
       applyAdditionalCuts = applyAdditionalCuts,
+      **lorentzVectors(realData = True),
     ).Snapshot(dataInfo.outputTreeName, phaseSpaceAccOutputFileName, outputColumns)
 
     # convert thrown phase-space MC data
     phaseSpaceGenOutputFileName = f"{outputDirName}/phaseSpace_gen_flat_{dataLabel}.root"
     print(f"Writing '{dataLabel}' thrown phase-space MC data from file(s) {phaseSpaceGenFileNames} to file '{phaseSpaceGenOutputFileName}'")
     defineDataFrameColumns(
-      df         = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceGenFileNames),
-      beamPol    = dataInfo.beamPol,
-      beamPolPhi = dataInfo.beamPolPhi,
-      lvBeam     = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam",
-      lvRecoil   = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]",
-      lvPip      = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]",  #TODO not clear whether correct index is 1 or 2
-      lvPim      = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]",  #TODO not clear whether correct index is 1 or 2
+      df                  = ROOT.RDataFrame(dataInfo.inputTreeName, phaseSpaceGenFileNames),
+      beamPol             = dataInfo.beamPol,
+      beamPolPhi          = dataInfo.beamPolPhi,
+      applyAdditionalCuts = False,
+      **lorentzVectors(realData = False),
     ).Snapshot(dataInfo.outputTreeName, phaseSpaceGenOutputFileName, outputColumns)
