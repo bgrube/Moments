@@ -10,6 +10,7 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TRACKDISTFDC,
+  lorentzVectors,
 )
 
 
@@ -49,6 +50,7 @@ if __name__ == "__main__":
   # mcDataFileNames  = (f"{dataInputDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",            f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
   # mcDataFileNames  = (f"{dataInputDirName}/MC_100M/amptools_tree_acc_thrown_30274_31057_noMcut.root", f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_acc_thrown_30274_31057_notcut.root")
   # mcDataFileNames  = (f"{dataInputDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root",   f"{dataInputDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+  # mcDataFileNames  = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root")
   # mcDataFileNames  = (f"{dataInputDirName}/MC_ps/amptools_tree_thrown_30274_31057.root",     f"{dataInputDirName}/MC_rho/amptools_tree_thrown_30274_31057.root")
   # mcDataFileNames  = (f"{dataInputDirName}/MC_ps/amptools_tree_acc_thrown_30274_31057.root", f"{dataInputDirName}/MC_rho/amptools_tree_acc_thrown_30274_31057.root")
   # mcDataFileNames  = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root",   f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
@@ -56,41 +58,37 @@ if __name__ == "__main__":
   outputDirName    = f"{tBinLabel}/Mc_beamPolAngle_{beamPolAngle:.0f}"
 
   # read MC data in AmpTools format and plot distributions
-  lvBeam   = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"
-  lvTarget = "0,                0,                0,                0.93827208816"    # proton at rest in lab frame
-  lvRecoil = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"
-  lvPip    = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
-  lvPim    = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
+  lvs = lorentzVectors(realData = False)
   print(f"Reading MC data from tree '{treeName}' in file(s) {mcDataFileNames}")
   df = (
     ROOT.RDataFrame(treeName, mcDataFileNames)
-        .Define("FsMassRecoil",   f"mass({lvRecoil})")
-        .Define("FsMassPip",      f"mass({lvPip})")
-        .Define("FsMassPim",      f"mass({lvPim})")
-        .Define("MassPiPi",       f"massPair({lvPip}, {lvPim})")
-        .Define("MassPipP",       f"massPair({lvPip}, {lvRecoil})")
-        .Define("MassPimP",       f"massPair({lvPim}, {lvRecoil})")
+        .Define("FsMassRecoil",   f"mass({lvs['lvRecoil']})")
+        .Define("FsMassPip",      f"mass({lvs['lvPip']})")
+        .Define("FsMassPim",      f"mass({lvs['lvPim']})")
+        .Define("MassPiPi",       f"massPair({lvs['lvPip']}, {lvs['lvPim']})")
+        .Define("MassPipP",       f"massPair({lvs['lvPip']}, {lvs['lvRecoil']})")
+        .Define("MassPimP",       f"massPair({lvs['lvPim']}, {lvs['lvRecoil']})")
         .Define("MassPiPiSq",     "std::pow(MassPiPi, 2)")
         .Define("MassPipPSq",     "std::pow(MassPipP, 2)")
         .Define("MassPimPSq",     "std::pow(MassPimP, 2)")
-        .Define("minusT",         f"-mandelstamT({lvTarget}, {lvRecoil})")
-        .Define("PhiDeg",         f"bigPhi({lvRecoil}, {lvBeam}, {beamPolAngle}) * TMath::RadToDeg()")
+        .Define("minusT",         f"-mandelstamT({lvs['lvTarget']}, {lvs['lvRecoil']})")
+        .Define("PhiDeg",         f"bigPhi({lvs['lvRecoil']}, {lvs['lvBeam']}, {beamPolAngle}) * TMath::RadToDeg()")
         # pi+pi- system
-        .Define("GjCosThetaPiPi", f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
-        .Define("GjPhiDegPiPi",   f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
-        .Define("HfCosThetaPiPi", f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
-        .Define("HfPhiDegPiPi",   f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam}) * TMath::RadToDeg()")
+        .Define("GjCosThetaPiPi", f"FSMath::gjcostheta({lvs['lvPip']}, {lvs['lvPim']}, {lvs['lvBeam']})")
+        .Define("GjPhiDegPiPi",   f"FSMath::gjphi({lvs['lvPip']}, {lvs['lvPim']}, {lvs['lvRecoil']}, {lvs['lvBeam']}) * TMath::RadToDeg()")
+        .Define("HfCosThetaPiPi", f"FSMath::helcostheta({lvs['lvPip']}, {lvs['lvPim']}, {lvs['lvRecoil']})")
+        .Define("HfPhiDegPiPi",   f"FSMath::helphi({lvs['lvPim']}, {lvs['lvPip']}, {lvs['lvRecoil']}, {lvs['lvBeam']}) * TMath::RadToDeg()")
         # track momenta
-        .Define("MomLabPip",      f"TLorentzVector({lvPip}).P()")
-        .Define("MomLabPim",      f"TLorentzVector({lvPim}).P()")
-        .Define("ThetaLabPip",    f"TLorentzVector({lvPip}).Theta() * TMath::RadToDeg()")
-        .Define("ThetaLabPim",    f"TLorentzVector({lvPim}).Theta() * TMath::RadToDeg()")
-        .Define("DistFdcPip",     f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
-        .Define("DistFdcPim",     f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
+        .Define("MomLabPip",      f"TLorentzVector({lvs['lvPip']}).P()")
+        .Define("MomLabPim",      f"TLorentzVector({lvs['lvPim']}).P()")
+        .Define("ThetaLabPip",    f"TLorentzVector({lvs['lvPip']}).Theta() * TMath::RadToDeg()")
+        .Define("ThetaLabPim",    f"TLorentzVector({lvs['lvPim']}).Theta() * TMath::RadToDeg()")
+        .Define("DistFdcPip",     f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['lvPip']})")
+        .Define("DistFdcPim",     f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['lvPim']})")
         # .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
   )
   yAxisLabel = "Events"
-  hists = (
+  hists = [
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"                   + yAxisLabel, 100, 0,      2),    "FsMassRecoil"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"              + yAxisLabel, 100, 0,      2),    "FsMassPip"),
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"             + yAxisLabel, 100, 0,      2),    "FsMassPim"),
@@ -124,13 +122,20 @@ if __name__ == "__main__":
     df.Histo3D(ROOT.RDF.TH3DModel("hMcPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg"),
     df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPiRho",  ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
     df.Filter("(0.70 < MassPiPi) and (MassPiPi < 0.85)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPiRho",  ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
-    df.Filter("(1.20 < MassPiPi) and (MassPiPi < 1.40)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi_1.3", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
-    df.Filter("(1.20 < MassPiPi) and (MassPiPi < 1.40)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi_1.3", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
-    df.Filter("(1.60 < MassPiPi) and (MassPiPi < 1.80)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi_1.7", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
-    df.Filter("(1.60 < MassPiPi) and (MassPiPi < 1.80)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi_1.7", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
-    df.Filter("(2.00 < MassPiPi) and (MassPiPi < 2.20)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesGjPiPi_2.1", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
-    df.Filter("(2.00 < MassPiPi) and (MassPiPi < 2.20)").Histo2D(ROOT.RDF.TH2DModel("hMcAnglesHfPiPi_2.1", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
-  )
+  ]
+  # create acceptance histograms for GJ and HF angles in m_pipi bins
+  massPiPiRange    = (0.28, 2.28)  # [GeV]
+  massPiPiNmbBins  = 50
+  massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
+  for binIndex in range(0, massPiPiNmbBins):
+    massPiPiBinMin    = massPiPiRange[0] + binIndex * massPiPiBinWidth
+    massPiPiBinMax    = massPiPiBinMin + massPiPiBinWidth
+    massPiPiBinFilter = f"({massPiPiBinMin} < MassPiPi) and (MassPiPi < {massPiPiBinMax})"
+    histNameSuffix    = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
+    hists += [
+      df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hMcAnglesGjPiPi{histNameSuffix}", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
+      df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hMcAnglesHfPiPi{histNameSuffix}", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
+    ]
   # write MC histograms to ROOT file and generate PDF plots
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/mcPlots.root"
