@@ -107,7 +107,7 @@ ROOT.gInterpreter.ProcessLine(
 // basis functions for physical moments; Eq. (XXX)
 // scalar version that calculates function value for a single event
 double
-f_base(
+f_basis(
 	const int    momentIndex,  // 0, 1, or 2
 	const int    L,
 	const int    M,
@@ -125,7 +125,7 @@ f_base(
 	case 2:
 		return -commonTerm * std::sin(M * phi) * polarization * std::sin(2 * Phi);
 	default:
-		throw std::domain_error("f_base() unknown moment index.");
+		throw std::domain_error("f_basis() unknown moment index.");
 	}
 }
 """
@@ -136,7 +136,7 @@ ROOT.gInterpreter.ProcessLine(
 // vector version that calculates basis-function value for each entry
 // in the input vectors for a constant polarization value
 std::vector<double>
-f_base(
+f_basis(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
@@ -151,7 +151,7 @@ f_base(
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_base(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+		fcnValues[i] = f_basis(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
 	}
 	return fcnValues;
 }
@@ -193,7 +193,7 @@ class IntensityFcnVectorized:
     self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
-      self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_base(
+      self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
         self._thetas,
         self._phis,
@@ -221,7 +221,7 @@ class IntensityFcnVectorized:
     for flatIndex in self.indices.flatIndices:
       # calculate basis-functions value for each accepted phase-space event
       qnIndex = self.indices[flatIndex]
-      baseFcnValsAccPs = np.asarray(ROOT.f_base(
+      baseFcnValsAccPs = np.asarray(ROOT.f_basis(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
         self._thetasAccPs,
         self._phisAccPs,
