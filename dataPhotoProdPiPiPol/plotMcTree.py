@@ -55,7 +55,7 @@ if __name__ == "__main__":
   # mcDataFileNames  = (f"{dataInputDirName}/MC_ps/amptools_tree_acc_thrown_30274_31057.root", f"{dataInputDirName}/MC_rho/amptools_tree_acc_thrown_30274_31057.root")
   # mcDataFileNames  = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root",   f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   treeName         = "kin"
-  outputDirName    = f"{tBinLabel}/Mc_beamPolAngle_{beamPolAngle:.0f}"
+  outputDirName    = f"{tBinLabel}/McPlots_beamPolAngle_{beamPolAngle:.0f}"
 
   # create RDataFrame from MC data in AmpTools format and define columns
   lvs = lorentzVectors(realData = False)
@@ -143,8 +143,8 @@ if __name__ == "__main__":
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/mcPlots.root"
   outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
-  print(f"Writing histograms to '{outRootFileName}'")
   outRootFile.cd()
+  print(f"Writing histograms to '{outRootFileName}'")
   for hist in hists:
     print(f"Plotting histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
@@ -160,3 +160,5 @@ if __name__ == "__main__":
       hist.Draw("COLZ")
     hist.Write()
     canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+
+outRootFile.Close()

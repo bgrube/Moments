@@ -111,7 +111,7 @@ if __name__ == "__main__":
   # mcDataFileNames        = (f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root", )
   # mcDataFileNames        = (f"{dataInputDirName}/MC_ps/amptools_tree_accepted_30274_31057.root", f"{dataInputDirName}/MC_rho/amptools_tree_accepted_30274_31057.root")
   treeName               = "kin"
-  outputDirName          = f"{tBinLabel}/data_{beamPolLabel}"
+  outputDirName          = f"{tBinLabel}/dataPlots_{beamPolLabel}"
 
   # create RDataFrame from real data in AmpTools format and define columns
   lvs = lorentzVectors(realData = True)
@@ -200,8 +200,8 @@ if __name__ == "__main__":
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/dataPlots.root"
   outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
-  print(f"Writing histograms to '{outRootFileName}'")
   outRootFile.cd()
+  print(f"Writing histograms to '{outRootFileName}'")
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
@@ -232,13 +232,13 @@ if __name__ == "__main__":
     histStack = ROOT.THStack("hMassPiPiDataAndMc", ";m_{#pi#pi} [GeV];Events / 40 MeV")
     histStack.Add(histMassPiPiMc.GetValue())
     histStack.Add(histMassPiPiData.GetValue())
-    histMassPiPiMc.SetLineColor  (ROOT.kBlue + 1)
-    histMassPiPiData.SetLineColor(ROOT.kRed + 1)
+    histMassPiPiMc.SetLineColor    (ROOT.kBlue + 1)
     histMassPiPiMc.SetMarkerColor  (ROOT.kBlue + 1)
-    histMassPiPiData.SetMarkerColor(ROOT.kRed + 1)
+    histMassPiPiData.SetLineColor  (ROOT.kRed  + 1)
+    histMassPiPiData.SetMarkerColor(ROOT.kRed  + 1)
     histStack.Draw("NOSTACK")
-    histStack.Write()
     canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
+    histStack.Write()
     canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
 
   outRootFile.Close()
