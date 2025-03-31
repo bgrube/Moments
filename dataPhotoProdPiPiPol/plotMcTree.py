@@ -57,7 +57,7 @@ if __name__ == "__main__":
   treeName         = "kin"
   outputDirName    = f"{tBinLabel}/Mc_beamPolAngle_{beamPolAngle:.0f}"
 
-  # read MC data in AmpTools format and plot distributions
+  # create RDataFrame from MC data in AmpTools format and define columns
   lvs = lorentzVectors(realData = False)
   print(f"Reading MC data from tree '{treeName}' in file(s) {mcDataFileNames}")
   df = (
@@ -87,6 +87,8 @@ if __name__ == "__main__":
         .Define("DistFdcPim",     f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['lvPim']})")
         # .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
   )
+
+  # define MC histograms
   yAxisLabel = "Events"
   hists = [
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"                   + yAxisLabel, 100, 0,      2),    "FsMassRecoil"),
@@ -136,6 +138,7 @@ if __name__ == "__main__":
       df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hMcAnglesGjPiPi{histNameSuffix}", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
       df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hMcAnglesHfPiPi{histNameSuffix}", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
     ]
+
   # write MC histograms to ROOT file and generate PDF plots
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/mcPlots.root"
@@ -143,7 +146,7 @@ if __name__ == "__main__":
   print(f"Writing histograms to '{outRootFileName}'")
   outRootFile.cd()
   for hist in hists:
-    print(f"Generating histogram '{hist.GetName()}'")
+    print(f"Plotting histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
     if "TH2" in hist.ClassName() and str(hist.GetName()) =="hMcMassPiPiVsMinusT":

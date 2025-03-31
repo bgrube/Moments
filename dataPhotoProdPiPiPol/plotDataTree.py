@@ -113,7 +113,7 @@ if __name__ == "__main__":
   treeName               = "kin"
   outputDirName          = f"{tBinLabel}/data_{beamPolLabel}"
 
-  # read in real data in AmpTools format and plot RF-sideband subtracted distributions
+  # create RDataFrame from real data in AmpTools format and define columns
   lvs = lorentzVectors(realData = True)
   print(f"Reading data from tree '{treeName}' in signal file(s) {dataSigRegionFileNames} and background file(s) '{dataBkgRegionFileNames}'")
   df = (
@@ -147,6 +147,8 @@ if __name__ == "__main__":
      .Define("DistFdcPim",         f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['lvPim']})")
     #  .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
   )
+
+  # define real-data histograms applying RF-sideband subtraction
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = [
     df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",              ";E_{beam} [GeV];"                     + yAxisLabel, 100, 8,      9),    "E_Beam",      "eventWeight"),
@@ -193,6 +195,7 @@ if __name__ == "__main__":
       df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hDataAnglesGjPiPi{histNameSuffix}", ";cos#theta_{GJ};#phi_{GJ} [deg]", 100, -1, +1, 72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi"),
       df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hDataAnglesHfPiPi{histNameSuffix}", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi"),
     ]
+
   # write real-data histograms to ROOT file and generate PDF plots
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/dataPlots.root"
