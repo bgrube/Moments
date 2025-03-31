@@ -14,6 +14,31 @@ from makeMomentsInputTree import (
 )
 
 
+# declare C++ function to calculate invariant mass of a particle
+CPP_CODE_MASS = """
+double
+mass(const double Px, const double Py, const double Pz, const double E)
+{
+  const TLorentzVector p(Px, Py, Pz, E);
+  return p.M();
+}
+"""
+
+
+# declare C++ function to calculate momentum transfer squared
+CPP_CODE_MOM_TRANSFER_SQ = """
+double
+momTransferSq(
+  const double PxA, const double PyA, const double PzA, const double EA,
+  const double PxB, const double PyB, const double PzB, const double EB
+)	{
+  const TLorentzVector pA(PxA, PyA, PzA, EA);
+  const TLorentzVector pB(PxB, PyB, PzB, EB);
+  return (pA - pB).M2();
+}
+"""
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C")
@@ -23,37 +48,19 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
-  # declare C++ function to calculate invariant mass of a particle
-  CPP_CODE = """
-  double
-	mass(const double Px, const double Py, const double Pz, const double E)
-	{
-		const TLorentzVector p(Px, Py, Pz, E);
-		return p.M();
-	}
-  """
-  # declare C++ function to calculate momentum transfer squared
-  ROOT.gInterpreter.Declare(CPP_CODE)
-  CPP_CODE = """
-  double
-	momTransferSq(
-		const double PxA, const double PyA, const double PzA, const double EA,
-		const double PxB, const double PyB, const double PzB, const double EB
-	)	{
-		const TLorentzVector pA(PxA, PyA, PzA, EA);
-		const TLorentzVector pB(PxB, PyB, PzB, EB);
-		return (pA - pB).M2();
-	}
-  """
-  ROOT.gInterpreter.Declare(CPP_CODE)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASS)
+  ROOT.gInterpreter.Declare(CPP_CODE_MOM_TRANSFER_SQ)
 
-  # read MC data in AmpTools format
+  tBinLabel      = "tbin_0.4_0.5"
   # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4_rho.root"
   # mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4_rho.root"
   # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
   mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
-  treeName = "kin"
+  treeName       = "kin"
+  outputDirName  = f"{tBinLabel}/McPlots"
 
+  # create RDataFrame from MC data in AmpTools format and define columns
+  # see `plotDataTree.py` for definition of coordinate systems
   lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
   df = ROOT.RDataFrame(treeName, mcDataFileName)
   for pairLabel, pairLvs, lvRecoil, lvBeamGJ, flipYAxis in (
@@ -83,6 +90,8 @@ if __name__ == "__main__":
       .Define("FsMassPim",    f"mass({lvPim})")
       .Define("tAbs",         f"std::fabs(momTransferSq({lvTargetProton}, {lvRecoilProton}))")
   )
+
+  # define MC histograms
   yAxisLabel = "Events"
   hists = [
     df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil",  ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
@@ -115,6 +124,19 @@ if __name__ == "__main__":
     df.Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiMassVsGjCosThetaPimP", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 56, 0.28, 1.40, 72, -1, +1), f"MassPiPi", f"GjPimPCosTheta"),
     df.Filter("tAbs < 0.45").Histo2D(ROOT.RDF.TH2DModel(f"hMcPipPMassVsGjCosThetaCutT", ";m_{p#pi^{#plus}} [GeV];cos#theta_{GJ}", 72, 1, 2.8, 72, -1, +1), f"MassPipP", f"GjPipPCosTheta"),
   ]
+  # create acceptance histograms for pi pi GJ and HF angles in bins of m_pipi
+  massPiPiRange    = (0.28, 1.40)  # [GeV] binning used in PWA
+  massPiPiNmbBins  = 28
+  massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
+  for binIndex in range(0, massPiPiNmbBins):
+    massPiPiBinMin    = massPiPiRange[0] + binIndex * massPiPiBinWidth
+    massPiPiBinMax    = massPiPiBinMin + massPiPiBinWidth
+    massPiPiBinFilter = f"({massPiPiBinMin} < MassPiPi) and (MassPiPi < {massPiPiBinMax})"
+    histNameSuffix    = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
+    hists += [
+      df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiAnglesGj{histNameSuffix}", ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjPiPiCosTheta", "GjPiPiPhiDeg"),
+      df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiAnglesHf{histNameSuffix}", ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfPiPiCosTheta", "HfPiPiPhiDeg"),
+    ]
   # # check that for accepted MC the columns used for real data contain the same info as the ones used for MC data
   # # also check that index 1 is pi+ and 2 pi-
   # df = (
@@ -141,8 +163,19 @@ if __name__ == "__main__":
   #   df.Histo1D(ROOT.RDF.TH1DModel("hMcDelta_Py", ";#Delta p_{y} [GeV];" + yAxisLabel, 100, -1e-6, +1e-6), "Delta_Py"),
   #   df.Histo1D(ROOT.RDF.TH1DModel("hMcDelta_Pz", ";#Delta p_{z} [GeV];" + yAxisLabel, 100, -1e-6, +1e-6), "Delta_Pz"),
   # ]
+
+  # write MC histograms to ROOT file and generate PDF plots
+  os.makedirs(outputDirName, exist_ok = True)
+  outRootFileName = f"{outputDirName}/mcPlots.root"
+  outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
+  outRootFile.cd()
+  print(f"Writing histograms to '{outRootFileName}'")
   for hist in hists:
+    print(f"Plotting histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
     hist.Draw("COLZ")
-    canv.SaveAs(f"{hist.GetName()}.pdf")
+    hist.Write()
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+
+outRootFile.Close()
