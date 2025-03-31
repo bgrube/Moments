@@ -25,17 +25,19 @@ if __name__ == "__main__":
   lvPip    = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"
   lvPim    = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"
   polarizationAngle = 45.0
-  df = ROOT.RDataFrame(ampToolsTreeName, ampToolsFileName) \
-           .Define("GjCosTheta", f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})") \
-           .Define("GjTheta",    "std::acos(GjCosTheta)") \
-           .Define("GjPhi",      f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
-           .Define("GjPhiDeg",   "GjPhi * TMath::RadToDeg()") \
-           .Define("HfCosTheta", f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})") \
-           .Define("HfTheta",    "std::acos(HfCosTheta)") \
-           .Define("HfPhi",      f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})") \
-           .Define("HfPhiDeg",   "HfPhi * TMath::RadToDeg()") \
-           .Define("Phi",        f"MyFSMath::bigPhi({lvRecoil}, {lvBeam}, {polarizationAngle})") \
-           .Define("PhiDeg",     "Phi * TMath::RadToDeg()")
+  df = (
+    ROOT.RDataFrame(ampToolsTreeName, ampToolsFileName)
+        .Define("GjCosTheta", f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})")
+        .Define("GjTheta",    "std::acos(GjCosTheta)")
+        .Define("GjPhi",      f"FSMath::gjphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+        .Define("GjPhiDeg",   "GjPhi * TMath::RadToDeg()")
+        .Define("HfCosTheta", f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})")
+        .Define("HfTheta",    "std::acos(HfCosTheta)")
+        .Define("HfPhi",      f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})")
+        .Define("HfPhiDeg",   "HfPhi * TMath::RadToDeg()")
+        .Define("Phi",        f"MyFSMath::bigPhi({lvRecoil}, {lvBeam}, {polarizationAngle})")
+        .Define("PhiDeg",     "Phi * TMath::RadToDeg()")
+  )
   nmbBins = 25
   hists = (
     df.Histo3D(ROOT.RDF.TH3DModel("hAmpToolsGj", ";cos#theta_{GJ};#phi_{GJ} [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "GjCosTheta", "GjPhiDeg", "PhiDeg"),

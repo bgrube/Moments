@@ -93,19 +93,18 @@ def genDataFromWaves(
     std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
     return point;
   """  # C++ code that throws random point in angular space
-  df = ROOT.RDataFrame(nmbEvents) \
-           .Define("point",    pointFcn) \
-           .Define("cosTheta", "point[0]") \
-           .Define("theta",    "std::acos(cosTheta)") \
-           .Define("phiDeg",   "point[1]") \
-           .Define("phi",      "TMath::DegToRad() * phiDeg") \
-           .Define("PhiDeg",   "point[2]") \
-           .Define("Phi",      "TMath::DegToRad() * PhiDeg") \
-           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;') \
-           .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
-    # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-    # noop filter before snapshot logs when event loop is running
-    #!NOTE! for some reason, this is very slow
+  df = (
+    ROOT.RDataFrame(nmbEvents)
+        .Define("point",    pointFcn)
+        .Define("cosTheta", "point[0]")
+        .Define("theta",    "std::acos(cosTheta)")
+        .Define("phiDeg",   "point[1]")
+        .Define("phi",      "TMath::DegToRad() * phiDeg")
+        .Define("PhiDeg",   "point[2]")
+        .Define("Phi",      "TMath::DegToRad() * PhiDeg")
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')  # noop filter that logs when event loop is running
+        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  )  #!NOTE! for some reason, this is very slow
   nmbBins = 25
   hist = df.Histo3D(ROOT.RDF.TH3DModel("hSignalSim", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "cosTheta", "phiDeg", "PhiDeg")
   canv = ROOT.TCanvas()

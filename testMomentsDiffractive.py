@@ -175,12 +175,13 @@ def generateDataLegPolLC(
   treeName = "data"
   fileName = f"{outFileNamePrefix}{legendrePolLC.GetName()}.root"
   RootUtilities.declareInCpp(legendrePolLC = legendrePolLC)
-  df = ROOT.RDataFrame(nmbEvents) \
-           .Define("cosTheta", "PyVars::legendrePolLC.GetRandom()") \
-           .Define("theta",    "std::acos(cosTheta)") \
-           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataLegPolLC()" << endl; } return true;') \
-           .Snapshot(treeName, fileName)  # snapshot is needed or else the `cosTheta` column would be regenerated for every triggered loop
-                                          # noop filter before snapshot logs when event loop is running
+  df = (
+    ROOT.RDataFrame(nmbEvents)
+        .Define("cosTheta", "PyVars::legendrePolLC.GetRandom()")
+        .Define("theta",    "std::acos(cosTheta)")
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataLegPolLC()" << endl; } return true;')  # noop filter that logs when event loop is running
+        .Snapshot(treeName, fileName)  # snapshot is needed or else the `cosTheta` column would be regenerated for every triggered loop
+  )
   return df
 
 
@@ -251,15 +252,16 @@ def generateDataSphHarmLC(
   treeName = "data"
   fileName = f"{outFileNamePrefix}{sphericalHarmLC.GetName()}.root"
   RootUtilities.declareInCpp(sphericalHarmLC = sphericalHarmLC)
-  df = ROOT.RDataFrame(nmbEvents) \
-           .Define("point",    "double cosTheta, phiDeg; PyVars::sphericalHarmLC.GetRandom2(cosTheta, phiDeg); std::vector<double> point = {cosTheta, phiDeg}; return point;") \
-           .Define("cosTheta", "point[0]") \
-           .Define("theta",    "std::acos(cosTheta)") \
-           .Define("phiDeg",   "point[1]") \
-           .Define("phi",      "TMath::DegToRad() * phiDeg") \
-           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataSphHarmLC()" << endl; } return true;') \
-           .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                          # noop filter before snapshot logs when event loop is running
+  df = (
+    ROOT.RDataFrame(nmbEvents)
+        .Define("point",    "double cosTheta, phiDeg; PyVars::sphericalHarmLC.GetRandom2(cosTheta, phiDeg); std::vector<double> point = {cosTheta, phiDeg}; return point;")
+        .Define("cosTheta", "point[0]")
+        .Define("theta",    "std::acos(cosTheta)")
+        .Define("phiDeg",   "point[1]")
+        .Define("phi",      "TMath::DegToRad() * phiDeg")
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataSphHarmLC()" << endl; } return true;')  # noop filter that logs when event loop is running
+        .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  )
   return df
 
 
@@ -478,15 +480,16 @@ def generateDataPwd(
   treeName = "data"
   fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
   RootUtilities.declareInCpp(intensityFcn = intensityFcn)
-  df = ROOT.RDataFrame(nmbEvents) \
-           .Define("point",    "double cosTheta, phiDeg; PyVars::intensityFcn.GetRandom2(cosTheta, phiDeg); std::vector<double> point = {cosTheta, phiDeg}; return point;") \
-           .Define("cosTheta", "point[0]") \
-           .Define("theta",    "std::acos(cosTheta)") \
-           .Define("phiDeg",   "point[1]") \
-           .Define("phi",      "TMath::DegToRad() * phiDeg") \
-           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataPwd()" << endl; } return true;') \
-           .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                          # noop filter before snapshot logs when event loop is running
+  df = (
+    ROOT.RDataFrame(nmbEvents)
+        .Define("point",    "double cosTheta, phiDeg; PyVars::intensityFcn.GetRandom2(cosTheta, phiDeg); std::vector<double> point = {cosTheta, phiDeg}; return point;")
+        .Define("cosTheta", "point[0]")
+        .Define("theta",    "std::acos(cosTheta)")
+        .Define("phiDeg",   "point[1]")
+        .Define("phi",      "TMath::DegToRad() * phiDeg")
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataPwd()" << endl; } return true;')  # noop filter that logs when event loop is running
+        .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  )
   return df
 
 
@@ -610,15 +613,16 @@ def generateData2BodyPS(
   treeName = "data"
   fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
   RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
-  df = ROOT.RDataFrame(nmbEvents) \
-           .Define("point", "double cosTheta, phiDeg; PyVars::efficiencyFcn.GetRandom2(cosTheta, phiDeg); std::vector<double> point = {cosTheta, phiDeg}; return point;") \
-           .Define("cosTheta", "point[0]") \
-           .Define("theta",    "std::acos(cosTheta)") \
-           .Define("phiDeg",   "point[1]") \
-           .Define("phi",      "TMath::DegToRad() * phiDeg") \
-           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateData2BodyPS()" << endl; } return true;') \
-           .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
-                                          # noop filter before snapshot logs when event loop is running
+  df = (
+    ROOT.RDataFrame(nmbEvents)
+        .Define("point", "double cosTheta, phiDeg; PyVars::efficiencyFcn.GetRandom2(cosTheta, phiDeg); std::vector<double> point = {cosTheta, phiDeg}; return point;")
+        .Define("cosTheta", "point[0]")
+        .Define("theta",    "std::acos(cosTheta)")
+        .Define("phiDeg",   "point[1]")
+        .Define("phi",      "TMath::DegToRad() * phiDeg")
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateData2BodyPS()" << endl; } return true;')  # noop filter that logs when event loop is running
+        .Snapshot(treeName, fileName)  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  )
   return ROOT.RDataFrame(treeName, fileName)
 
 
