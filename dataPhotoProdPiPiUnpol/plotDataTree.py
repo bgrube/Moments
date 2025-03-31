@@ -14,6 +14,85 @@ from makeMomentsInputTree import (
   lorentzVectors,
 )
 
+
+# Alex' code to calculate helicity angles of A for beam + target -> X + recoil with X -> A + B
+CPP_CODE_ALEX = """
+TVector3
+analyzerVectorHf(
+  const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
+  const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
+  const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
+  const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+) {
+  // boost all 4-vectors into the X rest frame
+  TLorentzVector locAP4_XRF     (PxPA,     PyPA,     PzPA,     EPA);
+  TLorentzVector locBP4_XRF     (PxPB,     PyPB,     PzPB,     EPB);
+  TLorentzVector locTargetP4_XRF(0,        0,        0,        0.938271999359130859375);  // proton mass value from phase-space generator
+  TLorentzVector locRecoilP4_XRF(PxRecoil, PyRecoil, PzRecoil, ERecoil);
+  TLorentzVector locBeamP4_XRF  (PxBeam,   PyBeam,   PzBeam,   EBeam);
+  const TLorentzVector XP4 = locAP4_XRF + locBP4_XRF;
+  const TVector3 boostP3 = -XP4.BoostVector();
+  locAP4_XRF.Boost     (boostP3);
+  locBP4_XRF.Boost     (boostP3);
+  locTargetP4_XRF.Boost(boostP3);
+  locRecoilP4_XRF.Boost(boostP3);
+  locBeamP4_XRF.Boost  (boostP3);
+
+  // construct coordinate system
+  const TVector3 locAP3_XRF      = locAP4_XRF.Vect();
+  const TVector3 locTargetP3_XRF = locTargetP4_XRF.Vect();
+  const TVector3 locRecoilP3_XRF = locRecoilP4_XRF.Vect();
+  const TVector3 locBeamP3_XRF   = locBeamP4_XRF.Vect();
+  // helicity frame: z-axis opposite to recoil in X rest frame
+  const TVector3 z = -locRecoilP3_XRF.Unit();
+  // // Gottfried-Jackson frame for meson resonances: z-axis along beam photon
+  // const TVector3 z = locBeamP3_XRF.Unit();
+  // // Gottfried-Jackson frame for baryon resonances: z-axis along target (see Delta++ SDME Eq. (2))
+  // const TVector3 z = locTargetP3_XRF.Unit();
+  // y-axis: normal to the production plane
+  // flipping the y-axis leads to sign flip of odd-M moments
+  const TVector3 y = (locRecoilP3_XRF.Cross(locBeamP3_XRF)).Unit();  // convention used in COMPASS; in Mathieu et al., PRD 100 (2019) 054017, Appendix A; in CLAS, PRD 80 (2009) 072005;and in GlueX, PRC 108 (2023) 055204
+  // const TVector3 y = (locBeamP3_XRF.Cross(locRecoilP3_XRF)).Unit();  // convention used in Yu et al., PRC 96 (2017) 025208, Appendix A; in GlueX, PRC 105 (2022) 035201, Eq. (1); and in Delta++ SDMEs, Eqs. (2) and (A.1)
+  // x-axis: right-handed coordinate system
+  const TVector3 x = y.Cross(z);
+  const TVector3 v(locAP3_XRF * x, locAP3_XRF * y, locAP3_XRF * z);
+  return v;
+}
+
+double
+cosTheta_Alex(
+  const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
+  const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
+  const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
+  const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+) {
+  const TVector3 v = analyzerVectorHf(
+    PxPA,     PyPA,     PzPA,     EPA,
+    PxPB,     PyPB,     PzPB,     EPB,
+    PxRecoil, PyRecoil, PzRecoil, ERecoil,
+    PxBeam,   PyBeam,   PzBeam,   EBeam
+  );
+  return v.CosTheta();
+}
+
+double
+phiDeg_Alex(
+  const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
+  const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
+  const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
+  const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+) {
+  const TVector3 v = analyzerVectorHf(
+    PxPA,     PyPA,     PzPA,     EPA,
+    PxPB,     PyPB,     PzPB,     EPB,
+    PxRecoil, PyRecoil, PzRecoil, ERecoil,
+    PxBeam,   PyBeam,   PzBeam,   EBeam
+  );
+  return v.Phi() * TMath::RadToDeg();
+}
+"""
+
+
 def convertGraphToHist(
   graph:     ROOT.TGraphErrors,
   binning:   tuple[int, float, float],
@@ -43,92 +122,19 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
-  # Alex' code to calculate helicity angles of A for beam + target -> X + recoil with X -> A + B
-  CPP_CODE = """
-	TVector3
-	analyzerVectorHf(
-		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
-		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
-		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
-		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
-	) {
-		// boost all 4-vectors into the X rest frame
-		TLorentzVector locAP4_XRF     (PxPA,     PyPA,     PzPA,     EPA);
-		TLorentzVector locBP4_XRF     (PxPB,     PyPB,     PzPB,     EPB);
-		TLorentzVector locTargetP4_XRF(0,        0,        0,        0.938271999359130859375);  // proton mass value from phase-space generator
-		TLorentzVector locRecoilP4_XRF(PxRecoil, PyRecoil, PzRecoil, ERecoil);
-		TLorentzVector locBeamP4_XRF  (PxBeam,   PyBeam,   PzBeam,   EBeam);
-		const TLorentzVector XP4 = locAP4_XRF + locBP4_XRF;
-		const TVector3 boostP3 = -XP4.BoostVector();
-		locAP4_XRF.Boost     (boostP3);
-		locBP4_XRF.Boost     (boostP3);
-		locTargetP4_XRF.Boost(boostP3);
-		locRecoilP4_XRF.Boost(boostP3);
-		locBeamP4_XRF.Boost  (boostP3);
+  ROOT.gInterpreter.Declare(CPP_CODE_ALEX)
 
-		// construct coordinate system
-    const TVector3 locAP3_XRF      = locAP4_XRF.Vect();
-    const TVector3 locTargetP3_XRF = locTargetP4_XRF.Vect();
-    const TVector3 locRecoilP3_XRF = locRecoilP4_XRF.Vect();
-    const TVector3 locBeamP3_XRF   = locBeamP4_XRF.Vect();
-		// helicity frame: z-axis opposite to recoil in X rest frame
-		const TVector3 z = -locRecoilP3_XRF.Unit();
-		// // Gottfried-Jackson frame for meson resonances: z-axis along beam photon
-		// const TVector3 z = locBeamP3_XRF.Unit();
-		// // Gottfried-Jackson frame for baryon resonances: z-axis along target (see Delta++ SDME Eq. (2))
-		// const TVector3 z = locTargetP3_XRF.Unit();
-		// y-axis: normal to the production plane
-    // flipping the y-axis leads to sign flip of odd-M moments
-		const TVector3 y = (locRecoilP3_XRF.Cross(locBeamP3_XRF)).Unit();  // convention used in COMPASS; in Mathieu et al., PRD 100 (2019) 054017, Appendix A; in CLAS, PRD 80 (2009) 072005;and in GlueX, PRC 108 (2023) 055204
-		// const TVector3 y = (locBeamP3_XRF.Cross(locRecoilP3_XRF)).Unit();  // convention used in Yu et al., PRC 96 (2017) 025208, Appendix A; in GlueX, PRC 105 (2022) 035201, Eq. (1); and in Delta++ SDMEs, Eqs. (2) and (A.1)
-		// x-axis: right-handed coordinate system
-		const TVector3 x = y.Cross(z);
-		const TVector3 v(locAP3_XRF * x, locAP3_XRF * y, locAP3_XRF * z);
-		return v;
-	}
-
-	double
-	cosTheta_Alex(
-		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
-		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
-		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
-		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
-	) {
-		const TVector3 v = analyzerVectorHf(
-			PxPA,     PyPA,     PzPA,     EPA,
-			PxPB,     PyPB,     PzPB,     EPB,
-			PxRecoil, PyRecoil, PzRecoil, ERecoil,
-			PxBeam,   PyBeam,   PzBeam,   EBeam
-		);
-		return v.CosTheta();
-	}
-
-	double
-	phiDeg_Alex(
-		const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,
-		const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,
-		const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
-		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
-	) {
-		const TVector3 v = analyzerVectorHf(
-			PxPA,     PyPA,     PzPA,     EPA,
-			PxPB,     PyPB,     PzPB,     EPB,
-			PxRecoil, PyRecoil, PzRecoil, ERecoil,
-			PxBeam,   PyBeam,   PzBeam,   EBeam
-		);
-		return v.Phi() * TMath::RadToDeg();
-	}
-  """
-  ROOT.gInterpreter.Declare(CPP_CODE)
-
+  tBinLabel             = "tbin_0.4_0.5"
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
   dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
   mcDataFileName        = "./amptools_tree_accepted_tbin1_ebin4*.root"
-  treeName = "kin"
+  treeName              = "kin"
+  outputDirName         = f"{tBinLabel}/dataPlots"
 
   # create friend trees with correct weights
+  os.makedirs(outputDirName, exist_ok = True)
   for dataFileName, weightFormula in [(dataSigRegionFileName, "Weight"), (dataBkgRegionFileName, "-Weight")]:
-    friendFileName = f"{dataFileName}.weights"
+    friendFileName = f"{outputDirName}/{os.path.basename(dataFileName)}.weights"
     if os.path.exists(friendFileName):
       print(f"File '{friendFileName}' already exists, skipping creation of friend tree")
       continue
@@ -141,18 +147,18 @@ if __name__ == "__main__":
   weightTChain = ROOT.TChain(treeName)
   for dataFileName in [dataSigRegionFileName, dataBkgRegionFileName]:
     dataTChain.Add(dataFileName)
-    weightTChain.Add(f"{dataFileName}.weights")
+    friendFileName = f"{outputDirName}/{os.path.basename(dataFileName)}.weights"
+    weightTChain.Add(friendFileName)
   dataTChain.AddFriend(weightTChain)
 
-  # read in real data in AmpTools format and plot RF-sideband subtracted distributions
-  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
-  df = ROOT.RDataFrame(dataTChain)
-  # define columns
+  # create RDataFrame from real data in AmpTools format and define columns
   #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
   #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
   #    HF for pi+- p  baryon system: use pi+- as analyzer and z_HF = -p_pi-+   and y_HF = p_beam   x p_pi-+
   #    GJ for pi+ pi- meson system:  use pi+  as analyzer and z_GJ = p_beam    and y_HF = p_recoil x p_beam
   #    GJ for pi+- p  baryon system: use pi+- as analyzer and z_GJ = p_target  and y_HF = p_beam   x p_pi-+
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
+  df = ROOT.RDataFrame(dataTChain)
   for pairLabel, pairLvs, lvRecoil, lvBeamGJ, flipYAxis in (
     ("PiPi", (lvPip, lvPim         ), lvRecoilProton, lvBeamPhoton,   True),
     ("PipP", (lvPip, lvRecoilProton), lvPim,          lvTargetProton, False),
@@ -182,14 +188,15 @@ if __name__ == "__main__":
       .Define(f"HfPipPPhiDegDiff",   f"HfPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
       .Define(f"HfPimPCosThetaDiff", f"HfPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
       .Define(f"HfPimPPhiDegDiff",   f"HfPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
-    # df.Define(f"HfPiPiCosThetaDiff", f"GjPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
-    #   .Define(f"HfPiPiPhiDegDiff",   f"GjPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
-    #   .Define(f"HfPipPCosThetaDiff", f"GjPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
-    #   .Define(f"HfPipPPhiDegDiff",   f"GjPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
-    #   .Define(f"HfPimPCosThetaDiff", f"GjPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
-    #   .Define(f"HfPimPPhiDegDiff",   f"GjPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
+    # df.Define(f"GjPiPiCosThetaDiff", f"GjPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
+    #   .Define(f"GjPiPiPhiDegDiff",   f"GjPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
+    #   .Define(f"GjPipPCosThetaDiff", f"GjPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
+    #   .Define(f"GjPipPPhiDegDiff",   f"GjPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
+    #   .Define(f"GjPimPCosThetaDiff", f"GjPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
+    #   .Define(f"GjPimPPhiDegDiff",   f"GjPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
   )
 
+  # define real-data histograms applying RF-sideband subtraction
   yAxisLabel = "RF-Sideband Subtracted Combos"
   hists = [
     df.Histo1D(ROOT.RDF.TH1DModel("hDataEbeam",        ";E_{beam} [GeV];"          + yAxisLabel,  50, 3.55, 3.80), "E_Beam",   "eventWeight"),
@@ -221,8 +228,25 @@ if __name__ == "__main__":
       df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsHfCosTheta", f";{massAxisTitle}" + ";cos#theta_{HF}", *massBinning, 72,   -1,   +1), f"Mass{pairLabel}",       f"Hf{pairLabel}CosTheta", "eventWeight"),
       df.Histo2D(ROOT.RDF.TH2DModel(f"hData{pairLabel}MassVsHfPhiDeg",   f";{massAxisTitle}" + ";#phi_{HF}",      *massBinning, 72, -180, +180), f"Mass{pairLabel}",       f"Hf{pairLabel}PhiDeg",   "eventWeight"),
     ]
+  # create acceptance histograms for pi pi GJ and HF angles in bins of m_pipi
+  massPiPiRange    = (0.28, 1.40)  # [GeV]
+  massPiPiNmbBins  = 28
+  massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
+  for binIndex in range(0, massPiPiNmbBins):
+    massPiPiBinMin    = massPiPiRange[0] + binIndex * massPiPiBinWidth
+    massPiPiBinMax    = massPiPiBinMin + massPiPiBinWidth
+    massPiPiBinFilter = f"({massPiPiBinMin} < MassPiPi) and (MassPiPi < {massPiPiBinMax})"
+    histNameSuffix    = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
+    hists += [
+      df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hDataPiPiAnglesGj{histNameSuffix}", ";cos#theta_{GJ};#phi_{GJ} [deg]", 50, -1, +1, 50, -180, +180), "GjPiPiCosTheta", "GjPiPiPhiDeg"),
+      df.Filter(massPiPiBinFilter).Histo2D(ROOT.RDF.TH2DModel(f"hDataPiPiAnglesHf{histNameSuffix}", ";cos#theta_{HF};#phi_{HF} [deg]", 50, -1, +1, 50, -180, +180), "HfPiPiCosTheta", "HfPiPiPhiDeg"),
+    ]
 
-  # draw histograms
+  # write real-data histograms to ROOT file and generate PDF plots
+  outRootFileName = f"{outputDirName}/dataPlots.root"
+  outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
+  outRootFile.cd()
+  print(f"Writing histograms to '{outRootFileName}'")
   histNameLogScale = ("hDataPipPMassVsPiPiMassClas", )
   for hist in hists:
     canv = ROOT.TCanvas()
@@ -237,7 +261,8 @@ if __name__ == "__main__":
     else:
       hist.SetMinimum(0)
     hist.Draw("COLZ")
-    canv.SaveAs(f"{hist.GetName()}.pdf")
+    hist.Write()
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
   # check against Alex' RF-sideband subtracted histograms
   histFileNameAlex = "./plots_tbin1_ebin4.root"
@@ -257,7 +282,7 @@ if __name__ == "__main__":
     histDiff.Add(histAlex, -1)
     canv = ROOT.TCanvas()
     histDiff.Draw("COLZ")
-    canv.SaveAs(f"{hist.GetName()}_diff.pdf")
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}_diff.pdf")
   histFileAlex.Close()
 
   # overlay pipi mass distributions from data, accepted phase-space MC, and total acceptance-weighted intensity from PWA
@@ -274,6 +299,7 @@ if __name__ == "__main__":
     histName = "PWA Total Intensity",
   )
   # histMassPiPiPwa.Scale(0.5)
+  outRootFile.cd()
   canv = ROOT.TCanvas()
   histStack = ROOT.THStack("hPiPiMassDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
   histStack.Add(histMassPiPiMc.GetValue())
@@ -287,4 +313,7 @@ if __name__ == "__main__":
   histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
   histStack.Draw("NOSTACK")
   canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-  canv.SaveAs(f"{histStack.GetName()}.pdf")
+  histStack.Write()
+  canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
+
+outRootFile.Close()
