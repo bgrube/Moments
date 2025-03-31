@@ -32,14 +32,14 @@ def getRandomCovarianceReal(
 
 
 A = RNG.random((NMB_VARS, NMB_VARS))
-def realFunc(x: npt.NDArray) -> npt.NDArray:
+def realFcn(x: npt.NDArray) -> npt.NDArray:
   """Function R^n -> R^n for which to perform uncertainty propagation"""
   return x
   # return 2 * x
   # return A @ x
 
 
-def realFuncJacobian(x: npt.NDArray) -> npt.NDArray:
+def realFcnJacobian(x: npt.NDArray) -> npt.NDArray:
   """Returns R^{n x n} Jacobian matrix of R^n -> R^n function evaluated at given point"""
   return np.identity(x.shape[0])
   # return 2 * np.identity(x.shape[0])
@@ -59,7 +59,7 @@ def testRealVectorCase(
   samples = RNG.multivariate_normal(mean = xMeans, cov = xCovMat, size = nmbSamples)
   print(samples.shape, samples[0])
   # calculate function values for each sample
-  ySamples = np.array([realFunc(x) for x in samples])
+  ySamples = np.array([realFcn(x) for x in samples])
   print(ySamples.shape, ySamples[0])
   # calculate means and covariance matrix from function values
   yMeansMc  = np.mean(ySamples, axis = 0)
@@ -69,8 +69,8 @@ def testRealVectorCase(
   print(f"ratio = \n{yCovMatMc / xCovMat}")
 
   # perform analytic uncertainty propagation
-  yMeans  = realFunc(xMeans)
-  J       = realFuncJacobian(xMeans)
+  yMeans  = realFcn(xMeans)
+  J       = realFcnJacobian(xMeans)
   yCovMat = J @ (xCovMat @ J.T)  #!NOTE! @ is left-associative
   print(f"analytic: mu = {yMeans}, V = \n{yCovMat}")
   print(f"ratio = \n{yCovMat / yCovMatMc}")
@@ -196,7 +196,7 @@ def crossCovMatrix(
 
 
 Acomplex = A[0::2, 0::2] + 1j * A[1::2, 1::2]
-def complexFunc(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
+def complexFcn(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
   """Function for which to perform uncertainty propagation"""
   return z
   # return np.conjugate(z)
@@ -207,7 +207,7 @@ def complexFunc(z: npt.NDArray[np.complex128]) -> npt.NDArray[np.complex128]:
   # return z * np.conjugate(z)
 
 
-def complexFuncJacobian(z: npt.NDArray[np.complex128]) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
+def complexFcnJacobian(z: npt.NDArray[np.complex128]) -> tuple[npt.NDArray[np.complex128], npt.NDArray[np.complex128]]:
   """Returns Jacobian matrix of function evaluated at given point"""
   # f(z) = z
   J     = np.identity(z.shape[0], dtype = np.complex128)
@@ -253,7 +253,7 @@ if __name__ == "__main__":
 
   # Hermitian and pseudo-covariance matrices
   # calculate function values for each sample
-  ySamples = np.array([complexFunc(realVecToComplexVec(x)) for x in samples])
+  ySamples = np.array([complexFcn(realVecToComplexVec(x)) for x in samples])
   n = ySamples.shape[1]
   print(ySamples.shape, ySamples[0])
   # calculate means and covariance matrices from function values
@@ -304,8 +304,8 @@ if __name__ == "__main__":
   print(f"ratio = \n{np.real_if_close(yCovMatAugMc / yCovMatAugMc3)}")
 
   # perform analytic uncertainty propagation
-  yMeans = complexFunc(realVecToComplexVec(xMeans))
-  J, Jconj = complexFuncJacobian(realVecToComplexVec(xMeans))
+  yMeans = complexFcn(realVecToComplexVec(xMeans))
+  J, Jconj = complexFcnJacobian(realVecToComplexVec(xMeans))
   Jaug = np.block([
     [J, Jconj],
     [np.conjugate(Jconj), np.conjugate(J)],

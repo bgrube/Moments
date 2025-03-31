@@ -145,14 +145,14 @@ def genAccepted2BodyPsPhotoProd(
   print(f"Generating accepted phase-space MC data and writing them to '{fileName}'")
   #TODO avoid code doubling with genDataFromWaves() and corresponding function in testMomentsAlex
   RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)  # use Python object in C++
-  pointFunc = """
+  pointFcn = """
     double cosTheta, phiDeg, PhiDeg;
     PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
     std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
     return point;
   """  # C++ code that throws random point in angular space
   df = ROOT.RDataFrame(nmbEvents) \
-           .Define("point",    pointFunc) \
+           .Define("point",    pointFcn) \
            .Define("cosTheta", "point[0]") \
            .Define("theta",    "std::acos(cosTheta)") \
            .Define("phiDeg",   "point[1]") \

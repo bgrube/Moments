@@ -79,7 +79,7 @@ def genDataFromWaves(
   RootUtilities.declareInCpp(efficiencyHist = efficiencyHist)  # use Python object in C++
   # normalize efficiency histogram
   efficiencyHist.Scale(1 / efficiencyHist.GetMaximum())
-  pointFunc = """
+  pointFcn = """
     double cosTheta, phiDeg, PhiDeg;
     // weight intensity function by efficiency histogram using rejection sampling
     do {
@@ -94,7 +94,7 @@ def genDataFromWaves(
     return point;
   """  # C++ code that throws random point in angular space
   df = ROOT.RDataFrame(nmbEvents) \
-           .Define("point",    pointFunc) \
+           .Define("point",    pointFcn) \
            .Define("cosTheta", "point[0]") \
            .Define("theta",    "std::acos(cosTheta)") \
            .Define("phiDeg",   "point[1]") \

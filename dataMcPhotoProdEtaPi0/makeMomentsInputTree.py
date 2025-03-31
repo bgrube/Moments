@@ -83,19 +83,19 @@ def defineDataFrameColumns(
         .Define("mass",        f"(double)Mpi0eta{columnSuffix}")
         .Define("eventWeight", f"(double){weightColumnName}")
   )
-  bigPhiFunc = "bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam)"
+  bigPhiFcn = "bigPhi(Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0], Px_Beam, Py_Beam, Pz_Beam, E_Beam)"
   phiVarDef = f"(double)phi_eta_{coordSys}{columnSuffix}"
   if thrownData:
     df = (
       df.Define("phiDeg", f"{phiVarDef} * TMath::RadToDeg()")
         .Define("phi",    phiVarDef)
-        .Define("Phi",    bigPhiFunc)
+        .Define("Phi",    bigPhiFcn)
     )
   else:
     df = (
       df.Define  ("phiDeg", phiVarDef)
         .Define  ("phi",    f"{phiVarDef} * TMath::DegToRad()")
-        .Redefine("Phi",    bigPhiFunc)
+        .Redefine("Phi",    bigPhiFcn)
     )
   return df.Define("PhiDeg", "Phi * TMath::RadToDeg()")
 

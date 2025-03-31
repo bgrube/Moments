@@ -115,13 +115,13 @@ wignerD(
 		                       * TMath::Factorial(kmn2)) / powMinusOne(k);
 		sumTerm += std::pow(cosThetaHalf, kmn1) * std::pow(sinThetaHalf, jmnk) / factor;
 	}
-	const double dFuncVal = constTerm * sumTerm;
+	const double dFcnVal = constTerm * sumTerm;
 
 	// calculate value of D function D^J_{M1 M2}(phi, theta, 0) in canonical basis
 	const double               arg      = ((double)twoM1 / 2) * phi;
-	const std::complex<double> DFuncVal = std::exp(std::complex<double>(0, -arg)) * dFuncVal;
+	const std::complex<double> DFcnVal = std::exp(std::complex<double>(0, -arg)) * dFcnVal;
 
-	return DFuncVal;
+	return DFcnVal;
 }
 
 
@@ -137,21 +137,21 @@ wignerDReflConj(
 	const double phi,   // [rad]
 	const double theta  // [rad]
 ) {
-	std::complex<double> DFuncVal;
+	std::complex<double> DFcnVal;
 	const int reflFactor = refl * P * powMinusOne((twoJ - twoM1) / 2);
 	if (twoM1 == 0) {
 		if (reflFactor == +1) {
-			DFuncVal = 0;
+			DFcnVal = 0;
 		} else {
-			DFuncVal = wignerD(twoJ, 0, twoM2, phi, theta);
+			DFcnVal = wignerD(twoJ, 0, twoM2, phi, theta);
 		}
 	} else {
-		DFuncVal = (1 / std::sqrt(2))
+		DFcnVal = (1 / std::sqrt(2))
 		           * (                       wignerD(twoJ, +twoM1, twoM2, phi, theta)
 		              - (double)reflFactor * wignerD(twoJ, -twoM1, twoM2, phi, theta));
 	}
 
-	return std::conj(DFuncVal);
+	return std::conj(DFcnVal);
 }
 
 
