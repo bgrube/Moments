@@ -53,7 +53,7 @@ TINY_FLOAT = np.finfo(dtype = float).tiny
 
 
 def genAccepted2BodyPs(
-  nmbPsEvents:       int,  # number of phase-space events to generate
+  nmbGenEvents:      int,  # number of phase-space events to generate
   efficiencyFormula: str | None = None,   # detection efficiency used for acceptance correction
   regenerateData:    bool       = False,  # if set data are regenerated although .root file exists
   outFileNamePrefix: str        = "./",   # name prefix for output files
@@ -69,9 +69,12 @@ def genAccepted2BodyPs(
   outFileNameAccPs = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.root"
   if os.path.exists(outFileNameAccPs) and not regenerateData:
     print(f"Reading accepted phase-space MC data from '{outFileNameAccPs}'")
-    return ROOT.RDataFrame(treeName, outFileNameAccPs)
+    psAccData = ROOT.RDataFrame(treeName, outFileNameAccPs)
+    nmbAcceptedEvents = psAccData.Count().GetValue()
+    print(f"The sample contains {nmbAcceptedEvents} accepted events corresponding to an efficiency of {nmbAcceptedEvents / nmbGenEvents:.3f}.")
+    return psAccData
 
-  print(f"Generating {nmbPsEvents} events distributed according to two-body phase-space")
+  print(f"Generating {nmbGenEvents} events distributed according to two-body phase-space")
   # generate isotropic distributions in cos theta, phi, and Phi
   outFileNamePs = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.ps.root"
   # C++ code that throws random point in angular space
@@ -83,7 +86,7 @@ def genAccepted2BodyPs(
     return point;
   """
   psData = (
-    ROOT.RDataFrame(nmbPsEvents)
+    ROOT.RDataFrame(nmbGenEvents)
         .Define("point",    pointFcn)
         .Define("cosTheta", "point[0]")
         .Define("theta",    "std::acos(cosTheta)")
@@ -108,7 +111,7 @@ def genAccepted2BodyPs(
              .Filter("acceptEvent == true")
   )
   nmbAcceptedEvents = psAccData.Count().GetValue()
-  print(f"After efficiency weighting the sample contains {nmbAcceptedEvents} accepted events")
+  print(f"After efficiency weighting the sample contains {nmbAcceptedEvents} accepted events corresponding to an efficiency of {nmbAcceptedEvents / nmbGenEvents:.3f}.")
   print(f"Writing accepted phase-space data to file '{outFileNameAccPs}'")
   return psAccData.Snapshot(treeName, outFileNameAccPs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
 
@@ -442,7 +445,7 @@ if __name__ == "__main__":
       timer.start("Time to generate accepted phase-space MC data")
       ROOT.gRandom.SetSeed(seed)
       dataAcceptedPs = genAccepted2BodyPs(
-        nmbPsEvents       = nmbPsMcEvents,
+        nmbGenEvents       = nmbPsMcEvents,
         efficiencyFormula = efficiencyFormula,
         outFileNamePrefix = f"{outputDirName}/",
         # regenerateData    = True,
@@ -543,7 +546,7 @@ if __name__ == "__main__":
         # perform same fit using own function for the negative log-likelihood (NLL)
         def nll(moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]) -> float:
           """Negative log-likelihood function for intensity as a function of moment parameters"""
-          integral, intensities = intensityFcnVectorized(dataPoints = (thetas, phis, Phis), moments = moments)
+          integral, intensities = intensityFcn(dataPoints = (thetas, phis, Phis), moments = moments)
           nonPositiveIntensities = intensities[intensities <= 0]
           if nonPositiveIntensities.size > 0:
             print(f"!!! non-positive intensities: {nonPositiveIntensities}")
