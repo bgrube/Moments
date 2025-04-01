@@ -38,7 +38,6 @@ from PlottingUtilities import (
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 from testMomentsPhotoProd import (
-  genAccepted2BodyPsPhotoProd,
   genDataFromWaves,
   TH3_ANG_PLOT_KWARGS,
 )
@@ -51,6 +50,67 @@ print = functools.partial(print, flush = True)
 
 # TINY_FLOAT = np.finfo(dtype = np.double).tiny
 TINY_FLOAT = np.finfo(dtype = float).tiny
+
+
+def genAccepted2BodyPs(
+  nmbPsEvents:       int,  # number of phase-space events to generate
+  efficiencyFormula: str | None = None,   # detection efficiency used for acceptance correction
+  regenerateData:    bool       = False,  # if set data are regenerated although .root file exists
+  outFileNamePrefix: str        = "./",   # name prefix for output files
+  columnsToWrite:    list[str]  = ["theta", "phi", "Phi"],  # columns to write to file
+) -> ROOT.RDataFrame:
+  """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
+  print("Drawing efficiency function")
+  efficiencyFcn = ROOT.TF3("efficiency", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", nmbPoints = 100, maxVal = 1.0)
+
+  # don't regenerate data if file already exists
+  treeName = "data"
+  outFileNameAccPs = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.root"
+  if os.path.exists(outFileNameAccPs) and not regenerateData:
+    print(f"Reading accepted phase-space MC data from '{outFileNameAccPs}'")
+    return ROOT.RDataFrame(treeName, outFileNameAccPs)
+
+  print(f"Generating {nmbPsEvents} events distributed according to two-body phase-space")
+  # generate isotropic distributions in cos theta, phi, and Phi
+  outFileNamePs = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.ps.root"
+  # C++ code that throws random point in angular space
+  pointFcn = """
+    const double cosTheta = gRandom->Uniform(-1, +1);
+    const double phi      = gRandom->Uniform(-TMath::Pi(), +TMath::Pi());  // [rad]
+    const double Phi      = gRandom->Uniform(-TMath::Pi(), +TMath::Pi());  // [rad]
+    const std::vector<double> point = {cosTheta, phi, Phi};
+    return point;
+  """
+  psData = (
+    ROOT.RDataFrame(nmbPsEvents)
+        .Define("point",    pointFcn)
+        .Define("cosTheta", "point[0]")
+        .Define("theta",    "std::acos(cosTheta)")
+        .Define("phi",      "point[1]")
+        .Define("Phi",      "point[2]")
+        .Filter('if (rdfentry_ == 0) { std::cout << "Running event loop in genData2BodyPs()" << std::endl; } return true;')  # noop filter that logs when event loop is running
+        .Snapshot(treeName, outFileNamePs, ROOT.std.vector[ROOT.std.string](columnsToWrite))  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+  )
+
+  print(f"Weighting phase-space events with efficiency function '{efficiencyFormula}'")
+  RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)  # use Python object in C++
+  psAccData = (
+    psData.Define("efficiencyWeight", f"(Double32_t)PyVars::efficiencyFcn.Eval(cos(theta), TMath::RadToDeg() * phi, TMath::RadToDeg() * Phi)")
+          .Define("rndNmb",            "(Double32_t)gRandom->Rndm()")
+  )
+  # determine maximum weight
+  maxEfficiencyWeight = psAccData.Max("efficiencyWeight").GetValue()
+  print(f"Maximum intensity is {maxEfficiencyWeight}")
+  # accept each event with probability efficiencyWeight / maxEfficiencyWeight
+  psAccData = (
+    psAccData.Define("acceptEvent", f"(bool)(rndNmb < (efficiencyWeight / {maxEfficiencyWeight}))")
+             .Filter("acceptEvent == true")
+  )
+  nmbAcceptedEvents = psAccData.Count().GetValue()
+  print(f"After efficiency weighting the sample contains {nmbAcceptedEvents} accepted events")
+  print(f"Writing accepted phase-space data to file '{outFileNameAccPs}'")
+  return psAccData.Snapshot(treeName, outFileNameAccPs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
 
 
 def defineIntensityFcnVectorizedCpp(intensityFormula: str) -> None:
@@ -378,11 +438,11 @@ if __name__ == "__main__":
       canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
       timer.stop("Time to generate MC data from partial waves")
 
-      print(f"Generating {nmbPsMcEvents} accepted phase-space MC events")
+      print(f"Generating accepted phase-space MC events from {nmbPsMcEvents} phase-space events")
       timer.start("Time to generate accepted phase-space MC data")
       ROOT.gRandom.SetSeed(seed)
-      dataAcceptedPs = genAccepted2BodyPsPhotoProd(
-        nmbEvents         = nmbPsMcEvents,
+      dataAcceptedPs = genAccepted2BodyPs(
+        nmbPsEvents       = nmbPsMcEvents,
         efficiencyFormula = efficiencyFormula,
         outFileNamePrefix = f"{outputDirName}/",
         # regenerateData    = True,
@@ -453,7 +513,7 @@ if __name__ == "__main__":
         scaled_pdf = intensityFcn,
         verbose    = 0,
       )
-      minuit = im.Minuit(extUnbinnedNllFcn, 1.01 * momentValues, name = momentLabels)
+      minuit = im.Minuit(extUnbinnedNllFcn, 0.99 * momentValues, name = momentLabels)
       print(f"Fitting {len(thetas)} events")
       with timer.timeThis("Time needed by MIGRAD"):
         minuit.migrad()
