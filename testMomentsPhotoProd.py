@@ -94,10 +94,13 @@ def genDataFromWaves(
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
+  fileName = f"{outFileNamePrefix}data{nameSuffix}.root"
   if os.path.exists(fileName) and not regenerateData:
     print(f"Reading partial-wave MC data from '{fileName}'")
-    return ROOT.RDataFrame(treeName, fileName)
+    df = ROOT.RDataFrame(treeName, fileName)
+    nmbEvents = df.Count().GetValue()
+    print(f"File '{fileName}' contains {nmbEvents} events")
+    return df
   print(f"Generating partial-wave MC data and writing them to '{fileName}'")
   RootUtilities.declareInCpp(**{intensityFcn.GetName() : intensityFcn})  # use Python object in C++
   dataPointFcn = f"""
