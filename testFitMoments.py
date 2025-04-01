@@ -157,8 +157,8 @@ def intensityFcnVectorized(
     np.ascontiguousarray(Phis),
     moments,
   ))
-  # for perfect acceptance H_0(0, 0) is predicted number of measured events
-  integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
+  # this is a bit hacky; before calling this function we need to set the phase-space efficiency from MC data
+  integral = moments[0] * intensityFcnVectorized.efficiency
   return (integral, intensities)
 
 
@@ -472,23 +472,24 @@ if __name__ == "__main__":
 
       print("Constructing vectorized intensity function using TFormula and OpenMP")
       # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
-      # intensityFormula = HTruth.intensityFormula(
-      #   polarization     = beamPolarization,
-      #   thetaFormula     = "x",
-      #   phiFormula       = "y",
-      #   PhiFormula       = "z",
-      #   printFormula     = True,
-      #   useMomentSymbols = True,
-      # )
-      # defineIntensityFcnVectorizedCpp(intensityFormula)
-      # intensityFcn = intensityFcnVectorized
-      intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
-      intensityFcn.precalcBasisFcnAccPsIntegrals(
-        thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
-        phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
-        Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
-        nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
+      intensityFormula = HTruth.intensityFormula(
+        polarization     = beamPolarization,
+        thetaFormula     = "x",
+        phiFormula       = "y",
+        PhiFormula       = "z",
+        printFormula     = True,
+        useMomentSymbols = True,
       )
+      defineIntensityFcnVectorizedCpp(intensityFormula)
+      intensityFcn = intensityFcnVectorized
+      intensityFcn.efficiency = phaseSpaceEfficiency  # needed for integral calculation
+      # intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
+      # intensityFcn.precalcBasisFcnAccPsIntegrals(
+      #   thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
+      #   phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
+      #   Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
+      #   nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
+      # )
       momentValues = np.array([HTruth[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruth[qnIndex].val.imag for qnIndex in HTruth.indices.qnIndices])  # make all moment values real-valued
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
