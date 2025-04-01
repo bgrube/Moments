@@ -370,7 +370,31 @@ if __name__ == "__main__":
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
   efficiencyFormula = "1"  # perfect acceptance
   # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
-  seed              = 123456789
+  randomSeed        = 123456789
+
+  # define angular distribution of signal
+  partialWaveAmplitudesSig: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
+    # negative-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
+    # positive-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+  )
 
   thisSourceFileName = os.path.basename(__file__)
   logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
@@ -388,36 +412,24 @@ if __name__ == "__main__":
       print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
       timer.start("Total execution time")
 
-      # define angular distribution of signal
-      partialWaveAmplitudesSig: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
-        # negative-reflectivity waves
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
-        AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
-        # positive-reflectivity waves
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
-        AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+      print(f"Generating accepted phase-space MC events from {nmbPsMcEvents} phase-space events")
+      timer.start("Time to generate accepted phase-space MC data")
+      ROOT.gRandom.SetSeed(randomSeed)
+      dataAcceptedPs = genAccepted2BodyPs(
+        nmbGenEvents      = nmbPsMcEvents,
+        efficiencyFormula = efficiencyFormula,
+        outFileNamePrefix = f"{outputDirName}/",
+        # regenerateData    = True,
+        regenerateData    = False,
       )
-      amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
+      timer.stop("Time to generate accepted phase-space MC data")
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
+      amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
       HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
       print(f"True moment values\n{HTruth}")
       timer.start("Time to generate MC data from partial waves")
-      ROOT.gRandom.SetSeed(seed)
+      ROOT.gRandom.SetSeed(randomSeed)
       dataPwaModel = genDataFromWaves(
         nmbEvents         = nmbPwaMcEvents,
         polarization      = beamPolarization,
@@ -440,18 +452,6 @@ if __name__ == "__main__":
       hist.Draw("BOX2Z")
       canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
       timer.stop("Time to generate MC data from partial waves")
-
-      print(f"Generating accepted phase-space MC events from {nmbPsMcEvents} phase-space events")
-      timer.start("Time to generate accepted phase-space MC data")
-      ROOT.gRandom.SetSeed(seed)
-      dataAcceptedPs = genAccepted2BodyPs(
-        nmbGenEvents       = nmbPsMcEvents,
-        efficiencyFormula = efficiencyFormula,
-        outFileNamePrefix = f"{outputDirName}/",
-        # regenerateData    = True,
-        regenerateData    = False,
-      )
-      timer.stop("Time to generate accepted phase-space MC data")
 
       timer.start("Time to construct functions")
       print("Constructing intensity function with moments as parameters from formula")
