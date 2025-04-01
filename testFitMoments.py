@@ -7,10 +7,7 @@ extended maximum likelihood-fitting of the data.
 
 from __future__ import annotations
 
-from dataclasses import (
-  dataclass,
-  field,
-)
+from dataclasses import dataclass
 import functools
 import numpy as np
 import nptyping as npt
@@ -118,8 +115,8 @@ def genAccepted2BodyPs(
 
 def defineIntensityFcnVectorizedCpp(intensityFormula: str) -> None:
   """Defines the vectorized C++ intensity function using TFormula and OpenMP"""
-  ROOT.gInterpreter.ProcessLine(f'TFormula intensityFormula = TFormula("intensity", "{intensityFormula}");')
-  ROOT.gInterpreter.ProcessLine(
+  ROOT.gInterpreter.Declare(f'TFormula intensityFormula = TFormula("intensity", "{intensityFormula}");')
+  ROOT.gInterpreter.Declare(
     """
     std::vector<double>
     intensityFcnVectorized(
@@ -165,7 +162,7 @@ def intensityFcnVectorized(
   return (integral, intensities)
 
 
-ROOT.gInterpreter.ProcessLine(
+ROOT.gInterpreter.Declare(
 """
 // basis functions for physical moments; Eq. (XXX)
 // scalar version that calculates function value for a single event
@@ -194,7 +191,7 @@ f_basis(
 """
 )
 
-ROOT.gInterpreter.ProcessLine(
+ROOT.gInterpreter.Declare(
 """
 // vector version that calculates basis-function value for each entry
 // in the input vectors for a constant polarization value
@@ -365,8 +362,8 @@ if __name__ == "__main__":
   maxL              = 4       # maximum L quantum number of moments
   outputDirName     = Utilities.makeDirPath("./plotsTestFitMoments")
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
-  efficiencyFormula = "1"  # perfect acceptance
-  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
+  # efficiencyFormula = "1"  # perfect acceptance
+  efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
   randomSeed        = 123456789
 
   # define angular distribution of signal
@@ -419,12 +416,12 @@ if __name__ == "__main__":
         # regenerateData    = True,
         regenerateData    = False,
       )
+      phaseSpaceEfficiency = dataAcceptedPs.Count().GetValue() / nmbPsMcEvents
       timer.stop("Time to generate accepted phase-space MC data")
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
-      print(f"!!! {dataAcceptedPs.Count().GetValue() / nmbPsMcEvents=}; {nmbPwaMcEvents / (dataAcceptedPs.Count().GetValue() / nmbPsMcEvents)=}")
-      HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEvents / (dataAcceptedPs.Count().GetValue() / nmbPsMcEvents))  # normalize to acceptance-corrected number of events
+      HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEvents / phaseSpaceEfficiency)  # normalize to acceptance-corrected number of events
       print(f"True moment values\n{HTruth}")
       timer.start("Time to generate MC data from partial waves")
       ROOT.gRandom.SetSeed(randomSeed)
@@ -465,7 +462,6 @@ if __name__ == "__main__":
       intensityTF3 = ROOT.TF3("intensityMoments", intensityFormula, -1, +1, -180, +180, -180, +180)
       for qnIndex in HTruth.indices.qnIndices:
         Hval = HTruth[qnIndex].val
-        print(f"!!! {qnIndex.label} = {Hval}")
         intensityTF3.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
       print("Drawing intensity function")
       intensityTF3.SetNpx(100)
@@ -498,11 +494,11 @@ if __name__ == "__main__":
       thetas = np.array([0,    1,    2],    dtype = np.double)
       phis   = np.array([0.5,  1.5,  2.5],  dtype = np.double)
       Phis   = np.array([0.75, 1.75, 2.75], dtype = np.double)
-      intensitiesFcn = intensityFcn(dataPoints = (thetas, phis, Phis), moments = momentValues)
+      intensities = intensityFcn(dataPoints = (thetas, phis, Phis), moments = momentValues)
       intensitiesTF3 = []
       for theta, phi, Phi in zip(thetas, phis, Phis):
         intensitiesTF3.append(intensityTF3.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi)))
-      print(f"!!! {intensitiesFcn=} vs. {intensitiesTF3=}, delta = {np.array(intensitiesTF3) - intensitiesFcn[1]}")
+      print(f"!!! {intensities=} vs. {intensitiesTF3=}, delta = {np.array(intensitiesTF3) - intensities[1]}")
       timer.stop("Time to construct functions")
 
       print("Loading data and setting up unbinned likelihood function and minimizer")
