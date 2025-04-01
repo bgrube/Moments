@@ -323,11 +323,8 @@ class IntensityFcnVectorized:
     intensities = np.dot(moments, self._baseFcnVals)  # calculate intensities for all events
     # for perfect acceptance H_0(0, 0) is predicted number of measured events
     assert self._baseFcnIntegrals is not None, "Need to call `IntensityFcnVectorized.precalcBasisFcnAccPsIntegrals()` before calling the functor"
-    nmbEvents = thetas.shape[0]
-    integralNew = np.dot(moments, self._baseFcnIntegrals) * nmbEvents
-    integral = moments[0] * nmbEvents  # normalize integral such that parameters can be directly compared to true values
-    print(f"!!! {integral=} vs. {integralNew=}, delta = {integral - integralNew}; {moments[0]=}")
-    return (integralNew, intensities)
+    integral = np.dot(moments, self._baseFcnIntegrals)
+    return (integral, intensities)
 
 
 def convertIminuitToMomentResult(
@@ -426,7 +423,8 @@ if __name__ == "__main__":
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
-      HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
+      print(f"!!! {dataAcceptedPs.Count().GetValue() / nmbPsMcEvents=}; {nmbPwaMcEvents / (dataAcceptedPs.Count().GetValue() / nmbPsMcEvents)=}")
+      HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEvents / (dataAcceptedPs.Count().GetValue() / nmbPsMcEvents))  # normalize to acceptance-corrected number of events
       print(f"True moment values\n{HTruth}")
       timer.start("Time to generate MC data from partial waves")
       ROOT.gRandom.SetSeed(randomSeed)
