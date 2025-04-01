@@ -214,7 +214,7 @@ class IntensityFcnVectorized:
     self._phisAccPs   = np.ascontiguousarray(phis)
     self._PhisAccPs   = np.ascontiguousarray(Phis)
     # check that all data arrays have the same length
-    nmbAccEvents  = len(self._thetasAccPs)
+    nmbAccEvents = len(self._thetasAccPs)
     assert nmbAccEvents == len(self._phisAccPs) == len(self._PhisAccPs), f"Data arrays must have same length; but got {len(self._thetasAccPs)=} vs. {len(self._phisAccPs)=} vs. {len(self._PhisAccPs)=}"
     nmbMoments = len(self.indices)
     self._baseFcnIntegrals = np.zeros((nmbMoments, ), dtype = np.double)
@@ -260,8 +260,9 @@ class IntensityFcnVectorized:
     intensities = np.dot(moments, self._baseFcnVals)  # calculate intensities for all events
     # for perfect acceptance H_0(0, 0) is predicted number of measured events
     assert self._baseFcnIntegrals is not None, "Need to call `IntensityFcnVectorized.precalcBasisFcnAccPsIntegrals()` before calling the functor"
-    integralNew = np.dot(moments, self._baseFcnIntegrals) * thetas.shape[0]
-    integral = moments[0] * thetas.shape[0]  # normalize integral such that parameters can be directly compared to true values
+    nmbEvents = thetas.shape[0]
+    integralNew = np.dot(moments, self._baseFcnIntegrals) * nmbEvents
+    integral = moments[0] * nmbEvents  # normalize integral such that parameters can be directly compared to true values
     print(f"!!! {integral=} vs. {integralNew=}, delta = {integral - integralNew}; {moments[0]=}")
     return (integralNew, intensities)
 
@@ -303,6 +304,7 @@ if __name__ == "__main__":
   beamPolarization = 1.0     # polarization of photon beam
   maxL             = 4       # maximum L quantum number of moments
   outputDirName    = Utilities.makeDirPath("./plotsTestFitMoments")
+  seed              = 123456789
 
   thisSourceFileName = os.path.basename(__file__)
   logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
@@ -313,7 +315,6 @@ if __name__ == "__main__":
     Utilities.printGitInfo()
     timer = Utilities.Timer()
     ROOT.gROOT.SetBatch(True)
-    ROOT.gRandom.SetSeed(123456789)
     setupPlotStyle()
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
@@ -352,6 +353,7 @@ if __name__ == "__main__":
       HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
       print(f"True moment values\n{HTruth}")
       timer.start("Time to generate MC data from partial waves")
+      ROOT.gRandom.SetSeed(seed)
       dataPwaModel = genDataFromWaves(
         nmbEvents         = nmbPwaMcEvents,
         polarization      = beamPolarization,
@@ -365,7 +367,7 @@ if __name__ == "__main__":
       canv = ROOT.TCanvas()
       nmbBins = 25
       hist = dataPwaModel.Histo3D(
-        ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+        ROOT.RDF.TH3DModel("data", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
         "cosTheta", "phiDeg", "PhiDeg")
       hist.SetMinimum(0)
       hist.GetXaxis().SetTitleOffset(1.5)
@@ -377,6 +379,7 @@ if __name__ == "__main__":
 
       print(f"Generating {nmbPsMcEvents} accepted phase-space MC events")
       timer.start("Time to generate accepted phase-space MC data")
+      ROOT.gRandom.SetSeed(seed)
       dataAcceptedPs = genAccepted2BodyPsPhotoProd(
         nmbEvents         = nmbPsMcEvents,
         efficiencyFormula = efficiencyFormula,
