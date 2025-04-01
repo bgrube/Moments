@@ -251,12 +251,12 @@ class AmplitudeSet:
   def photoProdMomentSet(
     self,
     maxL:                int,  # maximum L quantum number of moments
-    normalize:           bool | int = True,   # if set to true, moment values are normalized to H_0(0, 0)
-                                              # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
-    printMomentFormulas: bool       = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
+    normalize:           bool | float = True,   # if set to true, moment values are normalized to H_0(0, 0)
+                                                # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
+    printMomentFormulas: bool         = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
     binCenters:          dict[KinematicBinningVariable, float] = {}  # center values of variables that define kinematic bin of `MomentResult`
   ) -> MomentResult:
-    """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; the moments H_2(L, 0) are omitted"""
+    """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; since they are 0 the moments H_2(L, 0) are omitted"""
     momentIndices = MomentIndices(maxL, polarized = self.polarized)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = np.complex128)
     norm: float = 1.0
@@ -278,9 +278,9 @@ class AmplitudeSet:
           if isinstance(normalize, bool):
             # normalize all moments to H_0(0, 0) including H_0(0, 0) itself (i.e. H_0(0, 0) = 1 after normalization)
             norm = moments[0].real  # Re[H_0(0, 0)]
-          elif isinstance(normalize, int) and normalize > 0:
+          elif isinstance(normalize, float) and normalize > 0:
             # normalize all moments such that H_0(0, 0) = given number of events
-            norm = moments[0].real / float(normalize)
+            norm = moments[0].real / normalize
         momentsRange = (
           1 if not self.polarized else
           2 if M == 0 else
