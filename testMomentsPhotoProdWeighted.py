@@ -141,7 +141,7 @@ if __name__ == "__main__":
       )
       dataPwaModelSig = dataPwaModelSig.Define("discrVariable", "gRandom->Gaus(0, 0.1)")
       treeName = "data"
-      fileNameSig = f"{outFileDirName}/intensitySig.photoProd.root"
+      fileNameSig = f"{outFileDirName}/intensitySig.root"
       dataPwaModelSig.Snapshot(treeName, fileNameSig)
       dataPwaModelSig = ROOT.RDataFrame(treeName, fileNameSig)
       histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         regenerateData    = True,
       )
       dataPwaModelBkg = dataPwaModelBkg.Define("discrVariable", "gRandom->Uniform(0, 2) - 1")
-      fileNameBkg = f"{outFileDirName}/intensityBkg.photoProd.root"
+      fileNameBkg = f"{outFileDirName}/intensityBkg.root"
       dataPwaModelBkg.Snapshot(treeName, fileNameBkg)
       dataPwaModelBkg = ROOT.RDataFrame(treeName, fileNameBkg)
       histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()

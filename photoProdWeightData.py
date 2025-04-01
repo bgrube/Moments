@@ -50,16 +50,20 @@ def weightAccPhaseSpaceWithIntensity(
   # calculate intensity weight and random number in [0, 1] for each event
   print(f"Calculating weights using formula '{intensityFormula}'")
   ROOT.gRandom.SetSeed(seed)
-  psAccData = psAccData.Define("intensityWeight", f"(Double32_t){intensityFormula}") \
-                       .Define("rndNmb",           "(Double32_t)gRandom->Rndm()")
+  psAccData = (
+    psAccData.Define("intensityWeight", f"(Double32_t){intensityFormula}")
+             .Define("rndNmb",           "(Double32_t)gRandom->Rndm()")
+  )
   # determine maximum weight
   maxIntensityWeight = psAccData.Max("intensityWeight").GetValue()
   print(f"Maximum intensity is {maxIntensityWeight}")
   # accept each event with probability intensityWeight / maxIntensityWeight
-  weightedPsAccData = psAccData.Define("acceptEvent", f"(bool)(rndNmb < (intensityWeight / {maxIntensityWeight}))") \
-                               .Filter("acceptEvent == true")
+  weightedPsAccData = (
+    psAccData.Define("acceptEvent", f"(bool)(rndNmb < (intensityWeight / {maxIntensityWeight}))")
+             .Filter("acceptEvent == true")
+  )
   nmbWeightedEvents = weightedPsAccData.Count().GetValue()
-  print(f"After intensity weighting sample contains {nmbWeightedEvents} events; efficiency is {nmbWeightedEvents / nmbPsAccEvents}")
+  print(f"After intensity weighting sthe ample contains {nmbWeightedEvents} accepted events; efficiency is {nmbWeightedEvents / nmbPsAccEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
   weightedPsAccData.Snapshot(cfg.treeName, outFileName)

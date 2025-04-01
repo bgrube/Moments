@@ -94,7 +94,7 @@ def genDataFromWaves(
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.photoProd.root"
+  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
   if os.path.exists(fileName) and not regenerateData:
     print(f"Reading partial-wave MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
@@ -135,7 +135,7 @@ def genAccepted2BodyPsPhotoProd(
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.photoProd.root"
+  fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
   if os.path.exists(fileName) and not regenerateData:
     print(f"Reading accepted phase-space MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)

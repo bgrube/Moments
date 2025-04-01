@@ -70,7 +70,7 @@ def genDataFromWaves(
 
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.photoProd.root"
+  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
   if os.path.exists(fileName) and not regenerateData:
     print(f"Reading partial-wave MC data from '{fileName}'")
     return ROOT.RDataFrame(treeName, fileName)
