@@ -299,11 +299,14 @@ def convertIminuitToMomentResult(
 
 if __name__ == "__main__":
   # set parameters of test case
-  nmbPwaMcEvents   = 10000   # number of "data" events to generate from partial-wave amplitudes
-  nmbPsMcEvents    = 100000  # number of phase-space events to generate
-  beamPolarization = 1.0     # polarization of photon beam
-  maxL             = 4       # maximum L quantum number of moments
-  outputDirName    = Utilities.makeDirPath("./plotsTestFitMoments")
+  nmbPwaMcEvents    = 10000   # number of "data" events to generate from partial-wave amplitudes
+  nmbPsMcEvents     = 100000  # number of phase-space events to generate
+  beamPolarization  = 1.0     # polarization of photon beam
+  maxL              = 4       # maximum L quantum number of moments
+  outputDirName     = Utilities.makeDirPath("./plotsTestFitMoments")
+  # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
+  efficiencyFormula = "1"  # perfect acceptance
+  # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
   seed              = 123456789
 
   thisSourceFileName = os.path.basename(__file__)
@@ -346,8 +349,6 @@ if __name__ == "__main__":
         AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
       )
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
-      efficiencyFormula = "1"  # perfect acceptance
-      # efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
       HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL)
