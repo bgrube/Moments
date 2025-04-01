@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # nmbBootstrapSamples   = 0
     nmbBootstrapSamples   = 10000
     # define angular distribution of signal
-    partialWaveAmplitudesSig = [  # set of all possible waves up to ell = 2
+    partialWaveAmplitudesSig: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
       # negative-reflectivity waves
       AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
       AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
@@ -93,10 +93,10 @@ if __name__ == "__main__":
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
-    ]
+    )
     amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
     # define angular distribution of background
-    partialWaveAmplitudesBkg = [  # set of all possible waves up to ell = 2
+    partialWaveAmplitudesBkg: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
       # negative-reflectivity waves
       AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
       AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
@@ -117,7 +117,7 @@ if __name__ == "__main__":
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
-    ]
+    )
     amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
     # formulas for detection efficiency
     # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
