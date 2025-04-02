@@ -44,6 +44,124 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+def genSigAndBkgDataFromWaves(
+  nmbEventsSig:      int,                 # number of signal events to generate
+  nmbEventsBkg:      int,                 # number of background events to generate
+  amplitudeSetSig:   AmplitudeSet,        # partial-wave amplitudes for signal distribution
+  amplitudeSetBkg:   AmplitudeSet,        # partial-wave amplitudes for background distribution
+  polarization:      float,               # photon-beam polarization
+  outputDirName:     str,                 # name of output directory
+  efficiencyFormula: str | None = None,   # detection efficiency used to generate data
+  regenerateData:    bool       = False,  # if set data are regenerated although .root files exist
+) -> tuple[ROOT.RDataFrame, ROOT.RDataFrame, ROOT.RDataFrame]:
+  treeName = "data"
+
+  print("Generating signal distribution")
+  fileNameSig = f"{outputDirName}/dataSig.root"
+  dataPwaModelSig: ROOT.RDataFrame = (
+    genDataFromWaves(
+      nmbEvents         = nmbEventsSig,
+      polarization      = polarization,
+      amplitudeSet      = amplitudeSetSig,
+      efficiencyFormula = efficiencyFormula,
+      outFileNamePrefix = f"{outputDirName}/",
+      nameSuffix        = "Sig",
+      regenerateData    = regenerateData,
+    ).Define("discrVariable", "gRandom->Gaus(0, 0.1)")
+     .Snapshot(treeName, fileNameSig)
+  )
+  histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
+
+  print("Generating background distribution")
+  fileNameBkg = f"{outputDirName}/dataBkg.root"
+  dataPwaModelBkg: ROOT.RDataFrame = (
+    genDataFromWaves(
+      nmbEvents         = nmbEventsBkg,
+      polarization      = polarization,
+      amplitudeSet      = amplitudeSetBkg,
+      efficiencyFormula = efficiencyFormula,
+      outFileNamePrefix = f"{outputDirName}/",
+      nameSuffix        = "Bkg",
+      regenerateData    = regenerateData,
+    ).Define("discrVariable", "gRandom->Uniform(0, 2) - 1")
+     .Snapshot(treeName, fileNameBkg)
+  )
+  histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
+
+  # concatenate signal and background data frames vertically and define event weights
+  signalRange = (-0.3, +0.3)
+  sideBands   = ((-1, -0.4), (+0.4, +1))
+  eventWeightFormula = \
+  f"""
+    if (({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]}))
+      return 1.0;
+    else if (  (({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))
+        or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]})))
+      return -0.5;
+    else
+      return 0.0;
+  """
+  dataPwaModel = (
+    ROOT.RDataFrame(treeName, (fileNameSig, fileNameBkg))
+        .Define("eventWeight", eventWeightFormula)
+  )
+
+  # plot discriminating variable
+  histDiscr = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("Total", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
+  histDiscr.SetLineWidth(2)
+  histDiscrSig.SetLineColor(ROOT.kGreen + 2)
+  histDiscrBkg.SetLineColor(ROOT.kRed   + 1)
+  histDiscrSig.SetLineStyle(ROOT.kDashed)
+  histDiscrBkg.SetLineStyle(ROOT.kDashed)
+  histStack = ROOT.THStack("discrVariableSim", ";Discriminating variable;Count / 0.02")
+  histStack.Add(histDiscr)
+  histStack.Add(histDiscrBkg)
+  histStack.Add(histDiscrSig)
+  canv = ROOT.TCanvas()
+  histStack.Draw("NOSTACK")
+  legend = canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
+  # shade signal region and side bands
+  canv.Update()
+  box = ROOT.TBox()
+  for bounds in (signalRange, *sideBands):
+    box.SetFillColorAlpha(ROOT.kBlack, 0.15)
+    box.DrawBox(bounds[0], canv.GetUymin(), bounds[1], canv.GetUymax())
+  legend.Draw()
+  canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
+  hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("discrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
+  hist.Draw()
+  canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+
+  # plot angular distributions of data generated from partial-wave amplitudes
+  histBinning = (TH3_ANG_NMB_BINS, -1, +1, TH3_ANG_NMB_BINS, -180, +180, TH3_ANG_NMB_BINS, -180, +180)
+  hists = (
+    # total angular distribution
+    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+    (  # angular distribution in signal region
+      dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})")
+                     .Histo3D(ROOT.RDF.TH3DModel("dataSigRegion", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")
+    ),
+    ( # angular distribution in side-band regions
+      dataPwaModelBkg.Filter(f"(({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))"
+                          f"or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]}))")
+                     .Histo3D(ROOT.RDF.TH3DModel("dataSidebandRegion", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")
+    ),
+    # angular distribution after side-band subtraction
+    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
+  )
+  for hist in hists:
+    hist.SetMinimum(0)
+    hist.GetXaxis().SetTitleOffset(1.5)
+    hist.GetYaxis().SetTitleOffset(2)
+    hist.GetZaxis().SetTitleOffset(1.5)
+    hist.Draw("BOX2Z")
+    print(f"Integral of histogram '{hist.GetName()}' = {hist.Integral()}")
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+  print(f"Sum of weights = {dataPwaModel.Sum('eventWeight').GetValue()}")
+
+  return dataPwaModel, dataPwaModelSig, dataPwaModelBkg
+
+
 if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
@@ -58,7 +176,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName        = Utilities.makeDirPath("./plotsTestPhotoProdWeighted")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProdWeighted")
     nmbPwaMcEventsSig     = 1000
     nmbPwaMcEventsBkg     = 1000
     # nmbPwaMcEventsSig     = 10000000
@@ -127,108 +245,27 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     with timer.timeThis("Time to generate MC data from partial waves"):
-      # generate signal distribution
       HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
-      print(f"True moment values for signal:\n{HTruthSig}")
-      dataPwaModelSig: ROOT.RDataFrame = genDataFromWaves(
-        nmbEvents         = nmbPwaMcEventsSig,
-        polarization      = beamPolarization,
-        amplitudeSet      = amplitudeSetSig,
-        efficiencyFormula = efficiencyFormula,
-        outFileNamePrefix = f"{outFileDirName}/",
-        nameSuffix        = "Sig",
-        regenerateData    = True,
-      )
-      dataPwaModelSig = dataPwaModelSig.Define("discrVariable", "gRandom->Gaus(0, 0.1)")
-      treeName = "data"
-      fileNameSig = f"{outFileDirName}/intensitySig.root"
-      dataPwaModelSig.Snapshot(treeName, fileNameSig)
-      dataPwaModelSig = ROOT.RDataFrame(treeName, fileNameSig)
-      histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
-      # generate background distribution
       HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
-      print(f"True moment values for signal:\n{HTruthBkg}")
-      dataPwaModelBkg: ROOT.RDataFrame = genDataFromWaves(
-        nmbEvents         = nmbPwaMcEventsBkg,
+      print(f"True moment values for signal:\n{HTruthSig}")
+      print(f"True moment values for background:\n{HTruthBkg}")
+      dataPwaModel, dataPwaModelSig, dataPwaModelBkg = genSigAndBkgDataFromWaves(
+        nmbEventsSig      = nmbPwaMcEventsSig,
+        nmbEventsBkg      = nmbPwaMcEventsBkg,
+        amplitudeSetSig   = amplitudeSetSig,
+        amplitudeSetBkg   = amplitudeSetBkg,
         polarization      = beamPolarization,
-        amplitudeSet      = amplitudeSetBkg,
+        outputDirName     = outputDirName,
         efficiencyFormula = efficiencyFormula,
-        outFileNamePrefix = f"{outFileDirName}/",
-        nameSuffix        = "Bkg",
         regenerateData    = True,
       )
-      dataPwaModelBkg = dataPwaModelBkg.Define("discrVariable", "gRandom->Uniform(0, 2) - 1")
-      fileNameBkg = f"{outFileDirName}/intensityBkg.root"
-      dataPwaModelBkg.Snapshot(treeName, fileNameBkg)
-      dataPwaModelBkg = ROOT.RDataFrame(treeName, fileNameBkg)
-      histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
-      # concatenate signal and background data frames vertically
-      dataPwaModel = ROOT.RDataFrame(treeName, (fileNameSig, fileNameBkg))
-      # plot discriminating variable
-      signalRange = (-0.3, +0.3)
-      sideBands   = ((-1, -0.4), (+0.4, +1))
-      histDiscr = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("Total", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
-      histDiscr.SetLineWidth(2)
-      histDiscrSig.SetLineColor(ROOT.kGreen + 2)
-      histDiscrBkg.SetLineColor(ROOT.kRed   + 1)
-      histDiscrSig.SetLineStyle(ROOT.kDashed)
-      histDiscrBkg.SetLineStyle(ROOT.kDashed)
-      histStack = ROOT.THStack("hDiscrVariableSim", ";Discriminating variable;Count / 0.02")
-      histStack.Add(histDiscr)
-      histStack.Add(histDiscrBkg)
-      histStack.Add(histDiscrSig)
-      canv = ROOT.TCanvas()
-      histStack.Draw("NOSTACK")
-      legend = canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
-      # shade signal region and side bands
-      canv.Update()
-      box = ROOT.TBox()
-      for bounds in (signalRange, *sideBands):
-        box.SetFillColorAlpha(ROOT.kBlack, 0.15)
-        box.DrawBox(bounds[0], canv.GetUymin(), bounds[1], canv.GetUymax())
-      legend.Draw()
-      canv.SaveAs(f"{outFileDirName}/{histStack.GetName()}.pdf")
-      # define event weights
-      dataPwaModel = dataPwaModel.Define("eventWeight", f"""
-        if (({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]}))
-          return 1.0;
-        else if (  (({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))
-                or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]})))
-          return -0.5;
-        else
-          return 0.0;
-      """)
-      hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hDiscrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
-      hist.Draw()
-      canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
-
-    # plot angular distributions of data generated from partial-wave amplitudes
-    histBinning = (TH3_ANG_NMB_BINS, -1, +1, TH3_ANG_NMB_BINS, -180, +180, TH3_ANG_NMB_BINS, -180, +180)
-    hists = (
-      (dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})")
-                      .Histo3D(ROOT.RDF.TH3DModel("dataSig", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
-      (dataPwaModelBkg.Filter(f"(({sideBands[0][0]} < discrVariable) and (discrVariable < {sideBands[0][1]}))"
-                           f"or (({sideBands[1][0]} < discrVariable) and (discrVariable < {sideBands[1][1]}))")
-                      .Histo3D(ROOT.RDF.TH3DModel("dataBkg", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")),
-      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data",        TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
-      dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
-    )
-    for hist in hists:
-      hist.SetMinimum(0)
-      hist.GetXaxis().SetTitleOffset(1.5)
-      hist.GetYaxis().SetTitleOffset(2)
-      hist.GetZaxis().SetTitleOffset(1.5)
-      hist.Draw("BOX2Z")
-      print(f"Integral of histogram '{hist.GetName()}' = {hist.Integral()}")
-      canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
-    print(f"Sum of weights = {dataPwaModel.Sum('eventWeight').GetValue()}")
 
     # generate accepted phase-space data
     with timer.timeThis("Time to generate phase-space MC data"):
       dataAcceptedPs = genAccepted2BodyPsPhotoProd(
         nmbEvents         = nmbAcceptedPsMcEvents,
         efficiencyFormula = efficiencyFormula,
-        outFileNamePrefix = f"{outFileDirName}/",
+        outFileNamePrefix = f"{outputDirName}/",
         regenerateData    = True,
       )
 
@@ -257,7 +294,7 @@ if __name__ == "__main__":
         MomentCalculator(
           indices              = momentIndices,
           dataSet              = dataSet,
-          integralFileBaseName = f"{outFileDirName}/integralMatrix",
+          integralFileBaseName = f"{outputDirName}/integralMatrix",
           binCenters           = {binVarMass : massBinCenter},
         )
       )
@@ -283,8 +320,8 @@ if __name__ == "__main__":
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
         label = binLabel(momentsInBin)
-        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outFileDirName}/I_acc_{label}")
-        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outFileDirName}/I_inv_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirName}/I_acc_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirName}/I_inv_{label}")
 
     # calculate moments of data generated from partial-wave amplitudes
     with timer.timeThis(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads"):
@@ -295,10 +332,10 @@ if __name__ == "__main__":
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
       label = binLabel(moments[0])
-      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, outFileNamePrefix = f"{outputDirName}/{namePrefix}_{label}_")
       if nmbBootstrapSamples > 0:
-        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
-        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,         outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, outFileNamePrefix = f"{outputDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,         outFileNamePrefix = f"{outputDirName}/{namePrefix}_{label}_")
 
     timer.stop("Total execution time")
     print(timer.summary)
