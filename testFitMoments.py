@@ -63,17 +63,14 @@ def genAccepted2BodyPs(
 
   # don't regenerate data if file already exists
   treeName = "data"
-  outFileNameAccPs = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.root"
+  outFileNameAccPs = f"{outFileNamePrefix}acceptedPhaseSpace.root"
   if os.path.exists(outFileNameAccPs) and not regenerateData:
     print(f"Reading accepted phase-space MC data from '{outFileNameAccPs}'")
-    psAccData = ROOT.RDataFrame(treeName, outFileNameAccPs)
-    nmbAcceptedEvents = psAccData.Count().GetValue()
-    print(f"The sample contains {nmbAcceptedEvents} accepted events corresponding to an efficiency of {nmbAcceptedEvents / nmbGenEvents:.3f}.")
-    return psAccData
+    return ROOT.RDataFrame(treeName, outFileNameAccPs)
 
   print(f"Generating {nmbGenEvents} events distributed according to two-body phase-space")
   # generate isotropic distributions in cos theta, phi, and Phi
-  outFileNamePs = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.ps.root"
+  outFileNamePs = f"{outFileNamePrefix}phaseSpace.root"
   # C++ code that throws random point in angular space
   pointFcn = """
     const double cosTheta = gRandom->Uniform(-1, +1);
@@ -101,16 +98,14 @@ def genAccepted2BodyPs(
   )
   # determine maximum weight
   maxEfficiencyWeight = psAccData.Max("efficiencyWeight").GetValue()
-  print(f"Maximum intensity is {maxEfficiencyWeight}")
-  # accept each event with probability efficiencyWeight / maxEfficiencyWeight
+  print(f"Maximum efficiency weight is {maxEfficiencyWeight}")
+  print(f"Weighting phase-space events with efficiency and writing accepted phase-space events to file '{outFileNameAccPs}'")
   psAccData = (
     psAccData.Define("acceptEvent", f"(bool)(rndNmb < (efficiencyWeight / {maxEfficiencyWeight}))")
-             .Filter("acceptEvent == true")
+             .Filter("acceptEvent == true")  # accept each event with probability efficiencyWeight / maxEfficiencyWeight
+             .Snapshot(treeName, outFileNameAccPs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
   )
-  nmbAcceptedEvents = psAccData.Count().GetValue()
-  print(f"After efficiency weighting the sample contains {nmbAcceptedEvents} accepted events corresponding to an efficiency of {nmbAcceptedEvents / nmbGenEvents:.3f}.")
-  print(f"Writing accepted phase-space data to file '{outFileNameAccPs}'")
-  return psAccData.Snapshot(treeName, outFileNameAccPs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
+  return psAccData
 
 
 def defineIntensityFcnVectorizedCpp(intensityFormula: str) -> None:
@@ -416,7 +411,9 @@ if __name__ == "__main__":
         # regenerateData    = True,
         regenerateData    = False,
       )
-      phaseSpaceEfficiency = dataAcceptedPs.Count().GetValue() / nmbPsMcEvents
+      nmbAcceptedPsEvents  = dataAcceptedPs.Count().GetValue()
+      phaseSpaceEfficiency = nmbAcceptedPsEvents / nmbPsMcEvents
+      print(f"The accepted phase-space sample contains {nmbAcceptedPsEvents} accepted events corresponding to an efficiency of {phaseSpaceEfficiency:.3f}")
       timer.stop("Time to generate accepted phase-space MC data")
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
@@ -471,25 +468,25 @@ if __name__ == "__main__":
       drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
 
       print("Constructing vectorized intensity function using TFormula and OpenMP")
-      # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
-      intensityFormula = HTruth.intensityFormula(
-        polarization     = beamPolarization,
-        thetaFormula     = "x",
-        phiFormula       = "y",
-        PhiFormula       = "z",
-        printFormula     = True,
-        useMomentSymbols = True,
-      )
-      defineIntensityFcnVectorizedCpp(intensityFormula)
-      intensityFcn = intensityFcnVectorized
-      intensityFcn.efficiency = phaseSpaceEfficiency  # needed for integral calculation
-      # intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
-      # intensityFcn.precalcBasisFcnAccPsIntegrals(
-      #   thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
-      #   phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
-      #   Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
-      #   nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
+      # # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
+      # intensityFormula = HTruth.intensityFormula(
+      #   polarization     = beamPolarization,
+      #   thetaFormula     = "x",
+      #   phiFormula       = "y",
+      #   PhiFormula       = "z",
+      #   printFormula     = True,
+      #   useMomentSymbols = True,
       # )
+      # defineIntensityFcnVectorizedCpp(intensityFormula)
+      # intensityFcn = intensityFcnVectorized
+      # intensityFcn.efficiency = phaseSpaceEfficiency  # needed for integral calculation
+      intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
+      intensityFcn.precalcBasisFcnAccPsIntegrals(
+        thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
+        phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
+        Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
+        nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
+      )
       momentValues = np.array([HTruth[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruth[qnIndex].val.imag for qnIndex in HTruth.indices.qnIndices])  # make all moment values real-valued
       momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
