@@ -101,7 +101,7 @@ def genDataFromWaves(
     nmbEvents = df.Count().GetValue()
     print(f"File '{fileName}' contains {nmbEvents} events")
     return df
-  print(f"Generating partial-wave MC data and writing them to '{fileName}'")
+  print(f"Generating MC events according to partial-wave model and writing them to '{fileName}'")
   RootUtilities.declareInCpp(**{intensityFcn.GetName() : intensityFcn})  # use Python object in C++
   dataPointFcn = f"""
     double cosTheta, phiDeg, PhiDeg;
