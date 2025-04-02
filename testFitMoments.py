@@ -34,10 +34,8 @@ from PlottingUtilities import (
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-from testMomentsPhotoProd import (
-  genDataFromWaves,
-  TH3_ANG_PLOT_KWARGS,
-)
+from testMomentsPhotoProd import TH3_ANG_PLOT_KWARGS
+from testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
 import Utilities
 
 
@@ -351,7 +349,8 @@ def convertIminuitToMomentResult(
 
 if __name__ == "__main__":
   # set parameters of test case
-  nmbPwaMcEvents    = 10000   # number of "data" events to generate from partial-wave amplitudes
+  nmbPwaMcEventsSig = 10000   # number of signal "data" events to generate from partial-wave amplitudes
+  nmbPwaMcEventsBkg = 10000   # number of background "data" events to generate from partial-wave amplitudes
   nmbPsMcEvents     = 100000  # number of phase-space events to generate
   beamPolarization  = 1.0     # polarization of photon beam
   maxL              = 4       # maximum L quantum number of moments
@@ -383,6 +382,29 @@ if __name__ == "__main__":
     AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
     AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
     AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+  )
+  # define angular distribution of background
+  partialWaveAmplitudesBkg: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
+    # negative-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
+    # positive-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
   )
 
   thisSourceFileName = os.path.basename(__file__)
@@ -417,38 +439,34 @@ if __name__ == "__main__":
       timer.stop("Time to generate accepted phase-space MC data")
 
       print("Calculating true moment values and generating data from partial-wave amplitudes")
-      amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
-      HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEvents / phaseSpaceEfficiency)  # normalize to acceptance-corrected number of events
-      print(f"True moment values\n{HTruth}")
       timer.start("Time to generate MC data from partial waves")
+      amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
+      amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
+      # normalize true moments to acceptance-corrected number of events
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsBkg / phaseSpaceEfficiency)
+      print(f"True moment values for signal:\n{HTruthSig}")
+      print(f"True moment values for background:\n{HTruthBkg}")
       ROOT.gRandom.SetSeed(randomSeed)
-      dataPwaModel = genDataFromWaves(
-        nmbEvents         = nmbPwaMcEvents,
+      dataPwaModel, dataPwaModelSig, dataPwaModelBkg = genSigAndBkgDataFromWaves(
+        nmbEventsSig      = nmbPwaMcEventsSig,
+        nmbEventsBkg      = nmbPwaMcEventsBkg,
+        amplitudeSetSig   = amplitudeSetSig,
+        amplitudeSetBkg   = amplitudeSetBkg,
         polarization      = beamPolarization,
-        amplitudeSet      = amplitudeSetSig,
+        outputDirName    = outputDirName,
         efficiencyFormula = efficiencyFormula,
         # regenerateData    = True,
         regenerateData    = False,
-        outFileNamePrefix = f"{outputDirName}/",
       )
-      print("Plotting data generated from partial-wave amplitudes")
-      canv = ROOT.TCanvas()
-      nmbBins = 25
-      hist = dataPwaModel.Histo3D(
-        ROOT.RDF.TH3DModel("data", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
-        "cosTheta", "phiDeg", "PhiDeg")
-      hist.SetMinimum(0)
-      hist.GetXaxis().SetTitleOffset(1.5)
-      hist.GetYaxis().SetTitleOffset(2)
-      hist.GetZaxis().SetTitleOffset(1.5)
-      hist.Draw("BOX2Z")
-      canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+      dataPwaModel = dataPwaModelSig
+      # dataPwaModel = dataPwaModelBkg
       timer.stop("Time to generate MC data from partial waves")
 
       timer.start("Time to construct functions")
       print("Constructing intensity function with moments as parameters from formula")
       # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-      intensityFormula = HTruth.intensityFormula(
+      intensityFormula = HTruthSig.intensityFormula(
         polarization     = beamPolarization,
         thetaFormula     = "std::acos(x)",
         phiFormula       = "TMath::DegToRad() * y",
@@ -457,8 +475,8 @@ if __name__ == "__main__":
         useMomentSymbols = True,
       )
       intensityTF3 = ROOT.TF3("intensityMoments", intensityFormula, -1, +1, -180, +180, -180, +180)
-      for qnIndex in HTruth.indices.qnIndices:
-        Hval = HTruth[qnIndex].val
+      for qnIndex in HTruthSig.indices.qnIndices:
+        Hval = HTruthSig[qnIndex].val
         intensityTF3.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
       print("Drawing intensity function")
       intensityTF3.SetNpx(100)
@@ -480,15 +498,15 @@ if __name__ == "__main__":
       # defineIntensityFcnVectorizedCpp(intensityFormula)
       # intensityFcn = intensityFcnVectorized
       # intensityFcn.efficiency = phaseSpaceEfficiency  # needed for integral calculation
-      intensityFcn = IntensityFcnVectorized(HTruth.indices, beamPolarization)
+      intensityFcn = IntensityFcnVectorized(HTruthSig.indices, beamPolarization)
       intensityFcn.precalcBasisFcnAccPsIntegrals(
         thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
         phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
         Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
         nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
       )
-      momentValues = np.array([HTruth[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruth[qnIndex].val.imag for qnIndex in HTruth.indices.qnIndices])  # make all moment values real-valued
-      momentLabels = tuple(qnIndex.label for qnIndex in HTruth.indices.qnIndices)
+      momentValues = np.array([HTruthSig[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruthSig[qnIndex].val.imag for qnIndex in HTruthSig.indices.qnIndices])  # make all moment values real-valued
+      momentLabels = tuple(qnIndex.label for qnIndex in HTruthSig.indices.qnIndices)
       thetas = np.array([0,    1,    2],    dtype = np.double)
       phis   = np.array([0.5,  1.5,  2.5],  dtype = np.double)
       Phis   = np.array([0.75, 1.75, 2.75], dtype = np.double)
@@ -523,11 +541,11 @@ if __name__ == "__main__":
       #   figure.savefig(f"{outputDirName}/minuit_mnmatrix.pdf")
 
       print("Plotting fit results")
-      HPhys = convertIminuitToMomentResult(minuit, HTruth.indices)
+      HPhys = convertIminuitToMomentResult(minuit, HTruthSig.indices)
       plotMomentsInBin(
         HData             = HPhys,
         normalizedMoments = False,
-        HTruth            = HTruth,
+        HTruth            = HTruthSig,
         outFileNamePrefix = f"{outputDirName}/unnorm_phys_",
         legendLabels      = ("Moment", "Truth"),
         plotTruthUncert   = True,
@@ -560,7 +578,7 @@ if __name__ == "__main__":
         print(minuit2.merrors)
 
         print("Plotting fit results")
-        HPhys2 = convertIminuitToMomentResult(minuit2, HTruth.indices)
+        HPhys2 = convertIminuitToMomentResult(minuit2, HTruthSig.indices)
         plotMomentsInBin(
           HData             = HPhys2,
           normalizedMoments = False,
