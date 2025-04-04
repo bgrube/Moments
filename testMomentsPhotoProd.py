@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import functools
 import numpy as np
 import os
@@ -56,13 +57,15 @@ TH3_ANG_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_ANG_TITLE, "binnings
 
 
 def genDataFromWaves(
-  nmbEvents:         int,                 # number of events to generate
-  polarization:      float,               # photon-beam polarization
-  amplitudeSet:      AmplitudeSet,        # partial-wave amplitudes
-  efficiencyFormula: str | None = None,   # detection efficiency used to generate data
-  regenerateData:    bool       = False,  # if set data are regenerated although .root file exists
-  outFileNamePrefix: str        = "./",   # name prefix for output files
-  nameSuffix:        str        = "",     # suffix for functions and file names
+  nmbEvents:         int,           # number of events to generate
+  polarization:      float,         # photon-beam polarization
+  amplitudeSet:      AmplitudeSet,  # partial-wave amplitudes
+  efficiencyFormula: str | None                = None,    # detection efficiency used to generate data
+  regenerateData:    bool                      = False,   # if set data are regenerated although .root file exists
+  outFileNamePrefix: str                       = "./",    # name prefix for output files
+  nameSuffix:        str                       = "",      # suffix for functions and file names
+  treeName:          str                       = "data",  # name of the tree with generated data
+  additionalColDefs: Iterable[tuple[str, str]] = (),      # additional column definitions to be added to the returned RDataFrame
 ) -> ROOT.RDataFrame:
   """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
   print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency {efficiencyFormula}")
@@ -92,15 +95,16 @@ def genDataFromWaves(
   drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.pdf")
   #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
-  # generate random data that follow intensity given by partial-wave amplitudes
-  treeName = "data"
+  # if file with generated data already exists, read it and return RDataFrame
   fileName = f"{outFileNamePrefix}data{nameSuffix}.root"
-  if os.path.exists(fileName) and not regenerateData:
+  if not regenerateData and os.path.exists(fileName):
     print(f"Reading partial-wave MC data from '{fileName}'")
     df = ROOT.RDataFrame(treeName, fileName)
     nmbEvents = df.Count().GetValue()
     print(f"File '{fileName}' contains {nmbEvents} events")
     return df
+
+  # generate random data that follow intensity given by partial-wave amplitudes
   print(f"Generating MC events according to partial-wave model and writing them to '{fileName}'")
   RootUtilities.declareInCpp(**{intensityFcn.GetName() : intensityFcn})  # use Python object in C++
   dataPointFcn = f"""
@@ -119,9 +123,10 @@ def genDataFromWaves(
         .Define("PhiDeg",    "dataPoint[2]")
         .Define("Phi",       "TMath::DegToRad() * PhiDeg")
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')  # the noop filter that logs when event loop is running
-        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
   )  #!NOTE! for some reason, this is very slow
-  return df
+  for colName, colDefinitions in additionalColDefs:
+    df = df.Define(colName, colDefinitions)
+  return df.Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
 
 
 def genAccepted2BodyPsPhotoProd(
