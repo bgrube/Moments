@@ -57,36 +57,28 @@ def genSigAndBkgDataFromWaves(
   treeName = "data"
 
   print("Generating signal distribution")
-  fileNameSig = f"{outputDirName}/dataSig.root"
-  dataPwaModelSig: ROOT.RDataFrame = (
-    genDataFromWaves(
-      nmbEvents         = nmbEventsSig,
-      polarization      = polarization,
-      amplitudeSet      = amplitudeSetSig,
-      efficiencyFormula = efficiencyFormula,
-      outFileNamePrefix = f"{outputDirName}/",
-      nameSuffix        = "Sig",
-      regenerateData    = regenerateData,
-    ).Define("discrVariable", "gRandom->Gaus(0, 0.1)")
-     .Snapshot(treeName, fileNameSig)
+  dataPwaModelSig: ROOT.RDataFrame = genDataFromWaves(
+    nmbEvents         = nmbEventsSig,
+    polarization      = polarization,
+    amplitudeSet      = amplitudeSetSig,
+    efficiencyFormula = efficiencyFormula,
+    outFileNamePrefix = f"{outputDirName}/",
+    nameSuffix        = "Sig",
+    regenerateData    = regenerateData,
+    additionalColDefs = (("discrVariable", "gRandom->Gaus(0, 0.1)"), ),
   )
-  histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
 
   print("Generating background distribution")
-  fileNameBkg = f"{outputDirName}/dataBkg.root"
-  dataPwaModelBkg: ROOT.RDataFrame = (
-    genDataFromWaves(
-      nmbEvents         = nmbEventsBkg,
-      polarization      = polarization,
-      amplitudeSet      = amplitudeSetBkg,
-      efficiencyFormula = efficiencyFormula,
-      outFileNamePrefix = f"{outputDirName}/",
-      nameSuffix        = "Bkg",
-      regenerateData    = regenerateData,
-    ).Define("discrVariable", "gRandom->Uniform(0, 2) - 1")
-     .Snapshot(treeName, fileNameBkg)
+  dataPwaModelBkg: ROOT.RDataFrame = genDataFromWaves(
+    nmbEvents         = nmbEventsBkg,
+    polarization      = polarization,
+    amplitudeSet      = amplitudeSetBkg,
+    efficiencyFormula = efficiencyFormula,
+    outFileNamePrefix = f"{outputDirName}/",
+    nameSuffix        = "Bkg",
+    regenerateData    = regenerateData,
+    additionalColDefs = (("discrVariable", "gRandom->Uniform(0, 2) - 1"), ),
   )
-  histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
 
   # concatenate signal and background data frames vertically and define event weights
   signalRange = (-0.3, +0.3)
@@ -101,20 +93,23 @@ def genSigAndBkgDataFromWaves(
     else
       return 0.0;
   """
-  dataPwaModel = (
-    ROOT.RDataFrame(treeName, (fileNameSig, fileNameBkg))
+  dataPwaModelTot = (
+    ROOT.RDataFrame(treeName, (f"{outputDirName}/dataSig.root", f"{outputDirName}/dataBkg.root"))
         .Define("eventWeight", eventWeightFormula)
   )
 
   # plot discriminating variable
-  histDiscr = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("Total", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable").GetValue()
-  histDiscr.SetLineWidth(2)
+  histDef = (";Discriminating variable;Count / 0.02", 100, -1, +1)
+  histDiscrSig = dataPwaModelSig.Histo1D(ROOT.RDF.TH1DModel("Signal",     *histDef), "discrVariable").GetValue()
+  histDiscrBkg = dataPwaModelBkg.Histo1D(ROOT.RDF.TH1DModel("Background", *histDef), "discrVariable").GetValue()
+  histDiscrTot = dataPwaModelTot.Histo1D(ROOT.RDF.TH1DModel("Total",      *histDef), "discrVariable").GetValue()
   histDiscrSig.SetLineColor(ROOT.kGreen + 2)
   histDiscrBkg.SetLineColor(ROOT.kRed   + 1)
   histDiscrSig.SetLineStyle(ROOT.kDashed)
   histDiscrBkg.SetLineStyle(ROOT.kDashed)
+  histDiscrTot.SetLineWidth(2)
   histStack = ROOT.THStack("discrVariableSim", ";Discriminating variable;Count / 0.02")
-  histStack.Add(histDiscr)
+  histStack.Add(histDiscrTot)
   histStack.Add(histDiscrBkg)
   histStack.Add(histDiscrSig)
   canv = ROOT.TCanvas()
@@ -128,7 +123,7 @@ def genSigAndBkgDataFromWaves(
     box.DrawBox(bounds[0], canv.GetUymin(), bounds[1], canv.GetUymax())
   legend.Draw()
   canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
-  hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("discrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
+  hist = dataPwaModelTot.Histo1D(ROOT.RDF.TH1DModel("discrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
   hist.Draw()
   canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
@@ -136,7 +131,7 @@ def genSigAndBkgDataFromWaves(
   histBinning = (TH3_ANG_NMB_BINS, -1, +1, TH3_ANG_NMB_BINS, -180, +180, TH3_ANG_NMB_BINS, -180, +180)
   hists = (
     # total angular distribution
-    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("data", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
+    dataPwaModelTot.Histo3D(ROOT.RDF.TH3DModel("data", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg"),
     (  # angular distribution in signal region
       dataPwaModelSig.Filter(f"({signalRange[0]} < discrVariable) and (discrVariable < {signalRange[1]})")
                      .Histo3D(ROOT.RDF.TH3DModel("dataSigRegion", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")
@@ -147,7 +142,7 @@ def genSigAndBkgDataFromWaves(
                      .Histo3D(ROOT.RDF.TH3DModel("dataSidebandRegion", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg")
     ),
     # angular distribution after side-band subtraction
-    dataPwaModel.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
+    dataPwaModelTot.Histo3D(ROOT.RDF.TH3DModel("dataSbSubtr", TH3_ANG_TITLE, *histBinning), "cosTheta", "phiDeg", "PhiDeg", "eventWeight"),
   )
   for hist in hists:
     hist.SetMinimum(0)
@@ -157,9 +152,9 @@ def genSigAndBkgDataFromWaves(
     hist.Draw("BOX2Z")
     print(f"Integral of histogram '{hist.GetName()}' = {hist.Integral()}")
     canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
-  print(f"Sum of weights = {dataPwaModel.Sum('eventWeight').GetValue()}")
+  print(f"Sum of weights = {dataPwaModelTot.Sum('eventWeight').GetValue()}")
 
-  return dataPwaModel, dataPwaModelSig, dataPwaModelBkg
+  return dataPwaModelTot, dataPwaModelSig, dataPwaModelBkg
 
 
 if __name__ == "__main__":
