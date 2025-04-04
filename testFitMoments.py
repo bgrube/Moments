@@ -18,6 +18,7 @@ import threadpoolctl
 import ROOT
 import iminuit as im
 import iminuit.cost as cost
+from iminuit.typing import Model
 from wurlitzer import pipes, STDOUT
 
 from MomentCalculator import (
@@ -294,7 +295,7 @@ class IntensityFcnVectorized:
       npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # Phi values
     ],
     moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
-  ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
+  ) -> tuple[np.float64, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
     """Wrapper function that returns the normalization integral of intensity function and the intensities for each event"""
     thetas, phis, Phis = dataPoints
     # precalculate the basis-function values if input data are not set and whenever input data change
@@ -316,6 +317,28 @@ class IntensityFcnVectorized:
     assert self._baseFcnIntegrals is not None, "Need to call `IntensityFcnVectorized.precalcBasisFcnAccPsIntegrals()` before calling the functor"
     integral = np.dot(moments, self._baseFcnIntegrals)
     return (integral, intensities)
+
+
+@dataclass
+class ExtendedUnbinnedWeightedNLL:
+  """Negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; !NOTE! the sum of weights must be identical to the number of signal events"""
+  intensityFcn: Model  # callable that returns the normalization integral of intensity function and the intensities for each event
+  thetas:       npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64]
+  phis:         npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64]
+  Phis:         npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64]
+  eventWeights: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64]
+
+  def __call__(
+    self,
+    moments: npt.NDArray[npt.Shape["nmbMoments"], np.float64]
+  ) -> np.float64:
+    """Negative log-likelihood function for intensity as a function of moment parameters"""
+    integral, intensities = intensityFcn(dataPoints = (self.thetas, self.phis, self.Phis), moments = moments)
+    nonPositiveIntensities = intensities[intensities <= 0]
+    if nonPositiveIntensities.size > 0:
+      print(f"Warning: got non-positive intensities: {nonPositiveIntensities}")
+    weightedLogIntensities = self.eventWeights * np.log(intensities + TINY_FLOAT)
+    return -(np.sum(np.sort(weightedLogIntensities)) - integral)  # sort summands to make sum more accurate and protect against 0 intensities
 
 
 def convertIminuitToMomentResult(
@@ -521,7 +544,7 @@ if __name__ == "__main__":
       print(f"!!! {intensities=} vs. {intensitiesTF3=}, delta = {np.array(intensitiesTF3) - intensities[1]}")
       timer.stop("Time to construct functions")
 
-      print("Loading data and setting up unbinned likelihood function and minimizer")
+      print("Loading data and setting up iminuit's extended unbinned likelihood function and minimizer")
       thetas = dataPwaModel.AsNumpy(columns = ["theta", ])["theta"]
       phis   = dataPwaModel.AsNumpy(columns = ["phi",   ])["phi"]
       Phis   = dataPwaModel.AsNumpy(columns = ["Phi",   ])["Phi"]
@@ -556,14 +579,15 @@ if __name__ == "__main__":
         truthColor        = ROOT.kBlue + 1,
       )
 
-      # perform same fit using own function for the negative log-likelihood (NLL)
-      def nll(moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]) -> float:
-        """Negative log-likelihood function for intensity as a function of moment parameters"""
-        integral, intensities = intensityFcn(dataPoints = (thetas, phis, Phis), moments = moments)
-        nonPositiveIntensities = intensities[intensities <= 0]
-        if nonPositiveIntensities.size > 0:
-          print(f"Warning: got non-positive intensities: {nonPositiveIntensities}")
-        return -(np.sum(np.sort(np.log(intensities + TINY_FLOAT))) - integral)  # sort logs of intensities to make sum more accurate and protect against 0 intensities
+      print("Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer")
+      nll = ExtendedUnbinnedWeightedNLL(
+        intensityFcn = intensityFcn,
+        thetas       = thetas,
+        phis         = phis,
+        Phis         = Phis,
+        eventWeights = np.ones_like(thetas),
+        # eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"],
+      )
       print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
       print(f"Fitting {len(thetas)} events using custom NLL function")
       minuit2 = im.Minuit(nll, 0.99 * momentValues, name = momentLabels)
