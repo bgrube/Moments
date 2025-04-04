@@ -136,9 +136,9 @@ def defineIntensityFcnVectorizedCpp(intensityFormula: str) -> None:
 
 def intensityFcnVectorized(
   dataPoints: tuple[
-    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # theta values
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # phi values
+    npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # Phi values
   ],
   moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
 ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
@@ -239,7 +239,7 @@ class IntensityFcnVectorized:
     self._phis   = np.ascontiguousarray(phis).copy()
     self._Phis   = np.ascontiguousarray(Phis).copy()
     # check that all data arrays have the same length
-    nmbEvents  = len(self._thetas)
+    nmbEvents = len(self._thetas)
     assert nmbEvents == len(self._phis) == len(self._Phis), f"Data arrays must have same length; but got {len(self._thetas)=} vs. {len(self._phis)=} vs. {len(self._Phis)=}"
     nmbMoments = len(self.indices)
     # precalculate real-data values of basis functions
@@ -289,9 +289,9 @@ class IntensityFcnVectorized:
   def __call__(
     self,
     dataPoints: tuple[
-      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
-      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],
+      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # theta values
+      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # phi values
+      npt.NDArray[npt.Shape["nmbEvents"], npt.Float64],  # Phi values
     ],
     moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
   ) -> tuple[float, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
@@ -305,13 +305,14 @@ class IntensityFcnVectorized:
         or (not np.array_equal(thetas, self._thetas))
         or (not np.array_equal(phis,   self._phis))
         or (not np.array_equal(Phis,   self._Phis))):
-      print("Input data where not yet set or they changed. Precalculating real-data values of basis functions. This should happen only once at the start of the minimization.")
+      print("Warning: Input data where not yet set or they changed. Precalculating real-data values of basis functions. This should happen only once at the start of the minimization.")
       self.precalcBasisFcnValues(thetas, phis, Phis)
-    assert not np.may_share_memory(thetas, self._thetas), f"Argument and cached array for theta must not share memory"
-    assert not np.may_share_memory(phis,   self._phis),   f"Argument and cached array for phi must not share memory"
-    assert not np.may_share_memory(Phis,   self._Phis),   f"Argument and cached array for Phi must not share memory"
-    intensities = np.dot(moments, self._baseFcnVals)  # calculate intensities for all events
-    # for perfect acceptance H_0(0, 0) is predicted number of measured events
+    assert not np.may_share_memory(thetas, self._thetas), f"Argument and cached array for `theta` must not share memory"
+    assert not np.may_share_memory(phis,   self._phis),   f"Argument and cached array for `phi` must not share memory"
+    assert not np.may_share_memory(Phis,   self._Phis),   f"Argument and cached array for `Phi` must not share memory"
+    # calculate intensities for all events
+    intensities: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.dot(moments, self._baseFcnVals)
+    # calculate integral value
     assert self._baseFcnIntegrals is not None, "Need to call `IntensityFcnVectorized.precalcBasisFcnAccPsIntegrals()` before calling the functor"
     integral = np.dot(moments, self._baseFcnIntegrals)
     return (integral, intensities)
@@ -442,11 +443,6 @@ if __name__ == "__main__":
       timer.start("Time to generate MC data from partial waves")
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
       amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
-      # normalize true moments to acceptance-corrected number of events
-      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)
-      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsBkg / phaseSpaceEfficiency)
-      print(f"True moment values for signal:\n{HTruthSig}")
-      print(f"True moment values for background:\n{HTruthBkg}")
       ROOT.gRandom.SetSeed(randomSeed)
       dataPwaModel, dataPwaModelSig, dataPwaModelBkg = genSigAndBkgDataFromWaves(
         nmbEventsSig      = nmbPwaMcEventsSig,
@@ -463,29 +459,37 @@ if __name__ == "__main__":
       # dataPwaModel = dataPwaModelBkg
       timer.stop("Time to generate MC data from partial waves")
 
-      timer.start("Time to construct functions")
-      print("Constructing intensity function with moments as parameters from formula")
-      # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-      intensityFormula = HTruthSig.intensityFormula(
-        polarization     = beamPolarization,
-        thetaFormula     = "std::acos(x)",
-        phiFormula       = "TMath::DegToRad() * y",
-        PhiFormula       = "TMath::DegToRad() * z",
-        printFormula     = True,
-        useMomentSymbols = True,
-      )
-      intensityTF3 = ROOT.TF3("intensityMoments", intensityFormula, -1, +1, -180, +180, -180, +180)
-      for qnIndex in HTruthSig.indices.qnIndices:
-        Hval = HTruthSig[qnIndex].val
-        intensityTF3.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
-      print("Drawing intensity function")
-      intensityTF3.SetNpx(100)
-      intensityTF3.SetNpy(100)
-      intensityTF3.SetNpz(100)
-      intensityTF3.SetMinimum(0)
-      drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
+      # normalize true moments to acceptance-corrected number of signal and background events, respectively
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsBkg / phaseSpaceEfficiency)
+      print(f"True moment values for signal:\n{HTruthSig}")
+      print(f"True moment values for background:\n{HTruthBkg}")
 
-      print("Constructing vectorized intensity function using TFormula and OpenMP")
+      intensityTF3s: dict[str, ROOT.TF3] = {}
+      for name, label, HTruth in (("signal", "Sig", HTruthSig), ("background", "Bkg", HTruthBkg)):
+        print(f"Drawing true intensity function for {name}")
+        # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
+        intensityFormula = HTruth.intensityFormula(
+          polarization     = beamPolarization,
+          thetaFormula     = "std::acos(x)",
+          phiFormula       = "TMath::DegToRad() * y",
+          PhiFormula       = "TMath::DegToRad() * z",
+          printFormula     = True,
+          useMomentSymbols = True,
+        )
+        intensityTF3 = ROOT.TF3(f"intensityMoments{label}", intensityFormula, -1, +1, -180, +180, -180, +180)
+        for qnIndex in HTruth.indices.qnIndices:
+          Hval = HTruth[qnIndex].val
+          intensityTF3.SetParameter(qnIndex.label, Hval.imag if qnIndex.momentIndex == 2 else Hval.real)
+        intensityTF3.SetNpx(100)
+        intensityTF3.SetNpy(100)
+        intensityTF3.SetNpz(100)
+        intensityTF3.SetMinimum(0)
+        drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
+        intensityTF3s[label] = intensityTF3
+
+      timer.start("Time to construct model functions")
+      print("Constructing vectorized intensity function")
       # # formula uses variables: x = theta in [0, pi] rad; y = phi in [-pi, +pi] rad; z = Phi in [-pi, +pi] rad
       # intensityFormula = HTruth.intensityFormula(
       #   polarization     = beamPolarization,
@@ -513,7 +517,7 @@ if __name__ == "__main__":
       intensities = intensityFcn(dataPoints = (thetas, phis, Phis), moments = momentValues)
       intensitiesTF3 = []
       for theta, phi, Phi in zip(thetas, phis, Phis):
-        intensitiesTF3.append(intensityTF3.Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi)))
+        intensitiesTF3.append(intensityTF3s["Sig"].Eval(np.cos(theta), np.rad2deg(phi), np.rad2deg(Phi)))
       print(f"!!! {intensities=} vs. {intensitiesTF3=}, delta = {np.array(intensitiesTF3) - intensities[1]}")
       timer.stop("Time to construct functions")
 
