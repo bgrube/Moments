@@ -419,7 +419,8 @@ if __name__ == "__main__":
   nmbPwaMcEventsSig = 10000   # number of signal "data" events to generate from partial-wave amplitudes
   nmbPwaMcEventsBkg = 10000   # number of background "data" events to generate from partial-wave amplitudes
   nmbPsMcEvents     = 100000  # number of phase-space events to generate
-  beamPolarization  = 1.0     # polarization of photon beam
+  beamPolarization  = None    # unpolarized photon beam
+  # beamPolarization  = 1.0     # polarization of photon beam
   maxL              = 4       # maximum L quantum number of moments
   outputDirName     = Utilities.makeDirPath("./plotsTestFitMoments")
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
@@ -429,49 +430,67 @@ if __name__ == "__main__":
 
   # define angular distribution of signal
   partialWaveAmplitudesSig: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
+    AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
     # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
     # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
   )
   # define angular distribution of background
   partialWaveAmplitudesBkg: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
-    # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
-    # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
+    # # negative-reflectivity waves
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
+    # # positive-reflectivity waves
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
+    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
   )
 
   thisSourceFileName = os.path.basename(__file__)
@@ -521,8 +540,7 @@ if __name__ == "__main__":
         # regenerateData    = True,
         regenerateData    = False,
       )
-      dataPwaModel = dataPwaModelSig
-      # dataPwaModel = dataPwaModelBkg
+      dataPwaModel = dataPwaModel.Filter("eventWeight == 1.0")  # get signal region
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
@@ -623,13 +641,13 @@ if __name__ == "__main__":
       # )
 
       print("Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer")
-      eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
+      eventWeights = np.ones_like(thetas)
+      # eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
       nll = ExtendedUnbinnedWeightedNLL(
         intensityFcn = intensityFcn,
         thetas       = thetas,
         phis         = phis,
         Phis         = Phis,
-        # eventWeights = np.ones_like(thetas),
         eventWeights = eventWeights,
       )
       print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
