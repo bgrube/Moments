@@ -335,13 +335,13 @@ class ExtendedUnbinnedWeightedNLL:
   ) -> np.float64:
     """Negative log-likelihood function for intensity as a function of moment parameters"""
     integral, intensities = intensityFcn(dataPoints = (self.thetas, self.phis, self.Phis), moments = moments)
-    nonPositiveIntensities = intensities[intensities <= 0]
-    nonPositiveIndices = np.where(intensities <= 0)[0]
-    if nonPositiveIntensities.size > 0:
-      print(f"Warning: ignoring non-positive intensities: {nonPositiveIntensities}")
-      print(f"{self.eventWeights[nonPositiveIndices]=}")
+    # nonPositiveIntensities = intensities[intensities <= 0]
+    # nonPositiveIndices = np.where(intensities <= 0)[0]
+    # if nonPositiveIntensities.size > 0:
+    #   print(f"Warning: ignoring non-positive intensities: {nonPositiveIntensities}")
+    #   print(f"!!! {self.eventWeights[nonPositiveIndices]=}")
     weightedLogIntensities = self.eventWeights * np.log(intensities + TINY_FLOAT)  # protect against 0 intensities
-    return -(np.sum(np.sort(weightedLogIntensities)) - integral)  # sort summands to make sum more accurate
+    return -(np.sum(np.sort(weightedLogIntensities)).item() - integral)  # sort summands to make sum more accurate; use item() to ensure scalar quantity
 
 
 def convertIminuitToMomentResult(
