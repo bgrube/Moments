@@ -561,44 +561,49 @@ if __name__ == "__main__":
         scaled_pdf = intensityFcn,
         verbose    = 0,
       )
-      minuit = im.Minuit(extUnbinnedNllFcn, 0.99 * momentValues, name = momentLabels)
-      print(f"Fitting {len(thetas)} events")
-      with timer.timeThis("Time needed by MIGRAD"):
-        minuit.migrad()
-      with timer.timeThis("Time needed by HESSE"):
-        minuit.hesse()
-      # print(minuit)
-      print(minuit.fmin)
-      print(minuit.params)
-      print(minuit.merrors)
-      # with timer.timeThis("Time needed by draw_mnmatrix"):
-      #   figure, axes = minuit.draw_mnmatrix()
-      #   figure.savefig(f"{outputDirName}/minuit_mnmatrix.pdf")
+      # minuit = im.Minuit(extUnbinnedNllFcn, 0.99 * momentValues, name = momentLabels)
+      # print(f"Fitting {len(thetas)} events")
+      # with timer.timeThis("Time needed by MIGRAD"):
+      #   minuit.migrad()
+      # with timer.timeThis("Time needed by HESSE"):
+      #   minuit.hesse()
+      # # print(minuit)
+      # print(minuit.fmin)
+      # print(minuit.params)
+      # print(minuit.merrors)
+      # # with timer.timeThis("Time needed by draw_mnmatrix"):
+      # #   figure, axes = minuit.draw_mnmatrix()
+      # #   figure.savefig(f"{outputDirName}/minuit_mnmatrix.pdf")
 
-      print("Plotting fit results")
-      HPhys = convertIminuitToMomentResult(minuit, HTruthSig.indices)
-      plotMomentsInBin(
-        HData             = HPhys,
-        normalizedMoments = False,
-        HTruth            = HTruthSig,
-        legendLabels      = ("Moment", "Truth"),
-        outFileNamePrefix = f"{outputDirName}/unnorm_phys_",
-        plotTruthUncert   = True,
-        truthColor        = ROOT.kBlue + 1,
-      )
+      # print("Plotting fit results")
+      # HPhys = convertIminuitToMomentResult(minuit, HTruthSig.indices)
+      # plotMomentsInBin(
+      #   HData             = HPhys,
+      #   normalizedMoments = False,
+      #   HTruth            = HTruthSig,
+      #   legendLabels      = ("Moment", "Truth"),
+      #   outFileNamePrefix = f"{outputDirName}/unnorm_phys_",
+      #   plotTruthUncert   = True,
+      #   truthColor        = ROOT.kBlue + 1,
+      # )
 
       print("Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer")
+      eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
       nll = ExtendedUnbinnedWeightedNLL(
         intensityFcn = intensityFcn,
         thetas       = thetas,
         phis         = phis,
         Phis         = Phis,
-        eventWeights = np.ones_like(thetas),
-        # eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"],
+        # eventWeights = np.ones_like(thetas),
+        eventWeights = eventWeights,
       )
       print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
       print(f"Fitting {len(thetas)} events using custom NLL function")
-      minuit2 = im.Minuit(nll, 0.99 * momentValues, name = momentLabels)
+      # startValues = 0.5 * momentValues
+      startValues    = np.zeros_like(momentValues)
+      startValues[0] = np.sum(eventWeights)  # set H_0(0, 0) to number of signal events
+      print(f"!!! {startValues[0]=}")
+      minuit2 = im.Minuit(nll, startValues, name = momentLabels)
       minuit2.errordef = im.Minuit.LIKELIHOOD
       with timer.timeThis("Time needed by MIGRAD2"):
         minuit2.migrad()
