@@ -49,7 +49,7 @@ def genSigAndBkgDataFromWaves(
   nmbEventsBkg:      int,                 # number of background events to generate
   amplitudeSetSig:   AmplitudeSet,        # partial-wave amplitudes for signal distribution
   amplitudeSetBkg:   AmplitudeSet,        # partial-wave amplitudes for background distribution
-  polarization:      float,               # photon-beam polarization
+  polarization:      float | None,        # photon-beam polarization
   outputDirName:     str,                 # name of output directory
   efficiencyFormula: str | None = None,   # detection efficiency used to generate data
   regenerateData:    bool       = False,  # if set data are regenerated although .root files exist

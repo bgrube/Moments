@@ -252,7 +252,7 @@ class IntensityFcnVectorized:
         self._thetas,
         self._phis,
         self._Phis,
-        self.beamPol,  #TODO add signature with event-by-event polarization
+        self.beamPol if self.beamPol is not None else 0.0,  #TODO add signature with event-by-event polarization
       ))
 
   def precalcBasisFcnAccPsIntegrals(
@@ -280,7 +280,7 @@ class IntensityFcnVectorized:
         self._thetasAccPs,
         self._phisAccPs,
         self._PhisAccPs,
-        self.beamPol,  #TODO add signature with event-by-event polarization
+        self.beamPol if self.beamPol is not None else 0.0,  #TODO add signature with event-by-event polarization
       ))
       # calculate accepted phase-space integral by summing basis-functions values over accepted phase-space events
       #TODO add event weights
@@ -298,7 +298,7 @@ class IntensityFcnVectorized:
   ) -> tuple[np.float64, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:
     """Wrapper function that returns the normalization integral of intensity function and the intensities for each event"""
     thetas, phis, Phis = dataPoints
-    # precalculate the basis-function values if input data are not set and whenever input data change
+    # precalculate the basis-function values if input data are not set or if input data change
     if (   (self._baseFcnVals is None)
         or (self._thetas      is None)
         or (self._phis        is None)
@@ -335,10 +335,12 @@ class ExtendedUnbinnedWeightedNLL:
     """Negative log-likelihood function for intensity as a function of moment parameters"""
     integral, intensities = intensityFcn(dataPoints = (self.thetas, self.phis, self.Phis), moments = moments)
     nonPositiveIntensities = intensities[intensities <= 0]
+    nonPositiveIndices = np.where(intensities <= 0)[0]
     if nonPositiveIntensities.size > 0:
-      print(f"Warning: got non-positive intensities: {nonPositiveIntensities}")
-    weightedLogIntensities = self.eventWeights * np.log(intensities + TINY_FLOAT)
-    return -(np.sum(np.sort(weightedLogIntensities)) - integral)  # sort summands to make sum more accurate and protect against 0 intensities
+      print(f"Warning: ignoring non-positive intensities: {nonPositiveIntensities}")
+      print(f"{self.eventWeights[nonPositiveIndices]=}")
+    weightedLogIntensities = self.eventWeights * np.log(intensities + TINY_FLOAT)  # protect against 0 intensities
+    return -(np.sum(np.sort(weightedLogIntensities)) - integral)  # sort summands to make sum more accurate
 
 
 def convertIminuitToMomentResult(
@@ -347,27 +349,33 @@ def convertIminuitToMomentResult(
 ) -> MomentResult:
     """Converts iminuit result into `MomentResult` object"""
     HPhys = MomentResult(indices)
-    # construct index ranges for purely real and purely imaginary moments
-    reIndexRange = (
-      QnMomentIndex(momentIndex = 0, L = 0,            M = 0),
-      QnMomentIndex(momentIndex = 1, L = indices.maxL, M = indices.maxL),
-    )  # all H_0 and H_1 moments are real-valued
-    imIndexRange = (
-      QnMomentIndex(momentIndex = 2, L = 1,            M = 1),
-      QnMomentIndex(momentIndex = 2, L = indices.maxL, M = indices.maxL)
-    )  # all H_2 moments are purely imaginary
-    # convert to flat indices
-    reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
-    imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
-    # copy values
-    par = np.array(minuit.values)
-    HPhys._valsFlatIndex[reSlice] = par[reSlice]
-    HPhys._valsFlatIndex[imSlice] = par[imSlice] * 1j  # convert to purely imaginary
-    # copy covariance matrix
-    cov = minuit.covariance
-    HPhys._V_ReReFlatIndex[reSlice, reSlice] = np.array(cov[reSlice, reSlice])
-    HPhys._V_ImImFlatIndex[imSlice, imSlice] = np.array(cov[imSlice, imSlice])
-    HPhys._V_ReImFlatIndex[reSlice, imSlice] = np.array(cov[reSlice, imSlice])
+    if indices.polarized:
+      # construct quantum-number index ranges for purely real and purely imaginary moments
+      reIndexRange = (
+        QnMomentIndex(momentIndex = 0, L = 0,            M = 0),
+        QnMomentIndex(momentIndex = 1, L = indices.maxL, M = indices.maxL),
+      )  # all H_0 and H_1 moments are real-valued
+      imIndexRange = (
+        QnMomentIndex(momentIndex = 2, L = 1,            M = 1),
+        QnMomentIndex(momentIndex = 2, L = indices.maxL, M = indices.maxL)
+      )  # all H_2 moments are purely imaginary
+      # convert to flat-index ranges
+      reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
+      imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
+      # copy values
+      par = np.array(minuit.values)
+      HPhys._valsFlatIndex[reSlice] = par[reSlice]
+      HPhys._valsFlatIndex[imSlice] = par[imSlice] * 1j  # convert to purely imaginary
+      # copy covariance matrix
+      cov = minuit.covariance
+      HPhys._V_ReReFlatIndex[reSlice, reSlice] = np.array(cov[reSlice, reSlice])
+      HPhys._V_ImImFlatIndex[imSlice, imSlice] = np.array(cov[imSlice, imSlice])
+      HPhys._V_ReImFlatIndex[reSlice, imSlice] = np.array(cov[reSlice, imSlice])
+    else:
+      # copy values
+      HPhys._valsFlatIndex[:] = np.array(minuit.values)
+      # copy covariance matrix
+      HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance[:])
     return HPhys
 
 
@@ -473,7 +481,7 @@ if __name__ == "__main__":
         amplitudeSetSig   = amplitudeSetSig,
         amplitudeSetBkg   = amplitudeSetBkg,
         polarization      = beamPolarization,
-        outputDirName    = outputDirName,
+        outputDirName     = outputDirName,
         efficiencyFormula = efficiencyFormula,
         # regenerateData    = True,
         regenerateData    = False,
@@ -483,8 +491,8 @@ if __name__ == "__main__":
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
-      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)
-      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsBkg / phaseSpaceEfficiency)
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)  #!NOTE! this normalization is slightly incorrect because it does not take into account the events that are cut away by selecting the signal region
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsBkg / phaseSpaceEfficiency)  #TODO this normalization is not correct and needs to take into account the sideband widths
       print(f"True moment values for signal:\n{HTruthSig}")
       print(f"True moment values for background:\n{HTruthBkg}")
 

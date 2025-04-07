@@ -58,7 +58,7 @@ TH3_ANG_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_ANG_TITLE, "binnings
 
 def genDataFromWaves(
   nmbEvents:         int,           # number of events to generate
-  polarization:      float,         # photon-beam polarization
+  polarization:      float | None,  # photon-beam polarization
   amplitudeSet:      AmplitudeSet,  # partial-wave amplitudes
   efficiencyFormula: str | None                = None,    # detection efficiency used to generate data
   regenerateData:    bool                      = False,   # if set data are regenerated although .root file exists
