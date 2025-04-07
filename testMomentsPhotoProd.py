@@ -124,9 +124,12 @@ def genDataFromWaves(
         .Define("Phi",       "TMath::DegToRad() * PhiDeg")
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')  # the noop filter that logs when event loop is running
   )  #!NOTE! for some reason, this is very slow
+  columnsToWrite = ["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]
   for colName, colDefinitions in additionalColDefs:
+    print(f"Adding additional column '{colName}' with definitions '{colDefinitions}'")
     df = df.Define(colName, colDefinitions)
-  return df.Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
+    columnsToWrite.append(colName)
+  return df.Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](columnsToWrite))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
 
 
 def genAccepted2BodyPsPhotoProd(
