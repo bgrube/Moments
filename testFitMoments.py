@@ -12,6 +12,7 @@ import functools
 import numpy as np
 import nptyping as npt
 import os
+import textwrap
 import threadpoolctl
 
 
@@ -377,6 +378,40 @@ def convertIminuitToMomentResult(
       # copy covariance matrix
       HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance[:])
     return HPhys
+
+
+def fitSuccess(
+  minuit:  im.Minuit,
+  verbose: bool = False,
+) -> bool:
+  if verbose:
+    print(textwrap.dedent(
+      f"""
+      Fit success:
+          {minuit.valid=}
+          {minuit.fmin.has_covariance=}
+          {minuit.fmin.has_accurate_covar=}
+          {minuit.fmin.has_posdef_covar=}
+          {minuit.fmin.has_made_posdef_covar=}
+          {minuit.fmin.hesse_failed=}
+          {minuit.fmin.is_above_max_edm=}
+          {minuit.fmin.has_reached_call_limit=}
+          {minuit.fmin.has_parameters_at_limit=}
+      """
+    ))
+  if (
+              minuit.valid
+      and     minuit.fmin.has_covariance
+      and     minuit.fmin.has_accurate_covar
+      and     minuit.fmin.has_posdef_covar
+      and not minuit.fmin.has_made_posdef_covar
+      and not minuit.fmin.hesse_failed
+      and not minuit.fmin.is_above_max_edm
+      and not minuit.fmin.has_reached_call_limit
+      and not minuit.fmin.has_parameters_at_limit
+  ):
+    return True
+  return False
 
 
 if __name__ == "__main__":
