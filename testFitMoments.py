@@ -7,6 +7,7 @@ extended maximum likelihood-fitting of the data.
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 import functools
 import numpy as np
@@ -14,12 +15,16 @@ import nptyping as npt
 import os
 import textwrap
 import threadpoolctl
+from typing import Collection
 
 
 import ROOT
 import iminuit as im
 import iminuit.cost as cost
-from iminuit.typing import Model
+from iminuit.typing import (
+  Cost,
+  Model,
+)
 from wurlitzer import pipes, STDOUT
 
 from MomentCalculator import (
@@ -414,84 +419,100 @@ def fitSuccess(
   return False
 
 
+def performFitAttempt(
+  nll:          Cost,
+  startValues:  npt.NDArray[npt.Shape["nmbMoments"], np.float64],
+  momentLabels: Collection[str],
+) -> im.Minuit:
+  """Performs fit attempt and returns minimizer"""
+  minuit = im.Minuit(nll, startValues, name = momentLabels)
+  minuit.errordef = im.Minuit.LIKELIHOOD
+  minuit.migrad()
+  minuit.hesse()
+  return minuit
+
+
 if __name__ == "__main__":
   # set parameters of test case
-  nmbPwaMcEventsSig = 10000   # number of signal "data" events to generate from partial-wave amplitudes
-  nmbPwaMcEventsBkg = 10000   # number of background "data" events to generate from partial-wave amplitudes
-  nmbPsMcEvents     = 100000  # number of phase-space events to generate
-  beamPolarization  = None    # unpolarized photon beam
-  # beamPolarization  = 1.0     # polarization of photon beam
-  maxL              = 4       # maximum L quantum number of moments
-  nmbFitAttempts    = 100     # number of fit attempts with random start values
-  outputDirName     = Utilities.makeDirPath("./plotsTestFitMoments")
+  nmbPwaMcEventsSig       = 10000   # number of signal "data" events to generate from partial-wave amplitudes
+  nmbPwaMcEventsBkg       = 10000   # number of background "data" events to generate from partial-wave amplitudes
+  nmbPsMcEvents           = 100000  # number of phase-space events to generate
+  # beamPolarization        = None    # unpolarized photon beam
+  beamPolarization        = 1.0     # polarization of photon beam
+  maxL                    = 4       # maximum L quantum number of moments
+  nmbFitAttempts          = 1000    # number of fit attempts with random start values
+  nmbParallelFitProcesses = 200     # number of parallel processes to use for fitting
+  outputDirName           = Utilities.makeDirPath("./plotsTestFitMoments")
+  randomSeed              = 123456789
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
   # efficiencyFormula = "1"  # perfect acceptance
   efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
-  randomSeed        = 123456789
 
   # define angular distribution of signal
   partialWaveAmplitudesSig: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
-    AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
+    # # amplitudes for unpolarized photon beam
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
     # negative-reflectivity waves
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
     # positive-reflectivity waves
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
   )
   # define angular distribution of background
   partialWaveAmplitudesBkg: tuple[AmplitudeValue, ...] = (  # set of all possible partial waves up to ell = 2
-    AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
-    # # negative-reflectivity waves
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
-    # AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
-    # # positive-reflectivity waves
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
-    # AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
+    # # amplitudes for unpolarized photon beam
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
+    # AmplitudeValue(QnWaveIndex(refl = None, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
+    # negative-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.9 + 0.7j),  # P_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val = -0.6 + 0.4j),  # P_0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.9 - 0.8j),  # P_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val = -1.0 - 0.7j),  # D_-2^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val = -0.8 - 0.7j),  # D_-1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val =  0.4 + 0.3j),  # D_ 0^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val = -0.6 - 0.1j),  # D_+1^-
+    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.1 - 0.9j),  # D_+2^-
+    # positive-reflectivity waves
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val = -1.0 + 0.8j),  # P_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.2 + 0.2j),  # P_0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.0 - 0.3j),  # P_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.7 + 0.9j),  # D_-2^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val = -0.4 - 0.5j),  # D_-1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val = -0.3 + 0.2j),  # D_ 0^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val = -1.0 - 0.4j),  # D_+1^+
+    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val =  0.5 - 0.2j),  # D_+2^+
   )
 
   thisSourceFileName = os.path.basename(__file__)
@@ -653,48 +674,57 @@ if __name__ == "__main__":
         eventWeights = eventWeights,
       )
       print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
-      print(f"Fitting {len(thetas)} events using custom NLL function")
-      nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
-      np.random.seed(randomSeed)
-      minuitsSuccess: list[im.Minuit] = []  # minimizers of successful fit attempts
-      with timer.timeThis(f"Time needed for {nmbFitAttempts} fit attempts"):
-        for fitAttemptIndex in range(1, nmbFitAttempts + 1):
-          # use random start values
+      print(f"Performing {nmbFitAttempts} fir attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
+      with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
+        # generate random start values for all attempts
+        startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], np.float64]] = []
+        np.random.seed(randomSeed)
+        nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
+        for _ in range(nmbFitAttempts):
           # startValues    = np.zeros_like(momentValues)
-          startValues    = np.random.normal(loc = 0, scale = 0.03 * nmbEventsSigCorr, size = len(momentValues))  #!NOTE! convergence rate is very sensitive to scale parameter
+          startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValues))  #!NOTE! convergence rate is very sensitive to scale parameter
           startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
-          minuit = im.Minuit(nll, startValues, name = momentLabels)
-          minuit.errordef = im.Minuit.LIKELIHOOD
-          minuit.migrad()
-          minuit.hesse()
+          startValueSets.append(startValues)
+        # perform fit attempts in parallel
+        def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
+          """Increases nice level of process that calls this function"""
+          os.nice(19)
+        with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
+          futures = [
+            executor.submit(performFitAttempt, nll = nll, startValues = startValueSets[fitAttemptIndex], momentLabels = momentLabels)
+            for fitAttemptIndex in range(nmbFitAttempts)
+          ]
+          minuits = [future.result() for future in futures]
+        # filter out successful fits
+        minuitsSuccess: list[im.Minuit] = []
+        for fitAttemptIndex, minuit in enumerate(minuits):
           print(minuit.fmin)
           print(minuit.params)
           print(minuit.merrors)
           success = fitSuccess(minuit)
-          print(f"    Fit [{fitAttemptIndex} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
+          print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
           if success:
             minuitsSuccess.append(minuit)
-        if len(minuitsSuccess) == 0:
-          print("Warning: No fit was successful. Exiting.")
-          exit(1)
-        else:
-          print(f"{len(minuitsSuccess)} out of {nmbFitAttempts} fit attempts were successful")
-        print(f"!!! {sorted([minuit.fmin.fval for minuit in minuitsSuccess])=}")
 
-      print("Plotting fit results")
-      HPhys2 = convertIminuitToMomentResult(minuitsSuccess[0], HTruthSig.indices)
-      plotMomentsInBin(
-        HData             = HPhys2,
-        normalizedMoments = False,
-        HTruth            = HTruthSig,
-        # HTruth            = HTruthBkg,
-        legendLabels      = ("Moment", "Truth"),
-        # HTruth            = HPhys,
-        # legendLabels      = ("Custom NLL", "iminuit NLL"),
-        outFileNamePrefix = f"{outputDirName}/unnorm_phys2_",
-        plotTruthUncert   = True,
-        truthColor        = ROOT.kBlue + 1,
-      )
+      if len(minuitsSuccess) == 0:
+        print("Warning: No fit was successful. Exiting.")
+      else:
+        print(f"{len(minuitsSuccess)} out of {nmbFitAttempts} fit attempts were successful")
+        print(f"!!! {sorted([minuit.fmin.fval for minuit in minuitsSuccess])=}")
+        print("Plotting fit results")
+        HPhys2 = convertIminuitToMomentResult(minuitsSuccess[0], HTruthSig.indices)
+        plotMomentsInBin(
+          HData             = HPhys2,
+          normalizedMoments = False,
+          HTruth            = HTruthSig,
+          # HTruth            = HTruthBkg,
+          legendLabels      = ("Moment", "Truth"),
+          # HTruth            = HPhys,
+          # legendLabels      = ("Custom NLL", "iminuit NLL"),
+          outFileNamePrefix = f"{outputDirName}/unnorm_phys2_",
+          plotTruthUncert   = True,
+          truthColor        = ROOT.kBlue + 1,
+        )
 
       timer.stop("Total execution time")
       print(timer.summary)
