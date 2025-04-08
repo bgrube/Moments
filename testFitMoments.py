@@ -422,6 +422,7 @@ if __name__ == "__main__":
   beamPolarization  = None    # unpolarized photon beam
   # beamPolarization  = 1.0     # polarization of photon beam
   maxL              = 4       # maximum L quantum number of moments
+  nmbFitAttempts    = 20      # number of fit attempts with random start values
   outputDirName     = Utilities.makeDirPath("./plotsTestFitMoments")
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
   # efficiencyFormula = "1"  # perfect acceptance
@@ -652,23 +653,35 @@ if __name__ == "__main__":
       )
       print(f"!!! {2 * nll(momentValues)=} - {extUnbinnedNllFcn(momentValues)=} = {2 * nll(momentValues) - extUnbinnedNllFcn(momentValues)}")
       print(f"Fitting {len(thetas)} events using custom NLL function")
-      # startValues = 0.5 * momentValues
-      startValues    = np.zeros_like(momentValues)
-      startValues[0] = np.sum(eventWeights)  # set H_0(0, 0) to number of signal events
-      print(f"!!! {startValues[0]=}")
-      minuit2 = im.Minuit(nll, startValues, name = momentLabels)
-      minuit2.errordef = im.Minuit.LIKELIHOOD
-      with timer.timeThis("Time needed by MIGRAD2"):
-        minuit2.migrad()
-      with timer.timeThis("Time needed by HESSE2"):
-        minuit2.hesse()
-      # print(minuit2)
-      print(minuit2.fmin)
-      print(minuit2.params)
-      print(minuit2.merrors)
+      nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
+      np.random.seed(randomSeed)
+      minuitsSuccess: list[im.Minuit] = []  # minimizers of successful fit attempts
+      with timer.timeThis(f"Time needed for {nmbFitAttempts} fit attempts"):
+        for fitAttemptIndex in range(1, nmbFitAttempts + 1):
+          # use random start values
+          # startValues    = np.zeros_like(momentValues)
+          startValues    = np.random.normal(loc = 0, scale = 0.03 * nmbEventsSigCorr, size = len(momentValues))  #!NOTE! convergence rate is very sensitive to scale parameter
+          startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
+          minuit = im.Minuit(nll, startValues, name = momentLabels)
+          minuit.errordef = im.Minuit.LIKELIHOOD
+          minuit.migrad()
+          minuit.hesse()
+          print(minuit.fmin)
+          print(minuit.params)
+          print(minuit.merrors)
+          success = fitSuccess(minuit)
+          print(f"    Fit [{fitAttemptIndex} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
+          if success:
+            minuitsSuccess.append(minuit)
+        if len(minuitsSuccess) == 0:
+          print("Warning: No fit was successful. Exiting.")
+          exit(1)
+        else:
+          print(f"{len(minuitsSuccess)} out of {nmbFitAttempts} fit attempts were successful")
+        print(f"!!! {[minuit.fmin.fval for minuit in minuitsSuccess]=}")
 
       print("Plotting fit results")
-      HPhys2 = convertIminuitToMomentResult(minuit2, HTruthSig.indices)
+      HPhys2 = convertIminuitToMomentResult(minuitsSuccess[0], HTruthSig.indices)
       plotMomentsInBin(
         HData             = HPhys2,
         normalizedMoments = False,
