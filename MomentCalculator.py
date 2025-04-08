@@ -334,6 +334,8 @@ class AmplitudeSet:
       assert polarization is not None, f"For polarized photoproduction, `polarization` must not be `None`"
       intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"
       intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
+    else:
+      assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`"
     intensityFormula += ")"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
@@ -1052,6 +1054,8 @@ class MomentResult:
       assert polarization is not None, f"For polarized photoproduction, `polarization` must not be `None`"
       intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"
       intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
+    else:
+      assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
