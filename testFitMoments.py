@@ -542,11 +542,11 @@ if __name__ == "__main__":
         regenerateData    = False,
       )
       # dataPwaModel = dataPwaModel.Filter("eventWeight == 1.0")  # select only signal region
-      dataPwaModel = dataPwaModel.Filter("eventWeight == -0.5")  # select only sideband regions
+      # dataPwaModel = dataPwaModel.Filter("eventWeight == -0.5")  # select only sideband regions
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
-      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)  #!NOTE! this normalization is slightly incorrect because it does not take into account the events that are cut away by selecting the signal region
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)  #!NOTE! this normalization is slightly off because it does not take into account the events that are cut away by selecting the signal region
       HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (1.2 / 2.0) * nmbPwaMcEventsBkg / phaseSpaceEfficiency)  # takes into account the sideband widths
       print(f"True moment values for signal:\n{HTruthSig}")
       print(f"True moment values for background:\n{HTruthBkg}")
@@ -643,8 +643,8 @@ if __name__ == "__main__":
       # )
 
       print("Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer")
-      eventWeights = np.ones_like(thetas)
-      # eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
+      # eventWeights = np.ones_like(thetas)
+      eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
       nll = ExtendedUnbinnedWeightedNLL(
         intensityFcn = intensityFcn,
         thetas       = thetas,
@@ -679,15 +679,15 @@ if __name__ == "__main__":
           exit(1)
         else:
           print(f"{len(minuitsSuccess)} out of {nmbFitAttempts} fit attempts were successful")
-        print(f"!!! {[minuit.fmin.fval for minuit in minuitsSuccess]=}")
+        print(f"!!! {sorted([minuit.fmin.fval for minuit in minuitsSuccess])=}")
 
       print("Plotting fit results")
       HPhys2 = convertIminuitToMomentResult(minuitsSuccess[0], HTruthSig.indices)
       plotMomentsInBin(
         HData             = HPhys2,
         normalizedMoments = False,
-        # HTruth            = HTruthSig,
-        HTruth            = HTruthBkg,
+        HTruth            = HTruthSig,
+        # HTruth            = HTruthBkg,
         legendLabels      = ("Moment", "Truth"),
         # HTruth            = HPhys,
         # legendLabels      = ("Custom NLL", "iminuit NLL"),
