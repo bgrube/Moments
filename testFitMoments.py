@@ -422,7 +422,7 @@ if __name__ == "__main__":
   beamPolarization  = None    # unpolarized photon beam
   # beamPolarization  = 1.0     # polarization of photon beam
   maxL              = 4       # maximum L quantum number of moments
-  nmbFitAttempts    = 20      # number of fit attempts with random start values
+  nmbFitAttempts    = 100     # number of fit attempts with random start values
   outputDirName     = Utilities.makeDirPath("./plotsTestFitMoments")
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
   # efficiencyFormula = "1"  # perfect acceptance
@@ -506,7 +506,7 @@ if __name__ == "__main__":
     setupPlotStyle()
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
-    with threadController.limit(limits = 4):
+    with threadController.limit(limits = 1):
       print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
       timer.start("Total execution time")
 
@@ -541,12 +541,13 @@ if __name__ == "__main__":
         # regenerateData    = True,
         regenerateData    = False,
       )
-      dataPwaModel = dataPwaModel.Filter("eventWeight == 1.0")  # get signal region
+      # dataPwaModel = dataPwaModel.Filter("eventWeight == 1.0")  # select only signal region
+      dataPwaModel = dataPwaModel.Filter("eventWeight == -0.5")  # select only sideband regions
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
       HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)  #!NOTE! this normalization is slightly incorrect because it does not take into account the events that are cut away by selecting the signal region
-      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsBkg / phaseSpaceEfficiency)  #TODO this normalization is not correct and needs to take into account the sideband widths
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (1.2 / 2.0) * nmbPwaMcEventsBkg / phaseSpaceEfficiency)  # takes into account the sideband widths
       print(f"True moment values for signal:\n{HTruthSig}")
       print(f"True moment values for background:\n{HTruthBkg}")
 
@@ -685,7 +686,8 @@ if __name__ == "__main__":
       plotMomentsInBin(
         HData             = HPhys2,
         normalizedMoments = False,
-        HTruth            = HTruthSig,
+        # HTruth            = HTruthSig,
+        HTruth            = HTruthBkg,
         legendLabels      = ("Moment", "Truth"),
         # HTruth            = HPhys,
         # legendLabels      = ("Custom NLL", "iminuit NLL"),
