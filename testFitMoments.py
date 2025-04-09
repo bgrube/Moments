@@ -427,7 +427,49 @@ def performFitAttempt(
   """Performs fit attempt and returns minimizer"""
   minuit = im.Minuit(nll, startValues, name = momentLabels)
   minuit.errordef = im.Minuit.LIKELIHOOD
+  # step 1: perform fit fixing H_1 and H_2 to 0
+  for index, label in enumerate(momentLabels):
+    if label.startswith("H0"):
+      minuit.values[label] = startValues[index]
+    else:
+      minuit.fixto(label, 0)
   minuit.migrad()
+  # # step 2: release H_1 and H_2
+  # for index, label in enumerate(momentLabels):
+  #   if label.startswith("H1") or label.startswith("H2"):
+  #     # minuit.values[label] = startValues[index]
+  #     minuit.fixed [label] = False
+  # # step 2: fix H_0 and release H_1
+  # for index, label in enumerate(momentLabels):
+  #   if label.startswith("H0"):
+  #     minuit.fixed[label] = True
+  #   if label.startswith("H1") or label.startswith("H2"):
+  #     minuit.values[label] = startValues[index]
+  #     minuit.fixed [label] = False
+  # step 2: release H_1 and H_2 L-by-L
+  indices = nll.intensityFcn.indices
+  # minuit.values = 0
+  # minuit.fixed  = True
+  minuit.strategy = 0
+  for label in momentLabels:
+    if label.startswith("H0"):
+      minuit.fixed[label] = True
+  for L in range(indices.maxL + 1):
+    print(f"!!! freeing H_1 and H_2 for {L=}")
+    for M in range(L + 1):
+      for momentIndex in (1, 2):
+        try:
+          flatIndex = indices[QnMomentIndex(momentIndex, L, M)]
+        except KeyError:
+          continue  # ignore moments that do not have a flat index
+        label = momentLabels[flatIndex]
+        print(f"!!! releasing H({momentIndex=}, {L=}, {M=}) = {flatIndex=}, {label=}")
+        minuit.values[label] = startValues[flatIndex]
+        minuit.fixed [label] = False
+    print(f"!!! fitting for {L=}")
+    minuit.migrad()
+    print(f"!!! {fitSuccess(minuit)=}  for {L=}")
+  # step 3: improve uncertainty estimates
   minuit.hesse()
   return minuit
 
@@ -440,7 +482,7 @@ if __name__ == "__main__":
   # beamPolarization        = None    # unpolarized photon beam
   beamPolarization        = 1.0     # polarization of photon beam
   maxL                    = 4       # maximum L quantum number of moments
-  nmbFitAttempts          = 1000    # number of fit attempts with random start values
+  nmbFitAttempts          = 200    # number of fit attempts with random start values
   nmbParallelFitProcesses = 200     # number of parallel processes to use for fitting
   outputDirName           = Utilities.makeDirPath("./plotsTestFitMoments")
   randomSeed              = 123456789
