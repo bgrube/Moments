@@ -15,7 +15,7 @@ import nptyping as npt
 import os
 import textwrap
 import threadpoolctl
-from typing import Collection
+from typing import Sequence
 
 
 import ROOT
@@ -336,7 +336,7 @@ class ExtendedUnbinnedWeightedNLL:
 
   def __call__(
     self,
-    moments: npt.NDArray[npt.Shape["nmbMoments"], np.float64]
+    moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]
   ) -> np.float64:
     """Negative log-likelihood function for intensity as a function of moment parameters"""
     integral, intensities = intensityFcn(dataPoints = (self.thetas, self.phis, self.Phis), moments = moments)
@@ -421,8 +421,8 @@ def fitSuccess(
 
 def performFitAttempt(
   nll:          Cost,
-  startValues:  npt.NDArray[npt.Shape["nmbMoments"], np.float64],
-  momentLabels: Collection[str],
+  startValues:  npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
+  momentLabels: Sequence[str],
 ) -> im.Minuit:
   """Performs fit attempt and returns minimizer"""
   minuit = im.Minuit(nll, startValues, name = momentLabels)
@@ -677,12 +677,13 @@ if __name__ == "__main__":
       print(f"Performing {nmbFitAttempts} fir attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
       with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
         # generate random start values for all attempts
-        startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], np.float64]] = []
+        startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
         np.random.seed(randomSeed)
         nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
         for _ in range(nmbFitAttempts):
           # startValues    = np.zeros_like(momentValues)
           startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValues))  #!NOTE! convergence rate is very sensitive to scale parameter
+          # startValues   += momentValues  # randomly perturb true moment values
           startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
           startValueSets.append(startValues)
         # perform fit attempts in parallel
