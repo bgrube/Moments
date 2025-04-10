@@ -420,17 +420,19 @@ def fitSuccess(
 
 
 def performFitAttempt(
-  nll:          Cost,
-  startValues:  npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
-  momentLabels: Sequence[str],
+  nll:                     Cost,
+  startValues:             npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
+  momentLabels:            Sequence[str],
+  disablePolarizedMoments: bool = False,
 ) -> im.Minuit:
   """Performs fit attempt and returns minimizer"""
   minuit = im.Minuit(nll, startValues, name = momentLabels)
   minuit.errordef = im.Minuit.LIKELIHOOD
-  # fix H_1 and H_2 to 0
-  for label in momentLabels:
-    if not label.startswith("H0"):
-      minuit.fixto(label, 0)
+  if disablePolarizedMoments:
+    # fix H_1 and H_2 to 0
+    for label in momentLabels:
+      if not label.startswith("H0"):
+        minuit.fixto(label, 0)
   minuit.migrad()
   if not minuit.valid:
     return minuit  # do not spend time on HESSE for fits that have failed anyway
@@ -448,6 +450,8 @@ if __name__ == "__main__":
   maxL                    = 4       # maximum L quantum number of moments
   nmbFitAttempts          = 1000    # number of fit attempts with random start values
   nmbParallelFitProcesses = 200     # number of parallel processes to use for fitting
+  applyEventWeights       = False   # if set, the events are weighted to subtract background
+  disablePolarizedMoments = False   # if set, H_1 and H_2 are fixed to 0
   outputDirName           = Utilities.makeDirPath("./plotsTestFitMoments")
   randomSeed              = 123456789
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
@@ -670,14 +674,14 @@ if __name__ == "__main__":
       # )
 
       minuitsSuccess: dict[str, list[im.Minuit]] = {}
+      # for dataTitle, data in (("total", dataPwaModel), ):
       # for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
-      for dataTitle, data in (("total", dataPwaModel), ):
+      for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
         print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
         thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
         phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
         Phis         = data.AsNumpy(columns = ["Phi",   ])["Phi"]
-        # eventWeights = np.ones_like(thetas)
-        eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
+        eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"] if applyEventWeights else np.ones_like(thetas)
         nll = ExtendedUnbinnedWeightedNLL(
           intensityFcn = intensityFcn,
           thetas       = thetas,
@@ -704,7 +708,13 @@ if __name__ == "__main__":
             os.nice(19)
           with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
             futures = [
-              executor.submit(performFitAttempt, nll = nll, startValues = startValueSets[fitAttemptIndex], momentLabels = momentLabels)
+              executor.submit(
+                performFitAttempt,
+                nll                     = nll,
+                startValues             = startValueSets[fitAttemptIndex],
+                momentLabels            = momentLabels,
+                disablePolarizedMoments = disablePolarizedMoments,
+              )
               for fitAttemptIndex in range(nmbFitAttempts)
             ]
             minuits = [future.result() for future in futures]
