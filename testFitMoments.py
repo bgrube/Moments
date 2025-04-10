@@ -427,6 +427,10 @@ def performFitAttempt(
   """Performs fit attempt and returns minimizer"""
   minuit = im.Minuit(nll, startValues, name = momentLabels)
   minuit.errordef = im.Minuit.LIKELIHOOD
+  # fix H_1 and H_2 to 0
+  for label in momentLabels:
+    if not label.startswith("H0"):
+      minuit.fixto(label, 0)
   minuit.migrad()
   if not minuit.valid:
     return minuit  # do not spend time on HESSE for fits that have failed anyway
@@ -553,7 +557,7 @@ if __name__ == "__main__":
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
       amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
       ROOT.gRandom.SetSeed(randomSeed)
-      dataPwaModel, dataPwaModelSig, dataPwaModelBkg = genSigAndBkgDataFromWaves(
+      dataPwaModel, _, _ = genSigAndBkgDataFromWaves(
         nmbEventsSig      = nmbPwaMcEventsSig,
         nmbEventsBkg      = nmbPwaMcEventsBkg,
         amplitudeSetSig   = amplitudeSetSig,
@@ -564,8 +568,8 @@ if __name__ == "__main__":
         # regenerateData    = True,
         regenerateData    = False,
       )
-      # dataPwaModel = dataPwaModel.Filter("eventWeight == 1.0")  # select only signal region
-      # dataPwaModel = dataPwaModel.Filter("eventWeight == -0.5")  # select only sideband regions
+      dataPwaModelSigRegion = dataPwaModel.Filter("eventWeight == 1.0")   # select events in signal region (mixture of signal and background)
+      dataPwaModelBkgRegion = dataPwaModel.Filter("eventWeight == -0.5")  # select events in sideband regions (nearly pure background)
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
@@ -665,69 +669,78 @@ if __name__ == "__main__":
       #   truthColor        = ROOT.kBlue + 1,
       # )
 
-      print("Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer")
-      # eventWeights = np.ones_like(thetas)
-      eventWeights = dataPwaModel.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
-      nll = ExtendedUnbinnedWeightedNLL(
-        intensityFcn = intensityFcn,
-        thetas       = thetas,
-        phis         = phis,
-        Phis         = Phis,
-        eventWeights = eventWeights,
-      )
-      print(f"!!! {2 * nll(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
-      print(f"Performing {nmbFitAttempts} fir attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
-      with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
-        # generate random start values for all attempts
-        startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
-        np.random.seed(randomSeed)
-        nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
-        for _ in range(nmbFitAttempts):
-          # startValues    = np.zeros_like(momentValuesTruth)
-          startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValuesTruth))  #!NOTE! convergence rate is very sensitive to scale parameter
-          # startValues   += momentValuesTruth  # randomly perturb true moment values
-          startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
-          startValueSets.append(startValues)
-        # perform fit attempts in parallel
-        def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
-          """Increases nice level of process that calls this function"""
-          os.nice(19)
-        with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
-          futures = [
-            executor.submit(performFitAttempt, nll = nll, startValues = startValueSets[fitAttemptIndex], momentLabels = momentLabels)
-            for fitAttemptIndex in range(nmbFitAttempts)
-          ]
-          minuits = [future.result() for future in futures]
-        # filter out successful fits
-        minuitsSuccess: list[im.Minuit] = []
-        for fitAttemptIndex, minuit in enumerate(minuits):
-          print(minuit.fmin)
-          print(minuit.params)
-          print(minuit.merrors)
-          success = fitSuccess(minuit)
-          print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
-          if success:
-            minuitsSuccess.append(minuit)
-
-      if len(minuitsSuccess) == 0:
-        print("Warning: No fit was successful. Exiting.")
-      else:
-        print(f"{len(minuitsSuccess)} out of {nmbFitAttempts} fit attempts were successful")
-        print(f"!!! {sorted([minuit.fmin.fval for minuit in minuitsSuccess])=}")
-        print("Plotting fit results")
-        HPhys2 = convertIminuitToMomentResult(minuitsSuccess[0], HTruthSig.indices)
-        plotMomentsInBin(
-          HData             = HPhys2,
-          normalizedMoments = False,
-          HTruth            = HTruthSig,
-          # HTruth            = HTruthBkg,
-          legendLabels      = ("Moment", "Truth"),
-          # HTruth            = HPhys,
-          # legendLabels      = ("Custom NLL", "iminuit NLL"),
-          outFileNamePrefix = f"{outputDirName}/unnorm_phys2_",
-          plotTruthUncert   = True,
-          truthColor        = ROOT.kBlue + 1,
+      minuitsSuccess: dict[str, list[im.Minuit]] = {}
+      # for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
+      for dataTitle, data in (("total", dataPwaModel), ):
+        print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
+        thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
+        phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
+        Phis         = data.AsNumpy(columns = ["Phi",   ])["Phi"]
+        # eventWeights = np.ones_like(thetas)
+        eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"]
+        nll = ExtendedUnbinnedWeightedNLL(
+          intensityFcn = intensityFcn,
+          thetas       = thetas,
+          phis         = phis,
+          Phis         = Phis,
+          eventWeights = eventWeights,
         )
+        print(f"!!! {2 * nll(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
+        print(f"Performing {nmbFitAttempts} fit attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
+        with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
+          # generate random start values for all attempts
+          startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
+          np.random.seed(randomSeed)
+          nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
+          for _ in range(nmbFitAttempts):
+            # startValues    = np.zeros_like(momentValuesTruth)
+            startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValuesTruth))  #!NOTE! convergence rate is very sensitive to scale parameter
+            # startValues   += momentValuesTruth  # randomly perturb true moment values
+            startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
+            startValueSets.append(startValues)
+          # perform fit attempts in parallel
+          def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
+            """Increases nice level of process that calls this function"""
+            os.nice(19)
+          with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
+            futures = [
+              executor.submit(performFitAttempt, nll = nll, startValues = startValueSets[fitAttemptIndex], momentLabels = momentLabels)
+              for fitAttemptIndex in range(nmbFitAttempts)
+            ]
+            minuits = [future.result() for future in futures]
+          # filter out successful fits
+          minuitsSuccess[dataTitle]: list[im.Minuit] = []
+          for fitAttemptIndex, minuit in enumerate(minuits):
+            print(minuit.fmin)
+            print(minuit.params)
+            print(minuit.merrors)
+            success = fitSuccess(minuit)
+            print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
+            if success:
+              minuitsSuccess[dataTitle].append(minuit)
+
+      HTruths = {"total": ("", HTruthSig), "signal": ("Sig", HTruthSig), "background": ("Bkg", HTruthBkg)}
+      for dataTitle, minuits in minuitsSuccess.items():
+        if len(minuits) == 0:
+          print(f"Warning: No fit was successful for data in {dataTitle} region. Exiting.")
+        else:
+          print(f"{len(minuits)} out of {nmbFitAttempts} fit attempts were successful for data in {dataTitle} region")
+          print(f"!!! {sorted([minuit.fmin.fval for minuit in minuits])=}")
+          print(f"Plotting fit results for data in {dataTitle} region")
+          dataLabel = HTruths[dataTitle][0]
+          if dataLabel:
+            dataLabel += "_"
+          HTruth = HTruths[dataTitle][1]
+          HPhys2 = convertIminuitToMomentResult(minuits[0], HTruth.indices)  # plot first successful fit
+          plotMomentsInBin(
+            HData             = HPhys2,
+            normalizedMoments = False,
+            HTruth            = HTruth,
+            legendLabels      = ("Moment", "Truth"),
+            outFileNamePrefix = f"{outputDirName}/unnorm_phys2_{dataLabel}",
+            plotTruthUncert   = True,
+            truthColor        = ROOT.kBlue + 1,
+          )
 
       timer.stop("Total execution time")
       print(timer.summary)
