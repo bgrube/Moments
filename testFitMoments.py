@@ -428,6 +428,8 @@ def performFitAttempt(
   minuit = im.Minuit(nll, startValues, name = momentLabels)
   minuit.errordef = im.Minuit.LIKELIHOOD
   minuit.migrad()
+  if not minuit.valid:
+    return minuit  # do not spend time on HESSE for fits that have failed anyway
   minuit.hesse()
   return minuit
 
