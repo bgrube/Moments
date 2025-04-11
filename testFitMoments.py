@@ -675,8 +675,8 @@ if __name__ == "__main__":
 
       minuitsSuccess: dict[str, list[im.Minuit]] = {}
       # for dataTitle, data in (("total", dataPwaModel), ):
-      # for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
-      for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
+      for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
+      # for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
         print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
         thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
         phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
@@ -751,6 +751,24 @@ if __name__ == "__main__":
             plotTruthUncert   = True,
             truthColor        = ROOT.kBlue + 1,
           )
+
+      # perform background subtraction on moment level
+      HPhysSigRegion  = convertIminuitToMomentResult(minuitsSuccess["signal"    ][0], HTruthSig.indices)
+      HPhysBkgRegion  = convertIminuitToMomentResult(minuitsSuccess["background"][0], HTruthBkg.indices)
+      HPhysSubtracted = HPhysSigRegion - 0.5 * HPhysBkgRegion
+      plotMomentsInBin(
+        HData             = HPhysSubtracted,
+        normalizedMoments = False,
+        HTruth            = HTruthSig,
+        legendLabels      = ("Moment", "Truth"),
+        outFileNamePrefix = f"{outputDirName}/unnorm_phys2_subtracted_",
+        plotTruthUncert   = True,
+        truthColor        = ROOT.kBlue + 1,
+      )
+      HPhysBkgRegion.scaleBy(0.5)
+      HPhysSubtracted2 = MomentResult(HTruthSig.indices)
+      HPhysSubtracted2._valsFlatIndex[:] = HPhysSigRegion._valsFlatIndex - HPhysBkgRegion._valsFlatIndex
+      print(f"!!! {sorted(HPhysSubtracted._valsFlatIndex - HPhysSubtracted2._valsFlatIndex)=}")
 
       timer.stop("Total execution time")
       print(timer.summary)
