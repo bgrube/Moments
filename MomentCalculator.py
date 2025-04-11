@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import bidict as bd
+import copy
 import dataclasses
 from dataclasses import (
   dataclass,
@@ -798,6 +799,69 @@ class MomentResult:
       and np.allclose(self._V_ReImFlatIndex, other._V_ReImFlatIndex)
     )
 
+  def scaleBy(
+    self,
+    factor: float,
+  ) -> None:
+    """Scales moment values and uncertainties by given factor"""
+    self._valsFlatIndex   *= factor
+    self._V_ReReFlatIndex *= factor**2
+    self._V_ImImFlatIndex *= factor**2
+    self._V_ReImFlatIndex *= factor**2
+    if self.hasBootstrapSamples:
+      self._bsSamplesFlatIndex *= factor
+
+  # special methods to calculate linear combinations
+  def __mul__(
+    self,
+    scalar: int | float,
+  ) -> MomentResult:
+    """multiplication with a scalar from the right"""
+    if not isinstance(scalar, (int, float)):
+      return NotImplemented
+    product = copy.deepcopy(self)
+    product.label = f"{scalar}*{self.label}"
+    product.scaleBy(float(scalar))
+    return product
+
+  def __rmul__(
+    self,
+    scalar: int | float,
+  ) -> MomentResult:
+    """multiplication with a scalar from the left"""
+    return self.__mul__(scalar)
+
+  def __add__(
+    self,
+    other: MomentResult,
+  ) -> MomentResult:
+    """Combines two `MomentResult`s into one `MomentResult` by summing moment values and (co)variances"""
+    if not isinstance(other, MomentResult):
+      return NotImplemented
+    # ensure that `other` has the same indices and bin centers
+    assert other.hasSameMomentIndicesAndBinCenters(self), "Moment results must have the same moment indices and bin centers"
+    if self.hasBootstrapSamples or other.hasBootstrapSamples:
+      print(f"Warning: bootstrap samples are not added.")
+    sum = copy.deepcopy(self)
+    sum.label = f"{self.label}+{other.label}"
+    # sum moment values and (co)variances; see Eq. (220)
+    # relies on arrays being initialized with zeros
+    sum._valsFlatIndex   += other._valsFlatIndex
+    sum._V_ReReFlatIndex += other._V_ReReFlatIndex
+    sum._V_ImImFlatIndex += other._V_ImImFlatIndex
+    sum._V_ReImFlatIndex += other._V_ReImFlatIndex
+    return sum
+
+  def __sub__(
+    self,
+    other: MomentResult,
+  ) -> MomentResult:
+    """Combines two `MomentResult`s into one `MomentResult` by subtracting moment values and adding (co)variances"""
+    if not isinstance(other, MomentResult):
+      return NotImplemented
+    return self + (-1 * other)
+
+  # special methods to implement Collection protocol
   def __len__(self) -> int:
     """Returns total number of moments"""
     return len(self.indices)
@@ -846,12 +910,6 @@ class MomentResult:
     else:
       raise TypeError(f"Invalid subscript type {type(flatIndex)}.")
 
-  @property
-  def values(self) -> Generator[MomentValue, None, None]:
-    """Generator that yields moment values"""
-    for flatIndex in self.indices.flatIndices:
-      yield self[flatIndex]
-
   def __contains__(
     self,
     subscript: int | QnMomentIndex
@@ -866,6 +924,12 @@ class MomentResult:
       return True
     except IndexError:
       return False
+
+  @property
+  def values(self) -> Generator[MomentValue, None, None]:
+    """Generator that yields moment values"""
+    for flatIndex in self.indices.flatIndices:
+      yield self[flatIndex]
 
   def __str__(self) -> str:
     result = (str(moment) for moment in self.values)
@@ -990,18 +1054,6 @@ class MomentResult:
     for bsSampleIndex in range(self.nmbBootstrapSamples):
       norm: complex = self._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
       self._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
-
-  def scaleBy(
-    self,
-    factor: float,
-  ) -> None:
-    """Scales moment values and uncertainties by given factor"""
-    self._valsFlatIndex   *= factor
-    self._V_ReReFlatIndex *= factor**2
-    self._V_ImImFlatIndex *= factor**2
-    self._V_ReImFlatIndex *= factor**2
-    if self.hasBootstrapSamples:
-      self._bsSamplesFlatIndex *= factor
 
   def save(
     self,
