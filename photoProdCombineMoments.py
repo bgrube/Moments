@@ -32,6 +32,7 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+#TODO use new `+` operator of `MomentResult` to combine results
 def combineMomentResults(results: Sequence[MomentResult]) -> MomentResult:
   """Combines several `MomentResults` into one `MomentResult` by summing moment values and (co)variances"""
   assert len(results) > 0, "No `MomentResults` to combine"

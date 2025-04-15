@@ -1086,13 +1086,13 @@ class MomentResult:
     intensityComponentTerms: tuple[list[str], list[str], list[str]] = ([], [], [])  # summands in Eqs. (150) to (152) separated by intensity component
     for qnIndex in self.indices.qnIndices:
       momentIndex = qnIndex.momentIndex
-      L           = qnIndex.L
-      M           = qnIndex.M
-      HLM         = self[QnMomentIndex(momentIndex, L, M)].val
-      YLM         = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
-      term        = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "
-      term       += f"* [{qnIndex.label}] " if useMomentSymbols else f"* ({HLM.imag if momentIndex == 2 else HLM.real}) "
-      term       += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"
+      L = qnIndex.L
+      M = qnIndex.M
+      HLM = self[QnMomentIndex(momentIndex, L, M)].val
+      YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
+      term = (f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "
+             + f"* [{qnIndex.label}] " if useMomentSymbols else f"* ({HLM.imag if momentIndex == 2 else HLM.real}) "
+             + f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}")
       intensityComponentTerms[momentIndex].append(term)
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3
