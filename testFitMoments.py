@@ -162,63 +162,6 @@ def intensityFcnVectorized(
   return (integral, intensities)
 
 
-ROOT.gInterpreter.Declare(
-"""
-// basis functions for physical moments; Eq. (XXX)
-// scalar version that calculates function value for a single event
-double
-f_basis(
-	const int    momentIndex,  // 0, 1, or 2
-	const int    L,
-	const int    M,
-	const double theta,  // [rad]
-	const double phi,    // [rad]
-	const double Phi,    // [rad]
-	const double polarization
-) {
-	const double commonTerm = std::sqrt((2 * L + 1) / (4 * TMath::Pi())) * ((M == 0) ? 1 : 2) * ylm(L, M, theta);
-	switch (momentIndex) {
-	case 0:
-		return  commonTerm * std::cos(M * phi);
-	case 1:
-		return  commonTerm * std::cos(M * phi) * polarization * std::cos(2 * Phi);
-	case 2:
-		return -commonTerm * std::sin(M * phi) * polarization * std::sin(2 * Phi);
-	default:
-		throw std::domain_error("f_basis() unknown moment index.");
-	}
-}
-"""
-)
-
-ROOT.gInterpreter.Declare(
-"""
-// vector version that calculates basis-function value for each entry
-// in the input vectors for a constant polarization value
-std::vector<double>
-f_basis(
-	const int                  momentIndex,  // 0, 1, or 2
-	const int                  L,
-	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
-	const double               polarization
-) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
-	std::vector<double> fcnValues(nmbEvents);
-	// multi-threaded loop over events using OpenMP
-	#pragma omp parallel for
-	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_basis(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
-	}
-	return fcnValues;
-}
-"""
-)
-
-
 @dataclass
 class IntensityFcnVectorized:
   """Functor that calculates intensities from real data and integrals from accepted phase-space MC data"""
