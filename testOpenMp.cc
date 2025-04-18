@@ -1,5 +1,5 @@
 // on Linux:
-// > gcc -fopenmp -o testOpenMp{,.c}
+// > gcc -fopenmp -o testOpenMp{,.cc}
 // > export OMP_NUM_THREADS=5
 // > ./testOpenMp
 //
@@ -8,7 +8,7 @@
 // see https://open-box.readthedocs.io/en/latest/installation/openmp_macos.html
 // and https://stackoverflow.com/questions/43555410/enable-openmp-support-in-clang-in-mac-os-x-sierra-mojave
 // > sudo port install libomp
-// > /usr/bin/clang -Xpreprocessor -fopenmp -I/opt/local/include/libomp -L/opt/local/lib/libomp -lomp -o testOpenMp{,.c}
+// > /usr/bin/clang -Xpreprocessor -fopenmp -I/opt/local/include/libomp -L/opt/local/lib/libomp -lomp -o testOpenMp{,.cc}
 // > export OMP_NUM_THREADS=5
 // > ./testOpenMp
 
