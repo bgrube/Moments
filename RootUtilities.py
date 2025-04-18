@@ -15,7 +15,7 @@ print = functools.partial(print, flush = True)
 # C++ implementation of (complex conjugated) Wigner D function, spherical harmonics, and basis functions for polarized photoproduction moments
 # also provides complexT typedef for std::complex<double>
 OpenMpUtilities.enableRootACLiCOpenMp()
-# OpenMp.printRootACLiCSettings()
+# OpenMpUtilities.printRootACLiCSettings()
 ROOT.gROOT.LoadMacro("./basisFunctions.C+")
 
 
