@@ -6,6 +6,7 @@
 
 #include "Math/SpecFuncMathMore.h"
 #include "TMath.h"
+#include "TStopwatch.h"
 
 
 // need typedef because templates are not allowed in TFormula expressions
@@ -424,4 +425,41 @@ f_basis(
 		fcnValues[i] = f_basis(momentIndex, L, M, theta[i], phi[i], Phi[i], polarizations[i]);
 	}
 	return fcnValues;
+}
+
+
+// test OpenMP scaling
+void
+testOpenMp2()
+{
+	const size_t        nmbEvents = 100000000;
+	std::vector<double> thetas   (nmbEvents, 1.0);
+	std::vector<double> phis     (nmbEvents, 1.0);
+	std::vector<double> Phis     (nmbEvents, 1.0);
+	// std::vector<double> fcnValues(nmbEvents);
+	std::vector<complex<double>> fcnValues(nmbEvents);
+	const unsigned int  momentIndex  = 1;
+	const unsigned int  L            = 3;
+	const unsigned int  M            = 2;
+	const double        polarization = 1.0;
+
+	std::cout << "Default number of OpenMP threads = " << omp_get_num_threads() << "; max. threads = " << omp_get_max_threads() << std::endl;
+
+	for (size_t nmbThreads = 1; nmbThreads < 256; nmbThreads *= 2)
+	{
+		omp_set_num_threads(nmbThreads);
+
+		TStopwatch timer;
+		timer.Start();
+		// fcnValues = f_basis(momentIndex, L, M, thetas, phis, Phis, polarization);
+		fcnValues = f_phys(momentIndex, L, M, thetas, phis, Phis, polarization);
+		timer.Stop();
+
+		const double elapsed = timer.RealTime();
+		std::cout << "Number of threads = " << nmbThreads
+		          << ", CPU time = " << timer.CpuTime() << " seconds"
+		          << ", total time = " << elapsed << " seconds"
+		          << ", total time * number of threads = " << elapsed * nmbThreads << " seconds"
+		          << std::endl;
+	}
 }
