@@ -459,7 +459,7 @@ def makeAllPlots(
 
       if not cfg.dataFileName or not os.path.exists(cfg.dataFileName):
         print(f"Warning: cannot find data file '{cfg.dataFileName=}'. Cannot overlay H_0^meas(0, 0) and measured distribution.")
-      else:
+      elif cfg.plotMeasuredMoments:
         print(f"Overlaying measured intensity distribution from file '{cfg.dataFileName}'")
         # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
         histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
