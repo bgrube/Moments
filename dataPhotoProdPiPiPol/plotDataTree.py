@@ -16,6 +16,71 @@ from makeMomentsInputTree import (
 )
 
 
+# Alex' code to calculate helicity angles
+CPP_CODE_ALEX = """
+TVector3
+helPiPlusVector(
+	const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
+	const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
+	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
+	const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+) {
+	// boost all 4-vectors into the resonance rest frame
+	TLorentzVector locPiPlusP4_Resonance (PxPip,    PyPip,    PzPip,    EPip);
+	TLorentzVector locPiMinusP4_Resonance(PxPim,    PyPim,    PzPim,    EPim);
+	TLorentzVector locRecoilP4_Resonance (PxRecoil, PyRecoil, PzRecoil, ERecoil);
+	TLorentzVector locBeamP4_Resonance   (PxBeam,   PyBeam,   PzBeam,   EBeam);
+	const TLorentzVector resonanceP4 = locPiPlusP4_Resonance + locPiMinusP4_Resonance;
+	const TVector3 boostP3 = -resonanceP4.BoostVector();
+	locPiPlusP4_Resonance.Boost (boostP3);
+	locPiMinusP4_Resonance.Boost(boostP3);
+	locRecoilP4_Resonance.Boost (boostP3);
+	locBeamP4_Resonance.Boost   (boostP3);
+
+	// COORDINATE SYSTEM:
+	// Normal to the production plane
+	const TVector3 y = (locBeamP4_Resonance.Vect().Unit().Cross(-locRecoilP4_Resonance.Vect().Unit())).Unit();
+	// Helicity: z-axis opposite recoil proton in rho rest frame
+	const TVector3 z = -locRecoilP4_Resonance.Vect().Unit();
+	const TVector3 x = y.Cross(z).Unit();
+	const TVector3 v(locPiPlusP4_Resonance.Vect() * x, locPiPlusP4_Resonance.Vect() * y, locPiPlusP4_Resonance.Vect() * z);
+	return v;
+}
+
+double
+helcostheta_Alex(
+	const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
+	const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
+	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
+	const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+) {
+	const TVector3 v = helPiPlusVector(
+		PxPip,    PyPip,    PzPip,    EPip,
+		PxPim,    PyPim,    PzPim,    EPim,
+		PxRecoil, PyRecoil, PzRecoil, ERecoil,
+		PxBeam,   PyBeam,   PzBeam,   EBeam
+	);
+	return v.CosTheta();
+}
+
+double
+helphideg_Alex(
+	const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
+	const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
+	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,
+	const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
+) {
+	const TVector3 v = helPiPlusVector(
+		PxPip,    PyPip,    PzPip,    EPip,
+		PxPim,    PyPim,    PzPim,    EPim,
+		PxRecoil, PyRecoil, PzRecoil, ERecoil,
+		PxBeam,   PyBeam,   PzBeam,   EBeam
+	);
+	return v.Phi() * TMath::RadToDeg();
+}
+"""
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C")
@@ -29,70 +94,7 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
-  # Alex' code to calculate helicity angles
-  CPP_CODE = """
-	TVector3
-	helPiPlusVector(
-		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
-		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
-		const double PxProton, const double PyProton, const double PzProton, const double EProton,
-		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
-	) {
-		// boost all 4-vectors into the resonance rest frame
-		TLorentzVector locPiPlusP4_Resonance (PxPip,    PyPip,    PzPip,    EPip);
-		TLorentzVector locPiMinusP4_Resonance(PxPim,    PyPim,    PzPim,    EPim);
-		TLorentzVector locProtonP4_Resonance (PxProton, PyProton, PzProton, EProton);
-		TLorentzVector locBeamP4_Resonance   (PxBeam,   PyBeam,   PzBeam,   EBeam);
-		const TLorentzVector resonanceP4 = locPiPlusP4_Resonance + locPiMinusP4_Resonance;
-		const TVector3 boostP3 = -resonanceP4.BoostVector();
-		locPiPlusP4_Resonance.Boost (boostP3);
-		locPiMinusP4_Resonance.Boost(boostP3);
-		locProtonP4_Resonance.Boost (boostP3);
-		locBeamP4_Resonance.Boost   (boostP3);
-
-		// COORDINATE SYSTEM:
-		// Normal to the production plane
-		const TVector3 y = (locBeamP4_Resonance.Vect().Unit().Cross(-locProtonP4_Resonance.Vect().Unit())).Unit();
-		// Helicity: z-axis opposite proton in rho rest frame
-		const TVector3 z = -locProtonP4_Resonance.Vect().Unit();
-		const TVector3 x = y.Cross(z).Unit();
-		const TVector3 v(locPiPlusP4_Resonance.Vect() * x, locPiPlusP4_Resonance.Vect() * y, locPiPlusP4_Resonance.Vect() * z);
-		return v;
-	}
-
-	double
-	helcostheta_Alex(
-		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
-		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
-		const double PxProton, const double PyProton, const double PzProton, const double EProton,
-		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
-	) {
-		const TVector3 v = helPiPlusVector(
-			PxPip,    PyPip,    PzPip,    EPip,
-			PxPim,    PyPim,    PzPim,    EPim,
-			PxProton, PyProton, PzProton, EProton,
-			PxBeam,   PyBeam,   PzBeam,   EBeam
-		);
-		return v.CosTheta();
-	}
-
-	double
-	helphideg_Alex(
-		const double PxPip,    const double PyPip,    const double PzPip,    const double EPip,
-		const double PxPim,    const double PyPim,    const double PzPim,    const double EPim,
-		const double PxProton, const double PyProton, const double PzProton, const double EProton,
-		const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam
-	) {
-		const TVector3 v = helPiPlusVector(
-			PxPip,    PyPip,    PzPip,    EPip,
-			PxPim,    PyPim,    PzPim,    EPim,
-			PxProton, PyProton, PzProton, EProton,
-			PxBeam,   PyBeam,   PzBeam,   EBeam
-		);
-		return v.Phi() * TMath::RadToDeg();
-	}
-  """
-  ROOT.gInterpreter.Declare(CPP_CODE)
+  ROOT.gInterpreter.Declare(CPP_CODE_ALEX)
 
   beamPolLabel           = "PARA_0"
   # beamPolLabel           = "PARA_135"
