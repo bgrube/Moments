@@ -811,52 +811,78 @@ class MomentResult:
     if self.hasBootstrapSamples:
       self._bsSamplesFlatIndex *= factor
 
-  # special methods to calculate linear combinations
+  # special methods to implement *=, *, +=, +, -=, and - operators
+  def __imul__(
+    self,
+    scalar: int | float,
+  ) -> MomentResult:
+    """multiplication of this with a scalar"""
+    if not isinstance(scalar, (int, float)):
+      return NotImplemented
+    self.label = f"{scalar}*{self.label}"
+    self.scaleBy(float(scalar))
+    return self
+
   def __mul__(
     self,
     scalar: int | float,
   ) -> MomentResult:
-    """multiplication with a scalar from the right"""
-    if not isinstance(scalar, (int, float)):
-      return NotImplemented
+    """multiplication with a scalar from the right and returning a new `MomentResult`"""
     product = copy.deepcopy(self)
-    product.label = f"{scalar}*{self.label}"
-    product.scaleBy(float(scalar))
+    product *= float(scalar)
     return product
 
   def __rmul__(
     self,
     scalar: int | float,
   ) -> MomentResult:
-    """multiplication with a scalar from the left"""
+    """multiplication with a scalar from the left and returning a new `MomentResult`"""
     return self.__mul__(scalar)
 
-  def __add__(
+  def __iadd__(
     self,
     other: MomentResult,
   ) -> MomentResult:
-    """Combines two `MomentResult`s into one `MomentResult` by summing moment values and (co)variances"""
+    """Combines this and another `MomentResult` by summing the moment values and (co)variances"""
     if not isinstance(other, MomentResult):
       return NotImplemented
     # ensure that `other` has the same indices and bin centers
     assert other.hasSameMomentIndicesAndBinCenters(self), "Moment results must have the same moment indices and bin centers"
     if self.hasBootstrapSamples or other.hasBootstrapSamples:
       print(f"Warning: bootstrap samples are not added.")
-    sum = copy.deepcopy(self)
-    sum.label = f"{self.label}+{other.label}"
+    self.label += f"+{other.label}"
     # sum moment values and (co)variances; see Eq. (220)
     # relies on arrays being initialized with zeros
-    sum._valsFlatIndex   += other._valsFlatIndex
-    sum._V_ReReFlatIndex += other._V_ReReFlatIndex
-    sum._V_ImImFlatIndex += other._V_ImImFlatIndex
-    sum._V_ReImFlatIndex += other._V_ReImFlatIndex
+    self._valsFlatIndex   += other._valsFlatIndex
+    self._V_ReReFlatIndex += other._V_ReReFlatIndex
+    self._V_ImImFlatIndex += other._V_ImImFlatIndex
+    self._V_ReImFlatIndex += other._V_ReImFlatIndex
+    return self
+
+  def __add__(
+    self,
+    other: MomentResult,
+  ) -> MomentResult:
+    """Combines this and another `MomentResult` into a new `MomentResult` by summing the moment values and (co)variances"""
+    sum = copy.deepcopy(self)
+    sum += other
     return sum
+
+  def __isub__(
+    self,
+    other: MomentResult,
+  ) -> MomentResult:
+    """Combines this and another `MomentResult` into one `MomentResult` by subtracting the moment values and adding the (co)variances"""
+    if not isinstance(other, MomentResult):
+      return NotImplemented
+    self += (-1 * other)
+    return self
 
   def __sub__(
     self,
     other: MomentResult,
   ) -> MomentResult:
-    """Combines two `MomentResult`s into one `MomentResult` by subtracting moment values and adding (co)variances"""
+    """Combines this and another `MomentResult` into one `MomentResult` by subtracting the moment values and adding the (co)variances"""
     if not isinstance(other, MomentResult):
       return NotImplemented
     return self + (-1 * other)
@@ -1171,6 +1197,8 @@ class MomentResultsKinematicBinning:
     if len(self) != len(other):
       return False
     return all(self[binIndex] == other[binIndex] for binIndex in range(len(self)))
+
+  #TODO add dunder functions for arithmetic operators
 
   def __getitem__(
     self,
