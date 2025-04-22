@@ -71,7 +71,7 @@ def overlayMoments1D(
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(HPhys[qnIndex] for HPhys in momentResults if qnIndex in HPhys)
       histData = getHistFromMomentValues(HVals, binning, momentPart, legendLabel)
-      setCbFriendlyStyle(histData, styleIndex = index)
+      setCbFriendlyStyle(histData, styleIndex = index, filledMarkers = True)
       if scaleFactor is not None:
         histData.Scale(scaleFactor)
       histStack.Add(histData, "PE1X0")
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_6", "4 Orientations, L_{max} = 6", None),
     (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_8", "4 Orientations, L_{max} = 8", None),
   )
-  outFileDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}.overlay")
+  outputDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}.overlay")
 
   # load moment results
   momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
@@ -178,7 +178,7 @@ if __name__ == "__main__":
       qnIndex                = qnIndex,
       binning                = cfg.massBinning,
       normalizedMoments      = cfg.normalizeMoments,
-      pdfFileNamePrefix      = f"{outFileDirName}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
+      pdfFileNamePrefix      = f"{outputDirName}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
     )
 
   timer.stop("Total execution time")
