@@ -32,40 +32,19 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
-#TODO use new `+` operator of `MomentResult` to combine results
-def combineMomentResults(results: Sequence[MomentResult]) -> MomentResult:
-  """Combines several `MomentResults` into one `MomentResult` by summing moment values and (co)variances"""
-  assert len(results) > 0, "No `MomentResults` to combine"
-  # ensure that all `MomentResults` have the same indices and bin centers
-  assert all(results[0].hasSameMomentIndicesAndBinCenters(result) for result in results[1:]), "Moment results must have the same moment indices and bin centers"
-  if any(result.hasBootstrapSamples for result in results):
-    print(f"Warning: bootstrap samples are not combined.")
-  # initialize combined MomentResult
-  combinedMomentResult = MomentResult(
-      indices    = results[0].indices,
-      binCenters = results[0].binCenters,
-      label      = "_".join((result.label for result in results)),
-  )
-  # sum moment values and (co)variances; see Eq. (220)
-  # relies on arrays being initialized with zeros
-  for result in results:
-      combinedMomentResult._valsFlatIndex   += result._valsFlatIndex
-      combinedMomentResult._V_ReReFlatIndex += result._V_ReReFlatIndex
-      combinedMomentResult._V_ImImFlatIndex += result._V_ImImFlatIndex
-      combinedMomentResult._V_ReImFlatIndex += result._V_ReImFlatIndex
-  return combinedMomentResult
-
-
 def combineMomentResultsKinematicBinning(results: Sequence[MomentResultsKinematicBinning]) -> MomentResultsKinematicBinning:
   """Combines several `MomentResultsKinematicBinning` into one `MomentResultsKinematicBinning` by summing moment values and (co)variances"""
   assert len(results) > 0, "No `MomentResultsKinematicBinning` to combine"
   # ensure that all `MomentResultsKinematicBinning` have the same bin centers
   assert all(results[0].binCenters == result.binCenters for result in results[1:]), "Moment results must have the same bin centers"
   # combine moments in each kinematic bin
-  combinedMomentResults = MomentResultsKinematicBinning(
-    moments = [combineMomentResults([result[binIndex] for result in results]) for binIndex in range(len(results[0]))]
-  )
-  return combinedMomentResults
+  #TODO implement arithmetic operators for MomentResultsKinematicBinning
+  combinedMomentResults = []
+  for binIndex in range(len(results[0])):
+    momentResults = [result[binIndex] for result in results]
+    assert len(momentResults) > 0, "No `MomentResults` to combine"
+    combinedMomentResults.append(sum(momentResults[1:], start = momentResults[0]))
+  return MomentResultsKinematicBinning(combinedMomentResults)
 
 
 if __name__ == "__main__":
@@ -74,7 +53,8 @@ if __name__ == "__main__":
 
   tBinLabels = (
     # "tbin_0.1_0.2",
-    "tbin_0.1_0.2.trackDistFdc",
+    "tbin_0.1_0.2.Gj.pi+",
+    # "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
   )
   dataSetsToCombine = {
