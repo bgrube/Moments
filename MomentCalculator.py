@@ -1425,7 +1425,6 @@ class MomentCalculator:
       nmbMoments = len(self.momentCalculator.indices)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
-      #TODO check consistency of _beamPol with self.momentCalculator.indices.polarized; also check calculateMoments()
       for flatIndex in self.momentCalculator.indices.flatIndices:
         qnIndex = self.momentCalculator.indices[flatIndex]
         self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
@@ -1451,7 +1450,6 @@ class MomentCalculator:
       nmbMoments = len(self.momentCalculator.indices)
       print(f"Calculating acceptance integral vector for {nmbMoments} moments")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
-      #TODO check consistency of beamPolAccPs with self.momentCalculator.indices.polarized; also check calculateMoments()
       for flatIndex in self.momentCalculator.indices.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
         qnIndex = self.momentCalculator.indices[flatIndex]
@@ -1545,17 +1543,19 @@ class MomentCalculator:
 
   def fitMoments(
     self,
-    startValues: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],
-    # disablePolarizedMoments: bool = False,  #TODO use list of moment indices to fix instead
-    normalize:   bool = True,   # if set physical moments are normalized to H_0(0, 0)
+    negativeLogLikelihoodFcn: Cost,  # function to minimize
+    startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
+    minuit:                   im.Minuit | None = None,  # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
+    # fixParametersForMoments: Sequence[int] | Sequence[QnMomentIndex] = [],  #TODO use list of moment indices to fix instead
+    normalize:                bool = True,   # if set physical moments are normalized to H_0(0, 0)
   ) -> im.Minuit:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
     #TODO split into function that sets up fit and function that performs fit so that one can reuse the data for multiple fit attempts
-    # setup negative log-likelihood function (NLL) and minimizer
-    nll = self.negativeLogLikelihoodFcn
+    # setup minimizer
     momentLabels = tuple(qnIndex.label for qnIndex in self.indices.qnIndices)
-    minuit = im.Minuit(nll, startValues, name = momentLabels)
-    minuit.errordef = im.Minuit.LIKELIHOOD
+    if minuit is None:
+      minuit = im.Minuit(negativeLogLikelihoodFcn, startValues, name = momentLabels)
+      minuit.errordef = im.Minuit.LIKELIHOOD
     # perform fit
     minuit.migrad()
     if minuit.valid:
