@@ -632,8 +632,20 @@ class AcceptanceIntegralMatrix:
     fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
-      fPhys[flatIndex] = np.asarray(ROOT.f_phys(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(
+        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+        thetas,
+        phis,
+        Phis,
+        beamPol,
+      ))
+      fPhys[flatIndex] = np.asarray(ROOT.f_phys(
+        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+        thetas,
+        phis,
+        Phis,
+        beamPol,
+      ))
     # calculate integral-matrix elements; Eq. (178)
     self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
     for flatIndexMeas in self.indices.flatIndices:
@@ -1357,7 +1369,13 @@ class MomentCalculator:
     )
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(qnIndex.momentIndex, qnIndex.L, qnIndex.M, thetas, phis, Phis, beamPol))  # Eq. (176)
+      fMeas[flatIndex] = np.asarray(ROOT.f_meas(
+        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+        thetas,
+        phis,
+        Phis,
+        beamPol,
+      ))  # Eq. (176)
       weightedSum = eventWeights.dot(fMeas[flatIndex])
       self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
@@ -1432,7 +1450,7 @@ class MomentCalculator:
           thetas,
           phis,
           Phis,
-          beamPol if beamPol is not None else 0.0,  #TODO add signature with event-by-event polarization
+          beamPol,
         ))
 
     def _calculateIntegralVector(self) -> None:
@@ -1453,16 +1471,17 @@ class MomentCalculator:
       for flatIndex in self.momentCalculator.indices.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
         qnIndex = self.momentCalculator.indices[flatIndex]
-        baseFcnValsAccPs = np.asarray(ROOT.f_basis(
+        baseFcnValsAccPs: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetasAccPs,
           phisAccPs,
           PhisAccPs,
-          beamPolAccPs if beamPolAccPs is not None else 0.0,  #TODO add signature with event-by-event polarization
+          beamPolAccPs,
         ))
         # calculate accepted phase-space integral by summing basis-functions values over accepted phase-space events
-        #TODO add event weights
-        self._integralVector[flatIndex] = (4 * np.pi / self.momentCalculator.dataSet.nmbGenEvents) * np.sum(np.sort(baseFcnValsAccPs))  # sorting values reduces rounding errors  #TODO why not 8 * np.pi**2?
+        #TODO why prefactor is not 8 * np.pi**2 / N?
+        self._integralVector[flatIndex] = ((4 * np.pi / self.momentCalculator.dataSet.nmbGenEvents)
+          * np.sum(np.sort(np.multiply(eventWeightsAccPs, baseFcnValsAccPs))))  # sorting values reduces rounding errors
       print(f"!!! {self._integralVector=}")
 
     def __post_init__(self) -> None:
