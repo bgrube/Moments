@@ -49,7 +49,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   print("Loading ./FSRootMacros.C...")
-  assert ROOT.gROOT.LoadMacro("./FSRootMacros.C+") == 0; "Could not load macro './FSRootMacros.C'."
+  assert ROOT.gROOT.LoadMacro("./FSRootMacros.C+") == 0, "Error loading './FSRootMacros.C'."
 
   useRDataFrame   = True
   fsRootCacheName = ".FSRootCache"

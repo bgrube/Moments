@@ -8,8 +8,8 @@ import ROOT
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C")
-  ROOT.gROOT.LoadMacro("../rootlogon.C")
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.C"
+  assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty

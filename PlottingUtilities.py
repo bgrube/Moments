@@ -259,7 +259,7 @@ class HistAxisBinning:
 
 def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   """Defines ROOT plotting style"""
-  ROOT.gROOT.LoadMacro(rootlogonPath)
+  assert ROOT.gROOT.LoadMacro(rootlogonPath) == 0, f"Error loading '{rootlogonPath}'"
   ROOT.gROOT.ForceStyle()
   ROOT.gStyle.SetCanvasDefW(600)
   ROOT.gStyle.SetCanvasDefH(600)

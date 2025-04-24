@@ -14,7 +14,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   print("Loading ./FSRootMacros.C...")
-  assert ROOT.gROOT.LoadMacro("./FSRootMacros.C+") == 0; "Could not load macro './FSRootMacros.C'."
+  assert ROOT.gROOT.LoadMacro("./FSRootMacros.C+") == 0, "Error loading './FSRootMacros.C'."
   PlottingUtilities.setupPlotStyle(rootlogonPath = "../rootlogon.C")
 
   ampToolsFileName = "./amptools_tree_030994.root"

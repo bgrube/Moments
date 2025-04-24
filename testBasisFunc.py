@@ -21,7 +21,7 @@ if __name__ == "__main__":
   OpenMpUtilities.printRootACLiCSettings()
   # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
   # also provides complexT typedef for std::complex<double>
-  ROOT.gROOT.LoadMacro("./basisFunctions.C++")
+  assert ROOT.gROOT.LoadMacro("./basisFunctions.C++") == 0, "Error loading './basisFunctions.C++'"
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
   with threadController.limit(limits = 256):
