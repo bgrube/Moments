@@ -480,7 +480,7 @@ def getStdVectorFromRdfColumn(
   return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName, ])[columnName])
 
 
-def loadInputData(
+def readInputData(
   polarization: float | None,
   data:         ROOT.RDataFrame,
 ) -> tuple[
@@ -490,7 +490,7 @@ def loadInputData(
   ROOT.std.vector["double"],                        # Phi values
   npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]  # event weights
 ]:
-  """Loads and returns input data needed to calculate moments or acceptance integral matrix from given `RDataFrame`"""
+  """Reads input data needed to calculate moments or acceptance integral matrix from given `RDataFrame`"""
   # get photon-beam polarization
   beamPol: float | ROOT.std.vector["double"] | None = None
   if polarization is None:
@@ -618,8 +618,8 @@ class AcceptanceIntegralMatrix:
       print("Warning: no phase-space data; using perfect acceptance")
       self._IFlatIndex = np.eye(len(self.indices), dtype = np.complex128)
       return
-    print("Loading input data for the calculation of the acceptance integral matrix")
-    beamPol, thetas, phis, Phis, eventWeights = loadInputData(
+    print("Reading phase-space data for the calculation of the acceptance integral matrix")
+    beamPol, thetas, phis, Phis, eventWeights = readInputData(
       polarization = self.dataSet.polarization,
       data         = self.dataSet.phaseSpaceData,
     )
@@ -1336,8 +1336,8 @@ class MomentCalculator:
       dataSet = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     else:
       raise ValueError(f"Unknown data source '{dataSource}'")
-    print("Loading input data for moment calculation")
-    beamPol, thetas, phis, Phis, eventWeights = loadInputData(
+    print("Reading input data for moment calculation")
+    beamPol, thetas, phis, Phis, eventWeights = readInputData(
       polarization = dataSet.polarization,
       data         = dataSet.data,
     )
