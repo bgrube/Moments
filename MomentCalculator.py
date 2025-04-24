@@ -1549,7 +1549,6 @@ class MomentCalculator:
     normalize:   bool = True,   # if set physical moments are normalized to H_0(0, 0)
   ) -> im.Minuit:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
-    print(f"!!! {startValues=}")
     #TODO split into function that sets up fit and function that performs fit so that one can reuse the data for multiple fit attempts
     # setup negative log-likelihood function (NLL) and minimizer
     nll = self._ExtendedUnbinnedWeightedNLL(self)

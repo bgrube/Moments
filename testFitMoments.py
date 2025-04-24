@@ -30,6 +30,9 @@ from wurlitzer import pipes, STDOUT
 from MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
+  DataSet,
+  KinematicBinningVariable,
+  MomentCalculator,
   MomentIndices,
   MomentResult,
   QnMomentIndex,
@@ -387,7 +390,7 @@ if __name__ == "__main__":
   # set parameters of test case
   nmbPwaMcEventsSig       = 10000   # number of signal "data" events to generate from partial-wave amplitudes
   nmbPwaMcEventsBkg       = 10000   # number of background "data" events to generate from partial-wave amplitudes
-  nmbPsMcEvents           = 100000  # number of phase-space events to generate
+  nmbPsMcGenEvents        = 100000  # number of phase-space events to generate before weighting with acceptance
   # beamPolarization        = None    # unpolarized photon beam
   beamPolarization        = 1.0     # polarization of photon beam
   maxL                    = 4       # maximum L quantum number of moments
@@ -484,18 +487,18 @@ if __name__ == "__main__":
       print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
       timer.start("Total execution time")
 
-      print(f"Generating accepted phase-space MC events from {nmbPsMcEvents} phase-space events")
+      print(f"Generating accepted phase-space MC events from {nmbPsMcGenEvents} phase-space events")
       timer.start("Time to generate accepted phase-space MC data")
       ROOT.gRandom.SetSeed(randomSeed)
       dataAcceptedPs = genAccepted2BodyPs(
-        nmbGenEvents      = nmbPsMcEvents,
+        nmbGenEvents      = nmbPsMcGenEvents,
         efficiencyFormula = efficiencyFormula,
         outFileNamePrefix = f"{outputDirName}/",
         # regenerateData    = True,
         regenerateData    = False,
       )
       nmbAcceptedPsEvents  = dataAcceptedPs.Count().GetValue()
-      phaseSpaceEfficiency = nmbAcceptedPsEvents / nmbPsMcEvents
+      phaseSpaceEfficiency = nmbAcceptedPsEvents / nmbPsMcGenEvents
       print(f"The accepted phase-space sample contains {nmbAcceptedPsEvents} accepted events corresponding to an efficiency of {phaseSpaceEfficiency:.3f}")
       timer.stop("Time to generate accepted phase-space MC data")
 
@@ -517,6 +520,10 @@ if __name__ == "__main__":
       )
       dataPwaModelSigRegion = dataPwaModel.Filter("eventWeight == 1.0")   # select events in signal region (mixture of signal and background)
       dataPwaModelBkgRegion = dataPwaModel.Filter("eventWeight == -0.5")  # select events in sideband regions (nearly pure background)
+      # quick hack to ensure that dataPwaModelBkgRegion have also weight 1 by dropping the eventWeight column and re-adding it with value 1.0
+      dataPwaModelBkgRegion.Snapshot("data", f"{outputDirName}/foo.root", ["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"])
+      dataPwaModelBkgRegion = ROOT.RDataFrame("data", f"{outputDirName}/foo.root")
+      dataPwaModelBkgRegion = dataPwaModelBkgRegion.Define("eventWeight", "1.0")
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
@@ -567,7 +574,7 @@ if __name__ == "__main__":
         thetas       = dataAcceptedPs.AsNumpy(columns = ["theta", ])["theta"],
         phis         = dataAcceptedPs.AsNumpy(columns = ["phi",   ])["phi"],
         Phis         = dataAcceptedPs.AsNumpy(columns = ["Phi",   ])["Phi"],
-        nmbGenEvents = nmbPsMcEvents,  #TODO this works only for perfect acceptance
+        nmbGenEvents = nmbPsMcGenEvents,  #TODO this works only for perfect acceptance
       )
       momentValuesTruth = np.array([HTruthSig[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruthSig[qnIndex].val.imag for qnIndex in HTruthSig.indices.qnIndices])  # make all moment values real-valued
       momentLabels = tuple(qnIndex.label for qnIndex in HTruthSig.indices.qnIndices)
@@ -617,60 +624,79 @@ if __name__ == "__main__":
       # )
 
       minuitsSuccess: dict[str, list[im.Minuit]] = {}
+      useMomentCalculator = True
       # for dataTitle, data in (("total", dataPwaModel), ):
       for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
       # for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
-        print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
         thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
         phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
         Phis         = data.AsNumpy(columns = ["Phi",   ])["Phi"]
         eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"] if applyEventWeights else np.ones_like(thetas)
-        nll = ExtendedUnbinnedWeightedNLL(
-          intensityFcn = intensityFcn,
-          thetas       = thetas,
-          phis         = phis,
-          Phis         = Phis,
-          eventWeights = eventWeights,
-        )
-        print(f"!!! {2 * nll(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
-        print(f"Performing {nmbFitAttempts} fit attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
-        with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
-          # generate random start values for all attempts
-          startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
-          np.random.seed(randomSeed)
-          nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
-          for _ in range(nmbFitAttempts):
-            # startValues    = np.zeros_like(momentValuesTruth)
-            startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValuesTruth))  #!NOTE! convergence rate is very sensitive to scale parameter
-            # startValues   += momentValuesTruth  # randomly perturb true moment values
-            startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
-            startValueSets.append(startValues)
-          # perform fit attempts in parallel
-          def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
-            """Increases nice level of process that calls this function"""
-            os.nice(19)
-          with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
-            futures = [
-              executor.submit(
-                performFitAttempt,
-                nll                     = nll,
-                startValues             = startValueSets[fitAttemptIndex],
-                momentLabels            = momentLabels,
-                disablePolarizedMoments = disablePolarizedMoments,
-              )
-              for fitAttemptIndex in range(nmbFitAttempts)
-            ]
-            minuits = [future.result() for future in futures]
-          # filter out successful fits
-          minuitsSuccess[dataTitle]: list[im.Minuit] = []
-          for fitAttemptIndex, minuit in enumerate(minuits):
-            print(minuit.fmin)
-            print(minuit.params)
-            print(minuit.merrors)
-            success = fitSuccess(minuit)
-            print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
-            if success:
-              minuitsSuccess[dataTitle].append(minuit)
+        # generate random start values for all attempts
+        startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
+        np.random.seed(randomSeed)
+        nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
+        for _ in range(nmbFitAttempts):
+          # startValues    = np.zeros_like(momentValuesTruth)
+          startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValuesTruth))  #!NOTE! convergence rate is very sensitive to scale parameter
+          # startValues   += momentValuesTruth  # randomly perturb true moment values
+          startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
+          startValueSets.append(startValues)
+        minuits: list[im.Minuit] = []
+        if useMomentCalculator:
+          # setup moment calculators for data
+          dataSet = DataSet(
+            data           = data,
+            phaseSpaceData = dataAcceptedPs,
+            nmbGenEvents   = nmbPsMcGenEvents,
+            polarization   = beamPolarization,
+          )
+          momentCalculator = MomentCalculator(
+            indices    = MomentIndices(maxL = maxL, polarized = (beamPolarization is not None)),
+            dataSet    = dataSet,
+            binCenters = {KinematicBinningVariable("foo", "foo", "foo") : 1.0},
+          )
+          nll2 = momentCalculator._ExtendedUnbinnedWeightedNLL(momentCalculator)
+          print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
+          minuits.append(momentCalculator.fitMoments(startValueSets[1 if dataTitle == "signal" else 55]))
+        else:
+          print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
+          nll = ExtendedUnbinnedWeightedNLL(
+            intensityFcn = intensityFcn,
+            thetas       = thetas,
+            phis         = phis,
+            Phis         = Phis,
+            eventWeights = eventWeights,
+          )
+          print(f"!!! {2 * nll(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
+          print(f"Performing {nmbFitAttempts} fit attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
+          with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
+            def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
+              """Increases nice level of process that calls this function"""
+              os.nice(19)
+            with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
+              futures = [
+                executor.submit(
+                  performFitAttempt,
+                  nll                     = nll,
+                  startValues             = startValueSets[fitAttemptIndex],
+                  momentLabels            = momentLabels,
+                  disablePolarizedMoments = disablePolarizedMoments,
+                )
+                # for fitAttemptIndex in range(nmbFitAttempts)
+                for fitAttemptIndex in [1 if dataTitle == "signal" else 55]  # select single converging fits
+              ]
+              minuits = [future.result() for future in futures]
+        # filter out successful fits
+        minuitsSuccess[dataTitle] = []
+        for fitAttemptIndex, minuit in enumerate(minuits):
+          print(minuit.fmin)
+          print(minuit.params)
+          print(minuit.merrors)
+          success = fitSuccess(minuit)
+          print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
+          if success:
+            minuitsSuccess[dataTitle].append(minuit)
 
       HTruths = {"total": ("", HTruthSig), "signal": ("Sig", HTruthSig), "background": ("Bkg", HTruthBkg)}
       for dataTitle, minuits in minuitsSuccess.items():
