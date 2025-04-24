@@ -658,7 +658,7 @@ if __name__ == "__main__":
           )
           nll2 = momentCalculator.negativeLogLikelihoodFcn
           print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
-          minuits.append(momentCalculator.fitMoments(startValueSets[1 if dataTitle == "signal" else 55]))
+          minuits.append(momentCalculator.fitMoments(nll2, startValueSets[1 if dataTitle == "signal" else 55]))
         else:
           print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
           nll = ExtendedUnbinnedWeightedNLL(
