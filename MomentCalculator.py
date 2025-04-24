@@ -31,6 +31,7 @@ from collections.abc import (
 )
 
 import iminuit as im
+from iminuit.typing import Cost
 import spherical
 import ROOT
 
@@ -1409,18 +1410,18 @@ class MomentCalculator:
     """Functor that calculates negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; !NOTE! the sum of weights must be identical to the number of signal events"""
     momentCalculator:            MomentCalculator
     printProblematicIntensities: bool = False
-    #TODO are all these data members really needed?
-    _beamPol:      float | ROOT.std.vector["double"] | None                     = field(init = False)  # beam polarization
-    _thetas:       ROOT.std.vector["double"]                                    = field(init = False)  # theta values
-    _phis:         ROOT.std.vector["double"]                                    = field(init = False)  # phi values
-    _Phis:         ROOT.std.vector["double"]                                    = field(init = False)  # Phi values
-    _eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]             = field(init = False)  # event weights
-    _baseFcnVals:  npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
-    _integralVector:  npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]            = field(init = False)  # precalculated acceptance integral vector
+    _eventWeights:   npt.NDArray[npt.Shape["nmbEvents"],             npt.Float64] = field(init = False)  # weights of real-data events
+    _baseFcnVals:    npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
+    _integralVector: npt.NDArray[npt.Shape["nmbMoments"],            npt.Float64] = field(init = False)  # precalculated acceptance integral vector
 
     def _calculateBasisFcnValues(self) -> None:
       """Calculates values of basis functions for all real-data events"""
-      nmbEvents  = len(self._thetas)
+      print("Reading real data for moment fit")
+      beamPol, thetas, phis, Phis, self._eventWeights = readInputData(
+        polarization = self.momentCalculator.dataSet.polarization,
+        data         = self.momentCalculator.dataSet.data,
+      )
+      nmbEvents  = len(thetas)
       nmbMoments = len(self.momentCalculator.indices)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
@@ -1429,10 +1430,10 @@ class MomentCalculator:
         qnIndex = self.momentCalculator.indices[flatIndex]
         self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
-          self._thetas,
-          self._phis,
-          self._Phis,
-          self._beamPol if self._beamPol is not None else 0.0,  #TODO add signature with event-by-event polarization
+          thetas,
+          phis,
+          Phis,
+          beamPol if beamPol is not None else 0.0,  #TODO add signature with event-by-event polarization
         ))
 
     def _calculateIntegralVector(self) -> None:
@@ -1468,11 +1469,6 @@ class MomentCalculator:
 
     def __post_init__(self) -> None:
       """Loads input data and precalculates basis-function values and acceptance integral vector"""
-      print("Reading real data for moment fit")
-      self._beamPol, self._thetas, self._phis, self._Phis, self._eventWeights = readInputData(
-        polarization = self.momentCalculator.dataSet.polarization,
-        data         = self.momentCalculator.dataSet.data,
-      )
       # precalculate the basis-function values and acceptance integral vector
       self._calculateBasisFcnValues()
       self._calculateIntegralVector()
@@ -1502,6 +1498,11 @@ class MomentCalculator:
       weightedLogIntensities = self._eventWeights * np.log(intensities + np.finfo(dtype = float).tiny)  # protect against 0 intensities
       return -(np.sum(np.sort(weightedLogIntensities)).item() - integral)  # sorting summands reduces rounding errors; use item() to ensure that sum is scalar quantity
 
+  @property
+  def negativeLogLikelihoodFcn(self) -> Cost:
+    """Constructs negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; should be called only when data change"""
+    return self._ExtendedUnbinnedWeightedNLL(self)
+
   def _convertIminuitToMomentResult(
     self,
     minuit: im.Minuit,  # iminuit object containing the fit result
@@ -1518,7 +1519,7 @@ class MomentCalculator:
       # copy parameter values
       self._HPhys._valsFlatIndex[:] = np.array(minuit.values)
       # copy covariance matrix
-      self._HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance[:])
+      self._HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance[:])  #TODO [:] needed on rhs?
     else:
       # construct quantum-number index ranges for purely real and purely imaginary moments
       reIndexRange = (
@@ -1551,7 +1552,7 @@ class MomentCalculator:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
     #TODO split into function that sets up fit and function that performs fit so that one can reuse the data for multiple fit attempts
     # setup negative log-likelihood function (NLL) and minimizer
-    nll = self._ExtendedUnbinnedWeightedNLL(self)
+    nll = self.negativeLogLikelihoodFcn
     momentLabels = tuple(qnIndex.label for qnIndex in self.indices.qnIndices)
     minuit = im.Minuit(nll, startValues, name = momentLabels)
     minuit.errordef = im.Minuit.LIKELIHOOD

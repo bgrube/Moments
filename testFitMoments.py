@@ -656,7 +656,7 @@ if __name__ == "__main__":
             dataSet    = dataSet,
             binCenters = {KinematicBinningVariable("foo", "foo", "foo") : 1.0},
           )
-          nll2 = momentCalculator._ExtendedUnbinnedWeightedNLL(momentCalculator)
+          nll2 = momentCalculator.negativeLogLikelihoodFcn
           print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
           minuits.append(momentCalculator.fitMoments(startValueSets[1 if dataTitle == "signal" else 55]))
         else:
