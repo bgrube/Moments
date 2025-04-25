@@ -623,12 +623,9 @@ if __name__ == "__main__":
       #   truthColor        = ROOT.kBlue + 1,
       # )
 
-      minuitsSuccess:    dict[str, list[im.Minuit]] = {}
+      minuitsSuccess:    dict[str, list[im.Minuit] ] = {}
       momentCalculators: dict[str, MomentCalculator] = {}
       useMomentCalculator = True
-      def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
-        """Increases nice level of process that calls this function"""
-        os.nice(19)
       # for dataTitle, data in (("total", dataPwaModel), ):
       for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
       # for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
@@ -650,7 +647,6 @@ if __name__ == "__main__":
           # nll2 = momentCalculator.negativeLogLikelihoodFcn
           # print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
           with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
-            # minuits.append(momentCalculator.fitMoments(nll2, startValueSets[1 if dataTitle == "signal" else 55]))
             momentCalculator.fitMomentsMultipleAttempts(
               nmbFitAttempts          = nmbFitAttempts,
               nmbParallelFitProcesses = nmbParallelFitProcesses,
@@ -683,6 +679,9 @@ if __name__ == "__main__":
           print(f"!!! {2 * nll(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
           print(f"Performing {nmbFitAttempts} fit attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
           with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
+            def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
+              """Increases nice level of process that calls this function"""
+              os.nice(19)
             with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
               futures = [
                 executor.submit(
