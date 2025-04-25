@@ -623,7 +623,8 @@ if __name__ == "__main__":
       #   truthColor        = ROOT.kBlue + 1,
       # )
 
-      minuitsSuccess: dict[str, list[im.Minuit]] = {}
+      minuitsSuccess:    dict[str, list[im.Minuit]] = {}
+      momentCalculators: dict[str, MomentCalculator] = {}
       useMomentCalculator = True
       def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
         """Increases nice level of process that calls this function"""
@@ -633,6 +634,7 @@ if __name__ == "__main__":
       # for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
         minuits: list[im.Minuit] = []
         if useMomentCalculator:
+          print(f"Fitting data in {dataTitle} region using MomentCalculator")
           # setup moment calculators for data
           dataSet = DataSet(
             data           = data,
@@ -649,11 +651,12 @@ if __name__ == "__main__":
           # print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
           with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
             # minuits.append(momentCalculator.fitMoments(nll2, startValueSets[1 if dataTitle == "signal" else 55]))
-            minuits = momentCalculator.fitMomentsMultipleAttempts(
+            momentCalculator.fitMomentsMultipleAttempts(
               nmbFitAttempts          = nmbFitAttempts,
               nmbParallelFitProcesses = nmbParallelFitProcesses,
               randomSeed              = randomSeed,
             )
+          momentCalculators[dataTitle] = momentCalculator
         else:
           thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
           phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
@@ -692,32 +695,27 @@ if __name__ == "__main__":
                 for fitAttemptIndex in range(nmbFitAttempts)
               ]
               minuits = [future.result() for future in futures]
-        # filter out successful fits
-        minuitsSuccess[dataTitle] = []
-        for fitAttemptIndex, minuit in enumerate(minuits):
-          print(minuit.fmin)
-          print(minuit.params)
-          print(minuit.merrors)
-          success = fitSuccess(minuit)
-          print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
-          if success:
-            minuitsSuccess[dataTitle].append(minuit)
+            # filter out successful fits
+            minuitsSuccess[dataTitle] = []
+            for fitAttemptIndex, minuit in enumerate(minuits):
+              print(minuit.fmin)
+              print(minuit.params)
+              print(minuit.merrors)
+              success = fitSuccess(minuit)
+              print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
+              if success:
+                minuitsSuccess[dataTitle].append(minuit)
 
       HTruths = {"total": ("", HTruthSig), "signal": ("Sig", HTruthSig), "background": ("Bkg", HTruthBkg)}
-      for dataTitle, minuits in minuitsSuccess.items():
-        if len(minuits) == 0:
-          print(f"Warning: No fit was successful for data in {dataTitle} region. Exiting.")
-        else:
-          print(f"{len(minuits)} out of {nmbFitAttempts} fit attempts were successful for data in {dataTitle} region")
-          print(f"!!! {sorted([minuit.fmin.fval for minuit in minuits])=}")
+      if useMomentCalculator:
+        for dataTitle, momentCalculator in momentCalculators.items():
           print(f"Plotting fit results for data in {dataTitle} region")
           dataLabel = HTruths[dataTitle][0]
           if dataLabel:
             dataLabel += "_"
           HTruth = HTruths[dataTitle][1]
-          HPhys2 = convertIminuitToMomentResult(minuits[0], HTruth.indices)  # plot first successful fit
           plotMomentsInBin(
-            HData             = HPhys2,
+            HData             = momentCalculator.HPhys,
             normalizedMoments = False,
             HTruth            = HTruth,
             legendLabels      = ("Moment", "Truth"),
@@ -725,10 +723,32 @@ if __name__ == "__main__":
             plotTruthUncert   = True,
             truthColor        = ROOT.kBlue + 1,
           )
+      else:
+        for dataTitle, minuits in minuitsSuccess.items():
+          if len(minuits) == 0:
+            print(f"Warning: No fit was successful for data in {dataTitle} region. Exiting.")
+          else:
+            print(f"{len(minuits)} out of {nmbFitAttempts} fit attempts were successful for data in {dataTitle} region")
+            print(f"!!! {sorted([minuit.fmin.fval for minuit in minuits])=}")
+            print(f"Plotting fit results for data in {dataTitle} region")
+            dataLabel = HTruths[dataTitle][0]
+            if dataLabel:
+              dataLabel += "_"
+            HTruth = HTruths[dataTitle][1]
+            HPhys2 = convertIminuitToMomentResult(minuits[0], HTruth.indices)  # plot first successful fit
+            plotMomentsInBin(
+              HData             = HPhys2,
+              normalizedMoments = False,
+              HTruth            = HTruth,
+              legendLabels      = ("Moment", "Truth"),
+              outFileNamePrefix = f"{outputDirName}/unnorm_phys2_{dataLabel}",
+              plotTruthUncert   = True,
+              truthColor        = ROOT.kBlue + 1,
+            )
 
       # perform background subtraction on moment level
-      HPhysSigRegion  = convertIminuitToMomentResult(minuitsSuccess["signal"    ][0], HTruthSig.indices)
-      HPhysBkgRegion  = convertIminuitToMomentResult(minuitsSuccess["background"][0], HTruthBkg.indices)
+      HPhysSigRegion  = momentCalculators["signal"    ].HPhys if useMomentCalculator else convertIminuitToMomentResult(minuitsSuccess["signal"    ][0], HTruthSig.indices)
+      HPhysBkgRegion  = momentCalculators["background"].HPhys if useMomentCalculator else convertIminuitToMomentResult(minuitsSuccess["background"][0], HTruthBkg.indices)
       HPhysSubtracted = HPhysSigRegion - 0.5 * HPhysBkgRegion
       plotMomentsInBin(
         HData             = HPhysSubtracted,

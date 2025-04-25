@@ -21,6 +21,7 @@ import numpy as np
 import nptyping as npt
 import os
 import pickle
+import textwrap
 from typing import (
   Any,
   ClassVar,
@@ -1544,12 +1545,90 @@ class MomentCalculator:
     """Constructs negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; should be called only when data change"""
     return self._ExtendedUnbinnedWeightedNLL(self)
 
+  @classmethod
+  def fitMoments(
+    cls,
+    negativeLogLikelihoodFcn: Cost,  # function to minimize
+    startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
+    momentLabels:             Sequence[str],  # names of fit parameters
+    minuit:                   im.Minuit | None              = None,  # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
+    # fixMomentsToZero:         Sequence[int | QnMomentIndex] = [],    # list of moment indices, for which the fit parameters are fixed to zero
+  ) -> im.Minuit:
+    """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
+    if minuit is None:
+      # setup minimizer
+      minuit = im.Minuit(negativeLogLikelihoodFcn, startValues, name = momentLabels)
+      minuit.errordef = im.Minuit.LIKELIHOOD
+    # perform fit
+    minuit.migrad()
+    if minuit.valid:
+      minuit.hesse()  # spend time on HESSE only for converged fits
+    return minuit
+
+  @classmethod
+  def fitSuccess(
+    cls,
+    minuit:  im.Minuit,
+    verbose: bool = False,
+  ) -> bool:
+    """Returns whether fit was successful"""
+    if verbose:
+      print(textwrap.dedent(
+        f"""
+        Fit success:
+            {minuit.valid=}
+            {minuit.fmin.has_covariance=}
+            {minuit.fmin.has_accurate_covar=}
+            {minuit.fmin.has_posdef_covar=}
+            {minuit.fmin.has_made_posdef_covar=}
+            {minuit.fmin.hesse_failed=}
+            {minuit.fmin.is_above_max_edm=}
+            {minuit.fmin.has_reached_call_limit=}
+            {minuit.fmin.has_parameters_at_limit=}
+        """
+      ))
+    if (
+                minuit.valid
+        and     minuit.fmin.has_covariance
+        and     minuit.fmin.has_accurate_covar
+        and     minuit.fmin.has_posdef_covar
+        and not minuit.fmin.has_made_posdef_covar
+        and not minuit.fmin.hesse_failed
+        and not minuit.fmin.is_above_max_edm
+        and not minuit.fmin.has_reached_call_limit
+        and not minuit.fmin.has_parameters_at_limit
+    ):
+      return True
+    return False
+
+  @classmethod
+  def selectSuccessfulFits(
+    cls,
+    minuits:         list[im.Minuit],  # list of Minuit objects containing the fit results
+    printFitResults: bool = True,
+  ) -> list[im.Minuit]:
+    """Selects successful fits from list of Minuit objects"""
+    # select successful fits
+    successfulFits = []
+    nmbFitAttempts = len(minuits)
+    for fitAttemptIndex, minuit in enumerate(minuits):
+      if printFitResults:
+        print(minuit.fmin)
+        print(minuit.params)
+        print(minuit.merrors)
+      success = MomentCalculator.fitSuccess(minuit)
+      print(f"Fit [{fitAttemptIndex + 1} of {nmbFitAttempts}] was {'' if success else 'NOT '}successful")
+      if success:
+        successfulFits.append(minuit)
+    print(f"{len(successfulFits)} out of {nmbFitAttempts} fit attempts were successful")
+    return successfulFits
+
   def _convertIminuitToMomentResult(
     self,
     minuit:    im.Minuit,  # iminuit object containing the fit result
     normalize: bool = True,   # if set physical moments are normalized to H_0(0, 0)
   ) -> None:
-    """Converts iminuit result into `MomentResult` object"""
+    """Fills `MomentResult` object for physical moments from imunuit object"""
     # construct empty `MomentResult` object
     self._HPhys = MomentResult(
       indices    = self.indices,
@@ -1586,26 +1665,6 @@ class MomentCalculator:
       self._HPhys._V_ReImFlatIndex[reSlice, imSlice] = covMatrix[reSlice, imSlice]
     if normalize:
       self._HPhys.normalize()
-
-  @classmethod
-  def fitMoments(
-    cls,
-    negativeLogLikelihoodFcn: Cost,  # function to minimize
-    startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
-    momentLabels:             Sequence[str],            # names of fit parameters
-    minuit:                   im.Minuit | None = None,  # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
-    # fixParametersForMoments: Sequence[int] | Sequence[QnMomentIndex] = [],  #TODO use list of moment indices to fix instead
-  ) -> im.Minuit:
-    """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
-    if minuit is None:
-      # setup minimizer
-      minuit = im.Minuit(negativeLogLikelihoodFcn, startValues, name = momentLabels)
-      minuit.errordef = im.Minuit.LIKELIHOOD
-    # perform fit
-    minuit.migrad()
-    if minuit.valid:
-      minuit.hesse()  # spend time on HESSE only for converged fits
-    return minuit
 
   def fitMomentsMultipleAttempts(
     self,
@@ -1647,6 +1706,15 @@ class MomentCalculator:
         for fitAttemptIndex in range(nmbFitAttempts)
       ]
       minuits = [future.result() for future in futures]
+    # select successful fits
+    successfulFitMinuits = MomentCalculator.selectSuccessfulFits(minuits)
+    # use successful fit with lowest NLL value to fill `_HPhys`
+    if successfulFitMinuits:
+      # bestFitMinuit = sorted(successfulFitMinuits, lambda minuit: minuit.fmin.fval)[0]  # select fit with lowest NLL
+      bestFitMinuit = successfulFitMinuits[0]
+      self._convertIminuitToMomentResult(bestFitMinuit, normalize = False)  #TODO propagate normalization flag
+    else:
+      print(f"Warning: No successful fits found. Cannot set physical moment values for kinematic bin {self.binCenters}.")
     return minuits
 
 
