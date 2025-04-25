@@ -1550,15 +1550,24 @@ class MomentCalculator:
     cls,
     negativeLogLikelihoodFcn: Cost,  # function to minimize
     startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
-    momentLabels:             Sequence[str],  # names of fit parameters
+    indices:                  MomentIndices,  # indices that define set of moments to fit
     minuit:                   im.Minuit | None              = None,  # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
-    # fixMomentsToZero:         Sequence[int | QnMomentIndex] = [],    # list of moment indices, for which the fit parameters are fixed to zero
+    fixMomentsToZero:         Sequence[int | QnMomentIndex] = [],    # list of moment indices, for which the fit parameters are fixed to zero
   ) -> im.Minuit:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
     if minuit is None:
       # setup minimizer
+      momentLabels = tuple(qnIndex.label for qnIndex in indices.qnIndices)
       minuit = im.Minuit(negativeLogLikelihoodFcn, startValues, name = momentLabels)
       minuit.errordef = im.Minuit.LIKELIHOOD
+    if fixMomentsToZero:
+      # fix parameters corresponding to moment indices to 0
+      momentLabelsToFix = [
+        index.label if isinstance(index, QnMomentIndex) else indices[index].label
+        for index in fixMomentsToZero
+      ]
+      for label in momentLabelsToFix:
+        minuit.fixto(label, 0)
     # perform fit
     minuit.migrad()
     if minuit.valid:
@@ -1604,14 +1613,14 @@ class MomentCalculator:
   @classmethod
   def selectSuccessfulFits(
     cls,
-    minuits:         list[im.Minuit],  # list of Minuit objects containing the fit results
+    fitMinuits:      list[im.Minuit],  # list of Minuit objects containing the fit results
     printFitResults: bool = True,
   ) -> list[im.Minuit]:
     """Selects successful fits from list of Minuit objects"""
     # select successful fits
     successfulFits = []
-    nmbFitAttempts = len(minuits)
-    for fitAttemptIndex, minuit in enumerate(minuits):
+    nmbFitAttempts = len(fitMinuits)
+    for fitAttemptIndex, minuit in enumerate(fitMinuits):
       if printFitResults:
         print(minuit.fmin)
         print(minuit.params)
@@ -1625,8 +1634,8 @@ class MomentCalculator:
 
   def _convertIminuitToMomentResult(
     self,
-    minuit:    im.Minuit,  # iminuit object containing the fit result
-    normalize: bool = True,   # if set physical moments are normalized to H_0(0, 0)
+    minuit:    im.Minuit,    # iminuit object containing the fit result
+    normalize: bool = True,  # if set physical moments are normalized to H_0(0, 0)
   ) -> None:
     """Fills `MomentResult` object for physical moments from imunuit object"""
     # construct empty `MomentResult` object
@@ -1640,9 +1649,9 @@ class MomentCalculator:
       # copy parameter values
       self._HPhys._valsFlatIndex[:] = np.array(minuit.values)
       # copy covariance matrix
-      self._HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance[:])  #TODO [:] needed on rhs?
+      self._HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance)
     else:
-      # construct quantum-number index ranges for purely real and purely imaginary moments
+      # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
       reIndexRange = (
         QnMomentIndex(momentIndex = 0, L = 0,                 M = 0),
         QnMomentIndex(momentIndex = 1, L = self.indices.maxL, M = self.indices.maxL),
@@ -1670,11 +1679,12 @@ class MomentCalculator:
     self,
     nmbFitAttempts:          int,            # number of attempts to fit the moments
     nmbParallelFitProcesses: int,            # number of fit processes to run in parallel
+    normalize:               bool  = False,  # if set physical moments are normalized to H_0(0, 0)
     randomSeed:              int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
   ) -> list[im.Minuit]:
-    """Performs several attempts to fit the moments using random in parallel, stores best fit result in `_HPhys`, and returns all fit results"""
+    """Performs several attempts to fit the moments with random start values in parallel, stores best fit result in `_HPhys`, and returns all fit results"""
     # construct NLL
     negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn
     # generate random start values for each fit attempt
@@ -1689,7 +1699,6 @@ class MomentCalculator:
       startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
       startValueSets.append(startValues)
     # run fit attempts in parallel
-    momentLabels = tuple(qnIndex.label for qnIndex in self.indices.qnIndices)
     def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
       """Increases nice level of process that calls this function"""
       if processNiceLevel > 0:
@@ -1700,22 +1709,22 @@ class MomentCalculator:
           MomentCalculator.fitMoments,
           negativeLogLikelihoodFcn = negativeLogLikelihoodFcn,
           startValues              = startValueSets[fitAttemptIndex],
-          momentLabels             = momentLabels,
+          indices                  = self.indices,
           minuit                   = None,
         )
         for fitAttemptIndex in range(nmbFitAttempts)
       ]
-      minuits = [future.result() for future in futures]
+      fitMinuits = [future.result() for future in futures]
     # select successful fits
-    successfulFitMinuits = MomentCalculator.selectSuccessfulFits(minuits)
+    successfulFitMinuits = MomentCalculator.selectSuccessfulFits(fitMinuits)
     # use successful fit with lowest NLL value to fill `_HPhys`
     if successfulFitMinuits:
       # bestFitMinuit = sorted(successfulFitMinuits, lambda minuit: minuit.fmin.fval)[0]  # select fit with lowest NLL
       bestFitMinuit = successfulFitMinuits[0]
-      self._convertIminuitToMomentResult(bestFitMinuit, normalize = False)  #TODO propagate normalization flag
+      self._convertIminuitToMomentResult(bestFitMinuit, normalize = normalize)
     else:
       print(f"Warning: No successful fits found. Cannot set physical moment values for kinematic bin {self.binCenters}.")
-    return minuits
+    return fitMinuits
 
 
 # functions that read bin labels and titles from MomentCalculator or MomentResult
@@ -1784,6 +1793,29 @@ class MomentCalculatorsKinematicBinning:
     for kinBinIndex, momentsInBin in enumerate(self):
       print(f"Calculating moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
       momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
+
+  def fitMomentsMultipleAttempts(
+    self,
+    nmbFitAttempts:          int,            # number of attempts to fit the moments
+    nmbParallelFitProcesses: int,            # number of fit processes to run in parallel
+    normalize:               bool  = False,  # if set physical moments are normalized to H_0(0, 0)
+    randomSeed:              int   = 12345,  # seed used for random start values
+    startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
+    processNiceLevel:        int   = 19,     # run processes with this nice level
+  ) -> list[list[im.Minuit]]:  # Minuit objects for [<kinematic bin>][<fit attempts>]
+    """Estimates photoproduction moments by fitting intensity model to each kinematic bin by running several attempts with random start values in parallel and storing the best fit result; returns all fit results"""
+    fitMinuits: list[list[im.Minuit]] = [] * len(self)
+    for kinBinIndex, momentsInBin in enumerate(self):
+      print(f"Fitting moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
+      fitMinuits[kinBinIndex] = momentsInBin.fitMomentsMultipleAttempts(
+        nmbFitAttempts          = nmbFitAttempts,
+        nmbParallelFitProcesses = nmbParallelFitProcesses,
+        normalize               = normalize,
+        randomSeed              = randomSeed + kinBinIndex,
+        startValueStdDevScale   = startValueStdDevScale,
+        processNiceLevel        = processNiceLevel,
+      )
+    return fitMinuits
 
   @property
   def momentResultsMeas(self) -> MomentResultsKinematicBinning:
