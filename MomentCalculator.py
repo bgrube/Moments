@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import bidict as bd
+from concurrent.futures import ProcessPoolExecutor
 import copy
 import dataclasses
 from dataclasses import (
@@ -18,6 +19,7 @@ import functools
 import math
 import numpy as np
 import nptyping as npt
+import os
 import pickle
 from typing import (
   Any,
@@ -1428,9 +1430,10 @@ class MomentCalculator:
     """Picklable functor that calculates negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events"""
     momentCalculator:            InitVar[MomentCalculator]  # pass instance of outer class as temporary argument
     printProblematicIntensities: bool = False
-    _eventWeights:   npt.NDArray[npt.Shape["nmbEvents"],             npt.Float64] = field(init = False)  # weights of real-data events
-    _baseFcnVals:    npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
-    _integralVector: npt.NDArray[npt.Shape["nmbMoments"],            npt.Float64] = field(init = False)  # precalculated acceptance integral vector
+    _eventWeights:         npt.NDArray[npt.Shape["nmbEvents"],             npt.Float64] = field(init = False)  # weights of real-data events
+    _phaseSpaceEfficiency: float                                                        = field(init = False)  # efficiency averaged over phase space
+    _baseFcnVals:          npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
+    _integralVector:       npt.NDArray[npt.Shape["nmbMoments"],            npt.Float64] = field(init = False)  # precalculated acceptance integral vector
 
     def _calculateBasisFcnValues(
       self,
@@ -1471,6 +1474,8 @@ class MomentCalculator:
         polarization = momentCalculator.dataSet.polarization,
         data         = momentCalculator.dataSet.phaseSpaceData,
       )
+      nmbEventsAccPs = len(thetasAccPs)
+      self._phaseSpaceEfficiency = nmbEventsAccPs / momentCalculator.dataSet.nmbGenEvents  # efficiency averaged over phase space
       nmbMoments = len(momentCalculator.indices)
       print(f"Calculating acceptance integral vector for {nmbMoments} moments")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
@@ -1524,8 +1529,18 @@ class MomentCalculator:
       weightedLogIntensities = self._eventWeights * np.log(intensities + np.finfo(dtype = float).tiny)  # protect against 0 intensities
       return -(np.sum(np.sort(weightedLogIntensities)).item() - integral)  # sorting summands reduces rounding errors; use item() to ensure that sum is scalar quantity
 
+    @property
+    def nmbSignalEvents(self) -> float:
+      """Returns number of signal events"""
+      return np.sum(self._eventWeights)
+
+    @property
+    def phaseSpaceEfficiency(self) -> float:
+      """Returns efficiency averaged over phase space"""
+      return self._phaseSpaceEfficiency
+
   @property
-  def negativeLogLikelihoodFcn(self) -> Cost:
+  def negativeLogLikelihoodFcn(self) -> _ExtendedUnbinnedWeightedNLL:
     """Constructs negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; should be called only when data change"""
     return self._ExtendedUnbinnedWeightedNLL(self)
 
@@ -1591,6 +1606,49 @@ class MomentCalculator:
     if minuit.valid:
       minuit.hesse()  # spend time on HESSE only for converged fits
     return minuit
+
+  def fitMomentsMultipleAttempts(
+    self,
+    nmbFitAttempts:          int,            # number of attempts to fit the moments
+    nmbParallelFitProcesses: int,            # number of fit processes to run in parallel
+    randomSeed:              int   = 12345,  # seed used for random start values
+    startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
+    processNiceLevel:        int   = 19,     # run processes with this nice level
+  ) -> list[im.Minuit]:
+    """Performs several attempts to fit the moments using random in parallel, stores best fit result in `_HPhys`, and returns all fit results"""
+    # construct NLL
+    negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn
+    # generate random start values for each fit attempt
+    startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
+    np.random.seed(randomSeed)
+    nmbEventsSigCorr = negativeLogLikelihoodFcn.nmbSignalEvents / negativeLogLikelihoodFcn.phaseSpaceEfficiency  # number of acceptance-corrected signal events
+    nmbMoments = len(self.indices)
+    for _ in range(nmbFitAttempts):
+      # startValues = np.zeros(nmbMoments, dtype = np.float64)  # set all start values to 0
+      # generate start values that are Gaussian-distributed around 0
+      startValues = np.random.normal(loc = 0, scale = startValueStdDevScale * nmbEventsSigCorr, size = nmbMoments)  #!NOTE! convergence rate is very sensitive to scale parameter
+      startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
+      startValueSets.append(startValues)
+    # run fit attempts in parallel
+    momentLabels = tuple(qnIndex.label for qnIndex in self.indices.qnIndices)
+    def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
+      """Increases nice level of process that calls this function"""
+      if processNiceLevel > 0:
+        os.nice(processNiceLevel)
+    with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
+      futures = [
+        executor.submit(
+          MomentCalculator.fitMoments,
+          negativeLogLikelihoodFcn = negativeLogLikelihoodFcn,
+          startValues              = startValueSets[fitAttemptIndex],
+          momentLabels             = momentLabels,
+          minuit                   = None,
+        )
+        for fitAttemptIndex in range(nmbFitAttempts)
+      ]
+      minuits = [future.result() for future in futures]
+    return minuits
+
 
 # functions that read bin labels and titles from MomentCalculator or MomentResult
 def binLabels(obj: MomentCalculator | MomentResult) -> list[str]:

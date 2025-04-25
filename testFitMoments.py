@@ -631,20 +631,6 @@ if __name__ == "__main__":
       # for dataTitle, data in (("total", dataPwaModel), ):
       for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
       # for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
-        thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
-        phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
-        Phis         = data.AsNumpy(columns = ["Phi",   ])["Phi"]
-        eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"] if applyEventWeights else np.ones_like(thetas)
-        # generate random start values for all attempts
-        startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
-        np.random.seed(randomSeed)
-        nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
-        for _ in range(nmbFitAttempts):
-          # startValues    = np.zeros_like(momentValuesTruth)
-          startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValuesTruth))  #!NOTE! convergence rate is very sensitive to scale parameter
-          # startValues   += momentValuesTruth  # randomly perturb true moment values
-          startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
-          startValueSets.append(startValues)
         minuits: list[im.Minuit] = []
         if useMomentCalculator:
           # setup moment calculators for data
@@ -659,23 +645,30 @@ if __name__ == "__main__":
             dataSet    = dataSet,
             binCenters = {KinematicBinningVariable("foo", "foo", "foo") : 1.0},
           )
-          nll2 = momentCalculator.negativeLogLikelihoodFcn
-          print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
+          # nll2 = momentCalculator.negativeLogLikelihoodFcn
+          # print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
           with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
             # minuits.append(momentCalculator.fitMoments(nll2, startValueSets[1 if dataTitle == "signal" else 55]))
-            with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
-              futures = [
-                executor.submit(
-                  MomentCalculator.fitMoments,
-                  negativeLogLikelihoodFcn = nll2,
-                  startValues              = startValueSets[fitAttemptIndex],
-                  momentLabels             = momentLabels,
-                  minuit                   = None,
-                )
-                for fitAttemptIndex in range(nmbFitAttempts)
-              ]
-              minuits = [future.result() for future in futures]
+            minuits = momentCalculator.fitMomentsMultipleAttempts(
+              nmbFitAttempts          = nmbFitAttempts,
+              nmbParallelFitProcesses = nmbParallelFitProcesses,
+              randomSeed              = randomSeed,
+            )
         else:
+          thetas       = data.AsNumpy(columns = ["theta", ])["theta"]
+          phis         = data.AsNumpy(columns = ["phi",   ])["phi"]
+          Phis         = data.AsNumpy(columns = ["Phi",   ])["Phi"]
+          eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"] if applyEventWeights else np.ones_like(thetas)
+          # generate random start values for all attempts
+          startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
+          np.random.seed(randomSeed)
+          nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
+          for _ in range(nmbFitAttempts):
+            # startValues    = np.zeros_like(momentValuesTruth)
+            startValues    = np.random.normal(loc = 0, scale = 0.02 * nmbEventsSigCorr, size = len(momentValuesTruth))  #!NOTE! convergence rate is very sensitive to scale parameter
+            # startValues   += momentValuesTruth  # randomly perturb true moment values
+            startValues[0] = nmbEventsSigCorr  # set H_0(0, 0) to number of acceptance-corrected signal events
+            startValueSets.append(startValues)
           print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
           nll = ExtendedUnbinnedWeightedNLL(
             intensityFcn = intensityFcn,
