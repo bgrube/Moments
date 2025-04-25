@@ -625,6 +625,9 @@ if __name__ == "__main__":
 
       minuitsSuccess: dict[str, list[im.Minuit]] = {}
       useMomentCalculator = True
+      def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
+        """Increases nice level of process that calls this function"""
+        os.nice(19)
       # for dataTitle, data in (("total", dataPwaModel), ):
       for dataTitle, data in (("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
       # for dataTitle, data in (("total", dataPwaModel), ("signal", dataPwaModelSigRegion), ("background", dataPwaModelBkgRegion)):
@@ -658,7 +661,20 @@ if __name__ == "__main__":
           )
           nll2 = momentCalculator.negativeLogLikelihoodFcn
           print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
-          minuits.append(momentCalculator.fitMoments(nll2, startValueSets[1 if dataTitle == "signal" else 55]))
+          with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
+            # minuits.append(momentCalculator.fitMoments(nll2, startValueSets[1 if dataTitle == "signal" else 55]))
+            with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
+              futures = [
+                executor.submit(
+                  MomentCalculator.fitMoments,
+                  negativeLogLikelihoodFcn = nll2,
+                  startValues              = startValueSets[fitAttemptIndex],
+                  momentLabels             = momentLabels,
+                  minuit                   = None,
+                )
+                for fitAttemptIndex in range(nmbFitAttempts)
+              ]
+              minuits = [future.result() for future in futures]
         else:
           print(f"Setting up custom extended unbinned weighted likelihood function and iminuit's minimizer for data in {dataTitle} region")
           nll = ExtendedUnbinnedWeightedNLL(
@@ -671,9 +687,6 @@ if __name__ == "__main__":
           print(f"!!! {2 * nll(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
           print(f"Performing {nmbFitAttempts} fit attempts of {len(thetas)} events using custom NLL function and {nmbParallelFitProcesses} processes")
           with timer.timeThis(f"Time needed for performing {nmbFitAttempts} fit attempts running {nmbParallelFitProcesses} fits in parallel"):
-            def increaseNiceLevel() -> None:  # need to define separate function to set `initializer` argument of `ProcessPoolExecutor`
-              """Increases nice level of process that calls this function"""
-              os.nice(19)
             with ProcessPoolExecutor(max_workers = nmbParallelFitProcesses, initializer = increaseNiceLevel) as executor:
               futures = [
                 executor.submit(
@@ -683,8 +696,7 @@ if __name__ == "__main__":
                   momentLabels            = momentLabels,
                   disablePolarizedMoments = disablePolarizedMoments,
                 )
-                # for fitAttemptIndex in range(nmbFitAttempts)
-                for fitAttemptIndex in [1 if dataTitle == "signal" else 55]  # select single converging fits
+                for fitAttemptIndex in range(nmbFitAttempts)
               ]
               minuits = [future.result() for future in futures]
         # filter out successful fits

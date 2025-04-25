@@ -1425,26 +1425,29 @@ class MomentCalculator:
 
   @dataclass
   class _ExtendedUnbinnedWeightedNLL:
-    """Functor that calculates negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; !NOTE! the sum of weights must be identical to the number of signal events"""
-    momentCalculator:            MomentCalculator
+    """Picklable functor that calculates negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events"""
+    momentCalculator:            InitVar[MomentCalculator]  # pass instance of outer class as temporary argument
     printProblematicIntensities: bool = False
     _eventWeights:   npt.NDArray[npt.Shape["nmbEvents"],             npt.Float64] = field(init = False)  # weights of real-data events
     _baseFcnVals:    npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
     _integralVector: npt.NDArray[npt.Shape["nmbMoments"],            npt.Float64] = field(init = False)  # precalculated acceptance integral vector
 
-    def _calculateBasisFcnValues(self) -> None:
+    def _calculateBasisFcnValues(
+      self,
+      momentCalculator: MomentCalculator,  # instance of outer class
+    ) -> None:
       """Calculates values of basis functions for all real-data events"""
       print("Reading real data for moment fit")
       beamPol, thetas, phis, Phis, self._eventWeights = readInputData(
-        polarization = self.momentCalculator.dataSet.polarization,
-        data         = self.momentCalculator.dataSet.data,
+        polarization = momentCalculator.dataSet.polarization,
+        data         = momentCalculator.dataSet.data,
       )
       nmbEvents  = len(thetas)
-      nmbMoments = len(self.momentCalculator.indices)
+      nmbMoments = len(momentCalculator.indices)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
-      for flatIndex in self.momentCalculator.indices.flatIndices:
-        qnIndex = self.momentCalculator.indices[flatIndex]
+      for flatIndex in momentCalculator.indices.flatIndices:
+        qnIndex = momentCalculator.indices[flatIndex]
         self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetas,
@@ -1453,24 +1456,27 @@ class MomentCalculator:
           beamPol,
         ))
 
-    def _calculateIntegralVector(self) -> None:
+    def _calculateIntegralVector(
+      self,
+      momentCalculator: MomentCalculator,  # instance of outer class
+    ) -> None:
       """Calculates integrals of all basis functions from accepted phase-space events"""
       #TODO implement perfect acceptance case
-      # if self.momentCalculator.dataSet.phaseSpaceData is None:
+      # if momentCalculator.dataSet.phaseSpaceData is None:
       #   print("Warning: no phase-space data; using perfect acceptance")
-      #   self._IFlatIndex = np.eye(len(self.momentCalculator.indices), dtype = np.complex128)
+      #   momentCalculator._IFlatIndex = np.eye(len(momentCalculator.indices), dtype = np.complex128)
       #   return
       print("Reading phase-space data for the calculation of the acceptance integral vector")
       beamPolAccPs, thetasAccPs, phisAccPs, PhisAccPs, eventWeightsAccPs = readInputData(
-        polarization = self.momentCalculator.dataSet.polarization,
-        data         = self.momentCalculator.dataSet.phaseSpaceData,
+        polarization = momentCalculator.dataSet.polarization,
+        data         = momentCalculator.dataSet.phaseSpaceData,
       )
-      nmbMoments = len(self.momentCalculator.indices)
+      nmbMoments = len(momentCalculator.indices)
       print(f"Calculating acceptance integral vector for {nmbMoments} moments")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
-      for flatIndex in self.momentCalculator.indices.flatIndices:
+      for flatIndex in momentCalculator.indices.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
-        qnIndex = self.momentCalculator.indices[flatIndex]
+        qnIndex = momentCalculator.indices[flatIndex]
         baseFcnValsAccPs: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetasAccPs,
@@ -1480,15 +1486,18 @@ class MomentCalculator:
         ))
         # calculate accepted phase-space integral by summing basis-functions values over accepted phase-space events
         #TODO why prefactor is not 8 * np.pi**2 / N?
-        self._integralVector[flatIndex] = ((4 * np.pi / self.momentCalculator.dataSet.nmbGenEvents)
+        self._integralVector[flatIndex] = ((4 * np.pi / momentCalculator.dataSet.nmbGenEvents)
           * np.sum(np.sort(np.multiply(eventWeightsAccPs, baseFcnValsAccPs))))  # sorting values reduces rounding errors
       print(f"!!! {self._integralVector=}")
 
-    def __post_init__(self) -> None:
+    def __post_init__(
+      self,
+      momentCalculator: MomentCalculator,
+    ) -> None:
       """Loads input data and precalculates basis-function values and acceptance integral vector"""
       # precalculate the basis-function values and acceptance integral vector
-      self._calculateBasisFcnValues()
-      self._calculateIntegralVector()
+      self._calculateBasisFcnValues(momentCalculator)
+      self._calculateIntegralVector(momentCalculator)
 
     def _intensityFcn(
       self,
@@ -1522,7 +1531,8 @@ class MomentCalculator:
 
   def _convertIminuitToMomentResult(
     self,
-    minuit: im.Minuit,  # iminuit object containing the fit result
+    minuit:    im.Minuit,  # iminuit object containing the fit result
+    normalize: bool = True,   # if set physical moments are normalized to H_0(0, 0)
   ) -> None:
     """Converts iminuit result into `MomentResult` object"""
     # construct empty `MomentResult` object
@@ -1559,30 +1569,27 @@ class MomentCalculator:
       self._HPhys._V_ReReFlatIndex[reSlice, reSlice] = covMatrix[reSlice, reSlice]
       self._HPhys._V_ImImFlatIndex[imSlice, imSlice] = covMatrix[imSlice, imSlice]
       self._HPhys._V_ReImFlatIndex[reSlice, imSlice] = covMatrix[reSlice, imSlice]
+    if normalize:
+      self._HPhys.normalize()
 
+  @classmethod
   def fitMoments(
-    self,
+    cls,
     negativeLogLikelihoodFcn: Cost,  # function to minimize
     startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
+    momentLabels:             Sequence[str],            # names of fit parameters
     minuit:                   im.Minuit | None = None,  # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
     # fixParametersForMoments: Sequence[int] | Sequence[QnMomentIndex] = [],  #TODO use list of moment indices to fix instead
-    normalize:                bool = True,   # if set physical moments are normalized to H_0(0, 0)
   ) -> im.Minuit:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
-    #TODO split into function that sets up fit and function that performs fit so that one can reuse the data for multiple fit attempts
-    # setup minimizer
-    momentLabels = tuple(qnIndex.label for qnIndex in self.indices.qnIndices)
     if minuit is None:
+      # setup minimizer
       minuit = im.Minuit(negativeLogLikelihoodFcn, startValues, name = momentLabels)
       minuit.errordef = im.Minuit.LIKELIHOOD
     # perform fit
     minuit.migrad()
     if minuit.valid:
       minuit.hesse()  # spend time on HESSE only for converged fits
-    # get fit results
-    self._convertIminuitToMomentResult(minuit)
-    if normalize:
-      self._HPhys.normalize()
     return minuit
 
 # functions that read bin labels and titles from MomentCalculator or MomentResult
