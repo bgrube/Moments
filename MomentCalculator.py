@@ -833,7 +833,7 @@ class MomentResult:
     self,
     scalar: int | float,
   ) -> MomentResult:
-    """multiplication of this with a scalar"""
+    """Multiplication of this with a scalar"""
     if not isinstance(scalar, (int, float)):
       return NotImplemented
     self.label = f"{scalar}*{self.label}"
@@ -844,7 +844,7 @@ class MomentResult:
     self,
     scalar: int | float,
   ) -> MomentResult:
-    """multiplication with a scalar from the right and returning a new `MomentResult`"""
+    """Multiplication with a scalar from the right and returning a new `MomentResult`"""
     product = copy.deepcopy(self)
     product *= float(scalar)
     return product
@@ -853,7 +853,7 @@ class MomentResult:
     self,
     scalar: int | float,
   ) -> MomentResult:
-    """multiplication with a scalar from the left and returning a new `MomentResult`"""
+    """Multiplication with a scalar from the left and returning a new `MomentResult`"""
     return self.__mul__(scalar)
 
   def __iadd__(
@@ -1478,7 +1478,7 @@ class MomentCalculator:
       nmbEventsAccPs = len(thetasAccPs)
       self._phaseSpaceEfficiency = nmbEventsAccPs / momentCalculator.dataSet.nmbGenEvents  # efficiency averaged over phase space
       nmbMoments = len(momentCalculator.indices)
-      print(f"Calculating acceptance integral vector for {nmbMoments} moments")
+      print(f"Calculating acceptance integral vector for {nmbMoments} moments from {nmbEventsAccPs} accepted phase-space events")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
       for flatIndex in momentCalculator.indices.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
@@ -1804,7 +1804,7 @@ class MomentCalculatorsKinematicBinning:
     processNiceLevel:        int   = 19,     # run processes with this nice level
   ) -> list[list[im.Minuit]]:  # Minuit objects for [<kinematic bin>][<fit attempts>]
     """Estimates photoproduction moments by fitting intensity model to each kinematic bin by running several attempts with random start values in parallel and storing the best fit result; returns all fit results"""
-    fitMinuits: list[list[im.Minuit]] = [] * len(self)
+    fitMinuits: list[list[im.Minuit]] = [[] for _ in self]  # empty list for each kinematic bin
     for kinBinIndex, momentsInBin in enumerate(self):
       print(f"Fitting moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
       fitMinuits[kinBinIndex] = momentsInBin.fitMomentsMultipleAttempts(
