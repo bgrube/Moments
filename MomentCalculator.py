@@ -791,7 +791,7 @@ class MomentResult:
   ) -> bool:
     """Returns whether two `MomentResult` objects have the same indices and bin centers"""
     if not isinstance(other, MomentResult):
-      raise TypeError(f"Expect other to be of type 'MomentResult'; got {type(other)} instead")
+      raise TypeError(f"Expect 'other' to be of type 'MomentResults'; got '{type(other)}' instead")
     return (
       (self.indices == other.indices)
       and (self.binCenters == other.binCenters)
@@ -803,9 +803,9 @@ class MomentResult:
 
   def __eq__(
     self,
-    other: object,
+    other: MomentResult,
   ) -> bool:
-    """Returns whether two `MomentResult` objects are equal in the sense that they have the same moment values and uncertainties"""
+    """Returns whether two `MomentResult` objects are equal in the sense that they have the same indices, bin centers, moment values, and uncertainties"""
     if not isinstance(other, MomentResult):
       return NotImplemented
     return (
@@ -846,7 +846,7 @@ class MomentResult:
   ) -> MomentResult:
     """Multiplication with a scalar from the right and returning a new `MomentResult`"""
     product = copy.deepcopy(self)
-    product *= float(scalar)
+    product *= scalar
     return product
 
   def __rmul__(
@@ -864,7 +864,7 @@ class MomentResult:
     if not isinstance(other, MomentResult):
       return NotImplemented
     # ensure that `other` has the same indices and bin centers
-    assert other.hasSameMomentIndicesAndBinCenters(self), "Moment results must have the same moment indices and bin centers"
+    assert self.hasSameMomentIndicesAndBinCenters(other), "Moment results must have the same moment indices and bin centers"
     if self.hasBootstrapSamples or other.hasBootstrapSamples:
       print(f"Warning: bootstrap samples are not added.")
     self.label += f"+{other.label}"
@@ -1199,23 +1199,105 @@ class MomentResultsKinematicBinning:
   """Container class that stores and provides access to moment values for several kinematic bins"""
   moments: list[MomentResult]  # data for all bins of the kinematic binning
 
-  # make MomentResultsKinematicBinning behave like a list of MomentResults
-  def __len__(self) -> int:
-    """Returns number of kinematic bins"""
-    return len(self.moments)
+  def hasSameMomentIndicesAndBinCenters(
+    self,
+    other: MomentResultsKinematicBinning,
+  ) -> bool:
+    """Returns whether two `MomentResultsKinematicBinning` objects have the same indices and the same bin centers in the same order"""
+    if not isinstance(other, MomentResultsKinematicBinning):
+      raise TypeError(f"Expect 'other' to be of type 'MomentResultsKinematicBinning'; got '{type(other)}' instead")
+    return all(self[binIndex].hasSameMomentIndicesAndBinCenters(other[binIndex]) for binIndex in range(len(self)))
 
   def __eq__(
     self,
-    other: object,
+    other: MomentResultsKinematicBinning,
   ) -> bool:
-    """Returns whether two `MomentResultsKinematicBinning` objects are equal in the sense that they have the same moment values and uncertainties"""
-    if not isinstance(other, MomentResult):
+    """Returns whether two `MomentResultsKinematicBinning` objects are equal in the sense that they have the same indices, bin centers moment values, and uncertainties"""
+    if not isinstance(other, MomentResultsKinematicBinning):
       return NotImplemented
     if len(self) != len(other):
       return False
     return all(self[binIndex] == other[binIndex] for binIndex in range(len(self)))
 
-  #TODO add dunder functions for arithmetic operators
+  def scaleBy(
+    self,
+    factor: float,
+  ) -> None:
+    """Scales all `MomentResults` by given factor"""
+    for moment in self:
+      moment.scaleBy(factor)
+
+  # special methods to implement *=, *, +=, +, -=, and - operators
+  def __imul__(
+    self,
+    scalar: int | float,
+  ) -> MomentResultsKinematicBinning:
+    """Multiplication of all `MomentResults` with a scalar"""
+    for momentResult in self:
+      momentResult *= scalar
+    return self
+
+  def __mul__(
+    self,
+    scalar: int | float,
+  ) -> MomentResultsKinematicBinning:
+    """Multiplication with a scalar from the right and returning a new `MomentResultsKinematicBinning` instance"""
+    product = copy.deepcopy(self)
+    product *= scalar
+    return product
+
+  def __rmul__(
+    self,
+    scalar: int | float,
+  ) -> MomentResultsKinematicBinning:
+    """Multiplication with a scalar from the left and returning a new `MomentResultsKinematicBinning` instance"""
+    return self.__mul__(scalar)
+
+  def __iadd__(
+    self,
+    other: MomentResultsKinematicBinning,
+  ) -> MomentResultsKinematicBinning:
+    """Combines this and another `MomentResultsKinematicBinning` instance by summing the `MomentResults` for each kinematic bin"""
+    if not isinstance(other, MomentResultsKinematicBinning):
+      return NotImplemented
+    # ensure that `other` has the same kinematic bins
+    assert self.hasSameMomentIndicesAndBinCenters(other), "Moment results must have the same moment indices and bin centers in the same order"
+    for binIndex, momentResult in enumerate(self):
+      momentResult += other[binIndex]
+    return self
+
+  def __add__(
+    self,
+    other: MomentResultsKinematicBinning,
+  ) -> MomentResultsKinematicBinning:
+    """Combines this and another `MomentResultsKinematicBinning` into a new `MomentResultsKinematicBinning` by summing the `MomentResults` for each kinematic bin"""
+    sum = copy.deepcopy(self)
+    sum += other
+    return sum
+
+  def __isub__(
+    self,
+    other: MomentResultsKinematicBinning,
+  ) -> MomentResultsKinematicBinning:
+    """Combines this and another `MomentResultsKinematicBinning` into one `MomentResultsKinematicBinning` by subtracting the `MomentResults` for each kinematic bin"""
+    if not isinstance(other, MomentResultsKinematicBinning):
+      return NotImplemented
+    self += (-1 * other)
+    return self
+
+  def __sub__(
+    self,
+    other: MomentResultsKinematicBinning,
+  ) -> MomentResultsKinematicBinning:
+    """Combines this and another `MomentResult` into one `MomentResult` by subtracting the the `MomentResults` for each kinematic bin"""
+    if not isinstance(other, MomentResultsKinematicBinning):
+      return NotImplemented
+    return self + (-1 * other)
+
+  # make MomentResultsKinematicBinning behave like a list of MomentResults
+  def __len__(self) -> int:
+    """Returns number of kinematic bins"""
+    return len(self.moments)
 
   def __getitem__(
     self,
@@ -1237,14 +1319,6 @@ class MomentResultsKinematicBinning:
     """Scales all `MomentResults` such that in each bin H_0(0, 0) = 1"""
     for moment in self:
       moment.normalize()
-
-  def scaleBy(
-    self,
-    factor: float,
-  ) -> None:
-    """Scales all `MomentResults` by given factor"""
-    for moment in self:
-      moment.scaleBy(factor)
 
   def save(
     self,
@@ -1494,7 +1568,6 @@ class MomentCalculator:
         #TODO why prefactor is not 8 * np.pi**2 / N?
         self._integralVector[flatIndex] = ((4 * np.pi / momentCalculator.dataSet.nmbGenEvents)
           * np.sum(np.sort(np.multiply(eventWeightsAccPs, baseFcnValsAccPs))))  # sorting values reduces rounding errors
-      print(f"!!! {self._integralVector=}")
 
     def __post_init__(
       self,
