@@ -81,6 +81,35 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # year_month : {orientati
 }
 
 
+# C++ function to calculate azimuthal angle of photon polarization vector
+CPP_CODE_BIGPHI = """
+// returns azimuthal angle of photon polarization vector in lab frame [rad]
+// for beam + target -> X + recoil and X -> a + b
+//     D                    C
+// code taken from https://github.com/JeffersonLab/halld_sim/blob/538677ee1347891ccefa5780e01b158e035b49b1/src/libraries/AMPTOOLS_AMPS/TwoPiAngles.cc#L94
+double
+bigPhi(
+	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // 4-momentum of recoil [GeV]
+	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // 4-momentum of beam [GeV]
+	const double beamPolPhi = 0  // azimuthal angle of photon beam polarization in lab [deg]
+) {
+	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
+	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
+	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
+	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
+	double Phi = beamPolPhi * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
+	// ensure [-pi, +pi] range
+	while (Phi > TMath::Pi()) {
+		Phi -= TMath::TwoPi();
+	}
+	while (Phi < -TMath::Pi()) {
+		Phi += TMath::TwoPi();
+	}
+	return Phi;
+}
+"""
+
+
 def setup(fsRootCacheName: str) -> None:
   """Setup the FSRoot environment and define cuts"""
   if ROOT.FSModeCollection.modeVector().size() != 0:
@@ -91,6 +120,14 @@ def setup(fsRootCacheName: str) -> None:
   ROOT.FSModeCollection.addModeInfo(fsModeString).addCategory(fsCategory)
   ROOT.FSTree.addFriendTree("Chi2Rank")
   ROOT.FSTree.showFriendTrees()
+
+  ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
+  ROOT.FSTree.defineMacro("MYBIGPHI", 3,
+    "bigPhi("
+      "PxP[I],PyP[I],PzP[I],EnP[I],"
+      "PxP[J],PyP[J],PzP[J],EnP[J],"
+      "PxP[M]"
+    ")")
 
   # cuts for real data
   # ROOT.FSCut.defineCut("unusedTracks",   "NumUnusedTracks <= 1")
@@ -177,11 +214,15 @@ if __name__ == "__main__":
   bigPhiDef      = "POLPHI([Ks], [K-]; P0; [p+], [pi+]; GLUEXBEAM)"
   bigPhiDegDef   = f"{bigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(bigPhiDef)}")
-  hists["hGjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjCosThetaDef, "(100, -1, +1)",     cutString))
-  hists["hGjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjPhiDegDef,   "(100, -180, +180)", cutString))
-  hists["hHfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfCosThetaDef, "(100, -1, +1)",     cutString))
-  hists["hHfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfPhiDegDef,   "(100, -180, +180)", cutString))
-  hists["hPhi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, bigPhiDegDef,  "(100, -180, +180)", cutString))
+  hists["hGjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
+  hists["hGjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
+  hists["hHfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
+  hists["hHfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfPhiDegDef,    "(100, -180, +180)", cutString))
+  hists["hPhi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
+  ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # vector representing beam polarization orientation in lab frame
+  myBigPhiDef    = "MYBIGPHI([p+], [pi+]; GLUEXBEAM; BEAMPOLANGLELAB)"
+  myBigPhiDegDef = f"{myBigPhiDef} * TMath::RadToDeg()"
+  hists["hMyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
 
   # draw histograms
   if useRDataFrame:
