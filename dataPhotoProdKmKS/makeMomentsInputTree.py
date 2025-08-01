@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import functools
+from scipy.special import cosdg, sindg
 import os
 from typing import Dict
 
@@ -82,7 +83,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # year_month : {orientati
 
 
 # C++ function to calculate azimuthal angle of photon polarization vector
-CPP_CODE_BIGPHI = """
+CPP_CODE_POLPHI = """
 // returns azimuthal angle of photon polarization vector in lab frame [rad]
 // for beam + target -> X + recoil and X -> a + b
 //     D                    C
@@ -121,13 +122,23 @@ def setup(fsRootCacheName: str) -> None:
   # ROOT.FSTree.addFriendTree("Chi2Rank")  # ranking trees have already been applied
   ROOT.FSTree.showFriendTrees()
 
-  ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
-  ROOT.FSTree.defineMacro("MYBIGPHI", 3,
+  # define macros for azimuthal angle of photon polarization vector
+  ROOT.gInterpreter.Declare(CPP_CODE_POLPHI)
+  ROOT.FSTree.defineMacro("MYPOLPHI", 3,
     "bigPhi("
       "PxP[I],PyP[I],PzP[I],EnP[I],"
       "PxP[J],PyP[J],PzP[J],EnP[J],"
       "PxP[M]"
-    ")")
+    ")"
+  )
+  ROOT.FSTree.defineMacro("POLPHI", 4,
+    "FSMath::polphi("
+      "PxP[I],PyP[I],PzP[I],EnP[I],"
+      "PxP[J],PyP[J],PzP[J],"
+      "PxP[M],PyP[M],PzP[M],EnP[M],"
+      "PxP[N],PyP[N],PzP[N],EnP[N]"
+    ")"
+  )
 
   # cuts for real data
   # ROOT.FSCut.defineCut("unusedTracks",   "NumUnusedTracks <= 1")
@@ -210,17 +221,17 @@ if __name__ == "__main__":
   HfThetaDef    = f"acos({HfCosThetaDef})"
   HfPhiDef      = "HELPHI([Ks]; [K-]; [p+], [pi+]; GLUEXBEAM)"
   HfPhiDegDef   = f"{HfPhiDef} * TMath::RadToDeg()"
-  ROOT.FSTree.defineFourVector("P0", "1000", f"cos({beamPolAngleLab} / 180. * 3.14159)", f"sin({beamPolAngleLab} / 180. * 3.14159)", "0.0")  # vector representing beam polarization orientation in lab frame
-  bigPhiDef      = "POLPHI([Ks], [K-]; P0; [p+], [pi+]; GLUEXBEAM)"
-  bigPhiDegDef   = f"{bigPhiDef} * TMath::RadToDeg()"
+  ROOT.FSTree.defineFourVector("P0", "1000", f"{cosdg(beamPolAngleLab)}", f"{sindg(beamPolAngleLab)}", "0.0")  # vector representing beam polarization orientation in lab frame
+  bigPhiDef     = "POLPHI([Ks], [K-]; P0; [p+], [pi+]; GLUEXBEAM)"
+  bigPhiDegDef  = f"{bigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(bigPhiDef)}")
   hists["hGjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
   hists["hGjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
   hists["hHfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
   hists["hHfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfPhiDegDef,    "(100, -180, +180)", cutString))
   hists["hPhi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
-  ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # vector representing beam polarization orientation in lab frame
-  myBigPhiDef    = "MYBIGPHI([p+], [pi+]; GLUEXBEAM; BEAMPOLANGLELAB)"
+  ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # dummy vector representing beam polarization orientation in lab frame
+  myBigPhiDef    = "MYPOLPHI([p+], [pi+]; GLUEXBEAM; BEAMPOLANGLELAB)"
   myBigPhiDegDef = f"{myBigPhiDef} * TMath::RadToDeg()"
   hists["hMyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
 
