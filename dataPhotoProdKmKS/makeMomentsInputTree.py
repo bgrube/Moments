@@ -111,16 +111,17 @@ bigPhi(
 """
 
 
-def setup(fsRootCacheName: str) -> None:
+def setup(useRDataFrame: bool) -> None:
   """Setup the FSRoot environment and define cuts"""
   if ROOT.FSModeCollection.modeVector().size() != 0:
     return
-  ROOT.FSHistogram.readHistogramCache(fsRootCacheName)  # cache file names are: <FSRootCacheName>.cache.{dat,root}
   modeInfo = ROOT.FSModeInfo(fsModeString)
   modeInfo.display()
   ROOT.FSModeCollection.addModeInfo(fsModeString).addCategory(fsCategory)
   # ROOT.FSTree.addFriendTree("Chi2Rank")  # ranking trees have already been applied
-  ROOT.FSTree.showFriendTrees()
+  # ROOT.FSTree.showFriendTrees()
+  if useRDataFrame:
+    ROOT.FSHistogram.enableRDataFrame(False)  # false = delay filling of histograms until FSHistogram::executeRDataFrame() is called
 
   # define macros for azimuthal angle of photon polarization vector
   ROOT.gInterpreter.Declare(CPP_CODE_POLPHI)
@@ -141,74 +142,67 @@ def setup(fsRootCacheName: str) -> None:
   )
 
 
-if __name__ == "__main__":
-  ROOT.gROOT.SetBatch(True)
-  ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
-
-  useRDataFrame   = True
-  fsRootCacheName = ".FSRootCache"
-  fsTreeName      = "ntFSGlueX_MODECODE"
-  fsModeString    = "100_11100"
-  # decoding of mode string:
-  #  1  0  0   _ 1   1  1   0   0
-  #  |  |  |     |   |  |   |   |
-  #  p+ p- eta   K-  KS pi+ pi- pi0
-  # (1)         (2) (3) (4)         <- indices in FSTree
-  # (3a) = pi+ from KS, (3b) = pi- from KS
-  fsCategory      = "m" + fsModeString
-
-  # Fall 2018 data
-  inputFileName   = "data/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root"
-  # inputFileName   = "data/pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root"
-  # inputFileName   = "phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root"
-  beamPol         = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPol
-  beamPolAngleLab = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPolPhiLab
-
-  setup(fsRootCacheName)
-  if useRDataFrame:
-    ROOT.FSHistogram.enableRDataFrame(False)  # false = delay filling of histograms until FSHistogram::executeRDataFrame() is called
-
-  ROOT.FSCut.defineCut("cutSet", "")  # all cuts are already applied
-  cutString = "CUT(cutSet)"
-
+def plotHistsAndWriteTree(
+  inputFileName:   str,
+  fsTreeName:      str,
+  fsCategory:      str,
+  cutString:       str,
+  beamPol:         float,
+  beamPolAngleLab: float,
+  eventWeight:     float,
+  useRDataFrame:   bool,
+  useMCTruth:      bool,
+  plotLabel:       str,
+) -> None:
+  """Plots histograms and writes friend tree with variables for moment analysis"""
   hists: Dict[str, ROOT.TH1F] = {}
-  hists["hChi2Ndf"    ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "Chi2DOF",                            "(100, 0, 25)",    cutString))
-  # hists["hChi2Rank"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "Chi2Rank",                           "(10, -1.5, 8.5)", cutString))
-  hists["hBeamEnergy" ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "EnPB",                               "(400, 2, 12)",    cutString))
-  hists["hRfDeltaT"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "RFDeltaT",                           "(400, -20, 20)",  cutString))
-  hists["hMassKK"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "MASS([K-], [Ks])",                   "(100, 0.8, 2.5)", cutString))
-  hists["hMassPiPi"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "MASS(3a, 3b)",                       "(100, 0.4, 0.6)", cutString))
-  hists["hMomTransfer"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "-MASS2(GLUEXTARGET, -[p+], -[pi+])", "(100, 0, 2)",     cutString))
+  if useMCTruth:
+    ROOT.FSTree.defineFourVector("MCGLUEXBEAM", "MCEnPB", "MCPxPB", "MCPyPB", "MCPzPB")
+  MCLabel = "MC" if useMCTruth else ""
+
+  # kinematic distributions
+  massDef = f"{MCLabel}MASS"
+  massKKDef = f"{massDef}([K-], [Ks])"
+  massPiPiDef = f"{massDef}(3a, 3b)"  # 3a = pi+ from Ks, 3b = pi- from Ks
+  momTransferDef = f"-{massDef}2(GLUEXTARGET, -[p+], -[pi+])"
+  if not useMCTruth:
+    hists[f"h{plotLabel}Chi2Ndf"           ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "Chi2DOF",        "(100, 0, 25)",    cutString))
+    hists[f"h{plotLabel}RfDeltaT"          ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "RFDeltaT",       "(400, -20, 20)",  cutString))
+  hists[f"h{MCLabel}{plotLabel}BeamEnergy" ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, f"{MCLabel}EnPB", "(400, 2, 12)",    cutString))
+  hists[f"h{MCLabel}{plotLabel}MassKK"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, massKKDef,        "(100, 0.8, 2.5)", cutString))
+  hists[f"h{MCLabel}{plotLabel}MassPiPi"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, massPiPiDef,      "(100, 0.4, 0.6)", cutString))
+  hists[f"h{MCLabel}{plotLabel}MomTransfer"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, momTransferDef,   "(100, 0, 1)",     cutString))
 
   # angular variables
   # for beam + target -> X + recoil and X -> a + b (see FSBasic/FSMath.h)
   # angles of particle a in X Gottfried-Jackson RF are calculated by
   #   GJCOSTHETA(a; b; beam)
   #   GJPHI(a; b; recoil; beam) [rad]
-  GjCosThetaDef = "GJCOSTHETA([Ks]; [K-]; GLUEXBEAM)"
+  GjCosThetaDef = f"{MCLabel}GJCOSTHETA([Ks]; [K-]; {MCLabel}GLUEXBEAM)"
   GjThetaDef    = f"acos({GjCosThetaDef})"
-  GjPhiDef      = "GJPHI([Ks]; [K-]; [p+], [pi+]; GLUEXBEAM)"
+  GjPhiDef      = f"{MCLabel}GJPHI([Ks]; [K-]; [p+], [pi+]; {MCLabel}GLUEXBEAM)"
   GjPhiDegDef   = f"{GjPhiDef} * TMath::RadToDeg()"
   # angles of particle a in X helicity RF are calculated by
   #   HELCOSTHETA(a; b; recoil)
   #   HELPHI(a; b; recoil; beam) [rad]
-  HfCosThetaDef = "HELCOSTHETA([Ks]; [K-]; [p+], [pi+])"
+  HfCosThetaDef = f"{MCLabel}HELCOSTHETA([Ks]; [K-]; [p+], [pi+])"
   HfThetaDef    = f"acos({HfCosThetaDef})"
-  HfPhiDef      = "HELPHI([Ks]; [K-]; [p+], [pi+]; GLUEXBEAM)"
+  HfPhiDef      = f"{MCLabel}HELPHI([Ks]; [K-]; [p+], [pi+]; {MCLabel}GLUEXBEAM)"
   HfPhiDegDef   = f"{HfPhiDef} * TMath::RadToDeg()"
   ROOT.FSTree.defineFourVector("P0", "1000", f"{cosdg(beamPolAngleLab)}", f"{sindg(beamPolAngleLab)}", "0.0")  # vector representing beam polarization orientation in lab frame
-  bigPhiDef     = "POLPHI([Ks], [K-]; P0; [p+], [pi+]; GLUEXBEAM)"
+  bigPhiDef     = f"{MCLabel}POLPHI([Ks], [K-]; P0; [p+], [pi+]; {MCLabel}GLUEXBEAM)"
   bigPhiDegDef  = f"{bigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(bigPhiDef)}")
-  hists["hGjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
-  hists["hGjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
-  hists["hHfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
-  hists["hHfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfPhiDegDef,    "(100, -180, +180)", cutString))
-  hists["hPhi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
+  hists[f"h{MCLabel}{plotLabel}GjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
+  hists[f"h{MCLabel}{plotLabel}GjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
+  hists[f"h{MCLabel}{plotLabel}HfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
+  hists[f"h{MCLabel}{plotLabel}HfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfPhiDef,       "(100, -180, +180)", cutString))
+  hists[f"h{MCLabel}{plotLabel}Phi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
   ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # dummy vector representing beam polarization orientation in lab frame
-  myBigPhiDef    = "MYPOLPHI([p+], [pi+]; GLUEXBEAM; BEAMPOLANGLELAB)"
+  myBigPhiDef    = f"{MCLabel}MYPOLPHI([p+], [pi+]; {MCLabel}GLUEXBEAM; BEAMPOLANGLELAB)"
   myBigPhiDegDef = f"{myBigPhiDef} * TMath::RadToDeg()"
-  hists["hMyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
+  print(f"Defined macro: {ROOT.FSTree.expandVariable(myBigPhiDef)}")
+  hists[f"h{MCLabel}{plotLabel}MyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
 
   # draw histograms
   if useRDataFrame:
@@ -221,23 +215,68 @@ if __name__ == "__main__":
 
   # write root tree for moment analysis
   varDefs = ROOT.std.vector[ROOT.std.pair[str, str]]()
-  varDefs.push_back(ROOT.std.pair[str, str]("beamPol",    f"{beamPol}"))
-  varDefs.push_back(ROOT.std.pair[str, str]("beamPolPhi", f"{beamPolAngleLab}"))
-  varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",   GjCosThetaDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("theta",      GjThetaDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",     GjPhiDegDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("phi",        GjPhiDef))
-  # varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",   HfCosThetaDef))
-  # varDefs.push_back(ROOT.std.pair[str, str]("theta",      HfThetaDef))
-  # varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",     HfPhiDegDef))
-  # varDefs.push_back(ROOT.std.pair[str, str]("phi",        HfPhiDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("Phi",        bigPhiDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",     bigPhiDegDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("mass",       "MASS([K-], [Ks])"))
-  varDefs.push_back(ROOT.std.pair[str, str]("minusT",     "-MASS2(GLUEXTARGET, -[p+], -[pi+])"))
+  varDefs.push_back(ROOT.std.pair[str, str]("beamPol",     f"{beamPol}"))
+  varDefs.push_back(ROOT.std.pair[str, str]("beamPolPhi",  f"{beamPolAngleLab}"))
+  varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",    GjCosThetaDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("theta",       GjThetaDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",      GjPhiDegDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("phi",         GjPhiDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("cosTheta",    HfCosThetaDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("theta",       HfThetaDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("phiDeg",      HfPhiDegDef))
+  # varDefs.push_back(ROOT.std.pair[str, str]("phi",         HfPhiDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("Phi",         bigPhiDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",      bigPhiDegDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("mass",        massKKDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("minusT",      momTransferDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("eventWeight", f"{eventWeight}"))
   print(f"Writing friend tree to file '{inputFileName}.angles'")
   ROOT.FSModeTree.createFriendTree(inputFileName, fsTreeName, fsCategory, "angles", varDefs)
 
-  # write FSRoot cache
-  ROOT.FSHistogram.dumpHistogramCache(fsRootCacheName)
+
+if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
+
+  fsTreeName      = "ntFSGlueX_MODECODE"
+  fsModeString    = "100_11100"
+  # decoding of mode string:
+  #  1  0  0   _ 1   1  1   0   0
+  #  |  |  |     |   |  |   |   |
+  #  p+ p- eta   K-  KS pi+ pi- pi0
+  # (1)         (2) (3) (4)         <- indices in FSTree
+  # (3a) = pi+ from KS, (3b) = pi- from KS
+  fsCategory      = "m" + fsModeString
+  useRDataFrame   = True
+
+  # Fall 2018 data
+  dataToProcess: tuple[tuple[str, str, float, bool, str], ...] = (  # (data directory, file name, event weight, use MC truth, plot label)
+    ("data",       "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       False, "Sig"),
+    ("data",       "pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root",   -1.0 / 6.0, False, "Bkg"),
+    ("phaseSpace", "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       False, "MCSig"),  #TODO is this correct? shouldn't the MC truth info be used for binning?
+    ("phaseSpace", "pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root", 1.0,       True,  "Gen"),
+  )
+  beamPol         = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPol
+  beamPolAngleLab = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPolPhiLab
+  #TODO Kevin: accidentals in MC data
+
+  setup(useRDataFrame)
+  ROOT.FSCut.defineCut("cutSet", "")  # all cuts are already applied
+  cutString = "CUT(cutSet)"
+
+  for dataDir, fileName, eventWeight, useMCTruth, plotLabel in dataToProcess:
+    print(f"Processing data from file '{dataDir}/{fileName}' with event weight {eventWeight}")
+    plotHistsAndWriteTree(
+      inputFileName   = f"{dataDir}/{fileName}",
+      fsTreeName      = fsTreeName,
+      fsCategory      = fsCategory,
+      cutString       = cutString,
+      beamPol         = beamPol,
+      beamPolAngleLab = beamPolAngleLab,
+      eventWeight     = eventWeight,
+      useRDataFrame   = useRDataFrame,
+      useMCTruth      = useMCTruth,
+      plotLabel       = plotLabel,
+    )
+
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogoff.FSROOT.C")
