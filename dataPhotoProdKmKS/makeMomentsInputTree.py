@@ -237,6 +237,8 @@ if __name__ == "__main__":
   # varDefs.push_back(ROOT.std.pair[str, str]("phi",        HfPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("Phi",        bigPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",     bigPhiDegDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("mass",       "MASS([K-], [Ks])"))
+  varDefs.push_back(ROOT.std.pair[str, str]("minusT",     "-MASS2(GLUEXTARGET, -[p+], -[pi+])"))
   print(f"Writing friend tree to file '{skimFileName}.angles'")
   ROOT.FSModeTree.createFriendTree(skimFileName, fsTreeName, fsCategory, "angles", varDefs)
 
