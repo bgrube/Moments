@@ -275,7 +275,7 @@ if __name__ == "__main__":
       beamPolPhi               = dataInfo.beamPolPhi,
       applyCutsOnForwardTracks = applyAdditionalCuts,
       frame                    = frame,
-      **lorentzVectors(realData = True),
+      **lorentzVectors(realData = True),  #TODO is this correct? shouldn't the data be binned using the MC truth information?
     ).Snapshot(dataInfo.outputTreeName, phaseSpaceAccOutputFileName, outputColumns)
 
     # convert thrown phase-space MC data
