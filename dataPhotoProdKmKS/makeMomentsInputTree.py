@@ -140,28 +140,6 @@ def setup(fsRootCacheName: str) -> None:
     ")"
   )
 
-  # cuts for real data
-  # ROOT.FSCut.defineCut("unusedTracks",   "NumUnusedTracks <= 1")
-  # ROOT.FSCut.defineCut("unusedNeutrals", "NumNeutralHypos <= 4")  # # unused neutrals <= 2
-  # ROOT.FSCut.defineCut("chi2Ndf",        "Chi2DOF < 5")
-  # ROOT.FSCut.defineCut("beamEnergy",     "(8.2 < EnPB) && (EnPB < 8.8)")  # [GeV]
-  # ROOT.FSCut.defineCut("prodVertZ",      "(52 < ProdVz) && (ProdVz < 78)")  # [cm]
-  # ROOT.FSCut.defineCut("tRange",         "-MASS2(GLUEXTARGET, -[p+]) > 0.1")  # [GeV^2]
-  # ROOT.FSCut.defineCut("rf",             "abs(RFDeltaT) < 2")  # [ns] in case chi^2 ranking is used
-  # ROOT.FSCut.defineCut("chi2Rank",       "Chi2Rank == 1")  # from Chi2Rank friend tree
-  # ROOT.FSCut.defineCut("cosThetaGJPos",  GJCosThetaVar + " > 0")
-  # ROOT.FSCut.defineCut("cosThetaGJNeg",  GJCosThetaVar + " < 0")
-  # # sideband cuts
-  # ROOT.FSCut.defineCut("rfSB",           "abs(RFDeltaT) < 2", "abs(RFDeltaT) > 2", 0.125)  # [ns]
-
-  # cuts for MC truth
-  # ROOT.FSTree.defineFourVector("MCGLUEXBEAM", "MCEnPB", "MCPxPB", "MCPyPB", "MCPzPB")
-  # ROOT.FSCut.defineCut("mcBeamEnergy",     "(8.2 < MCEnPB) && (MCEnPB < 8.8)")  # [GeV]
-  # # FSCut.defineCut("mcTRange",         "-MCMASS2(GLUEXTARGET, -1, -4) < 0.5")  # [0, 0.5] [GeV^2]
-  # ROOT.FSCut.defineCut("mcTRange",         "0.1 < (-MCMASS2(GLUEXTARGET, -1, -4)) && (-MCMASS2(GLUEXTARGET, -1, -4) < 0.5)")  # [0.1, 0.5] [GeV^2]
-  # ROOT.FSCut.defineCut("mcCosThetaGJPos",  GJCosThetaVarMC + " > 0")
-  # ROOT.FSCut.defineCut("mcCosThetaGJNeg",  GJCosThetaVarMC + " < 0")
-
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
@@ -191,9 +169,7 @@ if __name__ == "__main__":
   if useRDataFrame:
     ROOT.FSHistogram.enableRDataFrame(False)  # false = delay filling of histograms until FSHistogram::executeRDataFrame() is called
 
-  ROOT.FSCut.defineCut("cutSet", "")
-  # ROOT.FSCut.defineCut("cutSet", "CUT(beamEnergy, rf, chi2Rank)")
-  # ROOT.FSCut.defineCut("cutSet", "CUT(chi2Ndf, beamEnergy, rf, tRange, chi2Rank)")
+  ROOT.FSCut.defineCut("cutSet", "")  # all cuts are already applied
   cutString = "CUT(cutSet)"
 
   hists: Dict[str, ROOT.TH1F] = {}
