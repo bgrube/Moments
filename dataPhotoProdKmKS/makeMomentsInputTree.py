@@ -158,12 +158,11 @@ if __name__ == "__main__":
   fsCategory      = "m" + fsModeString
 
   # Fall 2018 data
-  # inputFileNamePattern = "skimForMoments/pipkmks_100_11100_B4_M16_GENERAL_SKIM_A2.root"
-  inputFileNamePattern = "skimForMoments/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root"
-  # inputFileNamePattern = "skimForMoments/pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root"
-  # inputFileNamePattern = "skimForMoments/psFiles/skimForMoments/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root"
-  beamPol              = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPol
-  beamPolAngleLab      = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPolPhiLab
+  inputFileName   = "data/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root"
+  # inputFileName   = "data/pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root"
+  # inputFileName   = "phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root"
+  beamPol         = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPol
+  beamPolAngleLab = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPolPhiLab
 
   setup(fsRootCacheName)
   if useRDataFrame:
@@ -173,13 +172,13 @@ if __name__ == "__main__":
   cutString = "CUT(cutSet)"
 
   hists: Dict[str, ROOT.TH1F] = {}
-  hists["hChi2Ndf"    ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "Chi2DOF",                            "(100, 0, 25)",    cutString))
-  # hists["hChi2Rank"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "Chi2Rank",                           "(10, -1.5, 8.5)", cutString))
-  hists["hBeamEnergy" ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "EnPB",                               "(400, 2, 12)",    cutString))
-  hists["hRfDeltaT"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "RFDeltaT",                           "(400, -20, 20)",  cutString))
-  hists["hMassKK"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "MASS([K-], [Ks])",                   "(100, 0.8, 2.5)", cutString))
-  hists["hMassPiPi"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "MASS(3a, 3b)",                       "(100, 0.4, 0.6)", cutString))
-  hists["hMomTransfer"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "-MASS2(GLUEXTARGET, -[p+], -[pi+])", "(100, 0, 2)",     cutString))
+  hists["hChi2Ndf"    ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "Chi2DOF",                            "(100, 0, 25)",    cutString))
+  # hists["hChi2Rank"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "Chi2Rank",                           "(10, -1.5, 8.5)", cutString))
+  hists["hBeamEnergy" ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "EnPB",                               "(400, 2, 12)",    cutString))
+  hists["hRfDeltaT"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "RFDeltaT",                           "(400, -20, 20)",  cutString))
+  hists["hMassKK"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "MASS([K-], [Ks])",                   "(100, 0.8, 2.5)", cutString))
+  hists["hMassPiPi"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "MASS(3a, 3b)",                       "(100, 0.4, 0.6)", cutString))
+  hists["hMomTransfer"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "-MASS2(GLUEXTARGET, -[p+], -[pi+])", "(100, 0, 2)",     cutString))
 
   # angular variables
   # for beam + target -> X + recoil and X -> a + b (see FSBasic/FSMath.h)
@@ -201,15 +200,15 @@ if __name__ == "__main__":
   bigPhiDef     = "POLPHI([Ks], [K-]; P0; [p+], [pi+]; GLUEXBEAM)"
   bigPhiDegDef  = f"{bigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(bigPhiDef)}")
-  hists["hGjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
-  hists["hGjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
-  hists["hHfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
-  hists["hHfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, HfPhiDegDef,    "(100, -180, +180)", cutString))
-  hists["hPhi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
+  hists["hGjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
+  hists["hGjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
+  hists["hHfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
+  hists["hHfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfPhiDegDef,    "(100, -180, +180)", cutString))
+  hists["hPhi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
   ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # dummy vector representing beam polarization orientation in lab frame
   myBigPhiDef    = "MYPOLPHI([p+], [pi+]; GLUEXBEAM; BEAMPOLANGLELAB)"
   myBigPhiDegDef = f"{myBigPhiDef} * TMath::RadToDeg()"
-  hists["hMyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
+  hists["hMyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
 
   # draw histograms
   if useRDataFrame:
@@ -221,9 +220,6 @@ if __name__ == "__main__":
     canv.SaveAs(f"{histName}.pdf")
 
   # write root tree for moment analysis
-  skimFileName = f"./pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.skim.root"
-  print(f"Writing skimmed tree to file '{skimFileName}'")
-  ROOT.FSModeTree.skimTree(inputFileNamePattern, fsTreeName, fsCategory, skimFileName, cutString)
   varDefs = ROOT.std.vector[ROOT.std.pair[str, str]]()
   varDefs.push_back(ROOT.std.pair[str, str]("beamPol",    f"{beamPol}"))
   varDefs.push_back(ROOT.std.pair[str, str]("beamPolPhi", f"{beamPolAngleLab}"))
@@ -239,8 +235,8 @@ if __name__ == "__main__":
   varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",     bigPhiDegDef))
   varDefs.push_back(ROOT.std.pair[str, str]("mass",       "MASS([K-], [Ks])"))
   varDefs.push_back(ROOT.std.pair[str, str]("minusT",     "-MASS2(GLUEXTARGET, -[p+], -[pi+])"))
-  print(f"Writing friend tree to file '{skimFileName}.angles'")
-  ROOT.FSModeTree.createFriendTree(skimFileName, fsTreeName, fsCategory, "angles", varDefs)
+  print(f"Writing friend tree to file '{inputFileName}.angles'")
+  ROOT.FSModeTree.createFriendTree(inputFileName, fsTreeName, fsCategory, "angles", varDefs)
 
   # write FSRoot cache
   ROOT.FSHistogram.dumpHistogramCache(fsRootCacheName)
