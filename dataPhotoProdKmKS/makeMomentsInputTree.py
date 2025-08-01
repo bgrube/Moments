@@ -155,23 +155,29 @@ def plotHistsAndWriteTree(
   plotLabel:       str,
 ) -> None:
   """Plots histograms and writes friend tree with variables for moment analysis"""
-  hists: Dict[str, ROOT.TH1F] = {}
   if useMCTruth:
     ROOT.FSTree.defineFourVector("MCGLUEXBEAM", "MCEnPB", "MCPxPB", "MCPyPB", "MCPzPB")
   MCLabel = "MC" if useMCTruth else ""
+  getTH1F = functools.partial(  # create a partial function to avoid redundant arguments
+      ROOT.FSModeHistogram.getTH1F,
+      inputFileName,
+      fsTreeName,
+      fsCategory,
+  )
 
   # kinematic distributions
-  massDef = f"{MCLabel}MASS"
-  massKKDef = f"{massDef}([K-], [Ks])"
-  massPiPiDef = f"{massDef}(3a, 3b)"  # 3a = pi+ from Ks, 3b = pi- from Ks
+  massDef        = f"{MCLabel}MASS"
+  massKKDef      = f"{massDef}([K-], [Ks])"
+  massPiPiDef    = f"{massDef}(3a, 3b)"  # 3a = pi+ from Ks, 3b = pi- from Ks
   momTransferDef = f"-{massDef}2(GLUEXTARGET, -[p+], -[pi+])"
+  hists: Dict[str, ROOT.TH1F] = {}
   if not useMCTruth:
-    hists[f"h{plotLabel}Chi2Ndf"           ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "Chi2DOF",        "(100, 0, 25)",    cutString))
-    hists[f"h{plotLabel}RfDeltaT"          ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, "RFDeltaT",       "(400, -20, 20)",  cutString))
-  hists[f"h{MCLabel}{plotLabel}BeamEnergy" ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, f"{MCLabel}EnPB", "(400, 2, 12)",    cutString))
-  hists[f"h{MCLabel}{plotLabel}MassKK"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, massKKDef,        "(100, 0.8, 2.5)", cutString))
-  hists[f"h{MCLabel}{plotLabel}MassPiPi"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, massPiPiDef,      "(100, 0.4, 0.6)", cutString))
-  hists[f"h{MCLabel}{plotLabel}MomTransfer"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, momTransferDef,   "(100, 0, 1)",     cutString))
+    hists[f"h{plotLabel}Chi2Ndf"           ] = getTH1F("Chi2DOF",        "(100, 0, 25)",    cutString)
+    hists[f"h{plotLabel}RfDeltaT"          ] = getTH1F("RFDeltaT",       "(400, -20, 20)",  cutString)
+  hists[f"h{MCLabel}{plotLabel}BeamEnergy" ] = getTH1F(f"{MCLabel}EnPB", "(400, 2, 12)",    cutString)
+  hists[f"h{MCLabel}{plotLabel}MassKK"     ] = getTH1F(massKKDef,        "(100, 0.8, 2.5)", cutString)
+  hists[f"h{MCLabel}{plotLabel}MassPiPi"   ] = getTH1F(massPiPiDef,      "(100, 0.4, 0.6)", cutString)
+  hists[f"h{MCLabel}{plotLabel}MomTransfer"] = getTH1F(momTransferDef,   "(100, 0, 1)",     cutString)
 
   # angular variables
   # for beam + target -> X + recoil and X -> a + b (see FSBasic/FSMath.h)
@@ -193,16 +199,16 @@ def plotHistsAndWriteTree(
   bigPhiDef     = f"{MCLabel}POLPHI([Ks], [K-]; P0; [p+], [pi+]; {MCLabel}GLUEXBEAM)"
   bigPhiDegDef  = f"{bigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(bigPhiDef)}")
-  hists[f"h{MCLabel}{plotLabel}GjCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjCosThetaDef,  "(100, -1, +1)",     cutString))
-  hists[f"h{MCLabel}{plotLabel}GjPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, GjPhiDegDef,    "(100, -180, +180)", cutString))
-  hists[f"h{MCLabel}{plotLabel}HfCosTheta"] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfCosThetaDef,  "(100, -1, +1)",     cutString))
-  hists[f"h{MCLabel}{plotLabel}HfPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, HfPhiDef,       "(100, -180, +180)", cutString))
-  hists[f"h{MCLabel}{plotLabel}Phi"       ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, bigPhiDegDef,   "(100, -180, +180)", cutString))
+  hists[f"h{MCLabel}{plotLabel}GjCosTheta"] = getTH1F(GjCosThetaDef,  "(100, -1, +1)",     cutString)
+  hists[f"h{MCLabel}{plotLabel}GjPhi"     ] = getTH1F(GjPhiDegDef,    "(100, -180, +180)", cutString)
+  hists[f"h{MCLabel}{plotLabel}HfCosTheta"] = getTH1F(HfCosThetaDef,  "(100, -1, +1)",     cutString)
+  hists[f"h{MCLabel}{plotLabel}HfPhi"     ] = getTH1F(HfPhiDegDef,    "(100, -180, +180)", cutString)
+  hists[f"h{MCLabel}{plotLabel}Phi"       ] = getTH1F(bigPhiDegDef,   "(100, -180, +180)", cutString)
   ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # dummy vector representing beam polarization orientation in lab frame
   myBigPhiDef    = f"{MCLabel}MYPOLPHI([p+], [pi+]; {MCLabel}GLUEXBEAM; BEAMPOLANGLELAB)"
   myBigPhiDegDef = f"{myBigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(myBigPhiDef)}")
-  hists[f"h{MCLabel}{plotLabel}MyPhi"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileName, fsTreeName, fsCategory, myBigPhiDegDef, "(100, -180, +180)", cutString))
+  hists[f"h{MCLabel}{plotLabel}MyPhi"     ] = getTH1F(myBigPhiDegDef, "(100, -180, +180)", cutString)
 
   # draw histograms
   if useRDataFrame:
@@ -258,7 +264,7 @@ if __name__ == "__main__":
   )
   beamPol         = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPol
   beamPolAngleLab = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPolPhiLab
-  #TODO Kevin: accidentals in MC data
+  #TODO Kevin: accidentals in MC data? small size of MC sample?
 
   setup(useRDataFrame)
   ROOT.FSCut.defineCut("cutSet", "")  # all cuts are already applied
