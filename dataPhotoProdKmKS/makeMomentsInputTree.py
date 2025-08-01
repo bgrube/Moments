@@ -118,7 +118,7 @@ def setup(fsRootCacheName: str) -> None:
   modeInfo = ROOT.FSModeInfo(fsModeString)
   modeInfo.display()
   ROOT.FSModeCollection.addModeInfo(fsModeString).addCategory(fsCategory)
-  ROOT.FSTree.addFriendTree("Chi2Rank")
+  # ROOT.FSTree.addFriendTree("Chi2Rank")  # ranking trees have already been applied
   ROOT.FSTree.showFriendTrees()
 
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
@@ -187,7 +187,7 @@ if __name__ == "__main__":
 
   hists: Dict[str, ROOT.TH1F] = {}
   hists["hChi2Ndf"    ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "Chi2DOF",                            "(100, 0, 25)",    cutString))
-  hists["hChi2Rank"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "Chi2Rank",                           "(10, -1.5, 8.5)", cutString))
+  # hists["hChi2Rank"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "Chi2Rank",                           "(10, -1.5, 8.5)", cutString))
   hists["hBeamEnergy" ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "EnPB",                               "(400, 2, 12)",    cutString))
   hists["hRfDeltaT"   ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "RFDeltaT",                           "(400, -20, 20)",  cutString))
   hists["hMassKK"     ] = (ROOT.FSModeHistogram.getTH1F(inputFileNamePattern, fsTreeName, fsCategory, "MASS([K-], [Ks])",                   "(100, 0.8, 2.5)", cutString))
@@ -250,6 +250,7 @@ if __name__ == "__main__":
   # varDefs.push_back(ROOT.std.pair[str, str]("phi",        HfPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("Phi",        bigPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",     bigPhiDegDef))
+  print(f"Writing friend tree to file '{skimFileName}.angles'")
   ROOT.FSModeTree.createFriendTree(skimFileName, fsTreeName, fsCategory, "angles", varDefs)
 
   # write FSRoot cache
