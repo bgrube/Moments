@@ -141,6 +141,7 @@ def getDataFrameWithCorrectEventWeights(
   forceOverwriteFriendFiles: bool = True,
 ) -> ROOT.RDataFrame:
   """Create friend trees with correct event weights and attach them to data tree"""
+  # write corrected weights into friend trees
   for dataFileNames, weightFormula, friendFileName in (
     (dataSigRegionFileNames,  "Weight", friendSigRegionFileName),
     (dataBkgRegionFileNames, "-Weight", friendBkgRegionFileName),
@@ -152,6 +153,7 @@ def getDataFrameWithCorrectEventWeights(
     ROOT.RDataFrame(treeName, dataFileNames) \
         .Define("eventWeight", weightFormula) \
         .Snapshot(treeName, friendFileName, ["eventWeight"])
+  # chain trees for signal and background regions and add friend trees with weights
   DATA_TCHAIN.Reset()
   DATA_TCHAIN.SetName(treeName)
   weightTChain = ROOT.TChain(treeName)
