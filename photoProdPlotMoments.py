@@ -25,6 +25,7 @@ from wurlitzer import pipes, STDOUT
 
 from photoProdCalcMoments import (
   AnalysisConfig,
+  CFG_KEVIN,
   CFG_NIZAR,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
@@ -608,37 +609,42 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  # compareTo = ""
+  compareTo = ""
   # compareTo = "CLAS"
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  compareTo = "PWA"
+  # compareTo = "PWA"
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
+  cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
 
   tBinLabels = (
-    "tbin_0.1_0.2",
+    # "tbin_0.1_0.2",
+    # "tbin_0.1_0.2.Hf.pi+",
+    # "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
+    "tbin_0.1_0.5",
   )
   beamPolLabels = (
+    "PARA_0",
     # "PARA_0", "PARA_135", "PERP_45", "PERP_90",
-    "allOrient",
+    # "allOrient",
   )
   maxLs = (
     4,
     # 5,
-    6,
+    # 6,
     # 7,
-    8,
+    # 8,
   )
 
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
-      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
-      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{beamPolLabel}"
+      # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+      # cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+      # cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.outFileDirBaseName = f"{cfg.outFileDirBaseName}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
         cfg.maxL = maxL
