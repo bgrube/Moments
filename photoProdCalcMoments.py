@@ -40,6 +40,7 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
+#TODO move this to a separate module
 @dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
@@ -175,6 +176,26 @@ CFG_NIZAR = AnalysisConfig(
   ),
   massBinning         = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
 )
+# configuration for Kevin's K- K_S Delta++ data
+CFG_KEVIN = AnalysisConfig(
+  treeName                 = "ntFSGlueX_100_11100_angles",
+  dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
+  psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
+  psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
+  polarization             = 0.0,  # read polarization from tree
+  _maxL                    = 4,
+  _outFileDirBaseName      = "./plotsTestKevin",
+  # _normalizeMoments        = True,
+  # plotAngularDistributions = True,
+  # plotAccIntegralMatrices  = True,
+  binVarMass               = KinematicBinningVariable(
+    name      = "mass",
+    label     = "#it{m}_{#it{K}^{-}#it{K}_{S}^{0}}",
+    unit      = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ),
+  massBinning              = HistAxisBinning(nmbBins = 8, minVal = 1.0, maxVal = 1.8),  # original binning: 200 bins in [0.6, 2.6] GeV
+)
 
 
 def calculateAllMoments(
@@ -268,37 +289,39 @@ def calculateAllMoments(
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
+  cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
 
   tBinLabels = (
     # "tbin_0.1_0.2",
-    "tbin_0.1_0.2.trackDistFdc",
+    # "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
+    "tbin_0.1_0.5",
   )
   beamPolLabels = (
     "PARA_0",
-    "PARA_135",
-    "PERP_45",
-    "PERP_90",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
   )
   maxLs = (
     4,
     # 5,
-    6,
+    # 6,
     # 7,
-    8,
+    # 8,
   )
 
   for tBinLabel in tBinLabels:
     for maxL in maxLs:
       for beamPolLabel in beamPolLabels:
         print(f"Performing moment analysis for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-        cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-        cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
-        cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{beamPolLabel}"
+        # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+        # cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+        # cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+        cfg.outFileDirBaseName = f"{cfg.outFileDirBaseName}.{tBinLabel}/{beamPolLabel}"
         cfg.maxL               = maxL
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
