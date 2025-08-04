@@ -1306,6 +1306,14 @@ class MomentResultsKinematicBinning:
     """Returns `MomentResult` that correspond to given bin index"""
     return self.moments[subscript]
 
+  def __setitem__(
+    self,
+    subscript: int,
+    value:     MomentResult,
+  ) -> None:
+    """Sets `MomentResult` at given bin index"""
+    self.moments[subscript] = value
+
   def __iter__(self) -> Iterator[MomentResult]:
     """Iterates over `MomentResults` in kinematic bins"""
     return iter(self.moments)
@@ -1876,7 +1884,7 @@ class MomentCalculatorsKinematicBinning:
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
   ) -> list[list[im.Minuit]]:  # Minuit objects for [<kinematic bin>][<fit attempts>]
-    """Estimates photoproduction moments by fitting intensity model to each kinematic bin by running several attempts with random start values in parallel and storing the best fit result; returns all fit results"""
+    """Estimates photoproduction moments by fitting intensity model to each kinematic bin by running several attempts with random start values in parallel; stores the best fit result in `self` and returns fit results for all attempts"""
     fitMinuits: list[list[im.Minuit]] = [[] for _ in self]  # empty list for each kinematic bin
     for kinBinIndex, momentsInBin in enumerate(self):
       print(f"Fitting moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
