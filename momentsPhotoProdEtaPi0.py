@@ -218,7 +218,7 @@ if __name__ == "__main__":
           data           = dataInBin,
           phaseSpaceData = dataPsAccInBin,
           nmbGenEvents   = nmbPsGenEvents[-1],
-          polarization   = 0.0,  # read beam polarization from input trees
+          polarization   = "beamPol", # read polarization from tree column
         )
         momentsInBins.append(
           MomentCalculator(

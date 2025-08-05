@@ -49,7 +49,7 @@ class AnalysisConfig:
   dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
   psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
   psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
-  polarization:             float | None             = None  # unpolarized data
+  polarization:             float | str | None       = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization 
   _maxL:                    int                      = 8  # maximum L of physical and measured moments
   _outFileDirBaseName:      str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
   outFileDirName:           str                      = field(init = False)  # directory into which all output will be written
@@ -138,7 +138,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   dataFileName        = "./dataPhotoProdPiPiPol/data_flat_0.0.root",
   psAccFileName       = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
   psGenFileName       = "./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
-  polarization        = 0.0, # read polarization from tree
+  polarization        = "beamPol", # read polarization from tree column
   _maxL               = 4,
   _outFileDirBaseName = "./plotsPhotoProdPiPiPol",
   massBinning         = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
@@ -164,7 +164,7 @@ CFG_NIZAR = AnalysisConfig(
   dataFileName        = "./dataTestNizar/data_flat.root",
   psAccFileName       = "./dataTestNizar/phaseSpace_acc_flat.root",
   psGenFileName       = None,
-  polarization        = 0.0,  # read polarization from tree
+  polarization        = "beamPol", # read polarization from tree column
   _maxL               = 4,
   _outFileDirBaseName = "./plotsTestNizar",
   # _normalizeMoments   = True,
@@ -182,7 +182,7 @@ CFG_KEVIN = AnalysisConfig(
   dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
   psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
   psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
-  polarization             = 0.0,  # read polarization from tree
+  polarization             = "beamPol", # read polarization from tree column
   _maxL                    = 4,
   _outFileDirBaseName      = "./plotsTestKevin",
   # _normalizeMoments        = True,

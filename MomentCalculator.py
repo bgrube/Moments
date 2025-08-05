@@ -307,10 +307,10 @@ class AmplitudeSet:
 
   def intensityFormula(
     self,
-    polarization: float | None,  # photon-beam polarization
-    thetaFormula: str,           # formula for polar angle theta [rad]
-    phiFormula:   str,           # formula for azimuthal angle phi [rad]
-    PhiFormula:   str,           # formula for angle Phi between photon polarization and production plane[rad]
+    polarization: float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
+    thetaFormula: str,  # formula for polar angle theta [rad]
+    phiFormula:   str,  # formula for azimuthal angle phi [rad]
+    PhiFormula:   str,  # formula for angle Phi between photon polarization and production plane[rad]
     printFormula: bool = False,  # if set formula for calculation of intensity is printed
   ) -> str:
     """Returns formula for intensity calculated from partial-wave amplitudes assuming rank-1 spin-density matrix"""
@@ -458,7 +458,7 @@ class DataSet:
   data:           ROOT.RDataFrame  # data from which to calculate moments
   phaseSpaceData: ROOT.RDataFrame | None  # (accepted) phase-space data; None corresponds to perfect acceptance
   nmbGenEvents:   int  # number of generated events
-  polarization:   float | None = None  # photon-beam polarization; 0.0 = read from tree; None = unpolarized production
+  polarization:   float | str | None = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
 
 
 @dataclass(frozen = True)  # immutable
@@ -487,7 +487,7 @@ def getStdVectorFromRdfColumn(
 
 
 def readInputData(
-  polarization: float | None,
+  polarization: float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
   data:         ROOT.RDataFrame,
 ) -> tuple[
   float | ROOT.std.vector["double"] | None,         # beam polarization
@@ -503,16 +503,17 @@ def readInputData(
     # unpolarized case
     print("Setting beam polarization to 0 for unpolarized production")
     beamPol = 0.0  # for unpolarized production the basis functions are independent of beamPol; set value to zero
-  elif polarization == 0:
-    # polarized case: read polarization value from tree
-    assert "beamPol" in data.GetColumnNames(), "No 'beamPol' column found in data"
-    print("Reading photon-beam polarization from 'beamPol' column")
-    beamPol = getStdVectorFromRdfColumn(data = data, columnName = "beamPol")
-  else:
+  elif isinstance(polarization, str):
+    # polarized case: read polarization value from column of ROOT tree
+    assert polarization in data.GetColumnNames(), f"No '{polarization}' column found in data"
+    print(f"Reading photon-beam polarization from '{polarization}' column")
+    beamPol = getStdVectorFromRdfColumn(data = data, columnName = polarization)
+  elif isinstance(polarization, float):
     # polarized case: use given polarization value for whole data set
     beamPol = polarization
     print(f"Using photon-beam polarization of {beamPol}")
-
+  else:
+    raise TypeError(f"Invalid type of `polarization` argument: {type(polarization)}; expected float, str, or None")
   # get input data as std::vectors
   print("Reading values of decay angles")
   thetas = getStdVectorFromRdfColumn(data = data, columnName = "theta")
@@ -1139,10 +1140,10 @@ class MomentResult:
 
   def intensityFormula(
     self,
-    polarization:     float | None,  # photon-beam polarization
-    thetaFormula:     str,           # formula for polar angle theta [rad]
-    phiFormula:       str,           # formula for azimuthal angle phi [rad]
-    PhiFormula:       str,           # formula for angle Phi between photon polarization and production plane[rad]
+    polarization:     float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
+    thetaFormula:     str,  # formula for polar angle theta [rad]
+    phiFormula:       str,  # formula for azimuthal angle phi [rad]
+    PhiFormula:       str,  # formula for angle Phi between photon polarization and production plane[rad]
     printFormula:     bool = False,  # if True formula for calculation of intensity is printed
     useMomentSymbols: bool = False,  # if True insert TFormula parameter names "[Hi_L_M]" instead of moment values into formula
   ) -> str:

@@ -204,7 +204,7 @@ def makeAllPlots(
     (
       MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPD.pkl"),
       "PWA #it{S} #plus #it{P} #plus #it{D}",
-      # MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl"),
+      # MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPDF.pkl"),
       # "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}",
       ROOT.kBlue + 1,
     ) if compareTo == "PWA" else
@@ -527,7 +527,7 @@ def makeAllPlots(
             data           = None,
             phaseSpaceData = None,
             nmbGenEvents   = 0,
-            polarization   = 0.0 if HPhys.indices.polarized else None,
+            polarization   = "beamPol" if HPhys.indices.polarized else None,
           ),
         )  # dummy matrix without dataset
         accIntMatrix.load(f"{cfg.outFileDirName}/integralMatrix_{binLabel}.npy")
