@@ -22,6 +22,7 @@ from wurlitzer import pipes, STDOUT
 
 from photoProdCalcMoments import (
   AnalysisConfig,
+  CFG_KEVIN,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_PWA,
@@ -36,7 +37,7 @@ print = functools.partial(print, flush = True)
 
 
 def weightAccPhaseSpaceWithIntensity(
-  intensityFormula:   str,  # formula for intensity calculation
+  intensityFormula:   str,  # formula for intensity function
   kinematicBinFilter: str,  # filter string that selects kinematic bin
   outFileName:        str,  # ROOT file to which weighted events are written
   cfg:                AnalysisConfig,
@@ -63,7 +64,7 @@ def weightAccPhaseSpaceWithIntensity(
              .Filter("acceptEvent == true")
   )
   nmbWeightedEvents = weightedPsAccData.Count().GetValue()
-  print(f"After intensity weighting sthe ample contains {nmbWeightedEvents} accepted events; efficiency is {nmbWeightedEvents / nmbPsAccEvents}")
+  print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; generator efficiency is {nmbWeightedEvents / nmbPsAccEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
   weightedPsAccData.Snapshot(cfg.treeName, outFileName)
@@ -71,55 +72,75 @@ def weightAccPhaseSpaceWithIntensity(
 
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
 
-  for maxL in (2, 4, 5, 6, 8, 10, 12, 14):
-  # for maxL in (2, ):
-    print(f"Generating weighted MC for L_max = {maxL}")
-    cfg.maxL = maxL
-    thisSourceFileName = os.path.basename(__file__)
-    logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-    print(f"Writing output to log file '{logFileName}'")
-    with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-      Utilities.printGitInfo()
-      timer = Utilities.Timer()
-      ROOT.gROOT.SetBatch(True)
-      setupPlotStyle()
+  tBinLabels = (
+    "tbin_0.1_0.5",
+  )
+  beamPolLabels = (
+    "PARA_0",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
+  )
+  maxLs = (
+    4,
+    # 5,
+    # 6,
+    # 7,
+    # 8,
+  )
 
-      timer.start("Total execution time")
-      print(f"Using configuration:\n{cfg}")
+  outFileDirBaseNameCommon = cfg.outFileDirBaseName
+  for tBinLabel in tBinLabels:
+    for beamPolLabel in beamPolLabels:
+      cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
+      for maxL in maxLs:
+        print(f"Generating weighted MC for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+        cfg.maxL = maxL
+        thisSourceFileName = os.path.basename(__file__)
+        logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+        print(f"Writing output to log file '{logFileName}'")
+        with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          Utilities.printGitInfo()
+          timer = Utilities.Timer()
+          ROOT.gROOT.SetBatch(True)
+          setupPlotStyle()
 
-      momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-      momentResults = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
-      # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
-      for momentResult in momentResults:
-        intensityFormula = momentResult.intensityFormula(
-          polarization = cfg.polarization,
-          thetaFormula = "theta",
-          phiFormula   = "phi",
-          PhiFormula   = "Phi",
-          printFormula = False,
-        )
-        massBinCenter = momentResult.binCenters[cfg.massBinning.var]
-        massBinIndex  = cfg.massBinning.findBin(massBinCenter)
-        assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} GeV"
-        outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_flat"
-        # outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_pwa_SPD_flat"
-        outFileName     = f"{outFileBaseName}_{massBinIndex}.root"
-        print(f"Weighting accepted phase-space events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit}")
-        weightAccPhaseSpaceWithIntensity(
-          intensityFormula   = intensityFormula,
-          kinematicBinFilter = cfg.massBinning.binFilter(massBinIndex),
-          outFileName        = outFileName,
-          cfg                = cfg,
-        )
+          print(f"Using configuration:\n{cfg}")
+          timer.start("Total execution time")
+          momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
+          print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
+          momentResults = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
+          # momentResults = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
+          for momentResultsForBin in momentResults:
+            massBinCenter = momentResultsForBin.binCenters[cfg.massBinning.var]
+            massBinIndex  = cfg.massBinning.findBin(massBinCenter)
+            assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} GeV"
+            outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_flat"
+            # outFileBaseName = f"{cfg.outFileDirName}/psAccData_weighted_pwa_SPD_flat"
+            outFileName     = f"{outFileBaseName}_{massBinIndex}.root"
+            print(f"Writing accepted phase-space events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit} weighted by intensity function into file '{outFileName}'")
+            weightAccPhaseSpaceWithIntensity(
+              intensityFormula   = momentResultsForBin.intensityFormula(
+                polarization = cfg.polarization,
+                thetaFormula = "theta",
+                phiFormula   = "phi",
+                PhiFormula   = "Phi",
+                printFormula = False,
+              ),
+              kinematicBinFilter = cfg.massBinning.binFilter(massBinIndex),
+              outFileName        = outFileName,
+              cfg                = cfg,
+            )
 
-      # merge trees with weighted MC data
-      outFileName = f"{outFileBaseName}.maxL_{cfg.maxL}.root"
-      cmd = f"hadd {outFileName} {outFileBaseName}_*.root"
-      print(f"Merging files: '{cmd}'")
-      gitInfo = subprocess.run(cmd, shell = True)
+          # merge trees with weighted MC data from different mass bins into single file
+          outFileName = f"{outFileBaseName}.maxL_{cfg.maxL}.root"
+          cmd = f"hadd {outFileName} {outFileBaseName}_*.root"
+          print(f"Merging files: '{cmd}'")
+          gitInfo = subprocess.run(cmd, shell = True)
 
-      timer.stop("Total execution time")
-      print(timer.summary)
+          timer.stop("Total execution time")
+          print(timer.summary)
