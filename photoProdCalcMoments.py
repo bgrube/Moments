@@ -284,6 +284,8 @@ def calculateAllMoments(
     momentCalculators.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
     momentCalculators.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
     momentCalculators.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
+    with open(f"{momentResultsFileBaseName}_phys.json", "w") as jsonFile:  # write results to also to JSON file
+      jsonFile.write(momentCalculators.momentResultsPhys.toJsonStr())
 
 
 if __name__ == "__main__":
