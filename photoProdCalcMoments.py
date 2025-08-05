@@ -316,15 +316,16 @@ if __name__ == "__main__":
     # 8,
   )
 
+  outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for tBinLabel in tBinLabels:
-    for maxL in maxLs:
-      for beamPolLabel in beamPolLabels:
+    for beamPolLabel in beamPolLabels:
+      # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+      # cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+      # cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
+      for maxL in maxLs:
         print(f"Performing moment analysis for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-        # cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-        # cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
-        cfg.outFileDirBaseName = f"{cfg.outFileDirBaseName}.{tBinLabel}/{beamPolLabel}"
-        cfg.maxL               = maxL
+        cfg.maxL = maxL
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
@@ -336,8 +337,8 @@ if __name__ == "__main__":
           print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
           with threadController.limit(limits = 4):
             print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
-            timer.start("Total execution time")
             print(f"Using configuration:\n{cfg}")
+            timer.start("Total execution time")
             calculateAllMoments(cfg, timer)
             timer.stop("Total execution time")
             print(timer.summary)

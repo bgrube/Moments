@@ -74,6 +74,7 @@ if __name__ == "__main__":
   momentsFileName = "_moments_phys.pkl"
 
   thisSourceFileName = os.path.basename(__file__)
+  outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for tBinLabel in tBinLabels:
     for maxL in maxLs:
       cfg.maxL = maxL
@@ -82,9 +83,9 @@ if __name__ == "__main__":
         # constructing input file names
         momentResultsFileNames = []
         for beamPolLabel in beamPolLabels:
-          cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{beamPolLabel}"
+          cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
           momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
-        cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}/{labelCombined}"
+        cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{labelCombined}"
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
         with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file

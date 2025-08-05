@@ -106,9 +106,10 @@ if __name__ == "__main__":
     8,
   )
 
+  outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
-      cfg.outFileDirBaseName = f"./plotsPhotoProdPiPiPol.{tBinLabel}.{beamPolLabel}"
+      cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Calculating moment values from partial-wave amplitudes for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
         cfg.maxL = maxL
