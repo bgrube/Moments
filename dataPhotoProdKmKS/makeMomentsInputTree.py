@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 import functools
 from scipy.special import cosdg, sindg
 import os
@@ -142,7 +143,14 @@ def setup(useRDataFrame: bool) -> None:
   )
 
 
+class DataSetType(Enum):
+    RDSig = 1
+    RDBkg = 2
+    MCSig = 3
+    MCGen = 4
+
 def plotHistsAndWriteTree(
+  dataSetType:     DataSetType,
   inputFileName:   str,
   fsTreeName:      str,
   fsCategory:      str,
@@ -151,13 +159,12 @@ def plotHistsAndWriteTree(
   beamPolAngleLab: float,
   eventWeight:     float,
   useRDataFrame:   bool,
-  useMCTruth:      bool,
-  plotLabel:       str,
 ) -> None:
   """Plots histograms and writes friend tree with variables for moment analysis"""
-  if useMCTruth:
+  MCLabel = ""
+  if dataSetType == DataSetType.MCGen:
     ROOT.FSTree.defineFourVector("MCGLUEXBEAM", "MCEnPB", "MCPxPB", "MCPyPB", "MCPzPB")
-  MCLabel = "MC" if useMCTruth else ""
+    MCLabel = "MC"
   getTH1F = functools.partial(  # create a partial function to avoid redundant arguments
       ROOT.FSModeHistogram.getTH1F,
       inputFileName,
@@ -171,13 +178,13 @@ def plotHistsAndWriteTree(
   massPiPiDef    = f"{massDef}(3a, 3b)"  # 3a = pi+ from Ks, 3b = pi- from Ks
   momTransferDef = f"-{massDef}2(GLUEXTARGET, -[p+], -[pi+])"
   hists: Dict[str, ROOT.TH1F] = {}
-  if not useMCTruth:
-    hists[f"h{plotLabel}Chi2Ndf"           ] = getTH1F("Chi2DOF",        "(100, 0, 25)",    cutString)
-    hists[f"h{plotLabel}RfDeltaT"          ] = getTH1F("RFDeltaT",       "(400, -20, 20)",  cutString)
-  hists[f"h{MCLabel}{plotLabel}BeamEnergy" ] = getTH1F(f"{MCLabel}EnPB", "(400, 2, 12)",    cutString)
-  hists[f"h{MCLabel}{plotLabel}MassKK"     ] = getTH1F(massKKDef,        "(100, 0.8, 2.5)", cutString)
-  hists[f"h{MCLabel}{plotLabel}MassPiPi"   ] = getTH1F(massPiPiDef,      "(100, 0.4, 0.6)", cutString)
-  hists[f"h{MCLabel}{plotLabel}MomTransfer"] = getTH1F(momTransferDef,   "(100, 0, 1)",     cutString)
+  if dataSetType != DataSetType.MCGen:
+    hists[f"h{dataSetType}Chi2Ndf"           ] = getTH1F("Chi2DOF",        "(100, 0, 25)",    cutString)
+    hists[f"h{dataSetType}RfDeltaT"          ] = getTH1F("RFDeltaT",       "(400, -20, 20)",  cutString)
+  hists[f"h{MCLabel}{dataSetType}BeamEnergy" ] = getTH1F(f"{MCLabel}EnPB", "(400, 2, 12)",    cutString)
+  hists[f"h{MCLabel}{dataSetType}MassKK"     ] = getTH1F(massKKDef,        "(100, 0.8, 2.5)", cutString)
+  hists[f"h{MCLabel}{dataSetType}MassPiPi"   ] = getTH1F(massPiPiDef,      "(100, 0.4, 0.6)", cutString)
+  hists[f"h{MCLabel}{dataSetType}MomTransfer"] = getTH1F(momTransferDef,   "(100, 0, 1)",     cutString)
 
   # angular variables
   # for beam + target -> X + recoil and X -> a + b (see FSBasic/FSMath.h)
@@ -199,16 +206,16 @@ def plotHistsAndWriteTree(
   bigPhiDef     = f"{MCLabel}POLPHI([Ks], [K-]; P0; [p+], [pi+]; {MCLabel}GLUEXBEAM)"
   bigPhiDegDef  = f"{bigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(bigPhiDef)}")
-  hists[f"h{MCLabel}{plotLabel}GjCosTheta"] = getTH1F(GjCosThetaDef,  "(100, -1, +1)",     cutString)
-  hists[f"h{MCLabel}{plotLabel}GjPhi"     ] = getTH1F(GjPhiDegDef,    "(100, -180, +180)", cutString)
-  hists[f"h{MCLabel}{plotLabel}HfCosTheta"] = getTH1F(HfCosThetaDef,  "(100, -1, +1)",     cutString)
-  hists[f"h{MCLabel}{plotLabel}HfPhi"     ] = getTH1F(HfPhiDegDef,    "(100, -180, +180)", cutString)
-  hists[f"h{MCLabel}{plotLabel}Phi"       ] = getTH1F(bigPhiDegDef,   "(100, -180, +180)", cutString)
+  hists[f"h{MCLabel}{dataSetType}GjCosTheta"] = getTH1F(GjCosThetaDef,  "(100, -1, +1)",     cutString)
+  hists[f"h{MCLabel}{dataSetType}GjPhi"     ] = getTH1F(GjPhiDegDef,    "(100, -180, +180)", cutString)
+  hists[f"h{MCLabel}{dataSetType}HfCosTheta"] = getTH1F(HfCosThetaDef,  "(100, -1, +1)",     cutString)
+  hists[f"h{MCLabel}{dataSetType}HfPhi"     ] = getTH1F(HfPhiDegDef,    "(100, -180, +180)", cutString)
+  hists[f"h{MCLabel}{dataSetType}Phi"       ] = getTH1F(bigPhiDegDef,   "(100, -180, +180)", cutString)
   ROOT.FSTree.defineFourVector("BEAMPOLANGLELAB", "0.0", f"{beamPolAngleLab}", "0.0", "0.0")  # dummy vector representing beam polarization orientation in lab frame
   myBigPhiDef    = f"{MCLabel}MYPOLPHI([p+], [pi+]; {MCLabel}GLUEXBEAM; BEAMPOLANGLELAB)"
   myBigPhiDegDef = f"{myBigPhiDef} * TMath::RadToDeg()"
   print(f"Defined macro: {ROOT.FSTree.expandVariable(myBigPhiDef)}")
-  hists[f"h{MCLabel}{plotLabel}MyPhi"     ] = getTH1F(myBigPhiDegDef, "(100, -180, +180)", cutString)
+  hists[f"h{MCLabel}{dataSetType}MyPhi"     ] = getTH1F(myBigPhiDegDef, "(100, -180, +180)", cutString)
 
   # draw histograms
   if useRDataFrame:
@@ -233,8 +240,8 @@ def plotHistsAndWriteTree(
   # varDefs.push_back(ROOT.std.pair[str, str]("phi",         HfPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("Phi",         bigPhiDef))
   varDefs.push_back(ROOT.std.pair[str, str]("PhiDeg",      bigPhiDegDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("mass",        massKKDef))
-  varDefs.push_back(ROOT.std.pair[str, str]("minusT",      momTransferDef))
+  varDefs.push_back(ROOT.std.pair[str, str]("mass",        "MCMASS([K-], [Ks])"                   if dataSetType == DataSetType.MCSig else massKKDef     ))  # use MC truth information for binning
+  varDefs.push_back(ROOT.std.pair[str, str]("minusT",      "-MCMASS2(GLUEXTARGET, -[p+], -[pi+])" if dataSetType == DataSetType.MCSig else momTransferDef))  # use MC truth information for binning
   varDefs.push_back(ROOT.std.pair[str, str]("eventWeight", f"{eventWeight}"))
   print(f"Writing friend tree to file '{inputFileName}.angles'")
   ROOT.FSModeTree.createFriendTree(inputFileName, fsTreeName, fsCategory, "angles", varDefs)
@@ -256,23 +263,28 @@ if __name__ == "__main__":
   useRDataFrame   = True
 
   # Fall 2018 data
-  dataToProcess: tuple[tuple[str, str, float, bool, str], ...] = (  # (data directory, file name, event weight, use MC truth, plot label)
-    ("data",       "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       False, "Sig"),
-    ("data",       "pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root",   -1.0 / 6.0, False, "Bkg"),
-    ("phaseSpace", "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       False, "MCSig"),  #TODO is this correct? shouldn't the MC truth info be used for binning?
-    ("phaseSpace", "pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root", 1.0,       True,  "Gen"),
+  dataToProcess: tuple[tuple[str, str, float, DataSetType], ...] = (  # (data directory, file name, event weight, use MC truth, data set type)
+    ("data",       "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       DataSetType.RDSig),
+    ("data",       "pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root",   -1.0 / 6.0, DataSetType.RDBkg),
+    ("phaseSpace", "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       DataSetType.MCSig),
+    ("phaseSpace", "pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root", 1.0,       DataSetType.MCGen),
   )
   beamPol         = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPol
   beamPolAngleLab = BEAM_POL_INFOS["2018_08"]["PARA_0"].beamPolPhiLab
-  #TODO Kevin: accidentals in MC data? small size of MC sample?
+  #TODO Kevin:
+  #  accidentals in MC data?
+  #  small size of MC sample?
+  #  why not flat KK mass distribution in MC data?
+  #  t distribution of MC data does not match real data?
 
   setup(useRDataFrame)
   ROOT.FSCut.defineCut("cutSet", "")  # all cuts are already applied
   cutString = "CUT(cutSet)"
 
-  for dataDir, fileName, eventWeight, useMCTruth, plotLabel in dataToProcess:
+  for dataDir, fileName, eventWeight, datasetType in dataToProcess:
     print(f"Processing data from file '{dataDir}/{fileName}' with event weight {eventWeight}")
     plotHistsAndWriteTree(
+      dataSetType     = datasetType,
       inputFileName   = f"{dataDir}/{fileName}",
       fsTreeName      = fsTreeName,
       fsCategory      = fsCategory,
@@ -281,8 +293,6 @@ if __name__ == "__main__":
       beamPolAngleLab = beamPolAngleLab,
       eventWeight     = eventWeight,
       useRDataFrame   = useRDataFrame,
-      useMCTruth      = useMCTruth,
-      plotLabel       = plotLabel,
     )
 
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogoff.FSROOT.C")
