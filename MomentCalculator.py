@@ -1155,9 +1155,9 @@ class MomentResult:
       M = qnIndex.M
       HLM = self[QnMomentIndex(momentIndex, L, M)].val
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
-      term = (f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "
-             + f"* [{qnIndex.label}] " if useMomentSymbols else f"* ({HLM.imag if momentIndex == 2 else HLM.real}) "
-             + f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}")
+      term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
+      term += f"* [{qnIndex.label}] " if useMomentSymbols else f"* ({HLM.imag if momentIndex == 2 else HLM.real}) "  # real or imaginary part of moment value
+      term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # real or imaginary part of spherical harmonic
       intensityComponentTerms[momentIndex].append(term)
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3
