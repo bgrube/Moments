@@ -190,7 +190,7 @@ def makeAllPlots(
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
-  momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl") if cfg.plotMeasuredMoments else None
+  momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl")
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
   if compareTo == "PWA":
@@ -247,7 +247,7 @@ def makeAllPlots(
       # plot moments in each mass bin
       chi2ValuesInMassBins: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # index: mass-bin index; index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
-        HMeas = None if momentResultsMeas    is None else momentResultsMeas   [massBinIndex]
+        HMeas = momentResultsMeas[massBinIndex]
         HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
@@ -430,7 +430,7 @@ def makeAllPlots(
           canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
-      if cfg.plotMeasuredMoments:
+      if True:
         H000s = (
           tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
           tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
@@ -454,7 +454,7 @@ def makeAllPlots(
         histRatio.SetMarkerStyle(ROOT.kFullCircle)
         histRatio.SetMarkerSize(0.75)
         histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
-        histRatio.SetMaximum(0.4)
+        histRatio.SetMaximum(0.15)
         histRatio.Draw("PEX0")
         canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
