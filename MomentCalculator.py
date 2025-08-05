@@ -16,6 +16,7 @@ from dataclasses import (
 )
 from enum import Enum
 import functools
+import json
 import math
 import numpy as np
 import nptyping as npt
@@ -762,6 +763,23 @@ class MomentValue:
     bsUncert  = float(np.std(bsSamples, ddof = 1))
     return (bsVal, bsUncert)
 
+  def toJsonDict(self) -> dict:
+    """Returns dictionary with moment value and uncertainty that can be serialized to JSON using `json.dumps(MomentValue.toJsonDict())`"""
+    return {
+      "momentIndex" : self.qn.momentIndex,
+      "L"           : self.qn.L,
+      "M"           : self.qn.M,
+      "valRe"       : self.val.real,
+      "uncertRe"    : self.uncertRe,
+      "valIm"       : self.val.imag,
+      "uncertIm"    : self.uncertIm,
+      "binCenters"  : {kinVar.name : binCenter for kinVar, binCenter in self.binCenters.items()},
+    }
+
+  def toJsonStr(self) -> str:
+    """Returns JSON string with moment value and uncertainty"""
+    return json.dumps(self.toJsonDict(), indent = 2)
+
 
 @dataclass(eq = False)
 class MomentResult:
@@ -1098,7 +1116,7 @@ class MomentResult:
       norm: complex = self._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
       self._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
 
-  def save(
+  def savePickle(
     self,
     pickleFileName: str,
   ) -> None:
@@ -1107,13 +1125,17 @@ class MomentResult:
       pickle.dump(self, file)
 
   @classmethod
-  def load(
+  def loadPickle(
     cls,
     pickleFileName: str,
   ) -> MomentResult:
     """Loads `MomentResult` from pickle file"""
     with open(pickleFileName, "rb") as file:
       return pickle.load(file)
+
+  def toJsonStr(self) -> str:
+    """Returns JSON string with moment values for all moments in kinematic bin"""
+    return json.dumps([momentValue.toJsonDict() for momentValue in self.values], indent = 2)
 
   def intensityFormula(
     self,
@@ -1328,7 +1350,7 @@ class MomentResultsKinematicBinning:
     for moment in self:
       moment.normalize()
 
-  def save(
+  def savePickle(
     self,
     pickleFileName: str,
   ) -> None:
@@ -1337,13 +1359,23 @@ class MomentResultsKinematicBinning:
       pickle.dump(self, file)
 
   @classmethod
-  def load(
+  def loadPickle(
     cls,
     pickleFileName: str,
   ) -> MomentResultsKinematicBinning:
     """Loads `MomentResultsKinematicBinning` from pickle file"""
     with open(pickleFileName, "rb") as file:
       return pickle.load(file)
+
+  def toJsonStr(self) -> str:
+    """Returns JSON string with moment values in all kinematic bins"""
+    return json.dumps(
+      [
+        momentValue.toJsonDict() for momentResult in self
+                                 for momentValue in momentResult.values
+      ],
+      indent = 2,
+    )
 
 
 @dataclass

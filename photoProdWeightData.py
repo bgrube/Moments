@@ -91,7 +91,7 @@ if __name__ == "__main__":
       print(f"Using configuration:\n{cfg}")
 
       momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-      momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
+      momentResults = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
       # momentResults = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl")
       for momentResult in momentResults:
         intensityFormula = momentResult.intensityFormula(

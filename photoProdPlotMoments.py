@@ -190,9 +190,9 @@ def makeAllPlots(
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
-  momentResultsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_meas.pkl") if cfg.plotMeasuredMoments else None
+  momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl") if cfg.plotMeasuredMoments else None
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
-  momentResultsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_phys.pkl")
+  momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
   if compareTo == "PWA":
     print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
   momentResultsCompare, momentResultsCompareLabel, momentResultsCompareColor = (
@@ -202,7 +202,7 @@ def makeAllPlots(
       ROOT.kGray + 2,
     ) if compareTo == "CLAS" else
     (
-      MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPD.pkl"),
+      MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPD.pkl"),
       "PWA #it{S} #plus #it{P} #plus #it{D}",
       # MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_pwa_SPDF.pkl"),
       # "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}",
@@ -552,9 +552,9 @@ def makeAllPlots(
     # load accepted phase-space moments
     try:
       print(f"Reading measured moments for accepted phase-space MC from file '{momentResultsFileBaseName}_accPs_meas.pkl'")
-      momentResultsAccPsMeas = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_accPs_meas.pkl")
+      momentResultsAccPsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_accPs_meas.pkl")
       print(f"Reading physical moments for accepted phase-space MC from file '{momentResultsFileBaseName}_accPs_phys.pkl'")
-      momentResultsAccPsPhys = MomentResultsKinematicBinning.load(f"{momentResultsFileBaseName}_accPs_phys.pkl")
+      momentResultsAccPsPhys = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_accPs_phys.pkl")
     except FileNotFoundError as e:
       print(f"Warning: File not found. Cannot plot accepted phase-space moments. {e}")
     else:

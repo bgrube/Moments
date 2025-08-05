@@ -94,11 +94,11 @@ if __name__ == "__main__":
           print(f"Using configuration:\n{cfg}")
 
           print(f"Combining moments from {momentResultsFileNames}")
-          momentResultsToCombine = tuple(MomentResultsKinematicBinning.load(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
+          momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
           momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
           momentResultsCombinedFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}"
           print(f"Writing PWA moments to file '{momentResultsCombinedFileName}'")
-          momentResultsCombined.save(momentResultsCombinedFileName)
+          momentResultsCombined.savePickle(momentResultsCombinedFileName)
 
           timer.stop("Total execution time")
           print(timer.summary)

@@ -196,7 +196,7 @@ if __name__ == "__main__":
               normalize    = cfg.normalizeMoments
             )
             print(f"Writing PWA moments to file '{momentResultsFileName}'")
-            momentResultsPwa.save(momentResultsFileName)
+            momentResultsPwa.savePickle(momentResultsFileName)
 
             timer.stop("Total execution time")
             print(timer.summary)

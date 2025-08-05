@@ -143,7 +143,7 @@ if __name__ == "__main__":
     print(f"Loading moment results from directory {fitResultDirName}")
     momentResultsPhysFileName = f"{fitResultDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
     try:
-      momentResultsPhys = MomentResultsKinematicBinning.load(momentResultsPhysFileName)
+      momentResultsPhys = MomentResultsKinematicBinning.loadPickle(momentResultsPhysFileName)
     except FileNotFoundError as e:
       print(f"Cannot not find file '{momentResultsPhysFileName}'. Skipping directory '{fitResultDirName}'")
       continue

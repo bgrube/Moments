@@ -274,16 +274,16 @@ def calculateAllMoments(
     with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of phase-space MC data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
       momentCalculators.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
-      momentCalculators.momentResultsMeas.save(f"{momentResultsFileBaseName}_accPs_meas.pkl")
-      momentCalculators.momentResultsPhys.save(f"{momentResultsFileBaseName}_accPs_phys.pkl")
+      momentCalculators.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_accPs_meas.pkl")
+      momentCalculators.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_accPs_phys.pkl")
 
   # calculate moments of real data and write them to files
   #TODO calculate normalized and unnormalized moments
   with timer.timeThis(f"Time to calculate moments of real data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads"):
     print(f"Calculating moments of real data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
     momentCalculators.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
-    momentCalculators.momentResultsMeas.save(f"{momentResultsFileBaseName}_meas.pkl")
-    momentCalculators.momentResultsPhys.save(f"{momentResultsFileBaseName}_phys.pkl")
+    momentCalculators.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
+    momentCalculators.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
 
 
 if __name__ == "__main__":

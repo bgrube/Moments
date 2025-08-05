@@ -327,9 +327,9 @@ if __name__ == "__main__":
     with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
       moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
-      momentsPwa.momentResultsPhys.save(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
-      moments.momentResultsMeas.save   (f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
-      moments.momentResultsPhys.save   (f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      momentsPwa.momentResultsPhys.savePickle(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
+      moments.momentResultsMeas.savePickle   (f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
+      moments.momentResultsPhys.savePickle   (f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
 
     #TODO move into separate plotting script
     with timer.timeThis(f"Time to plot moments of real data"):
@@ -351,9 +351,9 @@ if __name__ == "__main__":
         )
 
       # load moment results from files
-      momentResultsTrue = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
-      momentResultsMeas = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
-      momentResultsPhys = MomentResultsKinematicBinning.load(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      momentResultsTrue = MomentResultsKinematicBinning.loadPickle(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
+      momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
+      momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
