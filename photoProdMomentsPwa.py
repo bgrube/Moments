@@ -29,7 +29,7 @@ from MomentCalculator import (
   MomentResultsKinematicBinning,
   QnWaveIndex,
 )
-from photoProdCalcMoments import (
+from AnalysisConfig import (
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_PWA,
 )

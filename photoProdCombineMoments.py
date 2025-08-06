@@ -17,11 +17,8 @@ import os
 from scipy.stats import moment
 from wurlitzer import pipes, STDOUT
 
-from MomentCalculator import (
-  MomentResult,
-  MomentResultsKinematicBinning,
-)
-from photoProdCalcMoments import (
+from MomentCalculator import MomentResultsKinematicBinning
+from AnalysisConfig import (
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_PWA,
 )

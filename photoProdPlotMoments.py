@@ -23,7 +23,7 @@ import pandas as pd
 import ROOT
 from wurlitzer import pipes, STDOUT
 
-from photoProdCalcMoments import (
+from AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
   CFG_NIZAR,
