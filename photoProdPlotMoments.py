@@ -185,7 +185,7 @@ def makeAllPlots(
   """Generates all plots for the given analysis configuration"""
   outFileType = "pdf"
   # outFileType = "root"
-  # load moments from files``
+  # load moments from files
   momentIndices = MomentIndices(cfg.maxL)
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
@@ -463,10 +463,9 @@ def makeAllPlots(
       elif cfg.plotMeasuredMoments:
         print(f"Overlaying measured intensity distribution from file '{cfg.dataFileName}'")
         # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-        histIntMeas = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName) \
-                          .Histo1D(
-                            ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
-                          ).GetValue()
+        histIntMeas = cfg.loadData(AnalysisConfig.DataType.REAL_DATA).Histo1D(
+          ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
+        ).GetValue()
         for binIndex, H000Meas in enumerate(H000s[0]):
           H000Meas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
         plotMoments(
@@ -483,12 +482,9 @@ def makeAllPlots(
     with timer.timeThis(f"Time to plot angular distributions"):
       print("Plotting angular distributions")
       # load all signal and phase-space data
-      print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
-      data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
-      print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
-      dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
-      print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
-      dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+      data      = cfg.loadData(AnalysisConfig.DataType.REAL_DATA)
+      dataPsAcc = cfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE)
+      dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
       # plot total angular distribution
       plotAngularDistr(
         dataPsAcc         = dataPsAcc,
@@ -574,7 +570,7 @@ def makeAllPlots(
             plotLegend        = False,
           )
         # plot accepted phase-space moments in each mass bin
-        dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+        dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
         for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
           binLabel = MomentCalculator.binLabel(HPhys)
           binTitle = MomentCalculator.binTitle(HPhys)
