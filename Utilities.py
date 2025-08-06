@@ -27,7 +27,7 @@ def printGitInfo() -> None:
 
 
 def makeDirPath(dirPath: str) -> str:
-  """Create path to directory and return directory path as given"""
+  """Create path to directory and return directory path as given by argument"""
   try:
     os.makedirs(dirPath, exist_ok = False)
   except FileExistsError:

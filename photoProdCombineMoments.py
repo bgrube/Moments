@@ -81,8 +81,10 @@ if __name__ == "__main__":
         momentResultsFileNames = []
         for beamPolLabel in beamPolLabels:
           cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
+          cfg.init()
           momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{labelCombined}"
+        cfg.init()
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
         with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file

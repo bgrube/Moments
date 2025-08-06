@@ -29,6 +29,7 @@ from AnalysisConfig import (
 )
 from MomentCalculator import MomentResultsKinematicBinning
 from PlottingUtilities import setupPlotStyle
+import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
 
@@ -100,6 +101,7 @@ if __name__ == "__main__":
       for maxL in maxLs:
         print(f"Generating weighted MC for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
         cfg.maxL = maxL
+        cfg.init()
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
@@ -139,7 +141,7 @@ if __name__ == "__main__":
           # merge trees with weighted MC data from different mass bins into single file
           outFileName = f"{outFileBaseName}.maxL_{cfg.maxL}.root"
           cmd = f"hadd {outFileName} {outFileBaseName}_*.root"
-          print(f"Merging files: '{cmd}'")
+          print(f"Merging files from all mass bins: '{cmd}'")
           gitInfo = subprocess.run(cmd, shell = True)
 
           timer.stop("Total execution time")

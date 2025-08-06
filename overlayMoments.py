@@ -26,7 +26,6 @@ from PlottingUtilities import (
   setCbFriendlyStyle,
   setupPlotStyle,
 )
-# import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
 
@@ -105,37 +104,48 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg.init()
   # normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first fit result
   normToFirstResult = False
   tBinLabel         = "tbin_0.1_0.2"
+  # tBinLabel         = "tbin_0.1_0.2.Gj.pi+"
+  # tBinLabel         = "tbin_0.1_0.2.trackDistFdc"
   # tBinLabel         = "tbin_0.2_0.3"
   fitResults: tuple[tuple[str, str, float | None], ...] = (  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",   "Para #Phi_{0} = 0#circ",   None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/PARA_135.maxL_4", "Para #Phi_{0} = 135#circ", None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/PERP_45.maxL_4",  "Perp #Phi_{0} = 45#circ",  None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/PERP_90.maxL_4",  "Perp #Phi_{0} = 90#circ",  None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",   "Para #Phi_{0} = 0#circ",   None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_135.maxL_4", "Para #Phi_{0} = 135#circ", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PERP_45.maxL_4",  "Perp #Phi_{0} = 45#circ",  None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PERP_90.maxL_4",  "Perp #Phi_{0} = 90#circ",  None),
     #
-    # (f"{cfg._outFileDirBaseName}.tbin_0.1_0.2/PARA_0.maxL_4", "0.1 < #minus t < 0.2 GeV^{2}", None),
-    # (f"{cfg._outFileDirBaseName}.tbin_0.2_0.3/PARA_0.maxL_4", "0.2 < #minus t < 0.3 GeV^{2}", None),
+    # (f"{cfg.outFileDirBaseName}.tbin_0.1_0.2/PARA_0.maxL_4", "0.1 < #minus t < 0.2 GeV^{2}", None),
+    # (f"{cfg.outFileDirBaseName}.tbin_0.2_0.3/PARA_0.maxL_4", "0.2 < #minus t < 0.3 GeV^{2}", None),
     #
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_90.maxL_4",      "0#circ and 90#circ",               None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/-45_45.maxL_4",    "#minus 45#circ and #plus 45#circ", None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_-45.maxL_4",     "0#circ and #minus 45#circ",        None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/45_90.maxL_4",     "45#circ and 90#circ",              None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4", "4 Orientations",                   0.5),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4", "4 Orientations",                   None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_90.maxL_4",      "0#circ and 90#circ",               None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/-45_45.maxL_4",    "#minus 45#circ and #plus 45#circ", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_-45.maxL_4",     "0#circ and #minus 45#circ",        None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/45_90.maxL_4",     "45#circ and 90#circ",              None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4", "4 Orientations",                   0.5),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4", "4 Orientations",                   None),
     #
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_90.maxL_4", "0#circ and 90#circ, L_{max} = 4", None),
-    # # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_90.maxL_5", "0#circ and 90#circ, L_{max} = 5", None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_90.maxL_6", "0#circ and 90#circ, L_{max} = 6", None),
-    # # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_90.maxL_7", "0#circ and 90#circ, L_{max} = 7", None),
-    # (f"{cfg._outFileDirBaseName}.{tBinLabel}/0_90.maxL_8", "0#circ and 90#circ, L_{max} = 8", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_90.maxL_4", "0#circ and 90#circ, L_{max} = 4", None),
+    # # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_90.maxL_5", "0#circ and 90#circ, L_{max} = 5", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_90.maxL_6", "0#circ and 90#circ, L_{max} = 6", None),
+    # # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_90.maxL_7", "0#circ and 90#circ, L_{max} = 7", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/0_90.maxL_8", "0#circ and 90#circ, L_{max} = 8", None),
     #
-    (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4", "4 Orientations, L_{max} = 4", None),
-    (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_6", "4 Orientations, L_{max} = 6", None),
-    (f"{cfg._outFileDirBaseName}.{tBinLabel}/allOrient.maxL_8", "4 Orientations, L_{max} = 8", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4", "4 Orientations, L_{max} = 4", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_6", "4 Orientations, L_{max} = 6", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_8", "4 Orientations, L_{max} = 8", None),
+    #
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4",     "New", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/allOrient.maxL_4.bak", "Old", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",        "#pi^{-} Analyzer", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}.Hf.pi+/PARA_0.maxL_4", "#pi^{+} Analyzer", None),
+    #
+    (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",     "LinAlg", None),
+    (f"{cfg.outFileDirBaseName}.Fit.{tBinLabel}/PARA_0.maxL_4", "Fit",    None),
   )
-  outputDirName = Utilities.makeDirPath(f"./plotsPhotoProdPiPi{'Unpol' if cfg.polarization is None else 'Pol'}.overlay")
+  outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}.overlay")
 
   # load moment results
   momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)

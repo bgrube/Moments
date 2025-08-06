@@ -649,6 +649,7 @@ if __name__ == "__main__":
       for maxL in maxLs:
         print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
         cfg.maxL = maxL
+        cfg.init()
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
