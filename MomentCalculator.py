@@ -795,6 +795,7 @@ class MomentResult:
   _V_ImImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of imaginary parts of moment values with flat indices
   _V_ReImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # cross-covariance matrix of real and imaginary parts of moment values with flat indices; !NOTE! this matrix is _not_ symmetric
   _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
+  _valid:              bool                                                                      = field(init = False)  # indicates whether instance contains valid values
 
   def __post_init__(self) -> None:
     nmbMoments = len(self)
@@ -803,6 +804,24 @@ class MomentResult:
     self._V_ImImFlatIndex    = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
     self._V_ReImFlatIndex    = np.zeros((nmbMoments, nmbMoments),               dtype = np.float64)
     self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = np.complex128)
+    self._valid = False
+
+  @property
+  def valid(self) -> bool:
+    """Returns whether this `MomentResult` instance contains valid values"""
+    return self._valid
+
+  @valid.setter
+  def valid(
+    self,
+    value: bool
+  ) -> None:
+    """Sets whether this `MomentResult` instance contains valid values"""
+    self._valid = value
+
+  def __bool__(self) -> bool:
+    """Defines truthiness by returning whether this `MomentResult` instance contains valid values"""
+    return self.valid
 
   def hasSameMomentIndicesAndBinCenters(
     self,
@@ -893,6 +912,7 @@ class MomentResult:
     self._V_ReReFlatIndex += other._V_ReReFlatIndex
     self._V_ImImFlatIndex += other._V_ImImFlatIndex
     self._V_ReImFlatIndex += other._V_ReImFlatIndex
+    self._valid = self._valid and other._valid  # only valid if both summands are valid
     return self
 
   def __add__(
@@ -945,6 +965,8 @@ class MomentResult:
     subscript: int | QnMomentIndex | slice,
   ) -> MomentValue | list[MomentValue]:
     """Returns moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access moment values")
     # turn quantum-number index to flat index
     flatIndex: int | slice = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     if isinstance(flatIndex, slice):
@@ -977,6 +999,8 @@ class MomentResult:
     subscript: int | QnMomentIndex
   ) -> bool:
     """Returns whether moment with given flat index or quantum-number index exists"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access moment values")
     try:
       flatIndex: int = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
     except KeyError:
@@ -990,6 +1014,8 @@ class MomentResult:
   @property
   def values(self) -> Generator[MomentValue, None, None]:
     """Generator that yields moment values"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access moment values")
     for flatIndex in self.indices.flatIndices:
       yield self[flatIndex]
 
@@ -1003,6 +1029,8 @@ class MomentResult:
     realParts:       tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
   ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
     """Returns 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access covariance values")
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
     flatIndexPair: tuple[int, int] = tuple(
@@ -1043,6 +1071,8 @@ class MomentResult:
     realParts:       tuple[bool, bool],  # switches between real part (True) and imaginary part (False) of the two moments
   ) -> npt.NDArray[npt.Shape["2, 2"], npt.Float64]:
     """Returns bootstrap estimate of 2 x 2 covariance matrix of real or imaginary parts of two moments given by flat or quantum-number indices"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access covariance values")
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
     assert len(realParts      ) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
     flatIndexPair: tuple[int, int] = tuple(
@@ -1061,6 +1091,8 @@ class MomentResult:
   def compositeCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Float64]:
     """Returns real-valued composite covariance matrix for all moments indexed by flat index"""
     # Eq. (11) in https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6125&version=2
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access covariance values")
     return np.block([
       [self._V_ReReFlatIndex,   self._V_ReImFlatIndex],
       [self._V_ReImFlatIndex.T, self._V_ImImFlatIndex],
@@ -1072,12 +1104,16 @@ class MomentResult:
              npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128]]:
     """Returns tuple with complex-valued Hermitian covariance matrix and pseudo-covariance matrix for all moments indexed by flat index"""
     # Eqs. (101) and (102)
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access covariance values")
     return (self._V_ReReFlatIndex + self._V_ImImFlatIndex + 1j * (self._V_ReImFlatIndex.T - self._V_ReImFlatIndex),  # Hermitian covariance matrix
             self._V_ReReFlatIndex - self._V_ImImFlatIndex + 1j * (self._V_ReImFlatIndex.T + self._V_ReImFlatIndex))  # pseudo-covariance matrix
 
   @property
   def augmentedCovarianceMatrix(self) -> npt.NDArray[npt.Shape["2 * nmbMoments, 2 * nmbMoments"], npt.Complex128]:
     """Returns augmented covariance matrix for all moments indexed by flat index"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot access covariance values")
     V_Hermit, V_pseudo = self.hermitianAndPseudoCovarianceMatrix
     # Eq. (95)
     return np.block([
@@ -1099,6 +1135,8 @@ class MomentResult:
 
   def normalize(self) -> None:
     """Scales all moment values by common factor such that H_0(0, 0) = 1"""
+    if not self:
+      raise ValueError("MomentResult is not valid; cannot normalize")
     norm: complex = self[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]].val  # get value of H_0(0, 0)
     self._valsFlatIndex /= norm
     # since H_0(0, 0) might be complex-valued, we have to
@@ -1182,6 +1220,7 @@ def constructMomentResultFrom(
   indices:      MomentIndices,  # index mapping and iterators
   momentValues: Sequence[MomentValue],
 ) -> MomentResult:
+  """Constructs `MomentResult` instance from given moment values; !Note! only diagonal elements of covariance matrix are set"""
   # ensure that all moment values have the same bin centers, labels, and number of bootstrap samples
   assert all(momentValues[0].binCenters         == momentValue.binCenters         for momentValue in momentValues[1:]), "Moment values must have the same bin centers"
   assert all(momentValues[0].label              == momentValue.label              for momentValue in momentValues[1:]), "Moment values must have the same label"
@@ -1212,6 +1251,7 @@ def constructMomentResultFrom(
         break
     if not foundMomentValue:
       print(f"Warning: no moment value found for {qnIndex}. Assuming value of 0.")
+  momentResult.valid = True
   return momentResult
 
 #TODO add member function to calculate chi2 of another MomentResult w.r.t. self
