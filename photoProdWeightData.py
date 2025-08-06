@@ -46,7 +46,7 @@ def weightAccPhaseSpaceWithIntensity(
 ) -> None:
   """Weight accepted phase-space MC data with given intensity formula"""
   # read accepted phase-space MC data
-  psAccData = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName).Filter(kinematicBinFilter)
+  psAccData = cfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE).Filter(kinematicBinFilter)
   nmbPsAccEvents = psAccData.Count().GetValue()
   print(f"File '{cfg.psAccFileName}' contains {nmbPsAccEvents} events in bin '{kinematicBinFilter}'")
   # calculate intensity weight and random number in [0, 1] for each event

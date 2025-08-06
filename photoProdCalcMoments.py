@@ -53,20 +53,17 @@ def calculateAllMoments(
   momentCalculators = MomentCalculatorsKinematicBinning([])
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
-    print(f"Loading real data from tree '{cfg.treeName}' in file '{cfg.dataFileName}'")
-    data = ROOT.RDataFrame(cfg.treeName, cfg.dataFileName)
+    data = cfg.loadData(AnalysisConfig.DataType.REAL_DATA)
     if limitToDataEntryRange is not None:
       print(f"Limiting analysis to entry range [{limitToDataEntryRange[0]}, {limitToDataEntryRange[1]}) of real data")
       data = data.Range(*limitToDataEntryRange)
     print(f"Loaded {data.Count().GetValue()} real-data events")
-    print(f"Loading accepted phase-space data from tree '{cfg.treeName}' in file '{cfg.psAccFileName}'")
-    dataPsAcc = ROOT.RDataFrame(cfg.treeName, cfg.psAccFileName)
+    dataPsAcc = cfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE)
     if cfg.limitNmbPsAccEvents > 0:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
     dataPsGen = None
     if cfg.psGenFileName is not None:
-      print(f"Loading generated phase-space data from tree '{cfg.treeName}' in file '{cfg.psGenFileName}'")
-      dataPsGen = ROOT.RDataFrame(cfg.treeName, cfg.psGenFileName)
+      dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
     else:
       print("??? Warning: File name for generated phase-space data was not provided. Cannot calculate acceptance correctly.")
     for massBinIndex, massBinCenter in enumerate(cfg.massBinning):

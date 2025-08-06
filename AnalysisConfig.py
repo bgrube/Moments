@@ -8,6 +8,9 @@ from dataclasses import (
   dataclass,
   field,
 )
+from enum import Enum, auto
+
+import ROOT
 
 from MomentCalculator import KinematicBinningVariable
 from PlottingUtilities import HistAxisBinning
@@ -74,6 +77,30 @@ class AnalysisConfig:
     self.massBinning.var   = self.binVarMass
     if createOutFileDir:
       Utilities.makeDirPath(self.outFileDirName)
+
+  class DataType(Enum):
+    REAL_DATA             = auto()
+    # REAL_DATA_SIGNAL      = auto()
+    # REAL_DATA_BACKGROUND  = auto()
+    GENERATED_PHASE_SPACE = auto()
+    ACCEPTED_PHASE_SPACE  = auto()
+
+  def loadData(
+    self,
+    dataType: AnalysisConfig.DataType,
+  ) -> ROOT.RDataFrame:
+    """Returns a ROOT RDataFrame with given data type"""
+    if dataType == AnalysisConfig.DataType.REAL_DATA:
+      print(f"Loading real data from tree '{self.treeName}' in file '{self.dataFileName}'")
+      return ROOT.RDataFrame(self.treeName, self.dataFileName)
+    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+      print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
+      return ROOT.RDataFrame(self.treeName, self.psAccFileName)
+    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+      print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
+      return ROOT.RDataFrame(self.treeName, self.psGenFileName)
+    else:
+      raise ValueError(f"Unknown data type: {dataType}")
 
 
 # configurations for unpolarized pi+ pi- data

@@ -57,6 +57,7 @@
 			"fopenmp",
 			"FSROOT",
 			"FTOT",
+			"fval",
 			"Gaus",
 			"gausn",
 			"gethostname",
