@@ -14,7 +14,7 @@ from dataclasses import (
   fields,
   InitVar,
 )
-from enum import Enum
+from enum import Enum, auto
 import functools
 import json
 import math
@@ -62,7 +62,7 @@ def cachedClebschGordan(
 @dataclass(frozen = True)  # immutable
 class QnWaveIndex:
   """Immutable container class that stores information about quantum-number indices of two-pseudoscalar partial-waves in reflectivity basis"""
-  refl: int | None  # reflectivity: +-1 for polarized photoproduction; `None`` for unpolarized production
+  refl: int | None  # reflectivity: +-1 for polarized photoproduction; `None` for unpolarized production
   l:    int  # orbital angular momentum
   m:    int  # projection quantum number of l
 
@@ -1447,27 +1447,29 @@ class MomentCalculator:
       self._integralMatrix.loadOrCalculate(self.integralFileName)
     self._integralMatrix.save(self.integralFileName)
 
-  MomentDataSource = Enum("MomentDataSource", ("DATA", "ACCEPTED_PHASE_SPACE"))
+  class DataSourceType(Enum):
+    REAL_DATA            = auto()
+    ACCEPTED_PHASE_SPACE = auto()
 
   def calculateMoments(
     self,
-    dataSource:          MomentDataSource = MomentDataSource.DATA,  # type of data to calculate moments from
-    normalize:           bool             = True,   # if set physical moments are normalized to H_0(0, 0)
-    nmbBootstrapSamples: int              = 0,      # number of bootstrap samples; 0 means no bootstrapping
-    bootstrapSeed:       int              = 12345,  # seed for random number generator used for bootstrap samples
+    dataSourceType:      DataSourceType = DataSourceType.REAL_DATA,  # type of data to calculate moments from
+    normalize:           bool           = True,   # if set physical moments are normalized to H_0(0, 0)
+    nmbBootstrapSamples: int            = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapSeed:       int            = 12345,  # seed for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
     dataSet        = None
     integralMatrix = self._integralMatrix
-    if dataSource == self.MomentDataSource.DATA:
+    if dataSourceType == self.DataSourceType.REAL_DATA:
       # calculate moments of data
       dataSet = self.dataSet
-    elif dataSource == self.MomentDataSource.ACCEPTED_PHASE_SPACE:
+    elif dataSourceType == self.DataSourceType.ACCEPTED_PHASE_SPACE:
       # calculate moments of acceptance-corrected phase space; physical moments should all be 0 except H_0(0, 0)
       dataSet = dataclasses.replace(self.dataSet, data = self.dataSet.phaseSpaceData)
     else:
-      raise ValueError(f"Unknown data source '{dataSource}'")
+      raise ValueError(f"Unknown data source '{dataSourceType}'")
     print("Reading input data for moment calculation")
     beamPol, thetas, phis, Phis, eventWeights = readInputData(
       polarization = dataSet.polarization,
@@ -1834,7 +1836,7 @@ class MomentCalculator:
     # use successful fit with lowest NLL value to fill `_HPhys`
     if successfulFitMinuits:
       # bestFitMinuit = sorted(successfulFitMinuits, lambda minuit: minuit.fmin.fval)[0]  # select fit with lowest NLL
-      bestFitMinuit = successfulFitMinuits[0]
+      bestFitMinuit = successfulFitMinuits[0]  #TODO clarify why taking the first successful fit is okay
       self._convertIminuitToMomentResult(bestFitMinuit, normalize = normalize)
     else:
       print(f"Warning: No successful fits found. Cannot set physical moment values for kinematic bin {self.binCenters}.")
@@ -1898,7 +1900,7 @@ class MomentCalculatorsKinematicBinning:
 
   def calculateMoments(
     self,
-    dataSource:          MomentCalculator.MomentDataSource = MomentCalculator.MomentDataSource.DATA,  # type of data to calculate moments from
+    dataSourceType:      MomentCalculator.DataSourceType = MomentCalculator.DataSourceType.REAL_DATA,  # type of data to calculate moments from
     normalize:           bool = True,   # if set physical moments are normalized to H_0(0, 0)
     nmbBootstrapSamples: int  = 0,      # number of bootstrap samples; 0 means no bootstrapping
     bootstrapSeed:       int  = 12345,  # seed for random number generator used for bootstrap samples
@@ -1906,7 +1908,7 @@ class MomentCalculatorsKinematicBinning:
     """Calculates moments for all kinematic bins using given data source"""
     for kinBinIndex, momentsInBin in enumerate(self):
       print(f"Calculating moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
-      momentsInBin.calculateMoments(dataSource, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
+      momentsInBin.calculateMoments(dataSourceType, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
 
   def fitMomentsMultipleAttempts(
     self,

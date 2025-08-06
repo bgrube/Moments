@@ -115,7 +115,7 @@ def calculateAllMoments(
   if cfg.calcAccPsMoments:
     with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of phase-space MC data for {len(momentCalculators)} bins using {nmbOpenMpThreads} OpenMP threads")
-      momentCalculators.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
+      momentCalculators.calculateMoments(dataSourceType = MomentCalculator.DataSourceType.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
       momentCalculators.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_accPs_meas.pkl")
       momentCalculators.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_accPs_phys.pkl")
 
