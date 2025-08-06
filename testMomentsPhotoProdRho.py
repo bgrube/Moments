@@ -210,7 +210,7 @@ if __name__ == "__main__":
 
     # calculate moments of accepted phase-space data
     with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
-      momentCalculator.calculateMoments(dataSource = MomentCalculator.MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE)
+      momentCalculator.calculateMoments(dataSourceType = MomentCalculator.MomentCalculator.DataSourceType.ACCEPTED_PHASE_SPACE)
       # print all moments
       print(f"Measured moments of accepted phase-space data\n{momentCalculator.HMeas}")
       print(f"Physical moments of accepted phase-space data\n{momentCalculator.HPhys}")

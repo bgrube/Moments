@@ -283,7 +283,7 @@ if __name__ == "__main__":
       # calculate moments of accepted phase-space data
       with timer.timeThis(f"Time to calculate moments of phase-space MC data using {nmbOpenMpThreads} OpenMP threads"):
         print(f"Calculating moments of phase-space MC data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
-        moments.calculateMoments(dataSource = MomentCalculator.MomentDataSource.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
+        moments.calculateMoments(dataSourceType = MomentCalculator.DataSourceType.ACCEPTED_PHASE_SPACE, normalize = normalizeMoments)
         # plot accepted phase-space moments in each kinematic bin
         #TODO move into separate plotting script
         for massBinIndex, momentResultInBin in enumerate(moments):
