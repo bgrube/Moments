@@ -1409,10 +1409,10 @@ class MomentResultsKinematicBinning:
       return pickle.load(file)
 
   def toJsonStr(self) -> str:
-    """Returns JSON string with moment values in all kinematic bins"""
+    """Returns JSON string with valid moment values in all kinematic bins"""
     return json.dumps(
       [
-        momentValue.toJsonDict() for momentResult in self
+        momentValue.toJsonDict() for momentResult in self if momentResult
                                  for momentValue in momentResult.values
       ],
       indent = 2,
@@ -1440,9 +1440,9 @@ class MomentCalculator:
   dataSet:              DataSet  # info on data samples
   binCenters:           dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
   integralFileBaseName: str = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  HMeas:                MomentResult | None = None  # measured moments; must either be given or calculated by calling calculateMoments()
+  HPhys:                MomentResult | None = None  # physical moments; must either be given or calculated by calling calculateMoments()
   _integralMatrix:      AcceptanceIntegralMatrix | None = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
-  _HMeas:               MomentResult | None = None  # measured moments; must either be given or calculated by calling calculateMoments()
-  _HPhys:               MomentResult | None = None  # physical moments; must either be given or calculated by calling calculateMoments()
 
   def __post_init__(self) -> None:
     # set polarized moments case of `indices` according to info provided by `dataSet`
@@ -1450,6 +1450,19 @@ class MomentCalculator:
       self.indices.setPolarized(False)
     else:
       self.indices.setPolarized(True)
+    # initialize `MomentResults` if None
+    if self.HMeas is None:
+      self.HMeas = MomentResult(
+        indices    = self.indices,
+        binCenters = self.binCenters,
+        label      = "meas",
+      )
+    if self.HPhys is None:
+      self.HPhys = MomentResult(
+        indices    = self.indices,
+        binCenters = self.binCenters,
+        label      = "phys",
+      )
 
   # accessors that guarantee existence of optional fields
   @property
@@ -1457,18 +1470,6 @@ class MomentCalculator:
     """Returns acceptance integral matrix"""
     assert self._integralMatrix is not None, "self._integralMatrix must not be None"
     return self._integralMatrix
-
-  @property
-  def HMeas(self) -> MomentResult:
-    """Returns physical moments"""
-    assert self._HMeas is not None, "self._HMeas must not be None"
-    return self._HMeas
-
-  @property
-  def HPhys(self) -> MomentResult:
-    """Returns physical moments"""
-    assert self._HPhys is not None, "self._HPhys must not be None"
-    return self._HPhys
 
   @property
   def integralFileName(self) -> str:
@@ -1520,13 +1521,8 @@ class MomentCalculator:
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = np.complex128)
     bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
-    self._HMeas = MomentResult(
-      indices             = self.indices,
-      binCenters          = self.binCenters,
-      label               = "meas",
-      nmbBootstrapSamples = nmbBootstrapSamples,
-      bootstrapSeed       = bootstrapSeed,
-    )
+    self.HMeas.nmbBootstrapSamples = nmbBootstrapSamples
+    self.HMeas.bootstrapSeed       = bootstrapSeed
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(
@@ -1537,40 +1533,35 @@ class MomentCalculator:
         beamPol,
       ))  # Eq. (176)
       weightedSum = eventWeights.dot(fMeas[flatIndex])
-      self._HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
+      self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
       for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
         # resample data
         fMeasBsSample        = fMeas[flatIndex][bsDataIndices]
         eventWeightsBsSample = eventWeights    [bsDataIndices]
         # calculate bootstrap sample
-        self._HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
+        self.HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181) #TODO update eq numbers
     fMeasWeighted = eventWeights * fMeas
     V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
-    self._HMeas.setCovarianceMatricesFrom(V_meas_aug)
+    self.HMeas.setCovarianceMatricesFrom(V_meas_aug)
     # calculate physical moments and propagate uncertainty
-    self._HPhys = MomentResult(
-      indices             = self.indices,
-      binCenters          = self.binCenters,
-      label               = "phys",
-      nmbBootstrapSamples = nmbBootstrapSamples,
-      bootstrapSeed       = bootstrapSeed,
-    )
+    self.HPhys.nmbBootstrapSamples = nmbBootstrapSamples
+    self.HPhys.bootstrapSeed       = bootstrapSeed
     V_phys_aug = np.empty(V_meas_aug.shape, dtype = np.complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
-      np.copyto(self._HPhys._valsFlatIndex, self._HMeas._valsFlatIndex)
+      np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
       np.copyto(V_phys_aug, V_meas_aug)
-      np.copyto(self._HPhys._bsSamplesFlatIndex, self._HMeas._bsSamplesFlatIndex)
+      np.copyto(self.HPhys._bsSamplesFlatIndex, self.HMeas._bsSamplesFlatIndex)
     else:
       # get inverse of acceptance integral matrix
       I_inv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
-      self._HPhys._valsFlatIndex = I_inv @ self._HMeas._valsFlatIndex  # Eq. (83)
+      self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # calculate bootstrap samples for H_phys
       for bsSampleIndex in range(nmbBootstrapSamples):
-        self._HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = I_inv @ self._HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
+        self.HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = I_inv @ self.HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
       J = I_inv  # Jacobian of efficiency correction; Eq. (101)
       J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
@@ -1579,9 +1570,12 @@ class MomentCalculator:
         [np.conjugate(J_conj), np.conjugate(J)],
       ])  # augmented Jacobian; Eq. (98)
       V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative; Eq. (85)
-    self._HPhys.setCovarianceMatricesFrom(V_phys_aug)
+    self.HPhys.setCovarianceMatricesFrom(V_phys_aug)
     if normalize:
-      self._HPhys.normalize()
+      self.HPhys.normalize()
+    self.HMeas.valid = True
+    self.HPhys.valid = True
+
 
   @dataclass
   class _ExtendedUnbinnedWeightedNLL:
@@ -1793,19 +1787,14 @@ class MomentCalculator:
     minuit:    im.Minuit,    # iminuit object containing the fit result
     normalize: bool = True,  # if set physical moments are normalized to H_0(0, 0)
   ) -> None:
-    """Fills `MomentResult` object for physical moments from imunuit object"""
+    """Fills `MomentResult` object for physical moments from iminuit object"""
     # construct empty `MomentResult` object
-    self._HPhys = MomentResult(
-      indices    = self.indices,
-      binCenters = self.binCenters,
-      label      = "phys",
-    )
-    # fill `_HPhys`` with values from `minuit`
+    # fill `HPhys` with values from `minuit`
     if not self.indices.polarized:
       # copy parameter values
-      self._HPhys._valsFlatIndex[:] = np.array(minuit.values)
+      self.HPhys._valsFlatIndex  [:] = np.array(minuit.values)
       # copy covariance matrix
-      self._HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance)
+      self.HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance)
     else:
       # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
       reIndexRange = (
@@ -1821,15 +1810,16 @@ class MomentCalculator:
       imSlice = slice(self.indices[imIndexRange[0]], self.indices[imIndexRange[1]] + 1)
       # copy values
       parameters = np.array(minuit.values)
-      self._HPhys._valsFlatIndex[reSlice] = parameters[reSlice]
-      self._HPhys._valsFlatIndex[imSlice] = parameters[imSlice] * 1j  # convert to purely imaginary
+      self.HPhys._valsFlatIndex[reSlice] = parameters[reSlice]
+      self.HPhys._valsFlatIndex[imSlice] = parameters[imSlice] * 1j  # convert to purely imaginary
       # copy covariance matrix
       covMatrix = np.array(minuit.covariance)
-      self._HPhys._V_ReReFlatIndex[reSlice, reSlice] = covMatrix[reSlice, reSlice]
-      self._HPhys._V_ImImFlatIndex[imSlice, imSlice] = covMatrix[imSlice, imSlice]
-      self._HPhys._V_ReImFlatIndex[reSlice, imSlice] = covMatrix[reSlice, imSlice]
+      self.HPhys._V_ReReFlatIndex[reSlice, reSlice] = covMatrix[reSlice, reSlice]
+      self.HPhys._V_ImImFlatIndex[imSlice, imSlice] = covMatrix[imSlice, imSlice]
+      self.HPhys._V_ReImFlatIndex[reSlice, imSlice] = covMatrix[reSlice, imSlice]
     if normalize:
-      self._HPhys.normalize()
+      self.HPhys.normalize()
+    self.HPhys.valid = True
 
   def fitMomentsMultipleAttempts(
     self,
@@ -1840,7 +1830,7 @@ class MomentCalculator:
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
   ) -> list[im.Minuit]:
-    """Performs several attempts to fit the moments with random start values in parallel, stores best fit result in `_HPhys`, and returns all fit results"""
+    """Performs several attempts to fit the moments with random start values in parallel, stores best fit result in `HPhys`, and returns all fit results"""
     # construct NLL
     negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn
     # generate random start values for each fit attempt
@@ -1873,7 +1863,7 @@ class MomentCalculator:
       fitMinuits = [future.result() for future in futures]
     # select successful fits
     successfulFitMinuits = MomentCalculator.selectSuccessfulFits(fitMinuits)
-    # use successful fit with lowest NLL value to fill `_HPhys`
+    # use successful fit with lowest NLL value to fill `HPhys`
     if successfulFitMinuits:
       # bestFitMinuit = sorted(successfulFitMinuits, lambda minuit: minuit.fmin.fval)[0]  # select fit with lowest NLL
       bestFitMinuit = successfulFitMinuits[0]  #TODO clarify why taking the first successful fit is okay

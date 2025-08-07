@@ -299,7 +299,7 @@ if __name__ == "__main__":
           indices    = momentIndices,
           dataSet    = dataSet,
           binCenters = {binVarMass : massBinCenter},
-          _HPhys     = HTruth,
+          HPhys      = HTruth,
         )
       )
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)

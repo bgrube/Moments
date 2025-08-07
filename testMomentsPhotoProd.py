@@ -273,7 +273,7 @@ if __name__ == "__main__":
       dataSet = DataSet(dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents, polarization = beamPolarization)  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
       momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outputDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
       # dummy truth values; identical for all bins
-      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTruth))
+      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, HPhys = HTruth))
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
 
