@@ -181,7 +181,7 @@ if __name__ == "__main__":
         dataSet = DataSet(dataSignalAccInBin, phaseSpaceData = dataPsAccInBin, nmbGenEvents = nmbPsGenEvents[-1], polarization = beamPolarization)
         momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outFileDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
         # setup moment calculator to hold true values
-        momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, _HPhys = HTruth))
+        momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, HPhys = HTruth))
 
         # plot angular distributions for mass bin
         plotAngularDistr(dataPsAccInBin, dataPsGenInBin, dataSignalAccInBin, dataSignalGenInBin, outFileNamePrefix = f"{outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_")
