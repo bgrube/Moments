@@ -586,6 +586,9 @@ def plotMomentsInBin(
   forceYaxisRange:   tuple[float | None, float | None] = (None, None)  # allows to set minimum and/or maximum for y axis
 ) -> list[dict[str, tuple[float, float] | tuple[None, None]]]:  # index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
+  if not HData:
+    print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
+    return [{}] * HData.indices.momentIndexRange  # return empty list of chi2 values
   # ensure that indices of HData and HTruth are compatible
   # allow case where HTruth contains unpolarized as well as polarized moments but HData only unpolarized moments
   indicesTrueMoments = None
@@ -596,7 +599,7 @@ def plotMomentsInBin(
       indicesTrueMoments.setPolarized(False)
     else:
       indicesTrueMoments = HTruth.indices
-  assert not HTruth or HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
+    assert HData.indices == indicesTrueMoments, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {indicesTrueMoments}."
   # generate separate plots for each moment index
   chi2Values: list[dict[str, tuple[float, float] | tuple[None, None]]] = [{}] * HData.indices.momentIndexRange
   for momentIndex in range(HData.indices.momentIndexRange):
@@ -675,6 +678,9 @@ def plotMomentsBootstrapDistributions1D(
   HTruthLabel:       str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 1D bootstrap distributions for H_0, H_1, and H_2 and overlays the true value and the estimate from uncertainty propagation"""
+  if not HData:
+    print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
+    return
   assert not HTruth or HData.indices == HTruth.indices, f"Moment sets don't match. Data moments: {HData.indices} vs. true moments: {HTruth.indices}."
   # generate separate plots for each moment index
   for qnIndex in HData.indices.qnIndices:
@@ -765,6 +771,9 @@ def plotMomentPairBootstrapDistributions2D(
   HTruthLabel:       str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 2D bootstrap distributions of two moment values and overlays the true values and the estimates from uncertainty propagation"""
+  if not HData:
+    print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
+    return
   HVals = (MomentValueAndTruth(*HData[momentIndexPair[0]], truth = HTruth[momentIndexPair[0]].val if HTruth else None),
            MomentValueAndTruth(*HData[momentIndexPair[1]], truth = HTruth[momentIndexPair[1]].val if HTruth else None))
   assert all(HVal.hasBootstrapSamples for HVal in HVals), "Bootstrap samples must be present for both moments"
@@ -864,6 +873,9 @@ def plotMomentsBootstrapDistributions2D(
   HTruthLabel:       str                 = "True value",  # label for true value in legend
 ) -> None:
   """Plots 2D bootstrap distributions of pairs of moment values that correspond to upper triangle of covariance matrix and overlays the true values and the estimates from uncertainty propagation"""
+  if not HData:
+    print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
+    return
   momentIndexPairs = ((HData.indices[flatIndex0], HData.indices[flatIndex1])
                       for flatIndex0 in HData.indices.flatIndices
                       for flatIndex1 in HData.indices.flatIndices
@@ -887,8 +899,11 @@ def plotMomentsCovMatrices(
   axisTitles:        tuple[str, str]                   = ("", ""),      # titles for x and y axes
   plotTitle:         str                               = "",            # title for plot
   zRange:            tuple[float | None, float | None] = (None, None),  # range for z-axis
-):
+) -> None:
   """Plots covariance matrices of moments and the difference w.r.t. the bootstrap estimates"""
+  if not HData:
+    print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
+    return
   # get full composite covariance matrix from nominal estimate
   covMatrixCompEst  = HData.compositeCovarianceMatrix
   covMatrixCompDiff = None
@@ -1060,6 +1075,9 @@ def plotMomentsBootstrapDiffInBin(
   graphTitle:        str = "",      # graph title
 ) -> None:
   """Plots relative differences of estimates and their uncertainties for all moments"""
+  if not HData:
+    print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
+    return
   for momentIndex in range(HData.indices.momentIndexRange):
     # get moments with index momentIndex
     HVals = tuple(
