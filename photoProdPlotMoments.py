@@ -189,8 +189,10 @@ def makeAllPlots(
   momentIndices = MomentIndices(cfg.maxL)
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
-  print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
-  momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl")
+  momentResultsMeas = None
+  if os.path.exists(f"{momentResultsFileBaseName}_meas.pkl"):
+    print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
+    momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl")
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
   if compareTo == "PWA":
@@ -247,13 +249,13 @@ def makeAllPlots(
       # plot moments in each mass bin
       chi2ValuesInMassBins: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # index: mass-bin index; index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
-        HMeas = momentResultsMeas[massBinIndex]
-        HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
-        # print(f"True moments for kinematic bin {title}:\n{HTruth}")
-        print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
+        HMeas = None if momentResultsMeas is None else momentResultsMeas[massBinIndex]
+        if HMeas is not None:
+          print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
+        HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]
         if cfg.plotMomentsInBins:
           chi2ValuesInMassBins[massBinIndex] = plotMomentsInBin(
             HData             = HPhys,
@@ -264,7 +266,7 @@ def makeAllPlots(
             plotTruthUncert   = True,
             truthColor        = momentResultsCompareColor,
           )
-          if cfg.plotMeasuredMoments:
+          if cfg.plotMeasuredMoments and HMeas is not None:
             plotMomentsInBin(
               HData             = HMeas,
               normalizedMoments = cfg.normalizeMoments,
@@ -387,7 +389,7 @@ def makeAllPlots(
           #   ],
           # },
         )
-        if cfg.plotMeasuredMoments:
+        if cfg.plotMeasuredMoments and momentResultsMeas is not None:
           plotMoments1D(
             momentResults     = momentResultsMeas,
             qnIndex           = qnIndex,
@@ -430,7 +432,7 @@ def makeAllPlots(
           canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
-      if True:
+      if momentResultsMeas is not None:
         H000s = (
           tuple(MomentValueAndTruth(*HMeas[H000Index]) for HMeas in momentResultsMeas),
           tuple(MomentValueAndTruth(*HPhys[H000Index]) for HPhys in momentResultsPhys),
