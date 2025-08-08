@@ -20,37 +20,42 @@ import Utilities
 @dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
+
+  class MethodType(Enum):
+    """Enumerates methods used for moment analysis"""
+    LIN_ALG = auto()  # linear-algebra method for acceptance correction
+    FIT     = auto()  # maximum-likelihood fit
+
   # defaults are for unpolarized pipi analysis
-  treeName:                 str                      = "PiPi"  # name of tree to read from data and MC files
-  dataFileName:             str                      = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
-  psAccFileName:            str                      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
-  psGenFileName:            str | None               = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
-  polarization:             float | str | None       = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
-  maxL:                     int                      = 8  # maximum L of physical and measured moments
-  outFileDirBaseName:       str                      = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
-  outFileDirName:           str | None               = None  # directory into which all output will be written; set by init()
-  outFileNamePrefix:        str | None               = None  # name prefix prepended to output file names; set by init()
-  # normalizeMoments:         bool                     = True
-  normalizeMoments:         bool                     = False
-  nmbBootstrapSamples:      int                      = 0
-  # nmbBootstrapSamples:      int                      = 10000
-  # plotAngularDistributions: bool                     = True
-  plotAngularDistributions: bool                     = False
-  # plotAccIntegralMatrices:  bool                     = True
-  plotAccIntegralMatrices:  bool                     = False
-  # calcAccPsMoments:         bool                     = True
-  calcAccPsMoments:         bool                     = False
-  # plotAccPsMoments:         bool                     = True
-  plotAccPsMoments:         bool                     = False
-  plotMomentsInBins:        bool                     = True
-  # plotMomentsInBins:        bool                     = False
-  # plotMeasuredMoments:      bool                     = True
-  plotMeasuredMoments:      bool                     = False
-  # plotCovarianceMatrices:   bool                     = True
-  plotCovarianceMatrices:   bool                     = False
-  limitNmbPsAccEvents:      int                      = 0
-  # limitNmbPsAccEvents:      int                      = 100000
-  binVarMass:               KinematicBinningVariable = field(
+  method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG  # method used to estimate moments from data
+  treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
+  dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
+  psAccFileName:            str                       = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
+  psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
+  polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
+  maxL:                     int                       = 8  # maximum L of physical and measured moments
+  outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
+  # normalizeMoments:         bool                      = True
+  normalizeMoments:         bool                      = False
+  nmbBootstrapSamples:      int                       = 0
+  # nmbBootstrapSamples:      int                       = 10000
+  # plotAngularDistributions: bool                      = True
+  plotAngularDistributions: bool                      = False
+  # plotAccIntegralMatrices:  bool                      = True
+  plotAccIntegralMatrices:  bool                      = False
+  # calcAccPsMoments:         bool                      = True
+  calcAccPsMoments:         bool                      = False
+  # plotAccPsMoments:         bool                      = True
+  plotAccPsMoments:         bool                      = False
+  plotMomentsInBins:        bool                      = True
+  # plotMomentsInBins:        bool                      = False
+  # plotMeasuredMoments:      bool                      = True
+  plotMeasuredMoments:      bool                      = False
+  # plotCovarianceMatrices:   bool                      = True
+  plotCovarianceMatrices:   bool                      = False
+  limitNmbPsAccEvents:      int                       = 0
+  # limitNmbPsAccEvents:      int                       = 100000
+  binVarMass:               KinematicBinningVariable  = field(
     default_factory = lambda: KinematicBinningVariable(
       name      = "mass",
       label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
@@ -58,30 +63,39 @@ class AnalysisConfig:
       nmbDigits = 3,
     )
   )
-  massBinning:              HistAxisBinning          = field(
+  massBinning:              HistAxisBinning           = field(
     default_factory = lambda: HistAxisBinning(  # same binning as used by CLAS
       nmbBins = 100,
-      minVal  = 0.4,  # [GeV]
-      maxVal  = 1.4,  # [GeV]
+      minVal  = 0.4,   # [GeV]
+      maxVal  = 1.4,   # [GeV]
       _var    = None,  # set by init()
     )
   )
+
+  @property
+  def outFileDirName(self) -> str:
+    """Returns name of directory into which all output will be written"""
+    return f"{self.outFileDirBaseName}.maxL_{self.maxL}"
+
+  @property
+  def outFileNamePrefix(self) -> str:
+    """Returns name prefix prepended to output file names"""
+    return "norm" if self.normalizeMoments else "unnorm"
 
   def init(
     self,
     createOutFileDir: bool = False,
   ) -> None:
     """Creates output directory and initializes member variables; needs to be called before passing the config to any consumer"""
-    self.outFileDirName    = f"{self.outFileDirBaseName}.maxL_{self.maxL}"
-    self.outFileNamePrefix = "norm" if self.normalizeMoments else "unnorm"
-    self.massBinning.var   = self.binVarMass
+    self.massBinning.var = self.binVarMass
     if createOutFileDir:
       Utilities.makeDirPath(self.outFileDirName)
 
   class DataType(Enum):
+    """Enumerates used input data types"""
     REAL_DATA             = auto()
-    REAL_DATA_SIGNAL      = auto()
-    REAL_DATA_SIDEBAND    = auto()
+    REAL_DATA_SIGNAL      = auto()  # real data in signal region
+    REAL_DATA_SIDEBAND    = auto()  # real data in sideband region(s)
     GENERATED_PHASE_SPACE = auto()
     ACCEPTED_PHASE_SPACE  = auto()
 
