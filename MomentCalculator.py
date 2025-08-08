@@ -255,7 +255,7 @@ class AmplitudeSet:
             + ("" if np.isclose(moments[2], 0) else f"\n    {momentFormulas[2]} = {moments[2]}"))
     return (moments[0], moments[1], moments[2])
 
-  def photoProdMomentSet(
+  def photoProdMomentResult(
     self,
     maxL:                int,  # maximum L quantum number of moments
     normalize:           bool | float = True,   # if set to true, moment values are normalized to H_0(0, 0)
@@ -303,6 +303,7 @@ class AmplitudeSet:
       label      = "true",
     )
     HTruth._valsFlatIndex = momentsFlatIndex
+    HTruth.valid = True
     return HTruth
 
   def intensityFormula(

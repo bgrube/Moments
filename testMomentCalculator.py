@@ -47,6 +47,7 @@ if __name__ == "__main__":
 
   print(f"MomentResult for polarized moments:")
   momentResult = MomentResult(MomentIndices(maxL = 5, polarized = True))
+  momentResult.valid = True
   print(f"{momentResult=}")
   print(f"{momentResult._valsFlatIndex=}")
   print(f"{momentResult[0]=}")
@@ -115,7 +116,7 @@ if __name__ == "__main__":
           print(f"rho {refl=}; ({l1=}, {m1=}); ({l2=}, {m2=}) = {rhos}")
 
     print(f"MomentResult for {'' if polarized else 'un'}polarized moments:")
-    H:  MomentResult = ampSet.photoProdMomentSet(maxL = 4, normalize = False, printMomentFormulas = True)
+    H:  MomentResult = ampSet.photoProdMomentResult(maxL = 4, normalize = False, printMomentFormulas = True)
     print(f"H =\n{H}")
     H2 = copy.deepcopy(H)
     H2._valsFlatIndex[0] += 1e-6

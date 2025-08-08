@@ -148,7 +148,7 @@ if __name__ == "__main__":
       MomentCalculator.AmplitudeValue(MomentCalculator.QnWaveIndex(refl = +1, l = 1, m = +1), val = 1 + 0j),  # P_+1^+
     ]
     amplitudeSet = MomentCalculator.AmplitudeSet(partialWaveAmplitudes)
-    HTruth: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+    HTruth: MomentCalculator.MomentResult = amplitudeSet.photoProdMomentResult(maxL)
     print(f"True moment values\n{HTruth}")
     for refl in (-1, +1):
       for l in range(3):
@@ -217,6 +217,7 @@ if __name__ == "__main__":
       # plot moments
       HTruthPs = MomentCalculator.MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
       HTruthPs._valsFlatIndex[momentIndices[MomentCalculator.QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1  # ... except H_0(0, 0), which is 1
+      HTruthPs.valid = True
       PlottingUtilities.plotMomentsInBin(HData = momentCalculator.HPhys, HTruth = HTruthPs, outFileNamePrefix = f"{outFileDirName}/hPs_")
 
     # calculate moments of signal data

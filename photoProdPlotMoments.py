@@ -597,6 +597,7 @@ def makeAllPlots(
               nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
             HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
             HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if cfg.normalizeMoments else nmbPsGenEvents  # ... except for H_0(0, 0)
+            HTruthPs.valid = True
             # plot physical moments; they should match the true moments exactly, i.e. all 0 except H_0(0, 0), modulo tiny numerical effects
             plotMomentsInBin(
               HData             = HPhys,

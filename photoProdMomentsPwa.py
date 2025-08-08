@@ -76,7 +76,7 @@ def readMomentResultsPwa(
       tolerance = 1e-8,
     )
     momentResults.append(
-      amplitudeSet.photoProdMomentSet(
+      amplitudeSet.photoProdMomentResult(
         maxL                = maxL,
         normalize           = normalize,
         printMomentFormulas = False,
