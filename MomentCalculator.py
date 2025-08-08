@@ -515,7 +515,7 @@ def readInputData(
   else:
     raise TypeError(f"Invalid type of `polarization` argument: {type(polarization)}; expected float, str, or None")
   # get input data as std::vectors
-  print("Reading values of decay angles")
+  print("Reading values of decay angles from 'theta', 'phi', and 'Phi' columns")
   thetas = getStdVectorFromRdfColumn(data = data, columnName = "theta")
   phis   = getStdVectorFromRdfColumn(data = data, columnName = "phi")
   Phis   = getStdVectorFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else \
@@ -1439,9 +1439,9 @@ class MomentCalculator:
   indices:              MomentIndices  # index mapping and iterators
   dataSet:              DataSet  # info on data samples
   binCenters:           dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
-  integralFileBaseName: str = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  HMeas:                MomentResult | None = None  # measured moments; must either be given or calculated by calling calculateMoments()
-  HPhys:                MomentResult | None = None  # physical moments; must either be given or calculated by calling calculateMoments()
+  integralFileBaseName: str                             = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
+  _HMeas:                MomentResult | None            = None  # measured moments; must either be given or calculated by calling calculateMoments()
+  _HPhys:                MomentResult | None            = None  # physical moments; must either be given or calculated by calling calculateMoments()
   _integralMatrix:      AcceptanceIntegralMatrix | None = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
 
   def __post_init__(self) -> None:
@@ -1451,20 +1451,38 @@ class MomentCalculator:
     else:
       self.indices.setPolarized(True)
     # initialize `MomentResults` if None
-    if self.HMeas is None:
-      self.HMeas = MomentResult(
+    if self._HMeas is None:
+      self._HMeas = MomentResult(
         indices    = self.indices,
         binCenters = self.binCenters,
         label      = "meas",
       )
-    if self.HPhys is None:
-      self.HPhys = MomentResult(
+    if self._HPhys is None:
+      self._HPhys = MomentResult(
         indices    = self.indices,
         binCenters = self.binCenters,
         label      = "phys",
       )
 
   # accessors that guarantee existence of optional fields
+  @property
+  def HMeas(self) -> MomentResult:
+    assert self._HMeas is not None, "HMeas must not be None"
+    return self._HMeas
+
+  @HMeas.setter
+  def HMeas(self, value: MomentResult) -> None:
+    self._HMeas = value
+
+  @property
+  def HPhys(self) -> MomentResult:
+    assert self._HPhys is not None, "HPhys must not be None"
+    return self._HPhys
+
+  @HPhys.setter
+  def HPhys(self, value: MomentResult) -> None:
+    self._HPhys = value
+
   @property
   def integralMatrix(self) -> AcceptanceIntegralMatrix:
     """Returns acceptance integral matrix"""
@@ -1497,7 +1515,7 @@ class MomentCalculator:
     dataSourceType:      DataSourceType = DataSourceType.REAL_DATA,  # type of data to calculate moments from
     normalize:           bool           = True,   # if set physical moments are normalized to H_0(0, 0)
     nmbBootstrapSamples: int            = 0,      # number of bootstrap samples; 0 means no bootstrapping
-    bootstrapSeed:       int            = 12345,  # seed for random number generator used for bootstrap samples
+    bootstrapSeed:       int            = 12345,  # seed used for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
