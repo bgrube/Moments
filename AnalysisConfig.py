@@ -80,8 +80,8 @@ class AnalysisConfig:
 
   class DataType(Enum):
     REAL_DATA             = auto()
-    # REAL_DATA_SIGNAL      = auto()
-    # REAL_DATA_BACKGROUND  = auto()
+    REAL_DATA_SIGNAL      = auto()
+    REAL_DATA_SIDEBAND    = auto()
     GENERATED_PHASE_SPACE = auto()
     ACCEPTED_PHASE_SPACE  = auto()
 
@@ -93,12 +93,24 @@ class AnalysisConfig:
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       print(f"Loading real data from tree '{self.treeName}' in file '{self.dataFileName}'")
       return ROOT.RDataFrame(self.treeName, self.dataFileName)
-    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
-      return ROOT.RDataFrame(self.treeName, self.psAccFileName)
+    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIGNAL:
+      print(f"Loading real-data signal events with weight = 1 from tree '{self.treeName}' in file '{self.dataFileName}'")
+      return ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight == 1")
+    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
+      print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
+      return ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight < 0")
+      # # RDataFrame::Redefine() introduced only for ROOT V6.26+
+      # # quick hack to ensure that data in background region have positive weight by dropping the eventWeight column and re-adding it with opposite value
+      # data.Define("eventWeight2", "-eventWeight")
+      # data.Snapshot(self.treeName, f"{self.outFileDirName}/foo.root", ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT", "eventWeight2"))
+      # data = ROOT.RDataFrame(self.treeName, f"{self.outFileDirName}/foo.root")
+      # data = dataPwaModelBkgRegion.Define("eventWeight", "eventWeight2")
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
       print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
       return ROOT.RDataFrame(self.treeName, self.psGenFileName)
+    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+      print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
+      return ROOT.RDataFrame(self.treeName, self.psAccFileName)
     else:
       raise ValueError(f"Unknown data type: {dataType}")
 
