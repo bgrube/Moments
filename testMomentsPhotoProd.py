@@ -239,7 +239,7 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     t = timer.start("Time to generate MC data from partial waves")
-    HTruth: MomentResult = amplitudeSet.photoProdMomentSet(maxL)
+    HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL)
     print(f"True moment values\n{HTruth}")
     dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, outFileNamePrefix = f"{outputDirName}/", regenerateData = True)
     t.stop()

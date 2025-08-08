@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
         # calculate true moments
         amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(signalPwAmpsFileName, massBinCenter), tolerance = 1e-11)
-        HTruth: MomentResult = amplitudeSet.photoProdMomentSet(maxL, normalize = normalizeMoments, printMomentFormulas = False)
+        HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = normalizeMoments, printMomentFormulas = False)
         # scale true moments such that H_0(0, 0) is number of generated signal events
         scale = nmbSignalGenEvents[-1] / HTruth._valsFlatIndex[0]  #TODO get moment value using QnMomentIndex
         HTruth._valsFlatIndex *= scale
@@ -221,6 +221,7 @@ if __name__ == "__main__":
           # construct true moments for phase-space data
           HTruthPs = MomentResult(momentIndices, label = "true")  # all true phase-space moments are 0 ...
           HTruthPs._valsFlatIndex[momentIndices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]] = 1 if normalizeMoments else nmbPsGenEvents[massBinIndex]  # ... except for H_0(0, 0)
+          HTruthPs.valid = True
           # set H_0^meas(0, 0) to 0 so that one can better see the other H_0^meas moments
           momentsInBin.HMeas._valsFlatIndex[0] = 0
           # plot measured and physical moments; the latter should match the true moments exactly except for tiny numerical effects

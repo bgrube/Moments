@@ -240,8 +240,8 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     with timer.timeThis("Time to generate MC data from partial waves"):
-      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
-      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentResult(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsSig))
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentResult(maxL, normalize = (True if normalizeMoments else nmbPwaMcEventsBkg))
       print(f"True moment values for signal:\n{HTruthSig}")
       print(f"True moment values for background:\n{HTruthBkg}")
       dataPwaModel, dataPwaModelSig, dataPwaModelBkg = genSigAndBkgDataFromWaves(

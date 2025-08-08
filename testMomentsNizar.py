@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     t = timer.start("Time to generate MC data from partial waves")
-    HTruth: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = True)
+    HTruth: MomentResult = amplitudeSetSig.photoProdMomentResult(maxL, normalize = True)
     print(f"True moment values\n{HTruth}")
     HTruthJsonFileName = f"{outFileDirName}/trueMomentValues.json"
     print(f"Writing true moment values to file {outFileDirName}/{HTruthJsonFileName}")

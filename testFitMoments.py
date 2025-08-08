@@ -328,6 +328,7 @@ def convertIminuitToMomentResult(
       HPhys._valsFlatIndex[:] = np.array(minuit.values)
       # copy covariance matrix
       HPhys._V_ReReFlatIndex[:] = np.array(minuit.covariance[:])
+    HPhys.valid = True
     return HPhys
 
 
@@ -527,8 +528,8 @@ if __name__ == "__main__":
       timer.stop("Time to generate MC data from partial waves")
 
       # normalize true moments to acceptance-corrected number of signal and background events, respectively
-      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentSet(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)  #!NOTE! this normalization is slightly off because it does not take into account the events that are cut away by selecting the signal region
-      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentSet(maxL, normalize = (1.2 / 2.0) * nmbPwaMcEventsBkg / phaseSpaceEfficiency)  # takes into account the sideband widths
+      HTruthSig: MomentResult = amplitudeSetSig.photoProdMomentResult(maxL, normalize = nmbPwaMcEventsSig / phaseSpaceEfficiency)  #!NOTE! this normalization is slightly off because it does not take into account the events that are cut away by selecting the signal region
+      HTruthBkg: MomentResult = amplitudeSetBkg.photoProdMomentResult(maxL, normalize = (1.2 / 2.0) * nmbPwaMcEventsBkg / phaseSpaceEfficiency)  # takes into account the sideband widths
       print(f"True moment values for signal:\n{HTruthSig}")
       print(f"True moment values for background:\n{HTruthBkg}")
 
@@ -761,6 +762,7 @@ if __name__ == "__main__":
       HPhysBkgRegion.scaleBy(0.5)
       HPhysSubtracted2 = MomentResult(HTruthSig.indices)
       HPhysSubtracted2._valsFlatIndex[:] = HPhysSigRegion._valsFlatIndex - HPhysBkgRegion._valsFlatIndex
+      HPhysSubtracted2.valid = True
       print(f"!!! {sorted(HPhysSubtracted._valsFlatIndex - HPhysSubtracted2._valsFlatIndex)=}")
 
       timer.stop("Total execution time")
