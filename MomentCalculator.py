@@ -1599,11 +1599,12 @@ class MomentCalculator:
   class _ExtendedUnbinnedWeightedNLL:
     """Picklable functor that calculates negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events"""
     momentCalculator:            InitVar[MomentCalculator]  # pass instance of outer class as temporary argument
-    printProblematicIntensities: bool = False
-    _eventWeights:         npt.NDArray[npt.Shape["nmbEvents"],             npt.Float64] = field(init = False)  # weights of real-data events
-    _phaseSpaceEfficiency: float                                                        = field(init = False)  # efficiency averaged over phase space
-    _baseFcnVals:          npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
-    _integralVector:       npt.NDArray[npt.Shape["nmbMoments"],            npt.Float64] = field(init = False)  # precalculated acceptance integral vector
+    printNonPositiveIntensities: bool                                                         = False
+    _eventWeights:               npt.NDArray[npt.Shape["nmbEvents"],             npt.Float64] = field(init = False)  # weights of real-data events
+    _phaseSpaceEfficiency:       float                                                        = field(init = False)  # efficiency averaged over phase space
+    _baseFcnVals:                npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Float64] = field(init = False)  # precalculated real-data values of basis functions
+    _integralVector:             npt.NDArray[npt.Shape["nmbMoments"],            npt.Float64] = field(init = False)  # precalculated acceptance integral vector
+    flipSignOfWeights:           bool                                                         = False  # if set, real-data event weights are sign-flipped
 
     def _calculateBasisFcnValues(
       self,
@@ -1615,6 +1616,8 @@ class MomentCalculator:
         polarization = momentCalculator.dataSet.polarization,
         data         = momentCalculator.dataSet.data,
       )
+      if self.flipSignOfWeights:
+        self._eventWeights = -self._eventWeights
       nmbEvents  = len(thetas)
       nmbMoments = len(momentCalculator.indices)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
@@ -1690,7 +1693,7 @@ class MomentCalculator:
     ) -> np.float64:
       """Returns negative log-likelihood function for given moment parameters"""
       integral, intensities = self._intensityFcn(moments)
-      if self.printProblematicIntensities:
+      if self.printNonPositiveIntensities:
         nonPositiveIntensities = intensities[intensities <= 0]
         nonPositiveIndices     = np.where(intensities <= 0)[0]
         if nonPositiveIntensities.size > 0:
@@ -1708,10 +1711,12 @@ class MomentCalculator:
       """Returns efficiency averaged over phase space"""
       return self._phaseSpaceEfficiency
 
-  @property
-  def negativeLogLikelihoodFcn(self) -> _ExtendedUnbinnedWeightedNLL:
+  def negativeLogLikelihoodFcn(
+    self,
+    flipSignOfWeights: bool = False,  # if set, real-data event weights are sign-flipped
+  ) -> _ExtendedUnbinnedWeightedNLL:
     """Constructs negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; should be called only when data change"""
-    return self._ExtendedUnbinnedWeightedNLL(self)
+    return self._ExtendedUnbinnedWeightedNLL(self, flipSignOfWeights = flipSignOfWeights)
 
   @classmethod
   def fitMoments(
@@ -1719,8 +1724,8 @@ class MomentCalculator:
     negativeLogLikelihoodFcn: Cost,  # function to minimize
     startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
     indices:                  MomentIndices,  # indices that define set of moments to fit
-    minuit:                   im.Minuit | None              = None,  # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
-    fixMomentsToZero:         Sequence[int | QnMomentIndex] = [],    # list of moment indices, for which the fit parameters are fixed to zero
+    minuit:                   im.Minuit | None              = None,   # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
+    fixMomentsToZero:         Sequence[int | QnMomentIndex] = [],     # list of moment indices, for which the fit parameters are fixed to zero
   ) -> im.Minuit:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
     if minuit is None:
@@ -1847,10 +1852,11 @@ class MomentCalculator:
     randomSeed:              int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
+    flipSignOfWeights:       bool  = False,  # if set, real-data event weights are sign-flipped
   ) -> list[im.Minuit]:
     """Performs several attempts to fit the moments with random start values in parallel, stores best fit result in `HPhys`, and returns all fit results"""
     # construct NLL
-    negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn
+    negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn(flipSignOfWeights)
     # generate random start values for each fit attempt
     startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
     np.random.seed(randomSeed)
@@ -1951,7 +1957,7 @@ class MomentCalculatorsKinematicBinning:
     dataSourceType:      MomentCalculator.DataSourceType = MomentCalculator.DataSourceType.REAL_DATA,  # type of data to calculate moments from
     normalize:           bool = True,   # if set physical moments are normalized to H_0(0, 0)
     nmbBootstrapSamples: int  = 0,      # number of bootstrap samples; 0 means no bootstrapping
-    bootstrapSeed:       int  = 12345,  # seed for random number generator used for bootstrap samples
+    bootstrapSeed:       int  = 12345,  # seed used for random number generator used for bootstrap samples
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
     for kinBinIndex, momentsInBin in enumerate(self):
@@ -1966,6 +1972,7 @@ class MomentCalculatorsKinematicBinning:
     randomSeed:              int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
+    flipSignOfWeights:       bool  = False,  # if set, real-data event weights are sign-flipped
   ) -> list[list[im.Minuit]]:  # Minuit objects for [<kinematic bin>][<fit attempts>]
     """Estimates photoproduction moments by fitting intensity model to each kinematic bin by running several attempts with random start values in parallel; stores the best fit result in `self` and returns fit results for all attempts"""
     fitMinuits: list[list[im.Minuit]] = [[] for _ in self]  # empty list for each kinematic bin
@@ -1978,6 +1985,7 @@ class MomentCalculatorsKinematicBinning:
         randomSeed              = randomSeed + kinBinIndex,
         startValueStdDevScale   = startValueStdDevScale,
         processNiceLevel        = processNiceLevel,
+        flipSignOfWeights       = flipSignOfWeights,
       )
     return fitMinuits
 
