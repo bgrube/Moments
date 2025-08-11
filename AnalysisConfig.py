@@ -23,11 +23,12 @@ class AnalysisConfig:
 
   class MethodType(Enum):
     """Enumerates methods used for moment analysis"""
-    LIN_ALG = auto()  # linear-algebra method for acceptance correction
-    FIT     = auto()  # maximum-likelihood fit
+    LIN_ALG_BG_SUBTR_NEG_WEIGHTS = auto()  # linear-algebra method for acceptance correction + background subtraction by negative event weights
+    LIN_ALG_BG_SUBTR_MOMENTS     = auto()  # linear-algebra method for acceptance correction + background subtraction by subtracting moments
+    MAX_LIKELIHOOD_FIT           = auto()  # maximum-likelihood fit for acceptance correction + background subtraction by subtracting moments
 
   # defaults are for unpolarized pipi analysis
-  method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG  # method used to estimate moments from data
+  method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
   psAccFileName:            str                       = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
