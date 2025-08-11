@@ -488,8 +488,9 @@ def getStdVectorFromRdfColumn(
 
 
 def readInputData(
-  polarization: float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
-  data:         ROOT.RDataFrame,
+  polarization:      float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
+  data:              ROOT.RDataFrame,
+  flipSignOfWeights: bool = False,  # if set, weights of real-data event are sign-flipped
 ) -> tuple[
   float | ROOT.std.vector["double"] | None,         # beam polarization
   ROOT.std.vector["double"],                        # theta values
@@ -533,6 +534,9 @@ def readInputData(
     #!NOTE! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
     eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]
     assert eventWeights.shape == (nmbEvents, ), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents}, ) but got {eventWeights.shape}"
+    if flipSignOfWeights:
+      print("Inverting sign of event weights")
+      eventWeights = -eventWeights
   else:
     # all events have weight 1
     eventWeights = np.ones(nmbEvents, dtype = np.float64)
@@ -899,7 +903,7 @@ class MomentResult:
     self,
     other: MomentResult,
   ) -> MomentResult:
-    """Combines this and another `MomentResult` by summing the moment values and (co)variances"""
+    """Combines this and another `MomentResult` assuming they were estimated from independent data samples, i.e. by summing the moment values and (co)variances"""
     if not isinstance(other, MomentResult):
       return NotImplemented
     # ensure that `other` has the same indices and bin centers
@@ -1441,8 +1445,9 @@ class MomentCalculator:
   dataSet:              DataSet  # info on data samples
   binCenters:           dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
   integralFileBaseName: str                             = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  _HMeas:                MomentResult | None            = None  # measured moments; must either be given or calculated by calling calculateMoments()
-  _HPhys:                MomentResult | None            = None  # physical moments; must either be given or calculated by calling calculateMoments()
+  flipSignOfWeights:    bool                            = False,  # if set, weights of real-data event are sign-flipped
+  _HMeas:               MomentResult | None             = None  # measured moments; must either be given or calculated by calling calculateMoments()
+  _HPhys:               MomentResult | None             = None  # physical moments; must either be given or calculated by calling calculateMoments()
   _integralMatrix:      AcceptanceIntegralMatrix | None = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
 
   def __post_init__(self) -> None:
@@ -1532,8 +1537,9 @@ class MomentCalculator:
       raise ValueError(f"Unknown data source '{dataSourceType}'")
     print("Reading input data for moment calculation")
     beamPol, thetas, phis, Phis, eventWeights = readInputData(
-      polarization = dataSet.polarization,
-      data         = dataSet.data,
+      polarization      = dataSet.polarization,
+      data              = dataSet.data,
+      flipSignOfWeights = self.flipSignOfWeights,
     )
     nmbEvents = thetas.size()
     # calculate basis-function values and values of measured moments
@@ -1614,11 +1620,10 @@ class MomentCalculator:
       """Calculates values of basis functions for all real-data events"""
       print("Reading real data for moment fit")
       beamPol, thetas, phis, Phis, self._eventWeights = readInputData(
-        polarization = momentCalculator.dataSet.polarization,
-        data         = momentCalculator.dataSet.data,
+        polarization      = momentCalculator.dataSet.polarization,
+        data              = momentCalculator.dataSet.data,
+        flipSignOfWeights = self.flipSignOfWeights,
       )
-      if self.flipSignOfWeights:
-        self._eventWeights = -self._eventWeights
       nmbEvents  = len(thetas)
       nmbMoments = len(momentCalculator.indices)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
@@ -1712,12 +1717,9 @@ class MomentCalculator:
       """Returns efficiency averaged over phase space"""
       return self._phaseSpaceEfficiency
 
-  def negativeLogLikelihoodFcn(
-    self,
-    flipSignOfWeights: bool = False,  # if set, real-data event weights are sign-flipped
-  ) -> _ExtendedUnbinnedWeightedNLL:
+  def negativeLogLikelihoodFcn(self) -> _ExtendedUnbinnedWeightedNLL:
     """Constructs negative log-likelihood function for extended unbinned maximum likelihood fit with weighted events; should be called only when data change"""
-    return self._ExtendedUnbinnedWeightedNLL(self, flipSignOfWeights = flipSignOfWeights)
+    return self._ExtendedUnbinnedWeightedNLL(self, flipSignOfWeights = self.flipSignOfWeights)
 
   @classmethod
   def fitMoments(
@@ -1853,11 +1855,10 @@ class MomentCalculator:
     randomSeed:              int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
-    flipSignOfWeights:       bool  = False,  # if set, real-data event weights are sign-flipped
   ) -> list[im.Minuit]:
     """Performs several attempts to fit the moments with random start values in parallel, stores best fit result in `HPhys`, and returns all fit results"""
     # construct NLL
-    negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn(flipSignOfWeights)
+    negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn()
     # generate random start values for each fit attempt
     startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
     np.random.seed(randomSeed)
@@ -1973,7 +1974,6 @@ class MomentCalculatorsKinematicBinning:
     randomSeed:              int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
-    flipSignOfWeights:       bool  = False,  # if set, real-data event weights are sign-flipped
   ) -> list[list[im.Minuit]]:  # Minuit objects for [<kinematic bin>][<fit attempts>]
     """Estimates photoproduction moments by fitting intensity model to each kinematic bin by running several attempts with random start values in parallel; stores the best fit result in `self` and returns fit results for all attempts"""
     fitMinuits: list[list[im.Minuit]] = [[] for _ in self]  # empty list for each kinematic bin
@@ -1986,7 +1986,6 @@ class MomentCalculatorsKinematicBinning:
         randomSeed              = randomSeed + kinBinIndex,
         startValueStdDevScale   = startValueStdDevScale,
         processNiceLevel        = processNiceLevel,
-        flipSignOfWeights       = flipSignOfWeights,
       )
     return fitMinuits
 
