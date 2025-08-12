@@ -113,11 +113,11 @@ def defineDataFrameColumns(
   assert frame == "Hf" or frame == "Gj", f"Unknown frame '{frame}'"
   print(f"Defining angles in '{frame}' frame and using pi^+ as analyzer")
   df = (
-    df.Define("beamPol",    f"(Double32_t){beamPol}")
-      .Define("beamPolPhi", f"(Double32_t){beamPolPhi}")
-      .Define("cosTheta",    "(Double32_t)" + (f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})" if frame == "Hf" else
-                                               f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
-      .Define("theta",       "(Double32_t)std::acos(cosTheta)")
+    df.Define("beamPol",     f"(Double32_t){beamPol}")
+      .Define("beamPolPhi",  f"(Double32_t){beamPolPhi}")
+      .Define("cosTheta",     "(Double32_t)" + (f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})" if frame == "Hf" else
+                                                f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
+      .Define("theta",        "(Double32_t)std::acos(cosTheta)")
       # switching between pi+ and pi- analyzer flips sign of moments with odd M
       # # use pi+ as analyzer and y_HF/GJ = p_beam x p_recoil
       # .Define("phi",         "(Double32_t)" + (f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})" if frame == "Hf" else
@@ -127,13 +127,14 @@ def defineDataFrameColumns(
       #     when using the same analyzer as for cosTheta, i.e. pi+, phi is flipped by 180 deg
       #     this difference is seen when comparing to Alex' function and also when comparing to the PWA result
       #     switching the analyzer to pi- cures this problem
-      .Define("phi",         "(Double32_t)" + (f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})" if frame == "Hf" else
-                                               f"FSMath::gjphi({lvPim}, {lvPip}, {lvBeam})"))
-      .Define("phiDeg",      "(Double32_t)phi * TMath::RadToDeg()")
-      .Define("Phi",        f"(Double32_t)bigPhi({lvRecoil}, {lvBeam}, beamPolPhi)")
-      .Define("PhiDeg",      "(Double32_t)Phi * TMath::RadToDeg()")
-      .Define("mass",       f"(Double32_t)massPair({lvPip}, {lvPim})")
-      .Define("minusT",     f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+      .Define("phi",          "(Double32_t)" + (f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})" if frame == "Hf" else
+                                                f"FSMath::gjphi({lvPim}, {lvPip}, {lvBeam})"))
+      .Define("phiDeg",       "(Double32_t)phi * TMath::RadToDeg()")
+      .Define("Phi",         f"(Double32_t)bigPhi({lvRecoil}, {lvBeam}, beamPolPhi)")
+      .Define("PhiDeg",       "(Double32_t)Phi * TMath::RadToDeg()")
+      .Define("mass",        f"(Double32_t)massPair({lvPip}, {lvPim})")
+      .Define("minusT",      f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+      .Define("eventWeight", f"(Double32_t)1.0")
   )
   return df
 
@@ -155,6 +156,7 @@ if __name__ == "__main__":
     "tbin_0.8_0.9" : "./mc/mc_full_model/mc0.8-0.9_ful.dat",
     "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
   }
+  outputDirName  = "mc_full"
   dataLabel      = "PARA_0"
   beamPol        = 1.0
   beamPolPhi     = 0.0
@@ -163,9 +165,8 @@ if __name__ == "__main__":
   frame          = "Hf"
 
   for tBinLabel, inputFileName in inputData.items():
-    outputDirName  = tBinLabel
-    os.makedirs(outputDirName, exist_ok = True)
-    outputFileName = f"{outputDirName}/data_flat_{dataLabel}.root"
+    os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
+    outputFileName = f"{outputDirName}/{tBinLabel}/data_flat_{dataLabel}.root"
 
     df = defineDataFrameColumns(
       df         = readData(inputFileName),
