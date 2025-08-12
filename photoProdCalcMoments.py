@@ -26,6 +26,7 @@ from AnalysisConfig import (
   CFG_NIZAR,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
+  CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
   CFG_UNPOLARIZED_PIPP,
 )
@@ -186,11 +187,12 @@ def calculateAllMoments(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg.method = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # subtract background at moment level
   # cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
@@ -199,13 +201,15 @@ if __name__ == "__main__":
     # "tbin_0.1_0.2",
     # "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
-    "tbin_0.1_0.5",
+    # "tbin_0.1_0.5",
+    "tbin_0.4_0.5",
   )
   beamPolLabels = (
-    "PARA_0",
+    # "PARA_0",
     # "PARA_135",
     # "PERP_45",
     # "PERP_90",
+    "Unpol",
   )
   maxLs = (
     4,
