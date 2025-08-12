@@ -73,7 +73,7 @@ bigPhi(
 def readData(inputFileName: str) -> ROOT.RDataFrame:
   """Reads data from an ASCII file into a ROOT RDataFrame"""
   print(f"Reading file '{inputFileName}'")
-  pandasDf = pd.read_csv(inputFileName, sep=r'\s+')
+  pandasDf = pd.read_csv(inputFileName, sep=r"\s+")
   pandasDf.rename(columns = {"phi" : "phiOrig"}, inplace = True)
   # print(f"DataFrame shape: {pandasDf.shape}")
   # print(f"Columns: {list(pandasDf.columns)}")
@@ -147,23 +147,33 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
-  tBinLabel      = "0.4-0.5"
-  inputFileName  = f"./mc{tBinLabel}_ful.dat"
-  outputFileName = f"./output{tBinLabel}.root"
+  inputData: dict[str, str] = {  # mapping of t-bin labels to input file names
+    "tbin_0.4_0.5" : "./mc/mc_full_model/mc0.4-0.5_ful.dat",
+    "tbin_0.5_0.6" : "./mc/mc_full_model/mc0.5-0.6_ful.dat",
+    "tbin_0.6_0.7" : "./mc/mc_full_model/mc0.6-0.7_ful.dat",
+    "tbin_0.7_0.8" : "./mc/mc_full_model/mc0.7-0.8_ful.dat",
+    "tbin_0.8_0.9" : "./mc/mc_full_model/mc0.8-0.9_ful.dat",
+    "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
+  }
+  dataLabel      = "PARA_0"
+  beamPol        = 1.0
+  beamPolPhi     = 0.0
   outputTreeName = "data"
   outputColumns  = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   frame          = "Hf"
-  beamPol        = 1.0
-  beamPolPhi     = 0.0
 
-  df = readData(inputFileName)
-  print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
-  print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
-  defineDataFrameColumns(
-    df         = df,
-    beamPol    = beamPol,
-    beamPolPhi = beamPolPhi,
-    frame      = frame,
-    **lorentzVectors(),
-  # ).Snapshot(outputTreeName, outputFileName, outputColumns)
-  ).Snapshot(outputTreeName, outputFileName)  # write all columns
+  for tBinLabel, inputFileName in inputData.items():
+    outputDirName  = tBinLabel
+    os.makedirs(outputDirName, exist_ok = True)
+    outputFileName = f"{outputDirName}/data_flat_{dataLabel}.root"
+
+    df = defineDataFrameColumns(
+      df         = readData(inputFileName),
+      beamPol    = beamPol,
+      beamPolPhi = beamPolPhi,
+      frame      = frame,
+      **lorentzVectors(),
+    # ).Snapshot(outputTreeName, outputFileName, outputColumns)
+    ).Snapshot(outputTreeName, outputFileName)  # write all columns
+    print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
+    print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
