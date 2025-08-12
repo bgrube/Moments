@@ -41,34 +41,6 @@ mandelstamT(
 }
 """
 
-# C++ function to calculate azimuthal angle of photon polarization vector
-CPP_CODE_BIGPHI = """
-// returns azimuthal angle of photon polarization vector in lab frame [rad]
-// for beam + target -> X + recoil and X -> a + b
-//     D                    C
-// code taken from https://github.com/JeffersonLab/halld_sim/blob/538677ee1347891ccefa5780e01b158e035b49b1/src/libraries/AMPTOOLS_AMPS/TwoPiAngles.cc#L94
-double
-bigPhi(
-	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // 4-momentum of recoil [GeV]
-	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // 4-momentum of beam [GeV]
-	const double beamPolPhi = 0  // azimuthal angle of photon beam polarization in lab [deg]
-) {
-	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
-	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
-	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
-	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-	double Phi = beamPolPhi * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
-	// ensure [-pi, +pi] range
-	while (Phi > TMath::Pi()) {
-		Phi -= TMath::TwoPi();
-	}
-	while (Phi < -TMath::Pi()) {
-		Phi += TMath::TwoPi();
-	}
-	return Phi;
-}
-"""
-
 
 def readData(inputFileName: str) -> ROOT.RDataFrame:
   """Reads data from an ASCII file into a ROOT RDataFrame"""
@@ -100,8 +72,6 @@ def lorentzVectors() -> dict[str, str]:
 
 def defineDataFrameColumns(
   df:         ROOT.RDataFrame,
-  beamPol:    float,  # photon beam polarization
-  beamPolPhi: float,  # azimuthal angle of photon beam polarization in lab [deg]
   lvTarget:   str,    # function-argument list with Lorentz-vector components of target proton
   lvBeam:     str,    # function-argument list with Lorentz-vector components of beam photon
   lvRecoil:   str,    # function-argument list with Lorentz-vector components of recoil proton
@@ -113,9 +83,7 @@ def defineDataFrameColumns(
   assert frame == "Hf" or frame == "Gj", f"Unknown frame '{frame}'"
   print(f"Defining angles in '{frame}' frame and using pi^+ as analyzer")
   df = (
-    df.Define("beamPol",     f"(Double32_t){beamPol}")
-      .Define("beamPolPhi",  f"(Double32_t){beamPolPhi}")
-      .Define("cosTheta",     "(Double32_t)" + (f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})" if frame == "Hf" else
+    df.Define("cosTheta",     "(Double32_t)" + (f"FSMath::helcostheta({lvPip}, {lvPim}, {lvRecoil})" if frame == "Hf" else
                                                 f"FSMath::gjcostheta({lvPip}, {lvPim}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
       .Define("theta",        "(Double32_t)std::acos(cosTheta)")
       # switching between pi+ and pi- analyzer flips sign of moments with odd M
@@ -130,8 +98,6 @@ def defineDataFrameColumns(
       .Define("phi",          "(Double32_t)" + (f"FSMath::helphi({lvPim}, {lvPip}, {lvRecoil}, {lvBeam})" if frame == "Hf" else
                                                 f"FSMath::gjphi({lvPim}, {lvPip}, {lvBeam})"))
       .Define("phiDeg",       "(Double32_t)phi * TMath::RadToDeg()")
-      .Define("Phi",         f"(Double32_t)bigPhi({lvRecoil}, {lvBeam}, beamPolPhi)")
-      .Define("PhiDeg",       "(Double32_t)Phi * TMath::RadToDeg()")
       .Define("mass",        f"(Double32_t)massPair({lvPip}, {lvPim})")
       .Define("minusT",      f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
       .Define("eventWeight", f"(Double32_t)1.0")
@@ -159,12 +125,10 @@ def plotHistograms(
     dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi2", f";cos#theta_{{{frame}}};Count",   100, -1,    +1),    "costh"),
     dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi",       f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180),  "phiDeg"),
     dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi2",      f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180),  "phiOrig2"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcPhiDeg",                 ";#Phi [deg];Count",              120, -180,  +180),  "PhiDeg"),
 
     dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcAngles{frame}PiPi",             f";cos#theta_{{{frame}}};#phi_{{{frame}}} [deg]", 100, -1,   +1,    72, -180, +180), "cosTheta", "phiDeg"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVs{frame}CosThetaPiPi", f";m_{{#pi#pi}} [GeV];cos#theta_{{{frame}}}",     50,  0.28, 2.28, 100,   -1,   +1), "mass",     "cosTheta"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVs{frame}PhiDegPiPi",   f";m_{{#pi#pi}} [GeV];#phi_{{{frame}}}",          50,  0.28, 2.28,  72, -180, +180), "mass",     "phiDeg"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsPhiDeg",                ";m_{#pi#pi} [GeV];#Phi [deg]",                  50,  0.28, 2.28,  72, -180, +180), "mass",     "PhiDeg"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsCosTheta{frame}PiPi", f";m_{{#pi#pi}} [GeV];cos#theta_{{{frame}}}",     50,  0.28, 2.28, 100,   -1,   +1), "mass",     "cosTheta"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsPhiDeg{frame}PiPi",   f";m_{{#pi#pi}} [GeV];#phi_{{{frame}}}",          50,  0.28, 2.28,  72, -180, +180), "mass",     "phiDeg"),
   ]
   print(f"Writing histograms to '{outputDirName}/{tBinLabel}'")
   for hist in hists:
@@ -182,7 +146,6 @@ if __name__ == "__main__":
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
-  ROOT.gInterpreter.Declare(CPP_CODE_BIGPHI)
 
   inputData: dict[str, str] = {  # mapping of t-bin labels to input file names
     "tbin_0.4_0.5" : "./mc/mc_full_model/mc0.4-0.5_ful.dat",
@@ -193,22 +156,17 @@ if __name__ == "__main__":
     "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
   }
   outputDirName  = "mc_full"
-  dataLabel      = "PARA_0"
-  beamPol        = 1.0
-  beamPolPhi     = 0.0
-  outputTreeName = "data"
-  outputColumns  = ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
+  outputTreeName = "PiPi"
+  outputColumns  = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
   frame          = "Hf"
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
-    outputFileName = f"{outputDirName}/{tBinLabel}/data_flat_{dataLabel}.root"
+    outputFileName = f"{outputDirName}/{tBinLabel}/data_flat.PiPi.root"
 
     df = defineDataFrameColumns(
-      df         = readData(inputFileName),
-      beamPol    = beamPol,
-      beamPolPhi = beamPolPhi,
-      frame      = frame,
+      df    = readData(inputFileName),
+      frame = frame,
       **lorentzVectors(),
     # ).Snapshot(outputTreeName, outputFileName, outputColumns)
     ).Snapshot(outputTreeName, outputFileName)  # write all columns
