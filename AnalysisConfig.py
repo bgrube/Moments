@@ -31,7 +31,7 @@ class AnalysisConfig:
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
-  psAccFileName:            str                       = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
+  psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
   psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
   maxL:                     int                       = 8  # maximum L of physical and measured moments
@@ -103,7 +103,7 @@ class AnalysisConfig:
   def loadData(
     self,
     dataType: AnalysisConfig.DataType,
-  ) -> ROOT.RDataFrame:
+  ) -> ROOT.RDataFrame | None:
     """Returns a ROOT RDataFrame with given data type"""
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       print(f"Loading real data from tree '{self.treeName}' in file '{self.dataFileName}'")
@@ -122,10 +122,18 @@ class AnalysisConfig:
       # data = dataPwaModelBkgRegion.Define("eventWeight", "eventWeight2")
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
       print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
-      return ROOT.RDataFrame(self.treeName, self.psGenFileName)
+      if self.psGenFileName is None:
+        print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
+        return None
+      else:
+        return ROOT.RDataFrame(self.treeName, self.psGenFileName)
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
       print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
-      return ROOT.RDataFrame(self.treeName, self.psAccFileName)
+      if self.psAccFileName is None:
+        print("??? Warning: File name for accepted phase-space data was not provided. Assuming perfect acceptance.")
+        return None
+      else:
+        return ROOT.RDataFrame(self.treeName, self.psAccFileName)
     else:
       raise ValueError(f"Unknown data type: {dataType}")
 

@@ -70,13 +70,9 @@ def calculateAllMoments(
     #   data = data.Range(*limitToDataEntryRange)
     # use same MC events for all real-data samples
     dataPsAcc = cfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE)
-    if cfg.limitNmbPsAccEvents > 0:
+    if cfg.limitNmbPsAccEvents > 0 and dataPsAcc is not None:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
-    dataPsGen = None
-    if cfg.psGenFileName is not None:
-      dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
-    else:
-      print("??? Warning: File name for generated phase-space data was not provided. Cannot calculate acceptance correctly.")
+    dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
     for labelDataSample, dataSample in dataSamples.items():
       print(f"Loaded {dataSample.Count().GetValue()} real-data events" + (f" of type '{labelDataSample}'" if labelDataSample is not None else ""))
       for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
@@ -86,22 +82,23 @@ def calculateAllMoments(
         print(f"Applying filter '{massBinFilter}' to select kinematic bin")
         dataInBin = dataSample.Filter(massBinFilter)
         print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} after applying event weights")
-        dataPsAccInBin = dataPsAcc.Filter(massBinFilter)
-        nmbPsAccEvents = dataPsAccInBin.Count().GetValue()
+        dataPsAccInBin = None if dataPsAcc is None else dataPsAcc.Filter(massBinFilter)
+        nmbPsAccEvents = None if dataPsAcc is None else dataPsAccInBin.Count().GetValue()
         nmbPsGenEvents = None
-        if dataPsGen is not None:
-          dataPsGenInBin = dataPsGen.Filter(massBinFilter)
-          nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
-          print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
-                f"number accepted = {nmbPsAccEvents}, "
-                f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
-        else:
-          print(f"Loaded phase-space events: number accepted = {nmbPsAccEvents}")
+        if nmbPsAccEvents is not None:
+          if dataPsGen is not None:
+            dataPsGenInBin = dataPsGen.Filter(massBinFilter)
+            nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
+            print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
+                  f"number accepted = {nmbPsAccEvents}, "
+                  f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
+          else:
+            print(f"Loaded phase-space events: number accepted = {nmbPsAccEvents}")
         # setup moment calculators for data
         dataSet = DataSet(
           data           = dataInBin,
           phaseSpaceData = dataPsAccInBin,
-          nmbGenEvents   = nmbPsGenEvents or nmbPsAccEvents,
+          nmbGenEvents   = nmbPsGenEvents or nmbPsAccEvents or 0,
           polarization   = cfg.polarization,
         )
         momentCalculators[labelDataSample].append(
