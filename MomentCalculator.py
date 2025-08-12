@@ -456,9 +456,9 @@ class MomentIndices:
 @dataclass
 class DataSet:
   """Container class that stores information about a single dataset"""
-  data:           ROOT.RDataFrame  # data from which to calculate moments
-  phaseSpaceData: ROOT.RDataFrame | None  # (accepted) phase-space data; None corresponds to perfect acceptance
-  nmbGenEvents:   int  # number of generated events
+  data:           ROOT.RDataFrame            # data from which to calculate moments
+  phaseSpaceData: ROOT.RDataFrame | None     # (accepted) phase-space data; None corresponds to perfect acceptance
+  nmbGenEvents:   int                        # number of generated events
   polarization:   float | str | None = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
 
 
@@ -517,7 +517,10 @@ def readInputData(
   else:
     raise TypeError(f"Invalid type of `polarization` argument: {type(polarization)}; expected float, str, or None")
   # get input data as std::vectors
-  print("Reading values of decay angles from 'theta', 'phi', and 'Phi' columns")
+  if polarization is None:
+    print("Reading values of decay angles from 'theta' and 'phi'")
+  else:
+    print("Reading values of decay angles from 'theta', 'phi', and 'Phi' columns")
   thetas = getStdVectorFromRdfColumn(data = data, columnName = "theta")
   phis   = getStdVectorFromRdfColumn(data = data, columnName = "phi")
   Phis   = getStdVectorFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else \
@@ -1649,6 +1652,7 @@ class MomentCalculator:
       #   momentCalculator._IFlatIndex = np.eye(len(momentCalculator.indices), dtype = np.complex128)
       #   return
       print("Reading phase-space data for the calculation of the acceptance integral vector")
+      #TODO add case with perfect acceptance when accepted phase-space data are not provided
       beamPolAccPs, thetasAccPs, phisAccPs, PhisAccPs, eventWeightsAccPs = readInputData(
         polarization = momentCalculator.dataSet.polarization,
         data         = momentCalculator.dataSet.phaseSpaceData,
