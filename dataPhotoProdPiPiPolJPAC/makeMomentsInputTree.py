@@ -109,7 +109,7 @@ def defineDataFrameColumns(
   lvPim:      str,    # function-argument list with Lorentz-vector components of pi^-
   frame:      str  = "Hf",  # can be either "Hf" for helicity or "Gj" for Gottfried-Jackson frame
 ) -> ROOT.RDataFrame:
-  """Returns RDataFrame with additional columns for moments analysis"""
+  """Returns RDataFrame with additional columns for moment analysis"""
   assert frame == "Hf" or frame == "Gj", f"Unknown frame '{frame}'"
   print(f"Defining angles in '{frame}' frame and using pi^+ as analyzer")
   df = (
@@ -137,6 +137,42 @@ def defineDataFrameColumns(
       .Define("eventWeight", f"(Double32_t)1.0")
   )
   return df
+
+
+def plotHistograms(
+  df,
+  outputDirName,
+  tBinLabel,
+  frame
+) -> None:
+  """Plots histograms"""
+  dfPlot = (
+    df.Define("minusT2",  "-t")
+      .Define("phiOrig2", "((phiOrig > TMath::Pi()) ? phiOrig - TMath::TwoPi() : phiOrig) * TMath::RadToDeg()")
+  )
+  hists = [
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",               ";m_{#pi#pi} [GeV];Count",        100, 0.28,   2.28), "mass"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi2",              ";m_{#pi#pi} [GeV];Count",        100, 0.28,   2.28), "mpipi"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",                 ";#minus t [GeV^{2}];Count",      100, 0,      1),    "minusT"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT2",                ";#minus t [GeV^{2}];Count",      100, 0,      1),    "minusT2"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi",  f";cos#theta_{{{frame}}};Count",   100, -1,    +1),    "cosTheta"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi2", f";cos#theta_{{{frame}}};Count",   100, -1,    +1),    "costh"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi",       f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180),  "phiDeg"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi2",      f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180),  "phiOrig2"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcPhiDeg",                 ";#Phi [deg];Count",              120, -180,  +180),  "PhiDeg"),
+
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcAngles{frame}PiPi",             f";cos#theta_{{{frame}}};#phi_{{{frame}}} [deg]", 100, -1,   +1,    72, -180, +180), "cosTheta", "phiDeg"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVs{frame}CosThetaPiPi", f";m_{{#pi#pi}} [GeV];cos#theta_{{{frame}}}",     50,  0.28, 2.28, 100,   -1,   +1), "mass",     "cosTheta"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVs{frame}PhiDegPiPi",   f";m_{{#pi#pi}} [GeV];#phi_{{{frame}}}",          50,  0.28, 2.28,  72, -180, +180), "mass",     "phiDeg"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel("hMcMassPiPiVsPhiDeg",                ";m_{#pi#pi} [GeV];#Phi [deg]",                  50,  0.28, 2.28,  72, -180, +180), "mass",     "PhiDeg"),
+  ]
+  print(f"Writing histograms to '{outputDirName}/{tBinLabel}'")
+  for hist in hists:
+      print(f"Generating histogram '{hist.GetName()}'")
+      canv = ROOT.TCanvas()
+      hist.SetMinimum(0)
+      hist.Draw("COLZ")
+      canv.SaveAs(f"{outputDirName}/{tBinLabel}/{hist.GetName()}.pdf")
 
 
 if __name__ == "__main__":
@@ -176,5 +212,8 @@ if __name__ == "__main__":
       **lorentzVectors(),
     # ).Snapshot(outputTreeName, outputFileName, outputColumns)
     ).Snapshot(outputTreeName, outputFileName)  # write all columns
+    print(f"Wrote data to tree '{outputTreeName}' in '{outputFileName}'")
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
+
+    plotHistograms(df, outputDirName, tBinLabel, frame)
