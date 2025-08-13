@@ -149,7 +149,7 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   psAccFileName      = None,  # no file with accepted phase-space MC
   psGenFileName      = None,  # no file with generated phase-space MC
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
-  massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),  # binning used in PWA of unpolarized data
+  # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
 )
 # configuration for polarized pi+ pi- data
 CFG_POLARIZED_PIPI = AnalysisConfig(
