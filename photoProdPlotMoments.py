@@ -117,7 +117,12 @@ def readMomentResultsClas(
     momentValues: list[MomentValue] = []
     for qnMomentIndex, momentDf in momentDfs.items():
       mask = (momentDf["mass"] == massBinCenter)
-      moment, uncertPlus, uncertMinus = momentDf[mask][["moment", "uncertPlus", "uncertMinus"]].values[0]
+      # cannot use momentDf[mask][["moment", "uncertPlus", "uncertMinus"]].values because conversion to NumPy array would upcast all columns to complex
+      # for some unknown reason, momentDf[mask].iloc[0] also converts all columns to complex, although it should not
+      dfMassBin = momentDf[mask]  # mask selects exactly 1 row
+      moment      = dfMassBin["moment"     ].iloc[0]
+      uncertPlus  = dfMassBin["uncertPlus" ].iloc[0]
+      uncertMinus = dfMassBin["uncertMinus"].iloc[0]
       assert uncertPlus == -uncertMinus, f"Uncertainties are not symmetric: {uncertPlus} vs. {uncertMinus}"
       momentValues.append(
         MomentValue(
@@ -169,7 +174,9 @@ def readMomentResultsJpac(
     momentValues: list[MomentValue] = []
     for qnMomentIndex, momentDf in momentDfs.items():
       mask = momentDf["mass"] == massBinCenter
-      moment, uncert = momentDf[mask][["moment", "uncert"]].values[0]
+      dfMassBin = momentDf[mask]  # mask selects exactly 1 row
+      moment = dfMassBin["moment"].iloc[0]
+      uncert = dfMassBin["uncert"].iloc[0]
       momentValues.append(
         MomentValue(
           qn         = qnMomentIndex,
