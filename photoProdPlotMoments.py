@@ -100,6 +100,8 @@ def readMomentResultsClas(
           )
           # scale moment values and their uncertainties by 1 / sqrt(2L + 1) to match normalization used in this analysis
           momentDf[["moment", "uncertPlus", "uncertMinus"]] /= np.sqrt(2 * qnMomentIndex.L + 1)
+          # convert moment values to complex numbers with zero imaginary part
+          momentDf["moment"] = momentDf["moment"].astype(complex)
           momentDfs[qnMomentIndex] = momentDf
           break
   # ensure that mass bins are the same in all dataframes
@@ -144,11 +146,13 @@ def readMomentResultsJpac(
       momentDf = pd.read_csv(
         dataFileName,
         sep      = r"\s+",  # values are whitespace separated
-        skiprows = 1,     # first row with column names
+        skiprows = 1,       # first row with column names
         names    = ["mass", "moment", "uncert"],
       )
       # scale moment values and their uncertainties by 1 / sqrt(2L + 1) to match normalization used in this analysis
       momentDf[["moment", "uncert"]] /= np.sqrt(2 * qnMomentIndex.L + 1)
+      # convert moment values to complex numbers with zero imaginary part
+      momentDf["moment"] = momentDf["moment"].astype(complex)
       momentDfs[qnMomentIndex] = momentDf
     except FileNotFoundError as e:
         print(f"Warning: file '{dataFileName}' not found. Skipping moment {qnMomentIndex.label}.")
@@ -337,23 +341,24 @@ def makeAllPlots(
       chi2ValuesForMoments: dict[QnMomentIndex, dict[str, tuple[float, float] | tuple[None, None]]] = {}  # key: quantum-number index of moment; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
         # get histogram with moment values from JPAC fit
-        histJpac: ROOT.TH1D | None = None
+        histsJpac:     dict[str, ROOT.TH1D] = {}
+        histsBandJpac: dict[str, ROOT.TH1D] = {}
         if overlayMomentResultsJpac:
           HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
-          histJpac = makeMomentHistogram(
+          histsJpac = {momentPart : makeMomentHistogram(
             HVals      = HValsJpac,
-            momentPart = "Re",
+            momentPart = momentPart,
             histName   = momentResultsJpacLabel,
             histTitle  = "",
             binning    = cfg.massBinning,
             plotTruth  = False,
             plotUncert = True,
-          )
-          if histJpac is not None:
-            histJpacBand = histJpac.Clone(f"{histJpac.GetName()}_band")
-            histJpac.SetLineColor(ROOT.kBlue + 1)
-            histJpac.SetLineWidth(2)
-            histJpacBand.SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
+          ) for momentPart in ("Re", "Im")}
+          for momentPart, hist in histsJpac.items():
+            hist.SetLineColor(ROOT.kBlue + 1)
+            hist.SetLineWidth(2)
+            histsBandJpac[momentPart] = hist.Clone(f"{hist.GetName()}_band")
+            histsBandJpac[momentPart].SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         histPwaTotalIntensity = None
         if False and qnIndex == H000Index:
           plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
@@ -378,12 +383,16 @@ def makeAllPlots(
           legendLabels      = ("Moment", momentResultsCompareLabel),
           plotTruthUncert   = True,
           truthColor        = momentResultsCompareColor,
-          histsToOverlay    = {} if histJpac is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
+          histsToOverlay    = {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
-              (histJpac,     "HIST L", histJpac.GetName()),
-              (histJpacBand, "E3",     ""),
+              (histsJpac["Re"],     "HIST L", histsJpac["Re"].GetName()),
+              (histsBandJpac["Re"], "E3",     ""),
             ],
-          },
+            "Im" : [
+              (histsJpac["Im"],     "HIST L", histsJpac["Im"].GetName()),
+              (histsBandJpac["Im"], "E3",     ""),
+            ],
+          } if histsJpac else {},
           # histsToOverlay    = {} if histPwaTotalIntensity is None else {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
           #   "Re" : [
           #     (histPwaTotalIntensity, "HIST", histPwaTotalIntensity.GetName()),
