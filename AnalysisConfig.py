@@ -35,7 +35,7 @@ class AnalysisConfig:
   psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
   maxL:                     int                       = 8  # maximum L of physical and measured moments
-  outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpol"  # base name of directory into which all output will be written
+  outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
   # normalizeMoments:         bool                      = True
   normalizeMoments:         bool                      = False
   nmbBootstrapSamples:      int                       = 0
@@ -138,7 +138,7 @@ class AnalysisConfig:
       raise ValueError(f"Unknown data type: {dataType}")
 
 
-# configurations for unpolarized pi+ pi- data
+# configurations for unpolarized pi+ pi- data in CLAS kinematic range
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
