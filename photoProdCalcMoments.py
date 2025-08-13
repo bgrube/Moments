@@ -112,7 +112,7 @@ def calculateAllMoments(
           )
         )
 
-  if cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS or AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS:
+  if cfg.method in {AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS, AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS}:
     # calculate integral matrix for all mass bins in all data sets
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
     # since all data sets use identical MC events, calculate integral matrix only for the first real-data sample
@@ -132,7 +132,7 @@ def calculateAllMoments(
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
     # calculate moments of accepted phase-space data
-    if cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS or AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS:
+    if cfg.method in {AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS, AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS}:
       with timer.timeThis(f"Time to calculate moments of phase-space MC data using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads"):
         # since all data samples use identical MC events, calculate moments only for first accepted phase-space sample
         momentCalculatorsFirstSample = next(iter(momentCalculators.values()))  # get first entry in momentCalculators
