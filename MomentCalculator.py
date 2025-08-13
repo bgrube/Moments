@@ -1298,6 +1298,30 @@ class MomentResultsKinematicBinning:
     for moment in self:
       moment.scaleBy(factor)
 
+  def normalizeTo(
+    self,
+    other:        MomentResultsKinematicBinning,
+    normBinIndex: int | None = None,  # if `None` moments are normalized to the integral of H_0(0, 0) over all bins, otherwise the given bin is used
+  ) -> float:
+    """Normalizes these moments in all bins such that H_0(0, 0) is equal to H_0(0, 0) in the other moments either in the given bin or integrated over all bins; returns normalization factor"""
+    H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+    normalizationFactor = 1.0
+    if normBinIndex is None:
+      # normalize to integral over all bins
+      # calculate integral by looping over all bins and summing up H_0(0, 0) values
+      H000SumThis = H000SumOther = 0.0
+      for HThis, HOther in zip(self, other):
+        H000SumThis  += HThis [H000Index].val.real
+        H000SumOther += HOther[H000Index].val.real
+      normalizationFactor = H000SumOther / H000SumThis
+    else:
+      # normalize to given bin
+      H000ValueThis  = self [normBinIndex][H000Index].val.real
+      H000ValueOther = other[normBinIndex][H000Index].val.real
+      normalizationFactor = H000ValueOther / H000ValueThis
+    self.scaleBy(normalizationFactor)
+    return normalizationFactor
+
   # special methods to implement *=, *, +=, +, -=, and - operators
   def __imul__(
     self,
