@@ -75,6 +75,9 @@ def calculateAllMoments(
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
     dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
     for labelDataSample, dataSample in dataSamples.items():
+      if dataSample is None:
+        print(f"No real-data events for type '{labelDataSample}'. Skipping.")
+        continue
       print(f"Loaded {dataSample.Count().GetValue()} real-data events" + (f" of type '{labelDataSample}'" if labelDataSample is not None else ""))
       for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
         massBinRange = cfg.massBinning.binValueRange(massBinIndex)
@@ -159,28 +162,40 @@ def calculateAllMoments(
         momentCalculatorsDataSample.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
         momentCalculatorsDataSample.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
         momentCalculatorsDataSample.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
-    # perform background subtraction at moment level
-    #!NOTE! This gives wrong estimates for the uncertainty (and covariances) of
-    # H_0(0, 0) because the number of signal and background events are treated
-    # as being constant. The uncertainty estimates for the other moments seem
-    # to be unaffected.
-    (momentCalculators["Sig"].momentResultsMeas - momentCalculators["Bkg"].momentResultsMeas).savePickle(f"{momentResultsFileBaseName}_meas.pkl")
-    (momentCalculators["Sig"].momentResultsPhys - momentCalculators["Bkg"].momentResultsPhys).savePickle(f"{momentResultsFileBaseName}_phys.pkl")
+    if len(momentCalculators["Bkg"]) > 0:
+      # perform background subtraction at moment level
+      #!NOTE! This gives wrong estimates for the uncertainty (and covariances) of
+      # H_0(0, 0) because the number of signal and background events are treated
+      # as being constant. The uncertainty estimates for the other moments seem
+      # to be unaffected.
+      (momentCalculators["Sig"].momentResultsMeas - momentCalculators["Bkg"].momentResultsMeas).savePickle(f"{momentResultsFileBaseName}_meas.pkl")
+      (momentCalculators["Sig"].momentResultsPhys - momentCalculators["Bkg"].momentResultsPhys).savePickle(f"{momentResultsFileBaseName}_phys.pkl")
+    else:
+      # background sample was empty
+      momentCalculators["Sig"].momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
+      momentCalculators["Sig"].momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
 
   elif cfg.method == AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT:
-    nmbFitAttempts          = 100
-    nmbParallelFitProcesses = 100
+    # nmbFitAttempts          = 100
+    # nmbParallelFitProcesses = 100
+    nmbFitAttempts          = 10
+    nmbParallelFitProcesses = 10
     randomSeed              = 123456789
     for labelDataSample, momentCalculatorsDataSample in momentCalculators.items():
-      with timer.timeThis(f"Time to fit moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level"):
-        print(f"Fitting moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level")
-        momentCalculatorsDataSample.fitMomentsMultipleAttempts(
-          nmbFitAttempts          = nmbFitAttempts,
-          nmbParallelFitProcesses = nmbParallelFitProcesses,
-          randomSeed              = randomSeed,
-        )
-    # perform background subtraction at moment level
-    (momentCalculators["Sig"].momentResultsPhys - momentCalculators["Bkg"].momentResultsPhys).savePickle(f"{momentResultsFileBaseName}_phys.pkl")
+      if len(momentCalculatorsDataSample) > 0:
+        with timer.timeThis(f"Time to fit moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level"):
+          print(f"Fitting moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level")
+          momentCalculatorsDataSample.fitMomentsMultipleAttempts(
+            nmbFitAttempts          = nmbFitAttempts,
+            nmbParallelFitProcesses = nmbParallelFitProcesses,
+            randomSeed              = randomSeed,
+          )
+    if len(momentCalculators["Bkg"]) > 0:
+      # perform background subtraction at moment level
+      (momentCalculators["Sig"].momentResultsPhys - momentCalculators["Bkg"].momentResultsPhys).savePickle(f"{momentResultsFileBaseName}_phys.pkl")
+    else:
+      # background sample was empty
+      momentCalculators["Sig"].momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
 
   else:
     raise ValueError(f"Unknown method {cfg.method}")
@@ -195,7 +210,7 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg.method = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # subtract background at moment level
-  # cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
+  cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
 
   tBinLabels = (
     # "tbin_0.1_0.2",

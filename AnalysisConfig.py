@@ -112,8 +112,12 @@ class AnalysisConfig:
       print(f"Loading real-data signal events with weight = 1 from tree '{self.treeName}' in file '{self.dataFileName}'")
       return ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight == 1")
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
-      print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
-      return ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight < 0")
+      df = ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight < 0")
+      if df.Count().GetValue() < 1:
+        return None
+      else:
+        print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
+        return df
       # # RDataFrame::Redefine() introduced only for ROOT V6.26+
       # # quick hack to ensure that data in background region have positive weight by dropping the eventWeight column and re-adding it with opposite value
       # data.Define("eventWeight2", "-eventWeight")
@@ -121,18 +125,18 @@ class AnalysisConfig:
       # data = ROOT.RDataFrame(self.treeName, f"{self.outFileDirName}/foo.root")
       # data = dataPwaModelBkgRegion.Define("eventWeight", "eventWeight2")
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
       if self.psGenFileName is None:
         print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
         return None
       else:
+        print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
         return ROOT.RDataFrame(self.treeName, self.psGenFileName)
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
       if self.psAccFileName is None:
         print("??? Warning: File name for accepted phase-space data was not provided. Assuming perfect acceptance.")
         return None
       else:
+        print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
         return ROOT.RDataFrame(self.treeName, self.psAccFileName)
     else:
       raise ValueError(f"Unknown data type: {dataType}")
@@ -150,6 +154,7 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   psGenFileName      = None,  # no file with generated phase-space MC
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
+  # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
 )
 # configuration for polarized pi+ pi- data
 CFG_POLARIZED_PIPI = AnalysisConfig(
