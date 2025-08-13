@@ -12,6 +12,7 @@ Usage: Run this module as a script to generate the output files.
 from __future__ import annotations
 
 from copy import deepcopy
+from enum import Enum, auto
 import functools
 import glob
 from io import StringIO
@@ -182,14 +183,19 @@ def readMomentResultsJpac(
   return MomentResultsKinematicBinning(momentResults)
 
 
+class ComparisonMomentsType(Enum):
+  """Enumerates moment data to compare to"""
+  CLAS = auto()
+  JPAC = auto()
+  PWA  = auto()
+
 def makeAllPlots(
-  cfg:       AnalysisConfig,
-  timer:     Utilities.Timer = Utilities.Timer(),
-  compareTo: str = "CLAS",  # "CLAS" or "PWA"; None means no comparison moments are plotted
+  cfg:         AnalysisConfig,
+  timer:       Utilities.Timer              = Utilities.Timer(),
+  compareTo:   ComparisonMomentsType | None = None,   # `None` means no comparison moments are plotted
+  outFileType: str                          = "pdf",  # "pdf" or "root"
 ) -> None:
-  """Generates all plots for the given analysis configuration"""
-  outFileType = "pdf"
-  # outFileType = "root"
+  """Generates all plots for the given analysis configuration and writes them to output files"""
   # load moments from files
   momentIndices = MomentIndices(cfg.maxL)
   #TODO move this into AnalysisConfig?
@@ -200,55 +206,58 @@ def makeAllPlots(
     momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl")
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
-  if compareTo == "PWA":
+  if compareTo == ComparisonMomentsType.PWA:
     print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
   momentResultsCompare, momentResultsCompareLabel, momentResultsCompareColor = (
-    (
-      readMomentResultsClas(momentIndices, cfg.binVarMass),
-      "CLAS",
-      ROOT.kGray + 2,
-    ) if compareTo == "CLAS" else
     (
       MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPD.pkl"),
       "PWA #it{S} #plus #it{P} #plus #it{D}",
       # MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPDF.pkl"),
       # "PWA #it{S} #plus #it{P} #plus #it{D} #plus #it{F}",
       ROOT.kBlue + 1,
-    ) if compareTo == "PWA" else
+    ) if compareTo == ComparisonMomentsType.PWA
+    else
+    (
+      readMomentResultsClas(momentIndices, cfg.binVarMass),
+      "CLAS",
+      ROOT.kGray + 2,
+    ) if compareTo == ComparisonMomentsType.CLAS
+    else
+    (
+      readMomentResultsJpac(momentIndices, cfg.binVarMass),
+      "JPAC",
+      ROOT.kBlue + 1,
+    ) if compareTo == ComparisonMomentsType.JPAC
+    else
     (
       None,
       "",
       ROOT.kBlack,
     )
   )
-  momentResultsJpac        = readMomentResultsJpac(momentIndices, cfg.binVarMass)
-  momentResultsJpacLabel   = "JPAC"
-  overlayMomentResultsJpac = (compareTo == "CLAS")
-
-  H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+  momentResultsJpac = None
   if momentResultsCompare is not None and not cfg.normalizeMoments:
-    if compareTo == "CLAS":
-      # scale CLAS and JPAC moments to match GlueX data
-      scaleFactorClas = 1.0
-      normalizeByIntegral = True  # if false comparison and JPAC moments are normalized to the maximum bin
-      if normalizeByIntegral:
-        # loop over mass bins and sum up H(0, 0) values
-        H000Sum = H000SumComp = 0.0
-        for HPhys, HComp in zip(momentResultsPhys, momentResultsCompare):
-          H000Sum     += HPhys[H000Index].val.real
-          H000SumComp += HComp[H000Index].val.real
-        scaleFactorClas = H000Sum / H000SumComp
-      else:
-        normMassBinIndex = 36  # corresponds to m_pipi = 0.765 GeV; in this bin H(0, 0) is maximal in CLAS and GlueX data
-        H000Value = momentResultsPhys[normMassBinIndex][H000Index].val.real
-        scaleFactorClas = H000Value / momentResultsCompare[normMassBinIndex][H000Index].val.real
-      print(f"Scale CLAS moments by factor {scaleFactorClas}")
-      momentResultsCompare.scaleBy(scaleFactorClas)
-      momentResultsJpac.scaleBy   (scaleFactorClas)  # use same factor as for CLAS moments
-    elif compareTo == "PWA":
+    if compareTo == ComparisonMomentsType.CLAS:
+      normalizationFactorClas = momentResultsCompare.normalizeTo(
+        momentResultsPhys,
+        normBinIndex = None,  # normalize to integral over mass bins
+        # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
+      )
+      momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
+      momentResultsJpac.scaleBy(normalizationFactorClas)  # use same factor as for CLAS moments
+      print(f"Scaled CLAS and JPAC moments by factor {normalizationFactorClas}")
+    if compareTo == ComparisonMomentsType.JPAC:
+      normalizationFactorJpac = momentResultsCompare.normalizeTo(
+        momentResultsPhys,
+        normBinIndex = None,  # normalize to integral over mass bins
+        # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
+      )
+      print(f"Scaled JPAC moments by factor {normalizationFactorJpac}")
+    elif compareTo == ComparisonMomentsType.PWA:
       # scale moments from PWA result
       momentResultsCompare.scaleBy(1 / (8 * math.pi))  #TODO unclear where this factor comes from; could it be the kappa term in the intensity function?
 
+  H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
   if True:
     with timer.timeThis(f"Time to plot results from analysis of real data"):
       # plot moments in each mass bin
@@ -343,12 +352,12 @@ def makeAllPlots(
         # get histogram with moment values from JPAC fit
         histsJpac:     dict[str, ROOT.TH1D] = {}
         histsBandJpac: dict[str, ROOT.TH1D] = {}
-        if overlayMomentResultsJpac:
+        if momentResultsJpac is not None:
           HValsJpac = tuple(MomentValueAndTruth(*HPhys[qnIndex]) for HPhys in momentResultsJpac)
           histsJpac = {momentPart : makeMomentHistogram(
             HVals      = HValsJpac,
             momentPart = momentPart,
-            histName   = momentResultsJpacLabel,
+            histName   = "JPAC",
             histTitle  = "",
             binning    = cfg.massBinning,
             plotTruth  = False,
@@ -618,11 +627,13 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  compareTo = ""
-  # compareTo = "CLAS"
+  # compareTo = None
+  # compareTo = ComparisonMomentsType.CLAS
+  # compareTo = ComparisonMomentsType.JPAC
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  # compareTo = "PWA"
+  # compareTo = ComparisonMomentsType.PWA
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  compareTo = ComparisonMomentsType.JPAC
   cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
