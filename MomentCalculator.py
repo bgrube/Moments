@@ -1430,6 +1430,7 @@ class MomentResultsKinematicBinning:
     """Saves `MomentResultsKinematicBinning` to pickle file"""
     with open(pickleFileName, "wb") as file:
       pickle.dump(self, file)
+    print(f"Wrote moment results to file '{pickleFileName}'")
 
   @classmethod
   def loadPickle(
@@ -1439,6 +1440,7 @@ class MomentResultsKinematicBinning:
     """Loads `MomentResultsKinematicBinning` from pickle file"""
     with open(pickleFileName, "rb") as file:
       return pickle.load(file)
+    print(f"Loaded moment results from file '{pickleFileName}'")
 
   def toJsonStr(self) -> str:
     """Returns JSON string with valid moment values in all kinematic bins"""
@@ -1670,11 +1672,14 @@ class MomentCalculator:
       momentCalculator: MomentCalculator,  # instance of outer class
     ) -> None:
       """Calculates integrals of all basis functions from accepted phase-space events"""
-      #TODO implement perfect acceptance case
-      # if momentCalculator.dataSet.phaseSpaceData is None:
-      #   print("Warning: no phase-space data; using perfect acceptance")
-      #   momentCalculator._IFlatIndex = np.eye(len(momentCalculator.indices), dtype = np.complex128)
-      #   return
+      nmbMoments = len(momentCalculator.indices)
+      if momentCalculator.dataSet.phaseSpaceData is None:
+        print("Warning: no phase-space data; using perfect acceptance")
+        self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
+        H000Index: int = momentCalculator.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]
+        self._integralVector[H000Index] = 1.0
+        self._phaseSpaceEfficiency      = 1.0
+        return
       print("Reading phase-space data for the calculation of the acceptance integral vector")
       #TODO add case with perfect acceptance when accepted phase-space data are not provided
       beamPolAccPs, thetasAccPs, phisAccPs, PhisAccPs, eventWeightsAccPs = readInputData(
@@ -1683,7 +1688,6 @@ class MomentCalculator:
       )
       nmbEventsAccPs = len(thetasAccPs)
       self._phaseSpaceEfficiency = nmbEventsAccPs / momentCalculator.dataSet.nmbGenEvents  # efficiency averaged over phase space
-      nmbMoments = len(momentCalculator.indices)
       print(f"Calculating acceptance integral vector for {nmbMoments} moments from {nmbEventsAccPs} accepted phase-space events")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
       for flatIndex in momentCalculator.indices.flatIndices:
