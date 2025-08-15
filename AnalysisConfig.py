@@ -110,14 +110,22 @@ class AnalysisConfig:
       return ROOT.RDataFrame(self.treeName, self.dataFileName)
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIGNAL:
       print(f"Loading real-data signal events with weight = 1 from tree '{self.treeName}' in file '{self.dataFileName}'")
-      return ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight == 1")
-    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
-      df = ROOT.RDataFrame(self.treeName, self.dataFileName).Filter("eventWeight < 0")
-      if df.Count().GetValue() < 1:
-        return None
+      df = ROOT.RDataFrame(self.treeName, self.dataFileName)
+      if "eventWeight" in df.GetColumnNames():
+        return df.Filter("eventWeight == 1")
       else:
-        print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
-        return df
+        return df  # if there is no eventWeight column all events have weight 1
+    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
+      df = ROOT.RDataFrame(self.treeName, self.dataFileName)
+      if "eventWeight" in df.GetColumnNames():
+        df = df.Filter("eventWeight < 0")
+        if df.Count().GetValue() > 0:
+          print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
+          return df
+        else:
+          return None  # no events with weight < 0
+      else:
+        return None  # if there is no eventWeight column all events have weight 1
       # # RDataFrame::Redefine() introduced only for ROOT V6.26+
       # # quick hack to ensure that data in background region have positive weight by dropping the eventWeight column and re-adding it with opposite value
       # data.Define("eventWeight2", "-eventWeight")
