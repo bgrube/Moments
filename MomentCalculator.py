@@ -1547,10 +1547,11 @@ class MomentCalculator:
 
   def calculateMoments(
     self,
-    dataSourceType:      DataSourceType = DataSourceType.REAL_DATA,  # type of data to calculate moments from
-    normalize:           bool           = True,   # if set physical moments are normalized to H_0(0, 0)
-    nmbBootstrapSamples: int            = 0,      # number of bootstrap samples; 0 means no bootstrapping
-    bootstrapSeed:       int            = 12345,  # seed used for random number generator used for bootstrap samples
+    dataSourceType:            DataSourceType = DataSourceType.REAL_DATA,  # type of data to calculate moments from
+    normalize:                 bool           = True,   # if set, physical moments are normalized to H_0(0, 0)
+    applyCovPoissonCorrection: bool           = True,   # if set, Poissonian fluctuation of number of events is taken into account  #TODO add this to `AnalysisConfig`?
+    nmbBootstrapSamples:       int            = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapSeed:             int            = 12345,  # seed used for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
@@ -1597,34 +1598,39 @@ class MomentCalculator:
         self.HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181) #TODO update eq numbers
     fMeasWeighted = eventWeights * fMeas
-    V_meas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
-    self.HMeas.setCovarianceMatricesFrom(V_meas_aug)
+    Vmeas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
+    if applyCovPoissonCorrection:
+      # add correction that accounts for Poissonian fluctuations of number of events; Eq. (123) and (124)
+      fMeasWeightedMean = np.mean(fMeasWeighted, axis = 1)
+      fMeasWeightedMean_aug = np.block([fMeasWeightedMean, np.conjugate(fMeasWeightedMean)])
+      Vmeas_aug += (2 * np.pi)**2 * nmbEvents * np.outer(fMeasWeightedMean_aug, np.conjugate(fMeasWeightedMean_aug))
+    self.HMeas.setCovarianceMatricesFrom(Vmeas_aug)
     # calculate physical moments and propagate uncertainty
     self.HPhys.nmbBootstrapSamples = nmbBootstrapSamples
     self.HPhys.bootstrapSeed       = bootstrapSeed
-    V_phys_aug = np.empty(V_meas_aug.shape, dtype = np.complex128)
+    Vphys_aug = np.empty(Vmeas_aug.shape, dtype = np.complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
       np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
-      np.copyto(V_phys_aug, V_meas_aug)
+      np.copyto(Vphys_aug, Vmeas_aug)
       np.copyto(self.HPhys._bsSamplesFlatIndex, self.HMeas._bsSamplesFlatIndex)
     else:
       # get inverse of acceptance integral matrix
-      I_inv = integralMatrix.inverse
+      Iinv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
-      self.HPhys._valsFlatIndex = I_inv @ self.HMeas._valsFlatIndex  # Eq. (83)
+      self.HPhys._valsFlatIndex = Iinv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # calculate bootstrap samples for H_phys
       for bsSampleIndex in range(nmbBootstrapSamples):
-        self.HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = I_inv @ self.HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
+        self.HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = Iinv @ self.HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
-      J = I_inv  # Jacobian of efficiency correction; Eq. (101)
-      J_conj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
+      J = Iinv  # Jacobian of efficiency correction; Eq. (101)
+      Jconj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
       J_aug = np.block([
-        [J,                    J_conj],
-        [np.conjugate(J_conj), np.conjugate(J)],
+        [J,                   Jconj],
+        [np.conjugate(Jconj), np.conjugate(J)],
       ])  # augmented Jacobian; Eq. (98)
-      V_phys_aug = J_aug @ (V_meas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative; Eq. (85)
-    self.HPhys.setCovarianceMatricesFrom(V_phys_aug)
+      Vphys_aug = J_aug @ (Vmeas_aug @ np.asmatrix(J_aug).H)  #!NOTE! @ is left-associative; Eq. (85)
+    self.HPhys.setCovarianceMatricesFrom(Vphys_aug)
     if normalize:
       self.HPhys.normalize()
     self.HMeas.valid = True
@@ -1996,7 +2002,12 @@ class MomentCalculatorsKinematicBinning:
     """Calculates moments for all kinematic bins using given data source"""
     for kinBinIndex, momentsInBin in enumerate(self):
       print(f"Calculating moments for kinematic bin [{kinBinIndex + 1} of {len(self)}] at {momentsInBin.binCenters}")
-      momentsInBin.calculateMoments(dataSourceType, normalize, nmbBootstrapSamples, bootstrapSeed + kinBinIndex)
+      momentsInBin.calculateMoments(
+        dataSourceType      = dataSourceType,
+        normalize           = normalize,
+        nmbBootstrapSamples = nmbBootstrapSamples,
+        bootstrapSeed       = bootstrapSeed + kinBinIndex,
+      )
 
   def fitMomentsMultipleAttempts(
     self,
