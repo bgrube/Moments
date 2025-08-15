@@ -114,7 +114,7 @@ class AnalysisConfig:
       if "eventWeight" in df.GetColumnNames():
         return df.Filter("eventWeight == 1")
       else:
-        return df  # if there is no eventWeight column all events have weight 1
+        return df  # if there is no `eventWeight` column all events have weight 1
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
       df = ROOT.RDataFrame(self.treeName, self.dataFileName)
       if "eventWeight" in df.GetColumnNames():
@@ -125,9 +125,9 @@ class AnalysisConfig:
         else:
           return None  # no events with weight < 0
       else:
-        return None  # if there is no eventWeight column all events have weight 1
-      # # RDataFrame::Redefine() introduced only for ROOT V6.26+
-      # # quick hack to ensure that data in background region have positive weight by dropping the eventWeight column and re-adding it with opposite value
+        return None  # if there is no `eventWeight` column all events have weight 1
+      # # RDataFrame::Redefine() is available only in ROOT V6.26+
+      # # quick hack to ensure that data in background region have positive weight by dropping the `eventWeight` column and re-adding it with opposite value
       # data.Define("eventWeight2", "-eventWeight")
       # data.Snapshot(self.treeName, f"{self.outFileDirName}/foo.root", ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT", "eventWeight2"))
       # data = ROOT.RDataFrame(self.treeName, f"{self.outFileDirName}/foo.root")

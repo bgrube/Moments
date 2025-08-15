@@ -132,7 +132,8 @@ def calculateAllMoments(
     labelsOtherSamples = (label for label in momentCalculators.keys() if label is not labelFirstSample)
     for labelDataSample in labelsOtherSamples:
       for massBinIndex in range(len(cfg.massBinning)):
-        momentCalculators[labelDataSample][massBinIndex]._integralMatrix = momentCalculatorsFirstSample[massBinIndex].integralMatrix
+        if len(momentCalculators[labelDataSample]) > 0:  # if data sample exists
+          momentCalculators[labelDataSample][massBinIndex]._integralMatrix = momentCalculatorsFirstSample[massBinIndex].integralMatrix
 
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
