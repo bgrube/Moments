@@ -243,6 +243,7 @@ def makeAllPlots(
     )
   )
   if compareTo == ComparisonMomentsType.JPAC and momentResultsCompare is not None:
+    print(f"Writing JPAC moments to '{momentResultsFileBaseName}_JPAC.pkl'")
     momentResultsCompare.savePickle(f"{momentResultsFileBaseName}_JPAC.pkl")  # save copy of JPAC moments
   momentResultsJpac = None
   if momentResultsCompare is not None and not cfg.normalizeMoments:

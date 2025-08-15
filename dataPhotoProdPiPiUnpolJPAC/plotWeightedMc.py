@@ -59,6 +59,7 @@ def plotDistributions1D(
   treeName:           str,
   filter:             str,
   histTitle:          str = "",
+  pdfFileMamePrefix:  str = "",
   pdfFileMameSuffix:  str = "",
   yAxisLabel:         str = "RF-Sideband Subtracted Combos"
 ) -> None:
@@ -104,7 +105,7 @@ def plotDistributions1D(
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
     label.DrawLatex(0.15, 0.89, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
-    canv.SaveAs(f"{histStack.GetName()}{pdfFileMameSuffix}.pdf")
+    canv.SaveAs(f"{pdfFileMamePrefix}{histStack.GetName()}{pdfFileMameSuffix}.pdf")
 
 
 def plotDistributions2D(
@@ -112,6 +113,7 @@ def plotDistributions2D(
   weightedMcFileName: str,
   treeName:           str,
   filter:             str,
+  pdfFileMamePrefix:  str = "",
   pdfFileMameSuffix:  str = "",
 ) -> None:
   """Plots 2D distributions from real data and weighted Monte Carlo and their differences"""
@@ -135,14 +137,14 @@ def plotDistributions2D(
     histData.SetTitle("Real Data")
     canv = ROOT.TCanvas()
     histData.Draw("COLZ")
-    canv.SaveAs(f"{histData.GetName()}{pdfFileMameSuffix}.pdf")
+    canv.SaveAs(f"{pdfFileMamePrefix}{histData.GetName()}{pdfFileMameSuffix}.pdf")
 
     histWeightedMc = hists2DToCompare.weightedMc[histIndex]
     print(f"Plotting histograms '{histWeightedMc.GetName()}'")
     histWeightedMc.SetTitle("Weighted MC")
     canv = ROOT.TCanvas()
     histWeightedMc.Draw("COLZ")
-    canv.SaveAs(f"{histWeightedMc.GetName()}{pdfFileMameSuffix}.pdf")
+    canv.SaveAs(f"{pdfFileMamePrefix}{histWeightedMc.GetName()}{pdfFileMameSuffix}.pdf")
 
     print(f"Plotting difference of histograms '{histData.GetName()}' - '{histWeightedMc.GetName()}'")
     scaleFactor = histData.Integral() / histWeightedMc.Integral()
@@ -160,7 +162,7 @@ def plotDistributions2D(
     histResidual.SetTitle("(Real Data #minus Weighted MC) / Uncertainty")
     canv = ROOT.TCanvas()
     histResidual.Draw("COLZ")
-    canv.SaveAs(f"{histResidual.GetName()}{pdfFileMameSuffix}.pdf")
+    canv.SaveAs(f"{pdfFileMamePrefix}{histResidual.GetName()}{pdfFileMameSuffix}.pdf")
 
 
 if __name__ == "__main__":
@@ -184,12 +186,14 @@ if __name__ == "__main__":
     treeName           = treeName,
     filter             = "(true)",
     histTitle          = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
+    pdfFileMamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
   )
   plotDistributions2D(
     dataFileName       = dataFileName,
     weightedMcFileName = weightedMcFileName,
     treeName           = treeName,
     filter             = "(true)",
+    pdfFileMamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
   )
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
@@ -203,6 +207,7 @@ if __name__ == "__main__":
       filter             = massRangeFilter,
       histTitle          = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
       pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+      pdfFileMamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
     )
     plotDistributions2D(
       dataFileName       = dataFileName,
@@ -210,4 +215,5 @@ if __name__ == "__main__":
       treeName           = treeName,
       filter             = massRangeFilter,
       pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+      pdfFileMamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
     )
