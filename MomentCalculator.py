@@ -1413,6 +1413,13 @@ class MomentResultsKinematicBinning:
     """Iterates over `MomentResults` in kinematic bins"""
     return iter(self.moments)
 
+  def append(
+    self,
+    momentResult: MomentResult,
+  ) -> None:
+    """Appends a `MomentResult` to the list of kinematic bins"""
+    self.moments.append(momentResult)
+
   @property
   def binCenters(self) -> tuple[dict[KinematicBinningVariable, float], ...]:
     """Returns tuple with bin centers of all moments"""
@@ -1600,7 +1607,7 @@ class MomentCalculator:
     fMeasWeighted = eventWeights * fMeas
     Vmeas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
     if applyCovPoissonCorrection:
-      # add correction that accounts for Poissonian fluctuations of number of events; Eq. (123) and (124)
+      # add correction that accounts for Poissonian fluctuations of number of events; Eqs. (123) and (124)
       fMeasWeightedMean = np.mean(fMeasWeighted, axis = 1)
       fMeasWeightedMean_aug = np.block([fMeasWeightedMean, np.conjugate(fMeasWeightedMean)])
       Vmeas_aug += (2 * np.pi)**2 * nmbEvents * np.outer(fMeasWeightedMean_aug, np.conjugate(fMeasWeightedMean_aug))

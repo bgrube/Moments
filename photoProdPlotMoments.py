@@ -168,7 +168,7 @@ def readMomentResultsJpac(
   for df in dfs[1:]:
     assert df["mass"].equals(massColumn), f"Mass bins in dataframes differ:\n{df['mass']}\nvs.\n{massColumn}"
   # convert dataframes to MomentResultsKinematicBinning
-  momentResults: list[MomentResult] = []
+  momentResults = MomentResultsKinematicBinning([])
   for massBinCenter in massColumn:
     # loop over momentDfs and extract moment values for the given mass bin
     momentValues: list[MomentValue] = []
@@ -187,7 +187,7 @@ def readMomentResultsJpac(
         )
       )
     momentResults.append(constructMomentResultFrom(momentIndices, momentValues))
-  return MomentResultsKinematicBinning(momentResults)
+  return momentResults
 
 
 class ComparisonMomentsType(Enum):
