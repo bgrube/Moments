@@ -197,7 +197,7 @@ class HistAxisBinning:
 
   @property
   def astuple(self) -> tuple[int, float, float]:
-    """Returns tuple with binning info that can be directly used in ROOT.THX() constructor"""
+    """Returns tuple with binning info that can be directly used in ROOT histogram constructor, i.e. TH1D("name", "title", *binning.astuple)"""
     return (self.nmbBins, self.minVal, self.maxVal)
 
   @property
