@@ -85,7 +85,9 @@ def calculateAllMoments(
         massBinFilter = cfg.massBinning.binFilter(massBinIndex)
         print(f"Applying filter '{massBinFilter}' to select kinematic bin")
         dataInBin = dataSample.Filter(massBinFilter)
-        print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} after applying event weights")
+        print(f"Loaded {dataInBin.Count().GetValue()} data events")
+        if "eventWeight" in dataInBin.GetColumnNames():
+          print(f"Sample contains {dataInBin.Sum('eventWeight').GetValue()} events after applying event weights")
         dataPsAccInBin = None if dataPsAcc is None else dataPsAcc.Filter(massBinFilter)
         nmbPsAccEvents = None if dataPsAcc is None else dataPsAccInBin.Count().GetValue()
         nmbPsGenEvents = None
