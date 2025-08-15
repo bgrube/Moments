@@ -27,8 +27,12 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
+  HistAxisBinning,
 )
-from MomentCalculator import MomentResultsKinematicBinning
+from MomentCalculator import (
+  MomentResultsKinematicBinning,
+  QnMomentIndex,
+)
 from PlottingUtilities import setupPlotStyle
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
@@ -86,7 +90,7 @@ def weightDataWithIntensity(
   # ROOT.gRandom.SetSeed(seed)
   dataToWeight = (
     dataToWeight.Define("intensityWeight", f"(Double32_t){intensityFormula}")
-                .Define("rndNmb",           "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
+                .Define("intensityRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
   )
   tmpFileName = f"{outFileName}.unweighted.root"
   dataToWeight.Snapshot(cfg.treeName, tmpFileName)  # write unweighted data to file to ensure that random columns are filled only once
@@ -94,17 +98,95 @@ def weightDataWithIntensity(
   # determine maximum weight
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
   print(f"Maximum intensity is {maxIntensityWeight}")
-  # accept each event with probability intensityWeight / maxIntensityWeight
+  # apply weights by accepting each event with probability intensityWeight / maxIntensityWeight
   weightedData = (
-    dataToWeight.Define("acceptEvent", f"(bool)(rndNmb < (intensityWeight / {maxIntensityWeight}))")
-                .Filter("acceptEvent == true")
+    dataToWeight.Define("acceptEventIntensityWeight", f"(bool)(intensityRndNmb < (intensityWeight / {maxIntensityWeight}))")
+                .Filter("acceptEventIntensityWeight == true")
   )
   nmbWeightedEvents = weightedData.Count().GetValue()
   print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; generator efficiency is {nmbWeightedEvents / nmbGenPsEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
-  weightedData.Snapshot(cfg.treeName, outFileName)
+  weightedData.Snapshot(cfg.treeName, outFileName)  #TODO write out only essential columns
   subprocess.run(f"rm -f {tmpFileName}", shell = True)
+
+
+def reweightData(
+  dataToWeight: ROOT.RDataFrame,  # data to reweight
+  treeName:     str,              # name of TTree holding the data
+  variableName: str,              # column name corresponding to kinematic variable whose distribution is to be reweighted
+  targetDistr:  ROOT.TH1D,        # histogram with target distribution
+) -> ROOT.RDataFrame:
+  """Generic function to reweight the data in an RDataFrame such that the distribution of the given variable matches the target distribution in the given histogram"""
+  # get histogram of current distribution using same binning as targetDistribution
+  currentDistr = dataToWeight.Histo1D(
+    ROOT.RDF.TH1DModel(
+      f"{variableName}Distr", f";{variableName};Count",
+      targetDistr.GetNbinsX(), targetDistr.GetXaxis().GetXmin(), targetDistr.GetXaxis().GetXmax()
+    ),
+    variableName,
+  ).GetValue()
+  # # save plots of distributions
+  # canv = ROOT.TCanvas()
+  # currentDistr.Draw()
+  # canv.SaveAs(f"{currentDistr.GetName()}.root")
+  # canv = ROOT.TCanvas()
+  # targetDistr.Draw()
+  # canv.SaveAs(f"{targetDistr.GetName()}.root")
+  # normalize histograms such that they represent the corresponding PDFs
+  targetDistr.Scale (1.0 / targetDistr.Integral ())
+  currentDistr.Scale(1.0 / currentDistr.Integral())
+  # calculate PDF ratio that defines the weight histogram
+  weights = targetDistr.Clone("weights")
+  weights.Divide(currentDistr)
+  # add weights to input data
+  RootUtilities.declareInCpp(weights = weights)  # use Python object in C++
+  dataToWeight = (
+    dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weights.GetBinContent(PyVars::weights.FindBin({variableName}))")
+                .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")
+  )
+  tmpFileName = f"{outFileName}.unweighted.root"
+  dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to file to ensure that random columns are filled only once
+  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back
+  nmbEvents = dataToWeight.Count().GetValue()
+  # determine maximum weight
+  maxWeight = dataToWeight.Max("reweightingWeight").GetValue()
+  print(f"Maximum weight is {maxWeight}")
+  # apply weights by accepting each event with probability reweightingWeight / maxWeight
+  reweightedData = (
+    dataToWeight.Define("acceptEventReweight", f"(bool)(reweightingRndNmb < (reweightingWeight / {maxWeight}))")
+                .Filter("acceptEventReweight == true")
+  )
+  nmbWeightedEvents = reweightedData.Count().GetValue()
+  print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
+  # subprocess.run(f"rm -f {tmpFileName}", shell = True)
+  return reweightedData
+
+
+def reweightKinDistribution(
+  dataToWeight:  ROOT.RDataFrame,  # data to reweight
+  treeName:      str,              # name of TTree holding the data
+  binning:       HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
+  momentResults: MomentResultsKinematicBinning,  # moment values
+  outFileName:   str,  # name of file to write data into
+) -> None:
+  """Reweight mass distribution of data according to mass dependence of H_0(0, 0)"""
+  print(f"Reweighting {binning.var.name} dependence")
+  # construct target distribution from H_0(0, 0) values in kinematic bins
+  targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple)
+  H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+  for momentResultsForBin in momentResults:
+    massBinCenter = momentResultsForBin.binCenters[binning.var]
+    targetDistr.SetBinContent(targetDistr.FindBin(massBinCenter), momentResultsForBin[H000Index].real[0])
+  # reweight data
+  reweightedData = reweightData(
+    dataToWeight = dataToWeight,
+    treeName     = treeName,
+    variableName = binning.var.name,
+    targetDistr  = targetDistr,
+  )
+  print(f"Writing reweighted data to file '{outFileName}'")
+  reweightedData.Snapshot(treeName, outFileName)
 
 
 if __name__ == "__main__":
@@ -152,17 +234,18 @@ if __name__ == "__main__":
 
           print(f"Using configuration:\n{cfg}")
           timer.start("Total execution time")
-          momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+          outFileBaseName = f"{cfg.outFileDirName}/data_weighted_flat"
+          # outFileBaseName = f"{cfg.outFileDirName}/data_weighted_pwa_SPD_flat"
+          # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
           # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
+          momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
           print(f"Reading moments from file '{momentResultsFileName}'")
           momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
           for momentResultsForBin in momentResults:
             massBinCenter = momentResultsForBin.binCenters[cfg.massBinning.var]
             massBinIndex  = cfg.massBinning.findBin(massBinCenter)
             assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} GeV"
-            outFileBaseName = f"{cfg.outFileDirName}/data_weighted_flat"
-            # outFileBaseName = f"{cfg.outFileDirName}/data_weighted_pwa_SPD_flat"
-            outFileName     = f"{outFileBaseName}_{massBinIndex}.root"
+            outFileName = f"{outFileBaseName}_{massBinIndex}.root"
             print(f"Weighting events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit} weighted by intensity function")
             weightDataWithIntensity(
               intensityFormula = momentResultsForBin.intensityFormula(  #TODO include imaginary parts into intensity formula
@@ -182,12 +265,24 @@ if __name__ == "__main__":
             )
 
           # merge trees with weighted MC data from different mass bins into single file
+          mergedFileName = f"{outFileBaseName}.root"
           nmbParallelJobs = 10
           with timer.timeThis(f"Time to merge ROOT files from all mass bins using hadd with {nmbParallelJobs} parallel jobs"):
-            outFileName = f"{outFileBaseName}.root"
-            cmd = f"hadd -j {nmbParallelJobs} {outFileName} {outFileBaseName}_*.root"
+            cmd = f"hadd -f -j {nmbParallelJobs} {mergedFileName} {outFileBaseName}_*.root"
             print(f"Merging ROOT files from all mass bins: '{cmd}'")
             subprocess.run(cmd, shell = True)
+
+          # reweight mass distribution of merged file
+          reweightedFileName = f"{cfg.outFileDirName}/data_reweighted_flat.root"
+          with timer.timeThis(f"Time to reweight mass distribution"):
+            data = ROOT.RDataFrame(cfg.treeName, mergedFileName)
+            reweightKinDistribution(
+              dataToWeight  = data,
+              treeName      = cfg.treeName,
+              binning       = cfg.massBinning,
+              momentResults = momentResults,
+              outFileName   = reweightedFileName,
+            )
 
           timer.stop("Total execution time")
           print(timer.summary)
