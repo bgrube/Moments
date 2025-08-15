@@ -1186,12 +1186,13 @@ class MomentResult:
 
   def intensityFormula(
     self,
-    polarization:     float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
-    thetaFormula:     str,  # formula for polar angle theta [rad]
-    phiFormula:       str,  # formula for azimuthal angle phi [rad]
-    PhiFormula:       str,  # formula for angle Phi between photon polarization and production plane[rad]
-    printFormula:     bool = False,  # if True formula for calculation of intensity is printed
-    useMomentSymbols: bool = False,  # if True insert TFormula parameter names "[Hi_L_M]" instead of moment values into formula
+    polarization:                float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
+    thetaFormula:                str,  # formula for polar angle theta [rad]
+    phiFormula:                  str,  # formula for azimuthal angle phi [rad]
+    PhiFormula:                  str,  # formula for angle Phi between photon polarization and production plane[rad]
+    printFormula:                bool = False,  # if True, formula for calculation of intensity is printed
+    useMomentSymbols:            bool = False,  # if True, insert TFormula parameter names "[Hi_L_M]" instead of moment values into formula
+    includeParityViolatingTerms: bool = True,   # if True, include parity-violating terms into formula
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
@@ -1203,8 +1204,14 @@ class MomentResult:
       HLM = self[QnMomentIndex(momentIndex, L, M)].val
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
-      term += f"* [{qnIndex.label}] " if useMomentSymbols else f"* ({HLM.imag if momentIndex == 2 else HLM.real}) "  # real or imaginary part of moment value
-      term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # real or imaginary part of spherical harmonic
+      if includeParityViolatingTerms:
+        term += "* complexT("  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
+        term += (f"[Re{qnIndex.label}], [Im{qnIndex.label}]" if useMomentSymbols else f"({HLM.real}), ({HLM.imag})")
+        term +=  ")"
+        term += f"* {YLM}"
+      else:
+        term += "* " + (f"[{qnIndex.label}] " if useMomentSymbols else f"({HLM.imag if momentIndex == 2 else HLM.real}) ")  # real or imaginary part of moment value
+        term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # real or imaginary part of spherical harmonic
       intensityComponentTerms[momentIndex].append(term)
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3
@@ -1220,6 +1227,8 @@ class MomentResult:
       intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
     else:
       assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`"
+    if includeParityViolatingTerms:
+      intensityFormula = f"std::real({intensityFormula})"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
