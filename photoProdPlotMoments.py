@@ -242,6 +242,8 @@ def makeAllPlots(
       ROOT.kBlack,
     )
   )
+  if compareTo == ComparisonMomentsType.JPAC and momentResultsCompare is not None:
+    momentResultsCompare.savePickle(f"{momentResultsFileBaseName}_JPAC.pkl")  # save copy of JPAC moments
   momentResultsJpac = None
   if momentResultsCompare is not None and not cfg.normalizeMoments:
     if compareTo == ComparisonMomentsType.CLAS:
