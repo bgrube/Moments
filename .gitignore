@@ -1,8 +1,6 @@
 **/*.txt
 **/*.bak
 **/*.log
-**/*.npy
-**/*.npz
 **/*.old
 **/*.orig
 **/*.pdf
@@ -26,6 +24,9 @@ plots*/**
 **/env
 **/__pycache__
 **/.ipynb_checkpoints
+**/*.npy
+**/*.npz
+**/*.pkl
 
 # Prerequisites
 **/*.d
