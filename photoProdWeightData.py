@@ -154,7 +154,7 @@ if __name__ == "__main__":
           timer.start("Total execution time")
           momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
           # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
-          print(f"Reading physical moments from file '{momentResultsFileName}'")
+          print(f"Reading moments from file '{momentResultsFileName}'")
           momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
           for momentResultsForBin in momentResults:
             massBinCenter = momentResultsForBin.binCenters[cfg.massBinning.var]
@@ -163,7 +163,7 @@ if __name__ == "__main__":
             outFileBaseName = f"{cfg.outFileDirName}/data_weighted_flat"
             # outFileBaseName = f"{cfg.outFileDirName}/data_weighted_pwa_SPD_flat"
             outFileName     = f"{outFileBaseName}_{massBinIndex}.root"
-            print(f"Writing accepted phase-space events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit} weighted by intensity function into file '{outFileName}'")
+            print(f"Weighting events for bin {massBinIndex} at {massBinCenter:.2f} {cfg.massBinning.var.unit} weighted by intensity function")
             weightDataWithIntensity(
               intensityFormula = momentResultsForBin.intensityFormula(  #TODO include imaginary parts into intensity formula
                 polarization = cfg.polarization,
