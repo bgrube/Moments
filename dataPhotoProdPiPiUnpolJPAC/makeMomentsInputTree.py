@@ -117,18 +117,18 @@ def plotHistograms(
       .Define("phiOrig2", "((phiOrig > TMath::Pi()) ? phiOrig - TMath::TwoPi() : phiOrig) * TMath::RadToDeg()")
   )
   hists = [
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",               ";m_{#pi#pi} [GeV];Count",        100, 0.28,   2.28), "mass"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi2",              ";m_{#pi#pi} [GeV];Count",        100, 0.28,   2.28), "mpipi"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",                 ";#minus t [GeV^{2}];Count",      100, 0,      1),    "minusT"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT2",                ";#minus t [GeV^{2}];Count",      100, 0,      1),    "minusT2"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi",  f";cos#theta_{{{frame}}};Count",   100, -1,    +1),    "cosTheta"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi2", f";cos#theta_{{{frame}}};Count",   100, -1,    +1),    "costh"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi",       f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180),  "phiDeg"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi2",      f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180),  "phiOrig2"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",               ";m_{#pi#pi} [GeV];Count",        100,  0.4,   1.4), "mass"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi2",              ";m_{#pi#pi} [GeV];Count",        100,  0.4,   1.4), "mpipi"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",                 ";#minus t [GeV^{2}];Count",      100,  0,     1),   "minusT"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT2",                ";#minus t [GeV^{2}];Count",      100,  0,     1),   "minusT2"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi",  f";cos#theta_{{{frame}}};Count",   100, -1,    +1),   "cosTheta"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi2", f";cos#theta_{{{frame}}};Count",   100, -1,    +1),   "costh"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi",       f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180), "phiDeg"),
+    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi2",      f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180), "phiOrig2"),
 
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcAngles{frame}PiPi",             f";cos#theta_{{{frame}}};#phi_{{{frame}}} [deg]", 100, -1,   +1,    72, -180, +180), "cosTheta", "phiDeg"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsCosTheta{frame}PiPi", f";m_{{#pi#pi}} [GeV];cos#theta_{{{frame}}}",     50,  0.28, 2.28, 100,   -1,   +1), "mass",     "cosTheta"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsPhiDeg{frame}PiPi",   f";m_{{#pi#pi}} [GeV];#phi_{{{frame}}}",          50,  0.28, 2.28,  72, -180, +180), "mass",     "phiDeg"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcAngles{frame}PiPi",             f";cos#theta_{{{frame}}};#phi_{{{frame}}} [deg]", 100, -1,  +1,    72, -180, +180), "cosTheta", "phiDeg"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsCosTheta{frame}PiPi", f";m_{{#pi#pi}} [GeV];cos#theta_{{{frame}}}",      50,  0.4, 1.4, 100,   -1,   +1), "mass",     "cosTheta"),
+    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsPhiDeg{frame}PiPi",   f";m_{{#pi#pi}} [GeV];#phi_{{{frame}}}",           50,  0.4, 1.4,  72, -180, +180), "mass",     "phiDeg"),
   ]
   print(f"Writing histograms to '{outputDirName}/{tBinLabel}'")
   for hist in hists:
