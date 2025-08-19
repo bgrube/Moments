@@ -793,17 +793,17 @@ class MomentValue:
 @dataclass(eq = False)
 class MomentResult:
   """Container class that stores and provides access to moment values for single kinematic bin"""
-  indices:             MomentIndices  # index mapping and iterators
-  binCenters:          dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
-  label:               str                                                                       = ""  # label used for printing
-  nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
-  bootstrapSeed:       int                                                                       = 0   # seed for random number generator used for bootstrap samples
-  _valsFlatIndex:      npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
-  _V_ReReFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of real parts of moment values with flat indices
-  _V_ImImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of imaginary parts of moment values with flat indices
-  _V_ReImFlatIndex:    npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # cross-covariance matrix of real and imaginary parts of moment values with flat indices; !NOTE! this matrix is _not_ symmetric
-  _bsSamplesFlatIndex: npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
-  _valid:              bool                                                                      = field(init = False)  # indicates whether instance contains valid values
+  indices:              MomentIndices  # index mapping and iterators
+  binCenters:           dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
+  label:                str                                                                       = ""  # label used for printing
+  _nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
+  bootstrapSeed:        int                                                                       = 0   # seed for random number generator used for bootstrap samples
+  _valsFlatIndex:       npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
+  _V_ReReFlatIndex:     npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of real parts of moment values with flat indices
+  _V_ImImFlatIndex:     npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of imaginary parts of moment values with flat indices
+  _V_ReImFlatIndex:     npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # cross-covariance matrix of real and imaginary parts of moment values with flat indices; !NOTE! this matrix is _not_ symmetric
+  _bsSamplesFlatIndex:  npt.NDArray[npt.Shape["nmbMoments, nmbBootstrapSamples"], npt.Complex128] = field(init = False)  # flat array with moment values for each bootstrap sample; array is empty if bootstrapping is disabled
+  _valid:               bool                                                                      = field(init = False)  # indicates whether instance contains valid values
 
   def __post_init__(self) -> None:
     nmbMoments = len(self)
@@ -815,6 +815,21 @@ class MomentResult:
     self._valid = False
 
   @property
+  def nmbBootstrapSamples(self) -> int:
+    """Returns number of bootstrap samples that is calculated"""
+    return self._nmbBootstrapSamples
+
+  @nmbBootstrapSamples.setter
+  def nmbBootstrapSamples(
+    self,
+    value: int,
+  ) -> None:
+    """Sets number of bootstrap samples to be calculated and clears internal array that stores the bootstrap samples"""
+    self._nmbBootstrapSamples = value
+    nmbMoments = len(self)
+    self._bsSamplesFlatIndex = np.zeros((nmbMoments, self.nmbBootstrapSamples), dtype = np.complex128)
+
+  @property
   def valid(self) -> bool:
     """Returns whether this `MomentResult` instance contains valid values"""
     return self._valid
@@ -822,7 +837,7 @@ class MomentResult:
   @valid.setter
   def valid(
     self,
-    value: bool
+    value: bool,
   ) -> None:
     """Sets whether this `MomentResult` instance contains valid values"""
     self._valid = value
@@ -1606,6 +1621,8 @@ class MomentCalculator:
       weightedSum = eventWeights.dot(fMeas[flatIndex])
       self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
+      if nmbBootstrapSamples > 0:
+        print(f"Calculating {nmbBootstrapSamples} bootstrap samples for measured moments")
       for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
         # resample data
         fMeasBsSample        = fMeas[flatIndex][bsDataIndices]
@@ -1636,6 +1653,8 @@ class MomentCalculator:
       # calculate physical moments, i.e. correct for detection efficiency
       self.HPhys._valsFlatIndex = Iinv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # calculate bootstrap samples for H_phys
+      if nmbBootstrapSamples > 0:
+        print(f"Calculating {nmbBootstrapSamples} bootstrap samples for physical moments")
       for bsSampleIndex in range(nmbBootstrapSamples):
         self.HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = Iinv @ self.HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
