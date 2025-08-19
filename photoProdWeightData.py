@@ -16,6 +16,7 @@ from copy import deepcopy
 import functools
 import os
 import subprocess
+import tempfile
 
 import ROOT
 from wurlitzer import pipes, STDOUT
@@ -51,7 +52,7 @@ def weightDataWithIntensity(
   nmbGenPsEvents:   int                            = 100000,  # number phase-space events to generate
   seed:             int                            = 123456789,
 ) -> None:
-  """Weight accepted phase-space MC data with given intensity formula"""
+  """Weight phase-space MC data with given intensity formula"""
   kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
   kinematicBinRange: tuple[float, float] = cfg.massBinning.binValueRange(massBinIndex)
   # get input data
@@ -92,7 +93,7 @@ def weightDataWithIntensity(
     dataToWeight.Define("intensityWeight", f"(Double32_t){intensityFormula}")
                 .Define("intensityRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
   )
-  tmpFileName = f"{outFileName}.unweighted.root"
+  tmpFileName = f"{outFileName}.phaseSpace.root"
   dataToWeight.Snapshot(cfg.treeName, tmpFileName)  # write unweighted data to file to ensure that random columns are filled only once
   dataToWeight = ROOT.RDataFrame(cfg.treeName, tmpFileName)  # read data back
   # determine maximum weight
@@ -108,7 +109,7 @@ def weightDataWithIntensity(
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
   weightedData.Snapshot(cfg.treeName, outFileName)  #TODO write out only essential columns
-  subprocess.run(f"rm -f {tmpFileName}", shell = True)
+  subprocess.run(f"rm -fv {tmpFileName}", shell = True)
 
 
 def reweightData(
@@ -137,15 +138,15 @@ def reweightData(
   targetDistr.Scale (1.0 / targetDistr.Integral ())
   currentDistr.Scale(1.0 / currentDistr.Integral())
   # calculate PDF ratio that defines the weight histogram
-  weights = targetDistr.Clone("weights")
-  weights.Divide(currentDistr)
+  weightsHist = targetDistr.Clone("weightsHist")
+  weightsHist.Divide(currentDistr)
   # add weights to input data
-  RootUtilities.declareInCpp(weights = weights)  # use Python object in C++
+  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python object in C++
   dataToWeight = (
-    dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weights.GetBinContent(PyVars::weights.FindBin({variableName}))")
+    dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
                 .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")
   )
-  tmpFileName = f"{outFileName}.unweighted.root"
+  tmpFileName = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
   dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to file to ensure that random columns are filled only once
   dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back
   nmbEvents = dataToWeight.Count().GetValue()
@@ -159,7 +160,7 @@ def reweightData(
   )
   nmbWeightedEvents = reweightedData.Count().GetValue()
   print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
-  # subprocess.run(f"rm -f {tmpFileName}", shell = True)
+  subprocess.run(f"rm -fv {tmpFileName}", shell = True)
   return reweightedData
 
 
@@ -216,6 +217,7 @@ if __name__ == "__main__":
   )
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
+  # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
@@ -236,9 +238,9 @@ if __name__ == "__main__":
           timer.start("Total execution time")
           outFileBaseName = f"{cfg.outFileDirName}/data_weighted_flat"
           # outFileBaseName = f"{cfg.outFileDirName}/data_weighted_pwa_SPD_flat"
-          # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+          momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
           # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
-          momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
+          # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
           print(f"Reading moments from file '{momentResultsFileName}'")
           momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
           for momentResultsForBin in momentResults:
@@ -273,6 +275,7 @@ if __name__ == "__main__":
             subprocess.run(cmd, shell = True)
 
           # reweight mass distribution of merged file
+          #TODO does not work for more than 1 data sample; call of RootUtilities.declareInCpp(weightsHist = weightsHist) crashes in ROOT
           reweightedFileName = f"{cfg.outFileDirName}/data_reweighted_flat.root"
           with timer.timeThis(f"Time to reweight mass distribution"):
             data = ROOT.RDataFrame(cfg.treeName, mergedFileName)
