@@ -76,9 +76,9 @@ def plotDistributions1D(
     label = member.name
     label = label[0].upper() + label[1:]  # make sure first character is upper case
     hists1D = (
-      bookHistogram1D(df, f"h{label}MassPiPi",       histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.28,    2.28), "mass"    ),
-      bookHistogram1D(df, f"h{label}CosThetaHfPiPi", histTitle + ";cos#theta_{HF};"   + yAxisLabel, (100,   -1,      +1   ), "cosTheta"),
-      bookHistogram1D(df, f"h{label}PhiHfPiPi",      histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, (120, -180,    +180   ), "phiDeg"  ),
+      bookHistogram1D(df, f"h{label}MassPiPi",       histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (100,    0.4,     1.4), "mass"    ),
+      bookHistogram1D(df, f"h{label}CosThetaHfPiPi", histTitle + ";cos#theta_{HF};"   + yAxisLabel, (100,   -1,      +1  ), "cosTheta"),
+      bookHistogram1D(df, f"h{label}PhiHfPiPi",      histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, (120, -180,    +180  ), "phiDeg"  ),
     )
     setattr(hists1DToOverlay, member.name, hists1D)
   for histIndex, histData in enumerate(hists1DToOverlay.realData):
@@ -129,8 +129,8 @@ def plotDistributions2D(
     label = member.name
     label = label[0].upper() + label[1:]  # make sure first character is upper case
     hists2D = (
-      bookHistogram2D(df, f"h{label}MassPiPiVsCosThetaHfPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ( 50, 0.28, 2.28, 100, -1,   +1  ), ("mass",     "cosTheta")),
-      bookHistogram2D(df, f"h{label}MassPiPiVsPhiHfPiPi",      ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ( 50, 0.28, 2.28,  72, -180, +180), ("mass",     "phiDeg"  )),
+      bookHistogram2D(df, f"h{label}MassPiPiVsCosThetaHfPiPi", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ( 50,  0.4,  1.4, 100, -1,   +1  ), ("mass",     "cosTheta")),
+      bookHistogram2D(df, f"h{label}MassPiPiVsPhiHfPiPi",      ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ( 50,  0.4,  1.4,  72, -180, +180), ("mass",     "phiDeg"  )),
       bookHistogram2D(df, f"h{label}AnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",   (100, -1,   +1,    72, -180, +180), ("cosTheta", "phiDeg"  )),
     )
     setattr(hists2DToCompare, member.name, hists2D)
