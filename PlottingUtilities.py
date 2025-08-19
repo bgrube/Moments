@@ -708,7 +708,7 @@ def plotMomentsBootstrapDistributions1D(
       # indicate bootstrap estimate
       meanBs   = np.mean(momentSamplesBs)
       stdDevBs = np.std(momentSamplesBs, ddof = 1)
-      yCoord = histBs.GetMaximum() / 4
+      yCoord = histBs.GetMaximum() / 8
       markerBs = ROOT.TMarker(meanBs, yCoord, ROOT.kFullCircle)
       markerBs.SetMarkerColor(ROOT.kBlue + 1)
       markerBs.SetMarkerSize(0.75)
@@ -741,7 +741,7 @@ def plotMomentsBootstrapDistributions1D(
       label.DrawLatex(0.13, 0.85, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{nmbBins}, prob = {chi2Prob * 100:.0f}%")
       # indicate true value
       if HVal.truth is not None:
-        truth = HVal.truthPart(real = (momentPart == "Re"))
+        truth = HVal.truthPart(real = (momentPart == "Re"))[0]
         lineTruth = ROOT.TLine(truth, 0, truth, histBs.GetMaximum())
         lineTruth.SetLineColor(ROOT.kRed + 1)
         lineTruth.SetLineStyle(ROOT.kDashed)
@@ -753,7 +753,7 @@ def plotMomentsBootstrapDistributions1D(
       entry.SetLineColor(ROOT.kBlue + 1)
       entry = legend.AddEntry(markerEst, "Nominal estimate", "LP")
       entry.SetLineColor(ROOT.kGreen + 2)
-      legend.AddEntry(gaussian, "Nominal estimate Gaussian", "LP")
+      legend.AddEntry(gaussian, "Gaussian of nominal estimate", "LP")
       if HVal.truth is not None:
         legend.AddEntry(lineTruth, HTruthLabel, "L")
       legend.Draw()
@@ -1006,7 +1006,7 @@ def plotMomentsBootstrapDiff(
       graph.SetMarkerColor(colors[momentPart])
       graph.SetMarkerStyle(ROOT.kOpenCircle)
       graph.SetMarkerSize(0.75)
-    graphMomentValDiff.Add(graphMomentValDiffPart)
+    graphMomentValDiff.Add   (graphMomentValDiffPart)
     graphMomentUncertDiff.Add(graphMomentUncertDiffPart)
   # draw graphs
   for graph in (graphMomentValDiff, graphMomentUncertDiff):
@@ -1029,7 +1029,7 @@ def plotMomentsBootstrapDiff(
     graph.Draw("P")  # !NOTE! graphs don't have a SAME option; "SAME" will be interpreted as "A"
     # draw average difference
     for g in graph.GetListOfGraphs():
-      avg = g.GetMean(2)
+      avg = g.GetMean(2)  # mean of y-axis values
       avgLine = ROOT.TLine()
       avgLine.SetLineColor(g.GetMarkerColor())
       avgLine.SetLineStyle(ROOT.kDotted)
