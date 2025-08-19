@@ -504,13 +504,13 @@ def plotMoments(
     if not trueValues:
       chi2Values[momentPart] = (None, None)
       continue
-    # (ii) plot residuals
-    histResidualName = f"{outFileNamePrefix}residuals_{momentLabel}_{momentPart}"
-    histResidual = ROOT.TH1D(histResidualName,
-      (f"{histTitle} " if histTitle else "") + f"Residuals {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}",
+    # (ii) plot pulls
+    histPullsName = f"{outFileNamePrefix}pulls_{momentLabel}_{momentPart}"
+    histPulls = ROOT.TH1D(histPullsName,
+      (f"{histTitle} " if histTitle else "") + f"Pulls {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}",
       *histBinning.astuple)
-    # calculate residuals; NaN flags histogram bins, for which truth info is missing
-    residuals = np.full(len(HVals) if binning is None else len(binning), np.nan)
+    # calculate pulls; NaN flags histogram bins, for which truth info is missing
+    pulls = np.full(len(HVals) if binning is None else len(binning), np.nan)
     indicesToMask: list[int] = []
     for index, HVal in enumerate(HVals):
       if (binning is not None) and (binning.var not in HVal.binCenters.keys()):
@@ -518,43 +518,43 @@ def plotMoments(
       if HVal.truth is not None:
         dataVal, dataValErr = HVal.part     (real = (momentPart == "Re"))
         trueVal, _          = HVal.truthPart(real = (momentPart == "Re"))
-        binIndex = index if binning is None else histResidual.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
-        residuals[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
+        binIndex = index if binning is None else histPulls.GetXaxis().FindBin(HVal.binCenters[binning.var]) - 1
+        pulls[binIndex] = (dataVal - trueVal) / dataValErr if dataValErr > 0 else 0
         if normalizedMoments and (HVal.qn == QnMomentIndex(momentIndex = 0, L = 0, M = 0)):
           indicesToMask.append(binIndex)  # exclude H_0(0, 0) from plotting and chi^2 calculation
     # calculate chi^2
     # if moments were normalized, exclude Re and Im of H_0(0, 0) because it is always 1 by definition
-    # exclude values, for which truth value is missing (residual = NaN)
-    residualsMasked = np.ma.fix_invalid(residuals)
+    # exclude values, for which truth value is missing (pull = NaN)
+    pullsMasked = np.ma.fix_invalid(pulls)
     for i in indicesToMask:
-      residualsMasked[i] = np.ma.masked
-    if residualsMasked.count() == 0:
-      print(f"All residuals masked; skipping '{histResidualName}.pdf'.")
+      pullsMasked[i] = np.ma.masked
+    if pullsMasked.count() == 0:
+      print(f"All pulls masked; skipping '{histPullsName}.pdf'.")
       chi2Values[momentPart] = (None, None)
       continue
-    chi2     = np.sum(residualsMasked**2)
-    ndf      = residualsMasked.count()
+    chi2     = np.sum(pullsMasked**2)
+    ndf      = pullsMasked.count()
     chi2Prob = stats.distributions.chi2.sf(chi2, ndf)
-    # fill histogram with residuals
-    for (index, ), residual in np.ma.ndenumerate(residualsMasked):  # set bin content only for unmasked residuals
+    # fill histogram with pulls
+    for (index, ), pull in np.ma.ndenumerate(pullsMasked):  # set bin content only for unmasked pulls
       binIndex = index + 1
-      histResidual.SetBinContent(binIndex, residual)
-      histResidual.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
+      histPulls.SetBinContent(binIndex, pull)
+      histPulls.SetBinError  (binIndex, 1e-100)  # must not be zero, otherwise ROOT does not draw x error bars; sigh
     if binning is None:
       for binIndex in range(1, histData.GetXaxis().GetNbins() + 1):  # copy all x-axis bin labels
-        histResidual.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
-    histResidual.LabelsOption("V", "X")
-    histResidual.SetMarkerColor(ROOT.kBlue + 1)
-    histResidual.SetLineColor(ROOT.kBlue + 1)
-    histResidual.SetLineWidth(2)
+        histPulls.GetXaxis().SetBinLabel(binIndex, histData.GetXaxis().GetBinLabel(binIndex))
+    histPulls.LabelsOption("V", "X")
+    histPulls.SetMarkerColor(ROOT.kBlue + 1)
+    histPulls.SetLineColor(ROOT.kBlue + 1)
+    histPulls.SetLineWidth(2)
     #TODO indicate points that lie out of this range
     # see https://root-forum.cern.ch/t/histogram-drawing-options-e-do-not-clip-errorbars/41857
-    histResidual.SetMinimum(-3)
-    histResidual.SetMaximum(+3)
+    histPulls.SetMinimum(-3)
+    histPulls.SetMaximum(+3)
     canv = ROOT.TCanvas()
-    histResidual.Draw("PE")
+    histPulls.Draw("PE")
     # draw zero line
-    xAxis = histResidual.GetXaxis()
+    xAxis = histPulls.GetXaxis()
     line = ROOT.TLine()
     line.SetLineStyle(ROOT.kDashed)
     line.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
@@ -567,7 +567,7 @@ def plotMoments(
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignBottom)
     label.DrawLatex(0.12, 0.9075, f"#it{{#chi}}^{{2}}/n.d.f. = {chi2:.2f}/{ndf}, prob = {chi2Prob * 100:.0f}%")
-    canv.SaveAs(f"{histResidualName}.{outFileType}")
+    canv.SaveAs(f"{histPullsName}.{outFileType}")
     chi2Values[momentPart] = (chi2, ndf)
 
   return chi2Values
