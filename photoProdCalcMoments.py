@@ -143,7 +143,10 @@ def calculateAllMoments(
         # since all data samples use identical MC events, calculate moments only for first accepted phase-space sample
         momentCalculatorsFirstSample = next(iter(momentCalculators.values()))  # get first entry in momentCalculators
         print(f"Calculating moments of phase-space MC data for {len(momentCalculatorsFirstSample)} bins using {nmbOpenMpThreads} OpenMP threads")
-        momentCalculatorsFirstSample.calculateMoments(dataSourceType = MomentCalculator.DataSourceType.ACCEPTED_PHASE_SPACE, normalize = cfg.normalizeMoments)
+        momentCalculatorsFirstSample.calculateMoments(
+          dataSourceType = MomentCalculator.DataSourceType.ACCEPTED_PHASE_SPACE,
+          normalize      = cfg.normalizeMoments,
+        )
         momentCalculatorsFirstSample.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_accPs_meas.pkl")
         momentCalculatorsFirstSample.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_accPs_phys.pkl")
     else:
@@ -154,7 +157,10 @@ def calculateAllMoments(
     #TODO calculate normalized and unnormalized moments
     with timer.timeThis(f"Time to calculate moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights"):
       print(f"Calculating moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights")
-      momentCalculators[None].calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
+      momentCalculators[None].calculateMoments(
+        normalize           = cfg.normalizeMoments,
+        nmbBootstrapSamples = cfg.nmbBootstrapSamples
+      )
       momentCalculators[None].momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
       momentCalculators[None].momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
 
@@ -162,7 +168,10 @@ def calculateAllMoments(
     for labelDataSample, momentCalculatorsDataSample in momentCalculators.items():
       with timer.timeThis(f"Time to calculate moments of '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background at moment level"):
         print(f"Calculating moments of '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background at moment level")
-        momentCalculatorsDataSample.calculateMoments(normalize = cfg.normalizeMoments, nmbBootstrapSamples = cfg.nmbBootstrapSamples)
+        momentCalculatorsDataSample.calculateMoments(
+          normalize           = cfg.normalizeMoments,
+          nmbBootstrapSamples = cfg.nmbBootstrapSamples,
+        )
         momentCalculatorsDataSample.momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
         momentCalculatorsDataSample.momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
     if len(momentCalculators["Bkg"]) > 0:
