@@ -41,15 +41,15 @@ def bookHistogram2D(
 
 @dataclass
 class DataToOverlay:
-  """Stores data frames for real data and weighted MC"""
-  realData:   ROOT.RDataFrame
+  """Stores data frames for data and weighted MC"""
+  data:       ROOT.RDataFrame
   weightedMc: ROOT.RDataFrame
 
 @dataclass
 class HistsToOverlay:
-  """Stores histograms for real data and weighted MC"""
+  """Stores histograms for data and weighted MC"""
   # tuples are assumed to contain histograms in identical order
-  realData:   tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
+  data:       tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
   weightedMc: tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
 
 
@@ -62,9 +62,9 @@ def plotDistributions1D(
   pdfFileMameSuffix:  str = "",
   yAxisLabel:         str = "RF-Sideband Subtracted Combos"
 ) -> None:
-  """Overlays 1D distributions from real data and weighted Monte Carlo"""
+  """Overlays 1D distributions from data and weighted Monte Carlo"""
   dataToOverlay = DataToOverlay(
-    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
+    data   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
     weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
   )
   hists1DToOverlay = HistsToOverlay()
@@ -79,13 +79,13 @@ def plotDistributions1D(
       bookHistogram1D(df, f"h{label}PhiDeg",     histTitle + ";#Phi [deg];"       + yAxisLabel, ( 50, -180,    +180   ), "PhiDeg"  ),
     )
     setattr(hists1DToOverlay, member.name, hists1D)
-  for histIndex, histData in enumerate(hists1DToOverlay.realData):
+  for histIndex, histData in enumerate(hists1DToOverlay.data):
     histWeightedMc = hists1DToOverlay.weightedMc[histIndex]
     print(f"Overlaying histograms '{histData.GetName()}' and '{histWeightedMc.GetName()}'")
     canv = ROOT.TCanvas()
     histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
     histWeightedMc.SetTitle("Weighted MC")
-    histData.SetTitle      ("Real Data")
+    histData.SetTitle      ("Data")
     histStack.Add(histWeightedMc.GetValue(), "HIST E")
     histStack.Add(histData.GetValue(),       "E")
     histData.SetLineColor      (ROOT.kRed + 1)
@@ -115,9 +115,9 @@ def plotDistributions2D(
   filter:             str,
   pdfFileMameSuffix:  str = "",
 ) -> None:
-  """Plots 2D distributions from real data and weighted Monte Carlo and their differences"""
+  """Plots 2D distributions from data and weighted Monte Carlo and their differences"""
   dataToOverlay = DataToOverlay(
-    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
+    data   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
     weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
   )
   hists2DToCompare = HistsToOverlay()
@@ -134,9 +134,9 @@ def plotDistributions2D(
       bookHistogram2D(df, f"h{label}PhiDegVsHfPhiDeg",     ";#phi_{HF} [deg];#Phi [deg]",       (25, -180, +180, 25, -180, +180), ("phiDeg",   "PhiDeg"  )),
     )
     setattr(hists2DToCompare, member.name, hists2D)
-  for histIndex, histData in enumerate(hists2DToCompare.realData):
+  for histIndex, histData in enumerate(hists2DToCompare.data):
     print(f"Plotting histogram '{histData.GetName()}'")
-    histData.SetTitle("Real Data")
+    histData.SetTitle("Data")
     canv = ROOT.TCanvas()
     histData.Draw("COLZ")
     canv.SaveAs(f"{histData.GetName()}{pdfFileMameSuffix}.pdf")
@@ -151,20 +151,20 @@ def plotDistributions2D(
     print(f"Plotting difference of histograms '{histData.GetName()}' - '{histWeightedMc.GetName()}'")
     scaleFactor = histData.Integral() / histWeightedMc.Integral()
     histWeightedMc.Scale(scaleFactor)
-    histResidual = histData.Clone(f"{histData.GetName()}_residual")
-    histResidual.Add(histWeightedMc.GetValue(), -1)  # data - weighted MC
-    # divide each bin by its uncertainty to get residual
-    for xBin in range(1, histResidual.GetNbinsX() + 1):
-      for yBin in range(1, histResidual.GetNbinsY() + 1):
-        binError = histResidual.GetBinError(xBin, yBin)
+    histPulls = histData.Clone(f"{histData.GetName()}_pulls")
+    histPulls.Add(histWeightedMc.GetValue(), -1)  # data - weighted MC
+    # divide each bin by its uncertainty to get pull
+    for xBin in range(1, histPulls.GetNbinsX() + 1):
+      for yBin in range(1, histPulls.GetNbinsY() + 1):
+        binError = histPulls.GetBinError(xBin, yBin)
         if binError > 0:
-          histResidual.SetBinContent(xBin, yBin, histResidual.GetBinContent(xBin, yBin) / binError)
+          histPulls.SetBinContent(xBin, yBin, histPulls.GetBinContent(xBin, yBin) / binError)
         else:
-          histResidual.SetBinContent(xBin, yBin, 0)
-    histResidual.SetTitle("(Real Data #minus Weighted MC) / Uncertainty")
+          histPulls.SetBinContent(xBin, yBin, 0)
+    histPulls.SetTitle("(Data #minus Weighted MC) / #sigma_{Data}")
     canv = ROOT.TCanvas()
-    histResidual.Draw("COLZ")
-    canv.SaveAs(f"{histResidual.GetName()}{pdfFileMameSuffix}.pdf")
+    histPulls.Draw("COLZ")
+    canv.SaveAs(f"{histPulls.GetName()}{pdfFileMameSuffix}.pdf")
 
 
 if __name__ == "__main__":

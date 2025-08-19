@@ -28,15 +28,15 @@ def bookHistogram(
 
 @dataclass
 class DataToOverlay:
-  """Stores data frames for real data and weighted MC"""
-  realData:   ROOT.RDataFrame
+  """Stores data frames for data and weighted MC"""
+  data:       ROOT.RDataFrame
   weightedMc: ROOT.RDataFrame
 
 @dataclass
 class HistsToOverlay:
-  """Stores histograms for real data and weighted MC"""
+  """Stores histograms for data and weighted MC"""
   # tuples are assumed to contain histograms in identical order
-  realData:   tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
+  data:       tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
   weightedMc: tuple[ROOT.RResultPtr[ROOT.TH1D], ...] = field(default_factory = tuple)
 
 
@@ -51,7 +51,7 @@ def plotDistributions1D(
   yAxisLabel:         str = "Events"
 ) -> None:
   dataToOverlay = DataToOverlay(
-    realData   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
+    data   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
     weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
   )
   histsToOverlay = HistsToOverlay()
@@ -65,13 +65,13 @@ def plotDistributions1D(
       bookHistogram(df, f"h{label}HfPhiDeg",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, (25, -180,    +180   ), "phiDeg"  ),
     )
     setattr(histsToOverlay, member.name, hists)
-  for histIndex, histData in enumerate(histsToOverlay.realData):
+  for histIndex, histData in enumerate(histsToOverlay.data):
     histWeightedMc = histsToOverlay.weightedMc[histIndex]
     print(f"Overlaying histograms '{histData.GetName()}' and '{histWeightedMc.GetName()}'")
     canv = ROOT.TCanvas()
     histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
     histWeightedMc.SetTitle("Weighted MC")
-    histData.SetTitle      ("Real Data")
+    histData.SetTitle      ("Data")
     histStack.Add(histWeightedMc.GetValue(), "HIST E")
     histStack.Add(histData.GetValue(),       "EP")
     histData.SetLineColor      (ROOT.kRed + 1)
