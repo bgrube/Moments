@@ -1489,13 +1489,31 @@ class BootstrapIndices:
   """Generator class for bootstrap indices"""
   nmbEvents:  int  # number of events in data sample
   nmbSamples: int  # number of bootstrap samples
-  seed:       int  # seed for random number generator
+  _seed:      int  # seed for random number generator
+  _rng:       np.random.Generator = field(init = False, repr = False)
+
+  def __post_init__(self) -> None:
+    """Initializes the random number generator with the given seed"""
+    self.seed = self._seed
+
+  @property
+  def seed(self) -> int:
+    """Returns the seed for the random number generator"""
+    return self._seed
+
+  @seed.setter
+  def seed(
+    self,
+    value: int,
+  ) -> None:
+    """Sets the seed for the random number generator and reinitializes the internal random number generator"""
+    self._seed = value
+    self._rng = np.random.default_rng(self._seed)
 
   def __iter__(self) -> Generator[npt.NDArray[npt.Shape["nmbEvents"], npt.Int64], None, None]:
     """Generates randomized event indices for each bootstrap sample"""
-    rng = np.random.default_rng(self.seed)
     for _ in range(self.nmbSamples):
-      indices = rng.choice(self.nmbEvents, size = self.nmbEvents, replace = True)
+      indices = self._rng.choice(self.nmbEvents, size = self.nmbEvents, replace = True)
       indices.sort()  # sort to improve performance of memory access when indices are applied to arrays
       yield indices
 
