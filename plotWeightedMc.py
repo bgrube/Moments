@@ -102,7 +102,7 @@ def plotDistributions1D(
     histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
     histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
     canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
-    chi2PerBin = histWeightedMc.Chi2Test(histData.GetValue(), "WW P CHI2") / histWeightedMc.GetNbinsX()
+    chi2PerBin = histWeightedMc.Chi2Test(histData.GetValue(), "WW P CHI2/NDF")
     label = ROOT.TLatex()
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
