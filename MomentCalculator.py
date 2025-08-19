@@ -797,7 +797,7 @@ class MomentResult:
   binCenters:           dict[KinematicBinningVariable, float]                                     = field(default_factory = dict)  # center values of variables that define kinematic bin
   label:                str                                                                       = ""  # label used for printing
   _nmbBootstrapSamples: int                                                                       = 0   # number of bootstrap samples
-  bootstrapSeed:        int                                                                       = 0   # seed for random number generator used for bootstrap samples
+  bootstrapRandomSeed:  int                                                                       = 0   # seed for random number generator used for bootstrap samples
   _valsFlatIndex:       npt.NDArray[npt.Shape["nmbMoments"],                      npt.Complex128] = field(init = False)  # flat array with moment values
   _V_ReReFlatIndex:     npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of real parts of moment values with flat indices
   _V_ImImFlatIndex:     npt.NDArray[npt.Shape["nmbMoments, nmbMoments"],          npt.Float64]    = field(init = False)  # autocovariance matrix of imaginary parts of moment values with flat indices
@@ -1602,7 +1602,7 @@ class MomentCalculator:
     normalize:                 bool           = True,   # if set, physical moments are normalized to H_0(0, 0)
     applyCovPoissonCorrection: bool           = True,   # if set, Poissonian fluctuation of number of events is taken into account  #TODO add this to `AnalysisConfig`?
     nmbBootstrapSamples:       int            = 0,      # number of bootstrap samples; 0 means no bootstrapping
-    bootstrapSeed:             int            = 12345,  # seed used for random number generator used for bootstrap samples
+    bootstrapRandomSeed:       int            = 12345,  # seed used for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
     # define dataset and integral matrix to use for moment calculation
@@ -1626,9 +1626,9 @@ class MomentCalculator:
     # calculate basis-function values and values of measured moments
     nmbMoments = len(self.indices)
     fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = np.complex128)
-    bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapSeed)
+    bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapRandomSeed)
     self.HMeas.nmbBootstrapSamples = nmbBootstrapSamples
-    self.HMeas.bootstrapSeed       = bootstrapSeed
+    self.HMeas.bootstrapRandomSeed = bootstrapRandomSeed
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(
@@ -1660,7 +1660,7 @@ class MomentCalculator:
     self.HMeas.setCovarianceMatricesFrom(Vmeas_aug)
     # calculate physical moments and propagate uncertainty
     self.HPhys.nmbBootstrapSamples = nmbBootstrapSamples
-    self.HPhys.bootstrapSeed       = bootstrapSeed
+    self.HPhys.bootstrapRandomSeed = bootstrapRandomSeed
     Vphys_aug = np.empty(Vmeas_aug.shape, dtype = np.complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
@@ -2050,9 +2050,9 @@ class MomentCalculatorsKinematicBinning:
   def calculateMoments(
     self,
     dataSourceType:      MomentCalculator.DataSourceType = MomentCalculator.DataSourceType.REAL_DATA,  # type of data to calculate moments from
-    normalize:           bool = True,   # if set physical moments are normalized to H_0(0, 0)
-    nmbBootstrapSamples: int  = 0,      # number of bootstrap samples; 0 means no bootstrapping
-    bootstrapSeed:       int  = 12345,  # seed used for random number generator used for bootstrap samples
+    normalize:           bool                            = True,   # if set physical moments are normalized to H_0(0, 0)
+    nmbBootstrapSamples: int                             = 0,      # number of bootstrap samples; 0 means no bootstrapping
+    bootstrapRandomSeed: int                             = 12345,  # seed used for random number generator used for bootstrap samples
   ) -> None:
     """Calculates moments for all kinematic bins using given data source"""
     for kinBinIndex, momentsInBin in enumerate(self):
@@ -2061,7 +2061,7 @@ class MomentCalculatorsKinematicBinning:
         dataSourceType      = dataSourceType,
         normalize           = normalize,
         nmbBootstrapSamples = nmbBootstrapSamples,
-        bootstrapSeed       = bootstrapSeed + kinBinIndex,
+        bootstrapRandomSeed = bootstrapRandomSeed + kinBinIndex,
       )
 
   def fitMomentsMultipleAttempts(
