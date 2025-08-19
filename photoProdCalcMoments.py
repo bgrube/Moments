@@ -159,7 +159,7 @@ def calculateAllMoments(
       print(f"Calculating moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights")
       momentCalculators[None].calculateMoments(
         normalize           = cfg.normalizeMoments,
-        nmbBootstrapSamples = cfg.nmbBootstrapSamples
+        nmbBootstrapSamples = cfg.nmbBootstrapSamples,
       )
       momentCalculators[None].momentResultsMeas.savePickle(f"{momentResultsFileBaseName}_meas.pkl")
       momentCalculators[None].momentResultsPhys.savePickle(f"{momentResultsFileBaseName}_phys.pkl")
@@ -192,7 +192,7 @@ def calculateAllMoments(
     # nmbParallelFitProcesses = 100
     nmbFitAttempts          = 10
     nmbParallelFitProcesses = 10
-    randomSeed              = 123456789
+    startValueRandomSeed    = 123456789
     for labelDataSample, momentCalculatorsDataSample in momentCalculators.items():
       if len(momentCalculatorsDataSample) > 0:
         with timer.timeThis(f"Time to fit moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level"):
@@ -200,7 +200,7 @@ def calculateAllMoments(
           momentCalculatorsDataSample.fitMomentsMultipleAttempts(
             nmbFitAttempts          = nmbFitAttempts,
             nmbParallelFitProcesses = nmbParallelFitProcesses,
-            randomSeed              = randomSeed,
+            startValueRandomSeed    = startValueRandomSeed,
           )
     if len(momentCalculators["Bkg"]) > 0:
       # perform background subtraction at moment level

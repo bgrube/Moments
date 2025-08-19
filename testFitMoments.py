@@ -400,7 +400,7 @@ if __name__ == "__main__":
   applyEventWeights       = False   # if set, the events are weighted to subtract background
   disablePolarizedMoments = False   # if set, H_1 and H_2 are fixed to 0
   outputDirName           = Utilities.makeDirPath("./plotsTestFitMoments")
-  randomSeed              = 123456789
+  startValueRandomSeed    = 123456789
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
   # efficiencyFormula = "1"  # perfect acceptance
   efficiencyFormula = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acceptance even in all variables
@@ -490,7 +490,7 @@ if __name__ == "__main__":
 
       print(f"Generating accepted phase-space MC events from {nmbPsMcGenEvents} phase-space events")
       timer.start("Time to generate accepted phase-space MC data")
-      ROOT.gRandom.SetSeed(randomSeed)
+      ROOT.gRandom.SetSeed(startValueRandomSeed)
       dataAcceptedPs = genAccepted2BodyPs(
         nmbGenEvents      = nmbPsMcGenEvents,
         efficiencyFormula = efficiencyFormula,
@@ -507,7 +507,7 @@ if __name__ == "__main__":
       timer.start("Time to generate MC data from partial waves")
       amplitudeSetSig = AmplitudeSet(partialWaveAmplitudesSig)
       amplitudeSetBkg = AmplitudeSet(partialWaveAmplitudesBkg)
-      ROOT.gRandom.SetSeed(randomSeed)
+      ROOT.gRandom.SetSeed(startValueRandomSeed)
       dataPwaModel, _, _ = genSigAndBkgDataFromWaves(
         nmbEventsSig      = nmbPwaMcEventsSig,
         nmbEventsBkg      = nmbPwaMcEventsBkg,
@@ -651,7 +651,7 @@ if __name__ == "__main__":
             momentCalculator.fitMomentsMultipleAttempts(
               nmbFitAttempts          = nmbFitAttempts,
               nmbParallelFitProcesses = nmbParallelFitProcesses,
-              randomSeed              = randomSeed,
+              startValueRandomSeed    = startValueRandomSeed,
             )
           momentCalculators[dataTitle] = momentCalculator
         else:
@@ -661,7 +661,7 @@ if __name__ == "__main__":
           eventWeights = data.AsNumpy(columns = ["eventWeight", ])["eventWeight"] if applyEventWeights else np.ones_like(thetas)
           # generate random start values for all attempts
           startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
-          np.random.seed(randomSeed)
+          np.random.seed(startValueRandomSeed)
           nmbEventsSigCorr = np.sum(eventWeights) / phaseSpaceEfficiency  # number of acceptance-corrected signal events
           for _ in range(nmbFitAttempts):
             # startValues    = np.zeros_like(momentValuesTruth)

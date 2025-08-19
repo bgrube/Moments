@@ -1945,7 +1945,7 @@ class MomentCalculator:
     nmbFitAttempts:          int,            # number of attempts to fit the moments
     nmbParallelFitProcesses: int,            # number of fit processes to run in parallel
     normalize:               bool  = False,  # if set physical moments are normalized to H_0(0, 0)
-    randomSeed:              int   = 12345,  # seed used for random start values
+    startValueRandomSeed:    int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
   ) -> list[im.Minuit]:
@@ -1954,7 +1954,7 @@ class MomentCalculator:
     negativeLogLikelihoodFcn = self.negativeLogLikelihoodFcn()
     # generate random start values for each fit attempt
     startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
-    np.random.seed(randomSeed)
+    np.random.seed(startValueRandomSeed)
     nmbEventsSigCorr = negativeLogLikelihoodFcn.nmbSignalEvents / negativeLogLikelihoodFcn.phaseSpaceEfficiency  # number of acceptance-corrected signal events
     nmbMoments = len(self.indices)
     for _ in range(nmbFitAttempts):
@@ -2069,7 +2069,7 @@ class MomentCalculatorsKinematicBinning:
     nmbFitAttempts:          int,            # number of attempts to fit the moments
     nmbParallelFitProcesses: int,            # number of fit processes to run in parallel
     normalize:               bool  = False,  # if set physical moments are normalized to H_0(0, 0)
-    randomSeed:              int   = 12345,  # seed used for random start values
+    startValueRandomSeed:    int   = 12345,  # seed used for random start values
     startValueStdDevScale:   float = 0.02,   # standard deviation of random start values is (scale parameter * number of acceptance-corrected signal events)
     processNiceLevel:        int   = 19,     # run processes with this nice level
   ) -> list[list[im.Minuit]]:  # Minuit objects for [<kinematic bin>][<fit attempts>]
@@ -2081,7 +2081,7 @@ class MomentCalculatorsKinematicBinning:
         nmbFitAttempts          = nmbFitAttempts,
         nmbParallelFitProcesses = nmbParallelFitProcesses,
         normalize               = normalize,
-        randomSeed              = randomSeed + kinBinIndex,
+        startValueRandomSeed    = startValueRandomSeed + kinBinIndex,
         startValueStdDevScale   = startValueStdDevScale,
         processNiceLevel        = processNiceLevel,
       )
