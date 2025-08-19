@@ -11,6 +11,8 @@ from dataclasses import (
 
 import ROOT
 
+from PlottingUtilities import setupPlotStyle
+
 
 def bookHistogram1D(
   df:         ROOT.RDataFrame,
@@ -167,14 +169,15 @@ def plotDistributions2D(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
+  setupPlotStyle()
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
-  dataFileName        = "./mc_full/tbin_0.4_0.5/data_flat.PiPi.root"
-  momentResultDirName = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_8"
-  weightedMcFileName  = f"{momentResultDirName}/data_weighted_flat.root"
+  dataFileName        = "./dataPhotoProdPiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.PiPi.root"
+  # momentResultDirName = "./plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4"
+  momentResultDirName = "./plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_8"
+  weightedMcFileName  = f"{momentResultDirName}/data_reweighted_flat.root"
   treeName            = "PiPi"
   massMin             = 0.4  # [GeV]
   massBinWidth        = 0.1  # [GeV]
