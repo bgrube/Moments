@@ -172,12 +172,13 @@ if __name__ == "__main__":
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
-  dataFileName       = "./mc_full/tbin_0.4_0.5/data_flat.PiPi.root"
-  weightedMcFileName = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/data_weighted_flat.root"
-  treeName           = "PiPi"
-  massMin            = 0.4  # [GeV]
-  massBinWidth       = 0.1  # [GeV]
-  nmbBins            = 10
+  dataFileName        = "./mc_full/tbin_0.4_0.5/data_flat.PiPi.root"
+  momentResultDirName = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_8"
+  weightedMcFileName  = f"{momentResultDirName}/data_weighted_flat.root"
+  treeName            = "PiPi"
+  massMin             = 0.4  # [GeV]
+  massBinWidth        = 0.1  # [GeV]
+  nmbBins             = 10
 
   print(f"Overlaying histograms for full mass range")
   plotDistributions1D(
@@ -186,14 +187,14 @@ if __name__ == "__main__":
     treeName           = treeName,
     filter             = "(true)",
     histTitle          = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
-    pdfFileNamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
+    pdfFileNamePrefix  = f"{momentResultDirName}/",
   )
   plotDistributions2D(
     dataFileName       = dataFileName,
     weightedMcFileName = weightedMcFileName,
     treeName           = treeName,
     filter             = "(true)",
-    pdfFileNamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
+    pdfFileNamePrefix  = f"{momentResultDirName}/",
   )
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
@@ -207,7 +208,7 @@ if __name__ == "__main__":
       filter             = massRangeFilter,
       histTitle          = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
       pdfFileNameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
-      pdfFileNamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
+      pdfFileNamePrefix  = f"{momentResultDirName}/",
     )
     plotDistributions2D(
       dataFileName       = dataFileName,
@@ -215,5 +216,5 @@ if __name__ == "__main__":
       treeName           = treeName,
       filter             = massRangeFilter,
       pdfFileNameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
-      pdfFileNamePrefix  = "../plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4/",
+      pdfFileNamePrefix  = f"{momentResultDirName}/",
     )

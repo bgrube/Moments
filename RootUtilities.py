@@ -23,7 +23,6 @@ assert ROOT.gROOT.LoadMacro("./basisFunctions.C+") == 0, "Error loading './basis
 def declareInCpp(**kwargs: Any) -> None:
   """Creates C++ variables (names = keys of kwargs) for PyROOT objects (values of kwargs) in PyVars:: namespace"""
   for key, value in kwargs.items():
-    print(f"{hasattr(ROOT, 'PyVars')=}")
     if hasattr(ROOT, "PyVars") and key in dir(ROOT.PyVars):
       # variable was already defined before; assign new value
       ROOT.gInterpreter.ProcessLine(  # cannot use Declare() here; this also prevents us from using include-guard logic
