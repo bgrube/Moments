@@ -1260,10 +1260,10 @@ def constructMomentResultFrom(
   # ensure that quantum numbers of moment values are unique
   assert len(set(momentValue.qn for momentValue in momentValues)) == len(momentValues), "Moment values must have unique quantum numbers"
   momentResult = MomentResult(
-    indices             = indices,
-    binCenters          = momentValues[0].binCenters,
-    label               = momentValues[0].label,
-    nmbBootstrapSamples = momentValues[0].bsSamples.shape[0],
+    indices              = indices,
+    binCenters           = momentValues[0].binCenters,
+    label                = momentValues[0].label,
+    _nmbBootstrapSamples = momentValues[0].bsSamples.shape[0],
   )
   # loop over moment quantum numbers
   for qnIndex in indices.qnIndices:
@@ -1275,10 +1275,10 @@ def constructMomentResultFrom(
         # copy values to MomentResult
         flatIndex = indices[qnIndex]
         momentResult._valsFlatIndex[flatIndex] = momentValue.val
+        #!NOTE! covariance information is not contained in `MomentValue`; only diagonal elements are set
         momentResult._V_ReReFlatIndex[flatIndex, flatIndex] = momentValue.uncertRe**2
         momentResult._V_ImImFlatIndex[flatIndex, flatIndex] = momentValue.uncertIm**2
-        #!NOTE! covariance information is lost
-        if momentResult.nmbBootstrapSamples:
+        if momentResult.nmbBootstrapSamples > 0:
           momentResult._bsSamplesFlatIndex[flatIndex] = momentValue.bsSamples
         break
     if not foundMomentValue:
@@ -1624,7 +1624,7 @@ class MomentCalculator:
       self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
       if nmbBootstrapSamples > 0:
-        print(f"Calculating {nmbBootstrapSamples} bootstrap samples for measured moments")
+        print(f"Calculating {nmbBootstrapSamples} bootstrap samples for measured moment {self.indices[flatIndex].label}")
       for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
         # resample data
         fMeasBsSample        = fMeas[flatIndex][bsDataIndices]
