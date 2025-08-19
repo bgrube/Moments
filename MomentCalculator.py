@@ -1491,11 +1491,13 @@ class BootstrapIndices:
   nmbSamples: int  # number of bootstrap samples
   seed:       int  # seed for random number generator
 
-  def __iter__(self) -> Generator[npt.NDArray[npt.Shape["nmbEvents"], npt.Complex128], None, None]:
-    """Generates bootstrap samples and returns data and weights for each sample"""
+  def __iter__(self) -> Generator[npt.NDArray[npt.Shape["nmbEvents"], npt.Int64], None, None]:
+    """Generates randomized event indices for each bootstrap sample"""
     rng = np.random.default_rng(self.seed)
     for _ in range(self.nmbSamples):
-      yield rng.choice(self.nmbEvents, size = self.nmbEvents, replace = True)
+      indices = rng.choice(self.nmbEvents, size = self.nmbEvents, replace = True)
+      indices.sort()  # sort to improve performance of memory access when indices are applied to arrays
+      yield indices
 
 
 @dataclass
@@ -1505,10 +1507,10 @@ class MomentCalculator:
   dataSet:              DataSet  # info on data samples
   binCenters:           dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
   integralFileBaseName: str                             = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
-  flipSignOfWeights:    bool                            = False,  # if set, weights of real-data event are sign-flipped
-  _HMeas:               MomentResult | None             = None  # measured moments; must either be given or calculated by calling calculateMoments()
-  _HPhys:               MomentResult | None             = None  # physical moments; must either be given or calculated by calling calculateMoments()
-  _integralMatrix:      AcceptanceIntegralMatrix | None = None  # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
+  flipSignOfWeights:    bool                            = False  # if set, weights of real-data event are sign-flipped
+  _HMeas:               MomentResult | None             = None   # measured moments; must either be given or calculated by calling calculateMoments()
+  _HPhys:               MomentResult | None             = None   # physical moments; must either be given or calculated by calling calculateMoments()
+  _integralMatrix:      AcceptanceIntegralMatrix | None = None   # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
 
   def __post_init__(self) -> None:
     # set polarized moments case of `indices` according to info provided by `dataSet`
@@ -1516,7 +1518,7 @@ class MomentCalculator:
       self.indices.setPolarized(False)
     else:
       self.indices.setPolarized(True)
-    # initialize `MomentResults` if None
+    # initialize _HMeas and _HPhys to empty `MomentResults` if None
     if self._HMeas is None:
       self._HMeas = MomentResult(
         indices    = self.indices,
