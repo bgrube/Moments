@@ -42,7 +42,7 @@ class EventData:
 
 def fillHddmRecord(
   record:      hddm_s.HDDM,  # HDDM record to fill
-  eventData:   EventData,
+  eventData:   EventData,    # event data to fill into HDDM record
   targetMomLv: ROOT.TLorentzVector = ROOT.TLorentzVector(0, 0, 0, PROTON_MASS),
 ) -> None:
   """Fill given HDDM record with a gamma + p -> pi+ pi- p physics event using the provided Lorentz-vectors and vertex position"""
@@ -58,11 +58,6 @@ def fillHddmRecord(
   # add beam photon
   beam = reaction.addBeams(1)[0]
   beam.type = ParticleIDsGeant.Photon
-  momentum = beam.addMomenta(1)[0]
-  momentum.E  = eventData.beamMomLv.E()
-  momentum.px = eventData.beamMomLv.Px()
-  momentum.py = eventData.beamMomLv.Py()
-  momentum.pz = eventData.beamMomLv.Pz()
   property = beam.addPropertiesList(1)[0]
   property.charge = 0
   property.mass = 0
@@ -74,11 +69,6 @@ def fillHddmRecord(
   # add target proton
   target = reaction.addTargets(1)[0]
   target.type = ParticleIDsGeant.Proton
-  momentum = target.addMomenta(1)[0]
-  momentum.E  = targetMomLv.E()
-  momentum.px = targetMomLv.Px()
-  momentum.py = targetMomLv.Py()
-  momentum.pz = targetMomLv.Pz()
   property = target.addPropertiesList(1)[0]
   property.charge = +1
   property.mass = targetMomLv.M()
@@ -93,45 +83,42 @@ def fillHddmRecord(
 
   # add recoil proton
   recoil = vertex.addProducts(1)[0]
-  recoil.decayVertex = 0
   recoil.id = 1
-  recoil.mech = 0
-  recoil.parentid = 0
   recoil.type = ParticleIDsGeant.Proton
   recoil.pdgtype = ParticleIDsPdg.Proton
-  momentum = recoil.addMomenta(1)[0]
-  momentum.E  = eventData.recoilMomLv.E()
-  momentum.px = eventData.recoilMomLv.Px()
-  momentum.py = eventData.recoilMomLv.Py()
-  momentum.pz = eventData.recoilMomLv.Pz()
 
   # add produced pi^+
   piPlus = vertex.addProducts(1)[0]
-  piPlus.decayVertex = 0
   piPlus.id = 2
-  piPlus.mech = 0
-  piPlus.parentid = 0
   piPlus.type = ParticleIDsGeant.PiPlus
   piPlus.pdgtype = ParticleIDsPdg.PiPlus
-  momentum = piPlus.addMomenta(1)[0]
-  momentum.E  = eventData.piPlusMomLv.E()
-  momentum.px = eventData.piPlusMomLv.Px()
-  momentum.py = eventData.piPlusMomLv.Py()
-  momentum.pz = eventData.piPlusMomLv.Pz()
 
   # add produced pi^-
   piMinus = vertex.addProducts(1)[0]
-  piMinus.decayVertex = 0
   piMinus.id = 3
-  piMinus.mech = 0
-  piMinus.parentid = 0
   piMinus.type = ParticleIDsGeant.PiMinus
   piMinus.pdgtype = ParticleIDsPdg.PiMinus
-  momentum = piMinus.addMomenta(1)[0]
-  momentum.E  = eventData.piMinusMomLv.E()
-  momentum.px = eventData.piMinusMomLv.Px()
-  momentum.py = eventData.piMinusMomLv.Py()
-  momentum.pz = eventData.piMinusMomLv.Pz()
+
+  # set common attributes of final-state particles
+  for particle in (recoil, piPlus, piMinus):
+    particle.decayVertex = 0
+    particle.mech = 0
+    particle.parentid = 0
+
+  # fill four-momenta of all particles
+  momLvData = (
+    (beam,    eventData.beamMomLv),
+    (target,  targetMomLv),
+    (recoil,  eventData.recoilMomLv),
+    (piPlus,  eventData.piPlusMomLv),
+    (piMinus, eventData.piMinusMomLv),
+  )
+  for particle, momLv in momLvData:
+    momentum = particle.addMomenta(1)[0]
+    momentum.E  = momLv.E()
+    momentum.px = momLv.Px()
+    momentum.py = momLv.Py()
+    momentum.pz = momLv.Pz()
 
 
 if __name__ == "__main__":
