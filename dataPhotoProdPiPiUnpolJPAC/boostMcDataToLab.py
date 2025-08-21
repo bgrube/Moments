@@ -136,7 +136,7 @@ def defineDataFrameColumns(
   lvPim:    str,  # function-argument list with Lorentz-vector components of pi^-
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns"""
-  vertexPosFcn = f"""
+  vertexPosFcn = """
     // define target geometry
     const double targetR    =  2;  // [cm]
     const double targetZmin = 52;  // [cm]
@@ -147,28 +147,50 @@ def defineDataFrameColumns(
     const double z   = gRandom->Uniform(targetZmin, targetZmax);
     return TVector3(r * cos(phi), r * sin(phi), z);
   """
+  boostEventFcn = """
+    // define boost to lab frame
+    const TVector3 labBoost = -lvTarget.BoostVector();
+    // boost all particles into lab frame
+    std::vector<TLorentzVector> lvParticlesLab;
+    for (auto particle : {lvBeam, lvTarget, lvRecoil, lvPip, lvPim}) {
+      particle.Boost(labBoost);
+      lvParticlesLab.push_back(particle);
+    }
+    // rotate all particles such that beam is along z
+    // beam in lab frame is Wigner rotated about y-axis with momentum components: x < 0, y = 0, and z > 0
+    // anticlockwise rotation about polar angle undoes the Wigner rotation
+    const double wignerAngle = lvParticlesLab[0].Theta();
+    for (auto& particle : lvParticlesLab) {
+      particle.RotateY(wignerAngle);
+    }
+    return lvParticlesLab;
+  """
+  ROOT.gInterpreter.GenerateDictionary("std::vector<TLorentzVector>", "vector;TLorentzVector.h")
   df = (
-    df.Define("lvBeam",      f"TLorentzVector({lvBeam})")
-      .Define("lvTarget",    f"TLorentzVector({lvTarget})")
-      .Define("lvRecoil",    f"TLorentzVector({lvRecoil})")
-      .Define("lvPip",       f"TLorentzVector({lvPip})")
-      .Define("lvPim",       f"TLorentzVector({lvPim})")
+    df.Define("lvBeam",        f"TLorentzVector({lvBeam})")
+      .Define("lvTarget",      f"TLorentzVector({lvTarget})")
+      .Define("lvRecoil",      f"TLorentzVector({lvRecoil})")
+      .Define("lvPip",         f"TLorentzVector({lvPip})")
+      .Define("lvPim",         f"TLorentzVector({lvPim})")
       # boost events to target rest frame = lab frame
-      .Define("lvBeamLab",   f"TLorentzVector temp = lvBeam;   temp.Boost(-lvTarget.BoostVector()); return temp")
-      .Define("lvTargetLab", f"TLorentzVector temp = lvTarget; temp.Boost(-lvTarget.BoostVector()); return temp")
-      .Define("lvRecoilLab", f"TLorentzVector temp = lvRecoil; temp.Boost(-lvTarget.BoostVector()); return temp")
-      .Define("lvPipLab",    f"TLorentzVector temp = lvPip;    temp.Boost(-lvTarget.BoostVector()); return temp")
-      .Define("lvPimLab",    f"TLorentzVector temp = lvPim;    temp.Boost(-lvTarget.BoostVector()); return temp")
+      .Define("lvParticlesLab", boostEventFcn)
+      .Define("lvBeamLab",      "lvParticlesLab[0]")
+      .Define("lvTargetLab",    "lvParticlesLab[1]")
+      .Define("lvRecoilLab",    "lvParticlesLab[2]")
+      .Define("lvPipLab",       "lvParticlesLab[3]")
+      .Define("lvPimLab",       "lvParticlesLab[4]")
+      .Define("lvBeamLabTheta", "lvBeamLab.Theta() * TMath::RadToDeg()")
       # generate vertex distribution
-      .Define("vertexPos",   vertexPosFcn)
-      .Define("vertexPosX",  "vertexPos.X()")
-      .Define("vertexPosY",  "vertexPos.Y()")
+      .Define("vertexPos",      vertexPosFcn)
+      .Define("vertexPosX",     "vertexPos.X()")
+      .Define("vertexPosY",     "vertexPos.Y()")
   )
   return df
 
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  ROOT.gStyle.SetOptStat(111111)
 
   inputData: dict[str, str] = {  # mapping of t-bin labels to input file names
     "tbin_0.4_0.5" : "./mc/mc_full_model/mc0.4-0.5_ful.dat",
@@ -180,7 +202,7 @@ if __name__ == "__main__":
   }
   outputDirName  = "mc_full"
   outputTreeName = "PiPi"
-  outputColumns  = ("lvBeam", "lvTarget", "lvRecoil", "lvPip", "lvPim")
+  outputColumns  = ("lvBeamLab", "lvTargetLab", "lvRecoilLab", "lvPipLab", "lvPimLab", "vertexPos")
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
@@ -198,6 +220,10 @@ if __name__ == "__main__":
     hist = df.Histo2D(ROOT.RDF.TH2DModel(f"vertexXY", ";x_{vert} [cm];y_{vert} [cm];", 100, -2, +2, 100, -2, +2), "vertexPosX", "vertexPosY").GetValue()
     canv = ROOT.TCanvas()
     hist.Draw("COLZ")
+    canv.SaveAs(f"./{hist.GetName()}.pdf")
+    hist = df.Histo1D(ROOT.RDF.TH1DModel(f"beamThetaLab", ";#theta_{beam} [deg];", 100, 0, 180), "lvBeamLabTheta").GetValue()
+    canv = ROOT.TCanvas()
+    hist.Draw()
     canv.SaveAs(f"./{hist.GetName()}.pdf")
 
   # eventData = EventData(
