@@ -174,7 +174,7 @@ if __name__ == "__main__":
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
-  dataFileName        = "./dataPhotoProdPiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.PiPi.root"
+  dataFileName        = "./dataPhotoProdPiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.root"
   # momentResultDirName = "./plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_4"
   momentResultDirName = "./plotsPhotoProdPiPiUnpolJPAC.tbin_0.4_0.5/Unpol.maxL_8"
   weightedMcFileName  = f"{momentResultDirName}/data_reweighted_flat.root"

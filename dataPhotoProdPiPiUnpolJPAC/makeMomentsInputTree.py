@@ -72,11 +72,11 @@ def lorentzVectors() -> dict[str, str]:
 
 def defineDataFrameColumns(
   df:         ROOT.RDataFrame,
-  lvTarget:   str,    # function-argument list with Lorentz-vector components of target proton
-  lvBeam:     str,    # function-argument list with Lorentz-vector components of beam photon
-  lvRecoil:   str,    # function-argument list with Lorentz-vector components of recoil proton
-  lvPip:      str,    # function-argument list with Lorentz-vector components of pi^+
-  lvPim:      str,    # function-argument list with Lorentz-vector components of pi^-
+  lvTarget:   str,  # function-argument list with Lorentz-vector components of target proton
+  lvBeam:     str,  # function-argument list with Lorentz-vector components of beam photon
+  lvRecoil:   str,  # function-argument list with Lorentz-vector components of recoil proton
+  lvPip:      str,  # function-argument list with Lorentz-vector components of pi^+
+  lvPim:      str,  # function-argument list with Lorentz-vector components of pi^-
   frame:      str  = "Hf",  # can be either "Hf" for helicity or "Gj" for Gottfried-Jackson frame
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moment analysis"""
@@ -109,7 +109,7 @@ def plotHistograms(
   df,
   outputDirName,
   tBinLabel,
-  frame
+  frame,
 ) -> None:
   """Plots histograms"""
   dfPlot = (
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
-    outputFileName = f"{outputDirName}/{tBinLabel}/data_flat.PiPi.root"
+    outputFileName = f"{outputDirName}/{tBinLabel}/data_flat.root"
 
     df = defineDataFrameColumns(
       df    = readData(inputFileName),
