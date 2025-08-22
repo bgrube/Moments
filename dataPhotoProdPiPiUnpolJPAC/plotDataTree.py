@@ -12,6 +12,7 @@ from makeMomentsInputTree import (
   CPP_CODE_MASSPAIR,
   defineDataFrameColumns,
   lorentzVectorsJpac,
+  lorentzVectorsTlv,
   readDataJpac,
 )
 
@@ -60,24 +61,22 @@ if __name__ == "__main__":
 
   inputData: dict[str, str] = {  # mapping of t-bin labels to input file names
     "tbin_0.4_0.5" : "./mc/mc_full_model/mc0.4-0.5_ful.dat",
-    # "tbin_0.5_0.6" : "./mc/mc_full_model/mc0.5-0.6_ful.dat",
-    # "tbin_0.6_0.7" : "./mc/mc_full_model/mc0.6-0.7_ful.dat",
-    # "tbin_0.7_0.8" : "./mc/mc_full_model/mc0.7-0.8_ful.dat",
-    # "tbin_0.8_0.9" : "./mc/mc_full_model/mc0.8-0.9_ful.dat",
-    # "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
+    "tbin_0.5_0.6" : "./mc/mc_full_model/mc0.5-0.6_ful.dat",
+    "tbin_0.6_0.7" : "./mc/mc_full_model/mc0.6-0.7_ful.dat",
+    "tbin_0.7_0.8" : "./mc/mc_full_model/mc0.7-0.8_ful.dat",
+    "tbin_0.8_0.9" : "./mc/mc_full_model/mc0.8-0.9_ful.dat",
+    "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
   }
-  # outputDirName  = "mc_full"
-  outputDirName  = "foo"
-  outputTreeName = "PiPi"
-  outputColumns  = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
-  frame          = "Hf"
+  outputDirName = "mc_full"
+  frame         = "Hf"
+  useJpacData   = True
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
     df = defineDataFrameColumns(
-      df    = readDataJpac(inputFileName),
+      df    = readDataJpac(inputFileName) if useJpacData else ROOT.RDataFrame("PiPi", "./data_labFrame_flat.root"),
       frame = frame,
-      **lorentzVectorsJpac(),
+      **(lorentzVectorsJpac() if useJpacData else lorentzVectorsTlv()),
     )
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
@@ -85,5 +84,5 @@ if __name__ == "__main__":
       df            = df,
       outputDirName = f"{outputDirName}/{tBinLabel}",
       frame         = frame,
-      plotJpac      = True,
+      plotJpac      = useJpacData,
     )
