@@ -5,6 +5,7 @@
 **/*.orig
 **/*.pdf
 **/*.png
+**/*.hddm*
 **/*.root*
 **/*_dictUmbrella.h
 **/*_dictContent.h
