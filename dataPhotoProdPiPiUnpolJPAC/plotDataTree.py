@@ -11,8 +11,8 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   defineDataFrameColumns,
-  lorentzVectors,
-  readData,
+  lorentzVectorsJpac,
+  readDataJpac,
 )
 
 
@@ -75,9 +75,9 @@ if __name__ == "__main__":
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
     df = defineDataFrameColumns(
-      df    = readData(inputFileName),
+      df    = readDataJpac(inputFileName),
       frame = frame,
-      **lorentzVectors(),
+      **lorentzVectorsJpac(),
     )
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")

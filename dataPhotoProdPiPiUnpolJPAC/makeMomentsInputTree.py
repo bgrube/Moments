@@ -37,8 +37,8 @@ mandelstamT(
 """
 
 
-def readData(inputFileName: str) -> ROOT.RDataFrame:
-  """Reads data from an ASCII file into a ROOT RDataFrame"""
+def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
+  """Reads JPAC data from an ASCII file into a ROOT RDataFrame"""
   print(f"Reading file '{inputFileName}'")
   pandasDf = pd.read_csv(inputFileName, sep=r"\s+")
   pandasDf["t"]  *= -1.0  # flip sign
@@ -58,8 +58,8 @@ def readData(inputFileName: str) -> ROOT.RDataFrame:
   return rootDf
 
 
-def lorentzVectors() -> dict[str, str]:
-  """Returns Lorentz-vectors for beam photon ("lvBeam"), target proton ("lvTarget"), recoil proton ("lvRecoil"), pi+ ("lvPip"), and pi- ("lvPim")"""
+def lorentzVectorsJpac() -> dict[str, str]:
+  """Returns Lorentz-vectors for beam photon ("lvBeam"), target proton ("lvTarget"), recoil proton ("lvRecoil"), pi+ ("lvPip"), and pi- ("lvPim") for JPAC data"""
   lvs = {}
   # kinematic variables according to Eq. (1) in BIBRZYCKI et al., PD 111, 014002 (2025)
   # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
@@ -69,6 +69,17 @@ def lorentzVectors() -> dict[str, str]:
   lvs["lvRecoil"] = "p21, p22, p23, p20"  # recoil proton
   lvs["lvPip"   ] = "k11, k12, k13, k10"  # pi+
   lvs["lvPim"   ] = "k21, k22, k23, k20"  # pi-
+  return lvs
+
+
+def lorentzVectorsTlv() -> dict[str, str]:
+  """Returns Lorentz-vectors for beam photon ("lvBeam"), target proton ("lvTarget"), recoil proton ("lvRecoil"), pi+ ("lvPip"), and pi- ("lvPim") for data with TLorentzVectors"""
+  lvs = {}
+  lvs["lvBeam"  ] = "lvBeamLab.X(),   lvBeamLab.Y(),   lvBeamLab.Z(),   lvBeamLab.E()"    # beam photon
+  lvs["lvTarget"] = "lvTargetLab.X(), lvTargetLab.Y(), lvTargetLab.Z(), lvTargetLab.E()"  # target proton
+  lvs["lvRecoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
+  lvs["lvPip"   ] = "lvPipLab.X(),    lvPipLab.Y(),    lvPipLab.Z(),    lvPipLab.E()"     # pi+
+  lvs["lvPim"   ] = "lvPimLab.X(),    lvPimLab.Y(),    lvPimLab.Z(),    lvPimLab.E()"     # pi-
   return lvs
 
 
@@ -132,9 +143,9 @@ if __name__ == "__main__":
     outputFileName = f"{outputDirName}/{tBinLabel}/data_flat.root"
     print(f"Writing data to tree '{outputTreeName}' in '{outputFileName}'")
     df = defineDataFrameColumns(
-      df    = readData(inputFileName),
+      df    = readDataJpac(inputFileName),
       frame = frame,
-      **lorentzVectors(),
+      **lorentzVectorsJpac(),
     ).Snapshot(outputTreeName, outputFileName, outputColumns)
     # ).Snapshot(outputTreeName, outputFileName)  # write all columns
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
