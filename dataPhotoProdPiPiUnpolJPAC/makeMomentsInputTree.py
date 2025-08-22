@@ -3,16 +3,11 @@
 
 from __future__ import annotations
 
-import functools
 import numpy as np
 import pandas as pd
 import os
 
 import ROOT
-
-
-# always flush print() to reduce garbling of log files due to buffering
-print = functools.partial(print, flush = True)
 
 
 # C++ function to calculate invariant mass of a pair of particles
@@ -46,7 +41,14 @@ def readData(inputFileName: str) -> ROOT.RDataFrame:
   """Reads data from an ASCII file into a ROOT RDataFrame"""
   print(f"Reading file '{inputFileName}'")
   pandasDf = pd.read_csv(inputFileName, sep=r"\s+")
-  pandasDf.rename(columns = {"phi" : "phiOrig"}, inplace = True)
+  pandasDf["t"]  *= -1.0  # flip sign
+  pandasDf["phi"] = np.degrees(pandasDf["phi"])  # convert to degrees
+  pandasDf.loc[pandasDf["phi"] > 180, "phi"] -= 360  # apply: if phi > 180 then phi -= 360
+  # rename columns to match naming convention
+  pandasDf.rename(columns = {"t"     : "minusTJpac"},   inplace = True)
+  pandasDf.rename(columns = {"mpipi" : "massJpac"},     inplace = True)
+  pandasDf.rename(columns = {"phi"   : "phiDegJpac"},   inplace = True)
+  pandasDf.rename(columns = {"costh" : "cosThetaJpac"}, inplace = True)
   # print(f"DataFrame shape: {pandasDf.shape}")
   # print(f"Columns: {list(pandasDf.columns)}")
   # convert Pandas DataFrame into ROOT RDataFrame
@@ -71,13 +73,13 @@ def lorentzVectors() -> dict[str, str]:
 
 
 def defineDataFrameColumns(
-  df:         ROOT.RDataFrame,
-  lvTarget:   str,  # function-argument list with Lorentz-vector components of target proton
-  lvBeam:     str,  # function-argument list with Lorentz-vector components of beam photon
-  lvRecoil:   str,  # function-argument list with Lorentz-vector components of recoil proton
-  lvPip:      str,  # function-argument list with Lorentz-vector components of pi^+
-  lvPim:      str,  # function-argument list with Lorentz-vector components of pi^-
-  frame:      str  = "Hf",  # can be either "Hf" for helicity or "Gj" for Gottfried-Jackson frame
+  df:       ROOT.RDataFrame,
+  lvTarget: str,  # function-argument list with Lorentz-vector components of target proton
+  lvBeam:   str,  # function-argument list with Lorentz-vector components of beam photon
+  lvRecoil: str,  # function-argument list with Lorentz-vector components of recoil proton
+  lvPip:    str,  # function-argument list with Lorentz-vector components of pi^+
+  lvPim:    str,  # function-argument list with Lorentz-vector components of pi^-
+  frame:    str  = "Hf",  # can be either "Hf" for helicity or "Gj" for Gottfried-Jackson frame
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moment analysis"""
   assert frame == "Hf" or frame == "Gj", f"Unknown frame '{frame}'"
@@ -105,43 +107,8 @@ def defineDataFrameColumns(
   return df
 
 
-def plotHistograms(
-  df,
-  outputDirName,
-  tBinLabel,
-  frame,
-) -> None:
-  """Plots histograms"""
-  dfPlot = (
-    df.Define("minusT2",  "-t")
-      .Define("phiOrig2", "((phiOrig > TMath::Pi()) ? phiOrig - TMath::TwoPi() : phiOrig) * TMath::RadToDeg()")
-  )
-  hists = [
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi",               ";m_{#pi#pi} [GeV];Count",        100,  0.4,   1.4), "mass"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMassPiPi2",              ";m_{#pi#pi} [GeV];Count",        100,  0.4,   1.4), "mpipi"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",                 ";#minus t [GeV^{2}];Count",      100,  0,     1),   "minusT"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT2",                ";#minus t [GeV^{2}];Count",      100,  0,     1),   "minusT2"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi",  f";cos#theta_{{{frame}}};Count",   100, -1,    +1),   "cosTheta"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcCosTheta{frame}PiPi2", f";cos#theta_{{{frame}}};Count",   100, -1,    +1),   "costh"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi",       f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180), "phiDeg"),
-    dfPlot.Histo1D(ROOT.RDF.TH1DModel(f"hMcPhi{frame}PiPi2",      f";#phi_{{{frame}}} [deg]; Count", 120, -180,  +180), "phiOrig2"),
-
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcAngles{frame}PiPi",             f";cos#theta_{{{frame}}};#phi_{{{frame}}} [deg]", 100, -1,  +1,    72, -180, +180), "cosTheta", "phiDeg"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsCosTheta{frame}PiPi", f";m_{{#pi#pi}} [GeV];cos#theta_{{{frame}}}",      50,  0.4, 1.4, 100,   -1,   +1), "mass",     "cosTheta"),
-    dfPlot.Histo2D(ROOT.RDF.TH2DModel(f"hMcMassPiPiVsPhiDeg{frame}PiPi",   f";m_{{#pi#pi}} [GeV];#phi_{{{frame}}}",           50,  0.4, 1.4,  72, -180, +180), "mass",     "phiDeg"),
-  ]
-  print(f"Writing histograms to '{outputDirName}/{tBinLabel}'")
-  for hist in hists:
-      print(f"Generating histogram '{hist.GetName()}'")
-      canv = ROOT.TCanvas()
-      hist.SetMinimum(0)
-      hist.Draw("COLZ")
-      canv.SaveAs(f"{outputDirName}/{tBinLabel}/{hist.GetName()}.pdf")
-
-
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  ROOT.gStyle.SetOptStat("i")
   ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
@@ -163,15 +130,12 @@ if __name__ == "__main__":
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
     outputFileName = f"{outputDirName}/{tBinLabel}/data_flat.root"
-
+    print(f"Writing data to tree '{outputTreeName}' in '{outputFileName}'")
     df = defineDataFrameColumns(
       df    = readData(inputFileName),
       frame = frame,
       **lorentzVectors(),
-    # ).Snapshot(outputTreeName, outputFileName, outputColumns)
-    ).Snapshot(outputTreeName, outputFileName)  # write all columns
-    print(f"Wrote data to tree '{outputTreeName}' in '{outputFileName}'")
+    ).Snapshot(outputTreeName, outputFileName, outputColumns)
+    # ).Snapshot(outputTreeName, outputFileName)  # write all columns
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
-
-    plotHistograms(df, outputDirName, tBinLabel, frame)
