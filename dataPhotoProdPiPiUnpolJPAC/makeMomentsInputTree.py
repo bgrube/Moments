@@ -137,15 +137,16 @@ if __name__ == "__main__":
   outputTreeName = "PiPi"
   outputColumns  = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
   frame          = "Hf"
+  useJpacData    = True
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
     outputFileName = f"{outputDirName}/{tBinLabel}/data_flat.root"
     print(f"Writing data to tree '{outputTreeName}' in '{outputFileName}'")
     df = defineDataFrameColumns(
-      df    = readDataJpac(inputFileName),
+      df    = readDataJpac(inputFileName) if useJpacData else ROOT.RDataFrame("PiPi", "./data_labFrame_flat.root"),
       frame = frame,
-      **lorentzVectorsJpac(),
+      **(lorentzVectorsJpac() if useJpacData else lorentzVectorsTlv()),
     ).Snapshot(outputTreeName, outputFileName, outputColumns)
     # ).Snapshot(outputTreeName, outputFileName)  # write all columns
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
