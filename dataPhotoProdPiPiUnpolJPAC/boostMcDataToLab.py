@@ -11,8 +11,8 @@ import ROOT
 import hddm_s
 
 from makeMomentsInputTree import (
-  lorentzVectors,
-  readData,
+  lorentzVectorsJpac,
+  readDataJpac,
 )
 
 
@@ -188,15 +188,14 @@ def defineDataFrameColumns(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  ROOT.gStyle.SetOptStat(111111)
 
   inputData: dict[str, str] = {  # mapping of t-bin labels to input file names
     "tbin_0.4_0.5" : "./mc/mc_full_model/mc0.4-0.5_ful.dat",
-    # "tbin_0.5_0.6" : "./mc/mc_full_model/mc0.5-0.6_ful.dat",
-    # "tbin_0.6_0.7" : "./mc/mc_full_model/mc0.6-0.7_ful.dat",
-    # "tbin_0.7_0.8" : "./mc/mc_full_model/mc0.7-0.8_ful.dat",
-    # "tbin_0.8_0.9" : "./mc/mc_full_model/mc0.8-0.9_ful.dat",
-    # "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
+    "tbin_0.5_0.6" : "./mc/mc_full_model/mc0.5-0.6_ful.dat",
+    "tbin_0.6_0.7" : "./mc/mc_full_model/mc0.6-0.7_ful.dat",
+    "tbin_0.7_0.8" : "./mc/mc_full_model/mc0.7-0.8_ful.dat",
+    "tbin_0.8_0.9" : "./mc/mc_full_model/mc0.8-0.9_ful.dat",
+    "tbin_0.9_1.0" : "./mc/mc_full_model/mc0.9-1.0_ful.dat",
   }
   outputDirName  = "mc_full"
   outputTreeName = "PiPi"
@@ -205,19 +204,18 @@ if __name__ == "__main__":
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
-    # outputFileName = f"{outputDirName}/{tBinLabel}/data_labFrame_flat.root"
-    outputRootFileName = f"./data_labFrame_flat.root"
+    outputRootFileName = f"{outputDirName}/{tBinLabel}/data_labFrame_flat.root"
+    outputHddmFileName = f"{outputDirName}/{tBinLabel}/data_labFrame.hddm"
 
     df = defineDataFrameColumns(
-      df = readData(inputFileName),
-      **lorentzVectors(),
+      df = readDataJpac(inputFileName),
+      **lorentzVectorsJpac(),
     ).Snapshot(outputTreeName, outputRootFileName, outputColumns)
     # ).Snapshot(outputTreeName, outputFileName)
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
 
-
-    outputHddmFileName = outputRootFileName.replace(".root", ".hddm")
+    # convert ROOT tree to HDDM file
     print(f"Converting tree '{outputTreeName}' in file '{outputRootFileName}' to HDDM file '{outputHddmFileName}'")
     # get input tree from ROOT file
     inFile = ROOT.TFile.Open(outputRootFileName, "READ")
@@ -227,6 +225,7 @@ if __name__ == "__main__":
     outStream = hddm_s.ostream(outputHddmFileName)
     outStream.compression = hddm_s.k_bz2_compression  # compress output with bzip2
     for eventIndex, event in enumerate(tree):  #TODO loop in Python is slow
+      # get data
       eventData = EventData(
         runNmb    = runNmb,
         eventNmb  = eventIndex,
