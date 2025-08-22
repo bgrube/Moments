@@ -37,21 +37,21 @@ PROTON_MASS = 0.938272  # [GeV]
 
 @dataclass
 class EventData:
-  runNmb:       int
-  eventNmb:     int
-  beamMomLv:    ROOT.TLorentzVector
-  recoilMomLv:  ROOT.TLorentzVector
-  piPlusMomLv:  ROOT.TLorentzVector
-  piMinusMomLv: ROOT.TLorentzVector
-  vertexPos:    ROOT.TVector3
+  runNmb:    int
+  eventNmb:  int
+  lvBeam:    ROOT.TLorentzVector
+  lvTarget:  ROOT.TLorentzVector
+  lvRecoil:  ROOT.TLorentzVector
+  lvPip:     ROOT.TLorentzVector
+  lvPim:     ROOT.TLorentzVector
+  vertexPos: ROOT.TVector3
 
 
 def fillHddmRecord(
-  record:      hddm_s.HDDM,  # HDDM record to fill
-  eventData:   EventData,    # event data to fill into HDDM record
-  targetMomLv: ROOT.TLorentzVector = ROOT.TLorentzVector(0, 0, 0, PROTON_MASS),
-) -> None:
-  """Fill given HDDM record with a gamma + p -> pi+ pi- p physics event using the provided Lorentz-vectors and vertex position"""
+  record:    hddm_s.HDDM,  # HDDM record to fill
+  eventData: EventData,    # event data to fill into HDDM record
+) -> hddm_s.HDDM:
+  """Fills and returns given HDDM record with a gamma + p -> pi+ pi- p physics event using the provided event data"""
   # create event and set event info
   physicsEvent = record.addPhysicsEvents(1)[0]
   physicsEvent.runNo = eventData.runNmb
@@ -77,7 +77,7 @@ def fillHddmRecord(
   target.type = ParticleIDsGeant.Proton
   property = target.addPropertiesList(1)[0]
   property.charge = +1
-  property.mass = targetMomLv.M()
+  property.mass = eventData.lvTarget.M()
 
   # add interaction vertex and its position
   vertex = reaction.addVertices(1)[0]
@@ -94,30 +94,30 @@ def fillHddmRecord(
   recoil.pdgtype = ParticleIDsPdg.Proton
 
   # add produced pi^+
-  piPlus = vertex.addProducts(1)[0]
-  piPlus.id = 2
-  piPlus.type = ParticleIDsGeant.PiPlus
-  piPlus.pdgtype = ParticleIDsPdg.PiPlus
+  pip = vertex.addProducts(1)[0]
+  pip.id = 2
+  pip.type = ParticleIDsGeant.PiPlus
+  pip.pdgtype = ParticleIDsPdg.PiPlus
 
   # add produced pi^-
-  piMinus = vertex.addProducts(1)[0]
-  piMinus.id = 3
-  piMinus.type = ParticleIDsGeant.PiMinus
-  piMinus.pdgtype = ParticleIDsPdg.PiMinus
+  pim = vertex.addProducts(1)[0]
+  pim.id = 3
+  pim.type = ParticleIDsGeant.PiMinus
+  pim.pdgtype = ParticleIDsPdg.PiMinus
 
   # set common attributes of final-state particles
-  for particle in (recoil, piPlus, piMinus):
+  for particle in (recoil, pip, pim):
     particle.decayVertex = 0
     particle.mech = 0
     particle.parentid = 0
 
   # fill four-momenta of all particles
   momLvData = (
-    (beam,    eventData.beamMomLv),
-    (target,  targetMomLv),
-    (recoil,  eventData.recoilMomLv),
-    (piPlus,  eventData.piPlusMomLv),
-    (piMinus, eventData.piMinusMomLv),
+    (beam,   eventData.lvBeam),
+    (target, eventData.lvTarget),
+    (recoil, eventData.lvRecoil),
+    (pip,    eventData.lvPip),
+    (pim,    eventData.lvPim),
   )
   for particle, momLv in momLvData:
     momentum = particle.addMomenta(1)[0]
@@ -125,6 +125,8 @@ def fillHddmRecord(
     momentum.px = momLv.Px()
     momentum.py = momLv.Py()
     momentum.pz = momLv.Pz()
+
+  return record
 
 
 def defineDataFrameColumns(
@@ -135,7 +137,7 @@ def defineDataFrameColumns(
   lvPip:    str,  # function-argument list with Lorentz-vector components of pi^+
   lvPim:    str,  # function-argument list with Lorentz-vector components of pi^-
 ) -> ROOT.RDataFrame:
-  """Returns RDataFrame with additional columns"""
+  """Returns RDataFrame with additional columns required for analysis"""
   vertexPosFcn = """
     // define target geometry
     const double targetR    =  2;  // [cm]
@@ -179,11 +181,8 @@ def defineDataFrameColumns(
       .Define("lvRecoilLab",    "lvParticlesLab[2]")
       .Define("lvPipLab",       "lvParticlesLab[3]")
       .Define("lvPimLab",       "lvParticlesLab[4]")
-      .Define("lvBeamLabTheta", "lvBeamLab.Theta() * TMath::RadToDeg()")
       # generate vertex distribution
       .Define("vertexPos",      vertexPosFcn)
-      .Define("vertexPosX",     "vertexPos.X()")
-      .Define("vertexPosY",     "vertexPos.Y()")
   )
   return df
 
@@ -203,6 +202,7 @@ if __name__ == "__main__":
   outputDirName  = "mc_full"
   outputTreeName = "PiPi"
   outputColumns  = ("lvBeamLab", "lvTargetLab", "lvRecoilLab", "lvPipLab", "lvPimLab", "vertexPos")
+  runNmb         = 1
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
@@ -212,35 +212,29 @@ if __name__ == "__main__":
     df = defineDataFrameColumns(
       df = readData(inputFileName),
       **lorentzVectors(),
-    # ).Snapshot(outputTreeName, outputFileName, outputColumns)
-    ).Snapshot(outputTreeName, outputFileName)
+    ).Snapshot(outputTreeName, outputFileName, outputColumns)
+    # ).Snapshot(outputTreeName, outputFileName)
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
 
-    hist = df.Histo2D(ROOT.RDF.TH2DModel(f"vertexXY", ";x_{vert} [cm];y_{vert} [cm];", 100, -2, +2, 100, -2, +2), "vertexPosX", "vertexPosY").GetValue()
-    canv = ROOT.TCanvas()
-    hist.Draw("COLZ")
-    canv.SaveAs(f"./{hist.GetName()}.pdf")
-    hist = df.Histo1D(ROOT.RDF.TH1DModel(f"beamThetaLab", ";#theta_{beam} [deg];", 100, 0, 180), "lvBeamLabTheta").GetValue()
-    canv = ROOT.TCanvas()
-    hist.Draw()
-    canv.SaveAs(f"./{hist.GetName()}.pdf")
-
-  # eventData = EventData(
-  #   runNmb       = 30731,
-  #   eventNmb     = 1,
-  #   beamMomLv    = ROOT.TLorentzVector( 0,          0,          8.58286,  8.58286),  # [GeV]
-  #   recoilMomLv  = ROOT.TLorentzVector(-0.429367,  -0.00775752, 0.162113, 1.04453),  # [GeV]
-  #   piPlusMomLv  = ROOT.TLorentzVector( 0.0960281, -0.382075,   4.61858,  4.63745),  # [GeV]
-  #   piMinusMomLv = ROOT.TLorentzVector( 0.333339,   0.389832,   3.80217,  3.83915),  # [GeV]
-  #   vertexPos    = ROOT.TVector3(0, 0, 0),  # [cm]
-  # )
-
-  # # create output stream
-  # outFileName = "./test.hddm"
-  # outStream = hddm_s.ostream(outFileName)
-
-  # # create, fill, and write record
-  # record = hddm_s.HDDM()
-  # fillHddmRecord(record, eventData)
-  # outStream.write(record)
+    # convert ROOT tree to HDDM file
+    # get input tree from ROOT file
+    inFile = ROOT.TFile.Open(outputFileName, "READ")
+    tree = inFile.Get(outputTreeName)
+    assert tree != ROOT.nullptr, f"Failed to get input tree '{outputTreeName}' from ROOT file"
+    # create output stream
+    outStream = hddm_s.ostream(outputFileName.replace(".root", ".hddm"))
+    for eventIndex, event in enumerate(tree):  #TODO loop in Python is slow
+      eventData = EventData(
+        runNmb    = runNmb,
+        eventNmb  = eventIndex,
+        lvBeam    = event.lvBeamLab,
+        lvTarget  = event.lvTargetLab,
+        lvRecoil  = event.lvRecoilLab,
+        lvPip     = event.lvPipLab,
+        lvPim     = event.lvPimLab,
+        vertexPos = event.vertexPos,
+      )
+      # create, fill, and write HDDM record
+      outStream.write(fillHddmRecord(hddm_s.HDDM(), eventData))
+    inFile.Close()
