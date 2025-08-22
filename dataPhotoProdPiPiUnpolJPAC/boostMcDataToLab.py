@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# see https://halldweb.jlab.org/wiki/index.php/Guide_to_roll-your-own_python_hddm_transforms#example_5:_writing_Monte_Carlo_events
-
 
 from __future__ import annotations
 
@@ -47,6 +45,7 @@ class EventData:
   vertexPos: ROOT.TVector3
 
 
+# see https://halldweb.jlab.org/wiki/index.php/Guide_to_roll-your-own_python_hddm_transforms#example_5:_writing_Monte_Carlo_events
 def fillHddmRecord(
   record:    hddm_s.HDDM,  # HDDM record to fill
   eventData: EventData,    # event data to fill into HDDM record
@@ -207,23 +206,26 @@ if __name__ == "__main__":
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
     # outputFileName = f"{outputDirName}/{tBinLabel}/data_labFrame_flat.root"
-    outputFileName = f"./data_labFrame_flat.root"
+    outputRootFileName = f"./data_labFrame_flat.root"
 
     df = defineDataFrameColumns(
       df = readData(inputFileName),
       **lorentzVectors(),
-    ).Snapshot(outputTreeName, outputFileName, outputColumns)
+    ).Snapshot(outputTreeName, outputRootFileName, outputColumns)
     # ).Snapshot(outputTreeName, outputFileName)
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
 
-    # convert ROOT tree to HDDM file
+
+    outputHddmFileName = outputRootFileName.replace(".root", ".hddm")
+    print(f"Converting tree '{outputTreeName}' in file '{outputRootFileName}' to HDDM file '{outputHddmFileName}'")
     # get input tree from ROOT file
-    inFile = ROOT.TFile.Open(outputFileName, "READ")
+    inFile = ROOT.TFile.Open(outputRootFileName, "READ")
     tree = inFile.Get(outputTreeName)
     assert tree != ROOT.nullptr, f"Failed to get input tree '{outputTreeName}' from ROOT file"
     # create output stream
-    outStream = hddm_s.ostream(outputFileName.replace(".root", ".hddm"))
+    outStream = hddm_s.ostream(outputHddmFileName)
+    outStream.compression = hddm_s.k_bz2_compression  # compress output with bzip2
     for eventIndex, event in enumerate(tree):  #TODO loop in Python is slow
       eventData = EventData(
         runNmb    = runNmb,
