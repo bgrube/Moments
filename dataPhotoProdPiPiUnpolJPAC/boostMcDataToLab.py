@@ -137,17 +137,6 @@ def defineDataFrameColumns(
   lvPim:    str,  # function-argument list with Lorentz-vector components of pi^-
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns required for analysis"""
-  vertexPosFcn = """
-    // define target geometry
-    const double targetR    =  2;  // [cm]
-    const double targetZmin = 52;  // [cm]
-    const double targetZmax = 78;  // [cm]
-    // throw random point in target volume
-    const double r   = targetR * sqrt(gRandom->Uniform(0, 1));
-    const double phi = gRandom->Uniform(0, TMath::TwoPi());
-    const double z   = gRandom->Uniform(targetZmin, targetZmax);
-    return TVector3(r * cos(phi), r * sin(phi), z);
-  """
   boostEventFcn = """
     // define boost to lab frame
     const TVector3 labBoost = -lvTarget.BoostVector();
@@ -180,8 +169,9 @@ def defineDataFrameColumns(
       .Define("lvRecoilLab",    "lvParticlesLab[2]")
       .Define("lvPipLab",       "lvParticlesLab[3]")
       .Define("lvPimLab",       "lvParticlesLab[4]")
-      # generate vertex distribution
-      .Define("vertexPos",      vertexPosFcn)
+      # force GEANT to simulate vertex position
+      # see https://github.com/JeffersonLab/gluex_MCwrapper/blob/bac5b0d6c868632ba898d1b9a09706031fea6752/Gcontrol.in#L26
+      .Define("vertexPos",      "TVector3(0, 0, 0)")
   )
   return df
 
