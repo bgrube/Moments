@@ -153,6 +153,13 @@ def defineDataFrameColumns(
     for (auto& particle : lvParticlesLab) {
       particle.RotateY(wignerAngle);
     }
+    // events where generated such that recoil proton is in x-z plane
+    // hence the recoil-proton momentum has no y component
+    // fix this by rotating all particles in the event by the same random azimuthal angle around the z (= beam) axis
+    const double phi = gRandom->Uniform(0, TMath::TwoPi());
+    for (auto& particle : lvParticlesLab) {
+      particle.RotateZ(phi);
+    }
     return lvParticlesLab;
   """
   ROOT.gInterpreter.GenerateDictionary("std::vector<TLorentzVector>", "vector;TLorentzVector.h")
