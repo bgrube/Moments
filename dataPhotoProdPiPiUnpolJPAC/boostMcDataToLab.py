@@ -51,6 +51,9 @@ def fillHddmRecord(
   eventData: EventData,    # event data to fill into HDDM record
 ) -> hddm_s.HDDM:
   """Fills and returns given HDDM record with a gamma + p -> pi+ pi- p physics event using the provided event data"""
+  # create HDDM record
+  record = hddm_s.HDDM()
+
   # create event and set event info
   physicsEvent = record.addPhysicsEvents(1)[0]
   physicsEvent.runNo = eventData.runNmb
@@ -236,6 +239,6 @@ if __name__ == "__main__":
         lvPim     = event.lvPimLab,
         vertexPos = event.vertexPos,
       )
-      # create, fill, and write HDDM record
-      outStream.write(fillHddmRecord(hddm_s.HDDM(), eventData))
+      # fill and write HDDM record
+      outStream.write(fillHddmRecord(eventData))
     inFile.Close()

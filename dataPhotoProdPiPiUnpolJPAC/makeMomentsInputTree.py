@@ -40,7 +40,7 @@ mandelstamT(
 def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
   """Reads JPAC data from an ASCII file into a ROOT RDataFrame"""
   print(f"Reading file '{inputFileName}'")
-  pandasDf = pd.read_csv(inputFileName, sep=r"\s+")
+  pandasDf = pd.read_csv(inputFileName, sep = r"\s+")
   pandasDf["t"]  *= -1.0  # flip sign
   pandasDf["phi"] = np.degrees(pandasDf["phi"])  # convert to degrees
   pandasDf.loc[pandasDf["phi"] > 180, "phi"] -= 360  # apply: if phi > 180 then phi -= 360
@@ -63,7 +63,8 @@ def lorentzVectorsJpac() -> dict[str, str]:
   lvs = {}
   # kinematic variables according to Eq. (1) in BIBRZYCKI et al., PD 111, 014002 (2025)
   # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
-  # four-momenta are defined as (p_x, p_y, p_z, E)
+  # four-momenta are defined as
+  #                 (p_x, p_y, p_z, E)
   lvs["lvBeam"  ] = "q1,  q2,  q3,  q0"   # beam photon
   lvs["lvTarget"] = "p11, p12, p13, p10"  # target proton
   lvs["lvRecoil"] = "p21, p22, p23, p20"  # recoil proton
