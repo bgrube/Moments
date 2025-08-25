@@ -46,10 +46,7 @@ class EventData:
 
 
 # see https://halldweb.jlab.org/wiki/index.php/Guide_to_roll-your-own_python_hddm_transforms#example_5:_writing_Monte_Carlo_events
-def fillHddmRecord(
-  record:    hddm_s.HDDM,  # HDDM record to fill
-  eventData: EventData,    # event data to fill into HDDM record
-) -> hddm_s.HDDM:
+def fillHddmRecord(eventData: EventData) -> hddm_s.HDDM:
   """Fills and returns given HDDM record with a gamma + p -> pi+ pi- p physics event using the provided event data"""
   # create HDDM record
   record = hddm_s.HDDM()
