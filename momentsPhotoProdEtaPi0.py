@@ -222,7 +222,8 @@ if __name__ == "__main__":
         )
         momentsInBins.append(
           MomentCalculator(
-            indices              = momentIndices,
+            indicesMeas          = momentIndices,
+            indicesPhys          = momentIndices,
             dataSet              = dataSet,
             binCenters           = {binVarMass : massBinCenter},
             integralFileBaseName = f"{outFileDirName}/integralMatrix",
@@ -231,10 +232,11 @@ if __name__ == "__main__":
         # setup moment calculator to hold moment values from PWA result
         momentsInBinsPwa.append(
           MomentCalculator(
-            indices    = momentIndices,
-            dataSet    = dataSet,
-            binCenters = {binVarMass : massBinCenter},
-            HPhys      = HPwa,
+            indicesMeas = momentIndices,
+            indicesPhys = momentIndices,
+            dataSet     = dataSet,
+            binCenters  = {binVarMass : massBinCenter},
+            _HPhys      = HPwa,
           )
         )
 

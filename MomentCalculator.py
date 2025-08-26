@@ -1534,7 +1534,8 @@ class BootstrapIndices:
 @dataclass
 class MomentCalculator:
   """Container class that holds all information needed to calculate moments for a single kinematic bin"""
-  indices:              MomentIndices  # index mapping and iterators
+  indicesMeas:          MomentIndices  # index mapping and iterators for measured moments
+  indicesPhys:          MomentIndices  # index mapping and iterators for physical moments
   dataSet:              DataSet  # info on data samples
   binCenters:           dict[KinematicBinningVariable, float]  # dictionary with center values of kinematic variables that define bin
   integralFileBaseName: str                             = "./integralMatrix"  # naming scheme for integral files is '<integralFileBaseName>_[<binning var>_<bin center>_...].npy'
@@ -1546,19 +1547,21 @@ class MomentCalculator:
   def __post_init__(self) -> None:
     # set polarized moments case of `indices` according to info provided by `dataSet`
     if self.dataSet.polarization is None:
-      self.indices.setPolarized(False)
+      self.indicesMeas.setPolarized(False)
+      self.indicesPhys.setPolarized(False)
     else:
-      self.indices.setPolarized(True)
+      self.indicesMeas.setPolarized(True)
+      self.indicesPhys.setPolarized(True)
     # initialize _HMeas and _HPhys to empty `MomentResults` if None
     if self._HMeas is None:
       self._HMeas = MomentResult(
-        indices    = self.indices,
+        indices    = self.indicesMeas,
         binCenters = self.binCenters,
         label      = "meas",
       )
     if self._HPhys is None:
       self._HPhys = MomentResult(
-        indices    = self.indices,
+        indices    = self.indicesPhys,
         binCenters = self.binCenters,
         label      = "phys",
       )
@@ -1598,7 +1601,8 @@ class MomentCalculator:
     forceCalculation: bool = False,
   ) -> None:
     """Calculates acceptance integral matrix"""
-    self._integralMatrix = AcceptanceIntegralMatrix(self.indices, self.dataSet)
+    #TODO extend AcceptanceIntegralMatrix to non-square shape
+    self._integralMatrix = AcceptanceIntegralMatrix(self.indicesPhys, self.dataSet)
     if forceCalculation:
       self._integralMatrix.calculate()
     else:
@@ -1637,13 +1641,13 @@ class MomentCalculator:
     )
     nmbEvents = thetas.size()
     # calculate basis-function values and values of measured moments
-    nmbMoments = len(self.indices)
-    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbEvents"], npt.Complex128] = np.empty((nmbMoments, nmbEvents), dtype = np.complex128)
+    nmbMomentsMeas = len(self.indicesMeas)
+    fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbEvents), dtype = np.complex128)
     bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapRandomSeed)
     self.HMeas.nmbBootstrapSamples = nmbBootstrapSamples
     self.HMeas.bootstrapRandomSeed = bootstrapRandomSeed
-    for flatIndex in self.indices.flatIndices:
-      qnIndex = self.indices[flatIndex]
+    for flatIndex in self.indicesMeas.flatIndices:
+      qnIndex = self.indicesMeas[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
         thetas,
@@ -1655,7 +1659,7 @@ class MomentCalculator:
       self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
       if nmbBootstrapSamples > 0:
-        print(f"Calculating {nmbBootstrapSamples} bootstrap samples for measured moment {self.indices[flatIndex].label}")
+        print(f"Calculating {nmbBootstrapSamples} bootstrap samples for measured moment {self.indicesMeas[flatIndex].label}")
       for bsSampleIndex, bsDataIndices in enumerate(bootstrapIndices):  # loop over same set of random data indices for each flatIndex
         # resample data
         fMeasBsSample        = fMeas[flatIndex][bsDataIndices]
@@ -1677,10 +1681,13 @@ class MomentCalculator:
     Vphys_aug = np.empty(Vmeas_aug.shape, dtype = np.complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
+      assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
       np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
       np.copyto(Vphys_aug, Vmeas_aug)
       np.copyto(self.HPhys._bsSamplesFlatIndex, self.HMeas._bsSamplesFlatIndex)
     else:
+      assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
+      nmbMoments = len(self.indicesPhys)
       # get inverse of acceptance integral matrix
       Iinv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
@@ -1728,11 +1735,11 @@ class MomentCalculator:
         flipSignOfWeights = self.flipSignOfWeights,
       )
       nmbEvents  = len(thetas)
-      nmbMoments = len(momentCalculator.indices)
+      nmbMoments = len(momentCalculator.indicesPhys)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
-      for flatIndex in momentCalculator.indices.flatIndices:
-        qnIndex = momentCalculator.indices[flatIndex]
+      for flatIndex in momentCalculator.indicesPhys.flatIndices:
+        qnIndex = momentCalculator.indicesPhys[flatIndex]
         self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetas,
@@ -1746,11 +1753,11 @@ class MomentCalculator:
       momentCalculator: MomentCalculator,  # instance of outer class
     ) -> None:
       """Calculates integrals of all basis functions from accepted phase-space events"""
-      nmbMoments = len(momentCalculator.indices)
+      nmbMoments = len(momentCalculator.indicesPhys)
       if momentCalculator.dataSet.phaseSpaceData is None:
         print("Warning: no phase-space data; using perfect acceptance")
         self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
-        H000Index: int = momentCalculator.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]
+        H000Index: int = momentCalculator.indicesPhys[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]
         self._integralVector[H000Index] = 1.0
         self._phaseSpaceEfficiency      = 1.0
         return
@@ -1764,9 +1771,9 @@ class MomentCalculator:
       self._phaseSpaceEfficiency = nmbEventsAccPs / momentCalculator.dataSet.nmbGenEvents  # efficiency averaged over phase space
       print(f"Calculating acceptance integral vector for {nmbMoments} moments from {nmbEventsAccPs} accepted phase-space events")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
-      for flatIndex in momentCalculator.indices.flatIndices:
+      for flatIndex in momentCalculator.indicesPhys.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
-        qnIndex = momentCalculator.indices[flatIndex]
+        qnIndex = momentCalculator.indicesPhys[flatIndex]
         baseFcnValsAccPs: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetasAccPs,
@@ -1922,7 +1929,7 @@ class MomentCalculator:
     """Fills `MomentResult` object for physical moments from iminuit object"""
     # construct empty `MomentResult` object
     # fill `HPhys` with values from `minuit`
-    if not self.indices.polarized:
+    if not self.indicesPhys.polarized:
       # copy parameter values
       self.HPhys._valsFlatIndex  [:] = np.array(minuit.values)
       # copy covariance matrix
@@ -1931,15 +1938,15 @@ class MomentCalculator:
       # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
       reIndexRange = (
         QnMomentIndex(momentIndex = 0, L = 0,                 M = 0),
-        QnMomentIndex(momentIndex = 1, L = self.indices.maxL, M = self.indices.maxL),
+        QnMomentIndex(momentIndex = 1, L = self.indicesPhys.maxL, M = self.indicesPhys.maxL),
       )  # all H_0 and H_1 moments are real-valued
       imIndexRange = (
         QnMomentIndex(momentIndex = 2, L = 1,                 M = 1),
-        QnMomentIndex(momentIndex = 2, L = self.indices.maxL, M = self.indices.maxL)
+        QnMomentIndex(momentIndex = 2, L = self.indicesPhys.maxL, M = self.indicesPhys.maxL)
       )  # all H_2 moments are purely imaginary; all H_2(L, 0) are 0
       # convert to flat-index ranges
-      reSlice = slice(self.indices[reIndexRange[0]], self.indices[reIndexRange[1]] + 1)
-      imSlice = slice(self.indices[imIndexRange[0]], self.indices[imIndexRange[1]] + 1)
+      reSlice = slice(self.indicesPhys[reIndexRange[0]], self.indicesPhys[reIndexRange[1]] + 1)
+      imSlice = slice(self.indicesPhys[imIndexRange[0]], self.indicesPhys[imIndexRange[1]] + 1)
       # copy values
       parameters = np.array(minuit.values)
       self.HPhys._valsFlatIndex[reSlice] = parameters[reSlice]
@@ -1969,7 +1976,7 @@ class MomentCalculator:
     startValueSets: list[npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]] = []
     np.random.seed(startValueRandomSeed)
     nmbEventsSigCorr = negativeLogLikelihoodFcn.nmbSignalEvents / negativeLogLikelihoodFcn.phaseSpaceEfficiency  # number of acceptance-corrected signal events
-    nmbMoments = len(self.indices)
+    nmbMoments = len(self.indicesPhys)
     for _ in range(nmbFitAttempts):
       # startValues = np.zeros(nmbMoments, dtype = np.float64)  # set all start values to 0
       # generate start values that are Gaussian-distributed around 0
@@ -1987,7 +1994,7 @@ class MomentCalculator:
           MomentCalculator.fitMoments,
           negativeLogLikelihoodFcn = negativeLogLikelihoodFcn,
           startValues              = startValueSets[fitAttemptIndex],
-          indices                  = self.indices,
+          indices                  = self.indicesPhys,
           minuit                   = None,
         )
         for fitAttemptIndex in range(nmbFitAttempts)
