@@ -156,9 +156,9 @@ def defineDataFrameColumns(
     // events where generated such that recoil proton is in x-z plane
     // hence the recoil-proton momentum has no y component
     // fix this by rotating all particles in the event by the same random azimuthal angle around the z (= beam) axis
-    const double phi = gRandom->Uniform(0, TMath::TwoPi());
+    const double azimuthalAngle = gRandom->Uniform(0, TMath::TwoPi());
     for (auto& particle : lvParticlesLab) {
-      particle.RotateZ(phi);
+      particle.RotateZ(azimuthalAngle);
     }
     return lvParticlesLab;
   """
@@ -208,7 +208,7 @@ if __name__ == "__main__":
       df = readDataJpac(inputFileName),
       **lorentzVectorsJpac(),
     ).Snapshot(outputTreeName, outputRootFileName, outputColumns)
-    # ).Snapshot(outputTreeName, outputFileName)
+    # ).Snapshot(outputTreeName, outputRootFileName)
     print(f"ROOT DataFrame columns: {list(df.GetColumnNames())}")
     print(f"ROOT DataFrame entries: {df.Count().GetValue()}")
 
