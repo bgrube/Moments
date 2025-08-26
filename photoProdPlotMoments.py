@@ -48,6 +48,7 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   convertGraphToHist,
+  HistAxisBinning,
   makeMomentHistogram,
   MomentValueAndTruth,
   plotAngularDistr,
@@ -197,10 +198,11 @@ class ComparisonMomentsType(Enum):
   PWA  = auto()
 
 def makeAllPlots(
-  cfg:         AnalysisConfig,
-  timer:       Utilities.Timer              = Utilities.Timer(),
-  compareTo:   ComparisonMomentsType | None = None,   # `None` means no comparison moments are plotted
-  outFileType: str                          = "pdf",  # "pdf" or "root"
+  cfg:               AnalysisConfig,
+  timer:             Utilities.Timer              = Utilities.Timer(),
+  compareTo:         ComparisonMomentsType | None = None,   # `None` means no comparison moments are plotted
+  plotCompareUncert: bool                         = False,  # whether to plot uncertainties of comparison moments
+  outFileType:       str                          = "pdf",  # "pdf" or "root"
 ) -> None:
   """Generates all plots for the given analysis configuration and writes them to output files"""
   # load moments from files
@@ -287,7 +289,7 @@ def makeAllPlots(
             HTruth            = HComp,
             outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
             legendLabels      = ("Moment", momentResultsCompareLabel),
-            plotTruthUncert   = True,
+            plotTruthUncert   = plotCompareUncert,
             truthColor        = momentResultsCompareColor,
           )
           if cfg.plotMeasuredMoments and HMeas is not None:
@@ -346,8 +348,8 @@ def makeAllPlots(
             canv = ROOT.TCanvas()
             histChi2.SetLineColor(ROOT.kBlue + 1)
             histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-            histChi2.SetMaximum(30)
-            # histChi2.SetMaximum(3)
+            # histChi2.SetMaximum(30)
+            histChi2.SetMaximum(5)
             histChi2.Draw("HIST")
             # add line at nominal chi2/ndf value to guide the eye
             line = ROOT.TLine()
@@ -400,7 +402,7 @@ def makeAllPlots(
           histTitle         = qnIndex.title,
           plotLegend        = True,
           legendLabels      = ("Moment", momentResultsCompareLabel),
-          plotTruthUncert   = True,
+          plotTruthUncert   = plotCompareUncert,
           truthColor        = momentResultsCompareColor,
           histsToOverlay    = {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
@@ -450,8 +452,8 @@ def makeAllPlots(
           canv = ROOT.TCanvas()
           histChi2.SetLineColor(ROOT.kBlue + 1)
           histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-          histChi2.SetMaximum(10)
-          # histChi2.SetMaximum(3)
+          # histChi2.SetMaximum(10)
+          histChi2.SetMaximum(3)
           histChi2.Draw("HIST")
           # add line at nominal chi2/ndf value to guide the eye
           line = ROOT.TLine()
@@ -485,7 +487,7 @@ def makeAllPlots(
         histRatio.SetMarkerStyle(ROOT.kFullCircle)
         histRatio.SetMarkerSize(0.75)
         histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
-        histRatio.SetMaximum(0.15)
+        # histRatio.SetMaximum(0.15)
         histRatio.Draw("PEX0")
         canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
@@ -649,6 +651,7 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  plotCompareUncert = False
 
   tBinLabels = (
     # "tbin_0.1_0.2",
@@ -671,8 +674,11 @@ if __name__ == "__main__":
     # 7,
     # 8,
   )
+  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
+  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
+  # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
       # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
@@ -693,6 +699,11 @@ if __name__ == "__main__":
           setupPlotStyle()
           print(f"Using configuration:\n{cfg}")
           timer.start("Total execution time")
-          makeAllPlots(cfg, timer, compareTo)
+          makeAllPlots(
+            cfg               = cfg,
+            timer             = timer,
+            compareTo         = compareTo,
+            plotCompareUncert = plotCompareUncert,
+          )
           timer.stop("Total execution time")
           print(timer.summary)
