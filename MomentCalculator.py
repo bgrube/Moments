@@ -407,6 +407,19 @@ class MomentIndices:
       self.polarized = value
       self.regenerateIndexMaps()
 
+  def __eq__(
+    self,
+    other: MomentIndices,
+  ) -> bool:
+    """Returns whether two `MomentIndices` objects are equal"""
+    if not isinstance(other, MomentIndices):
+      return NotImplemented
+    return (
+          self.maxL                == other.maxL
+      and self.polarized           == other.polarized
+      and self._qnIndexByFlatIndex == other._qnIndexByFlatIndex
+    )
+
   def __len__(self) -> int:
     """Returns total number of moments"""
     return len(self._qnIndexByFlatIndex)
