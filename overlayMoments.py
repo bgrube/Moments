@@ -6,7 +6,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from copy import deepcopy
 import functools
-import math
 
 import ROOT
 
@@ -16,8 +15,10 @@ from MomentCalculator import (
   QnMomentIndex,
 )
 from AnalysisConfig import (
+  CFG_KEVIN,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
+  CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
 from PlottingUtilities import (
@@ -103,14 +104,19 @@ if __name__ == "__main__":
   # define what to overlay
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  # cfg.outFileDirBaseName += ".ideal"
   cfg.init()
   # normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first fit result
   normToFirstResult = False
-  tBinLabel         = "tbin_0.1_0.2"
+  # tBinLabel         = "tbin_0.1_0.2"
   # tBinLabel         = "tbin_0.1_0.2.Gj.pi+"
   # tBinLabel         = "tbin_0.1_0.2.trackDistFdc"
   # tBinLabel         = "tbin_0.2_0.3"
+  # tBinLabel         = "tbin_0.1_0.5"
+  tBinLabel         = "tbin_0.4_0.5"
   fitResults: tuple[tuple[str, str, float | None], ...] = (  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last entry defines which moments are plotted
     # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",   "Para #Phi_{0} = 0#circ",   None),
     # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_135.maxL_4", "Para #Phi_{0} = 135#circ", None),
@@ -142,8 +148,15 @@ if __name__ == "__main__":
     # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",        "#pi^{-} Analyzer", None),
     # (f"{cfg.outFileDirBaseName}.{tBinLabel}.Hf.pi+/PARA_0.maxL_4", "#pi^{+} Analyzer", None),
     #
-    (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",     "LinAlg", None),
-    (f"{cfg.outFileDirBaseName}.Fit.{tBinLabel}/PARA_0.maxL_4", "Fit",    None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",     "LinAlg", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}.fit/PARA_0.maxL_4", "Fit",    None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}/PARA_0.maxL_4",     "New",  None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}.bak/PARA_0.maxL_4", "Orig", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}.fit/PARA_0.maxL_4", "Orig", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}.linAlg/Unpol.maxL_4", "LinAlg", None),
+    # (f"{cfg.outFileDirBaseName}.{tBinLabel}.fit/Unpol.maxL_4",    "Fit",    None),
+    (f"{cfg.outFileDirBaseName}.{tBinLabel}.bak/Unpol.maxL_4", "JPAC", None),
+    (f"{cfg.outFileDirBaseName}.{tBinLabel}/Unpol.maxL_4",     "HDDM", None),
   )
   outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}.overlay")
 
