@@ -1175,7 +1175,7 @@ class MomentResult:
     self.setCovarianceMatricesFrom(V_aug)
     # normalize each bootstrap sample
     for bsSampleIndex in range(self.nmbBootstrapSamples):
-      norm: complex = self._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
+      norm = self._bsSamplesFlatIndex[self.indices[QnMomentIndex(momentIndex = 0, L = 0, M = 0)], bsSampleIndex]
       self._bsSamplesFlatIndex[:, bsSampleIndex] /= norm
 
   def savePickle(
