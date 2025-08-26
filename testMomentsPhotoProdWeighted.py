@@ -287,7 +287,8 @@ if __name__ == "__main__":
       )  #TODO nmbAcceptedPsMcEvents is not correct number to normalize integral matrix
       momentsInBins.append(
         MomentCalculator(
-          indices              = momentIndices,
+          indicesMeas          = momentIndices,
+          indicesPhys          = momentIndices,
           dataSet              = dataSet,
           integralFileBaseName = f"{outputDirName}/integralMatrix",
           binCenters           = {binVarMass : massBinCenter},
@@ -296,10 +297,11 @@ if __name__ == "__main__":
       # dummy truth values; identical for all bins
       momentsInBinsTruth.append(
         MomentCalculator(
-          indices    = momentIndices,
-          dataSet    = dataSet,
-          binCenters = {binVarMass : massBinCenter},
-          HPhys      = HTruth,
+          indicesMeas = momentIndices,
+          indicesPhys = momentIndices,
+          dataSet     = dataSet,
+          binCenters  = {binVarMass : massBinCenter},
+          _HPhys      = HTruth,
         )
       )
     moments      = MomentCalculatorsKinematicBinning(momentsInBins)
