@@ -209,7 +209,7 @@ def makeAllPlots(
 ) -> None:
   """Generates all plots for the given analysis configuration and writes them to output files"""
   # load moments from files
-  momentIndices = MomentIndices(cfg.maxL)
+  momentIndices = MomentIndices(cfg.maxLPhys)
   #TODO move this into AnalysisConfig?
   momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   momentResultsMeas = None
@@ -343,7 +343,7 @@ def makeAllPlots(
             _, ndf = chi2ValuesInMassBins[0][momentIndex][momentPart]  # assume that ndf is the same for all mass bins
             histChi2 = ROOT.TH1D(
               f"{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_chi2_H{momentIndex}_{momentPart}",
-              f"#LT#it{{#chi}}^{{2}}/ndf#GT for all {momentPart}[#it{{H}}_{{{momentIndex}}}], #it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
+              f"#LT#it{{#chi}}^{{2}}/ndf#GT for all {momentPart}[#it{{H}}_{{{momentIndex}}}], #it{{L}}_{{max}} = {cfg.maxLPhys};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
               *cfg.massBinning.astuple
             )
             for massBinIndex in range(len(chi2ValuesInMassBins)):
@@ -439,37 +439,36 @@ def makeAllPlots(
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
-      if compareTo is not None:
-        # plot chi^2/ndf of each physical moments w.r.t. true value, averaged over the mass bins
-        #TODO move to separate function?
-        _, ndf = chi2ValuesForMoments[H000Index]["Re"]  # assume that ndf is the same for all moments; take value from Re[H_0(0, 0)]
-        for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
-          for momentPart in ("Re", "Im"):
-            # get chi^2 values for this momentIndex and momentPart
-            chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
-            histChi2 = ROOT.TH1D(
-              f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
-              f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {cfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
-              len(chi2Values), 0, len(chi2Values)
-            )
-            for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
-              histChi2.GetXaxis().SetBinLabel(binIndex + 1, qnIndex.title)  # categorical x axis with moment labels
-              if chi2 is None or ndf is None:
-                continue
-              histChi2.SetBinContent(binIndex + 1, chi2 / ndf)
-            histChi2.GetXaxis().LabelsOption("V")
-            canv = ROOT.TCanvas()
-            histChi2.SetLineColor(ROOT.kBlue + 1)
-            histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-            # histChi2.SetMaximum(10)
-            histChi2.SetMaximum(3)
-            histChi2.Draw("HIST")
-            # add line at nominal chi2/ndf value to guide the eye
-            line = ROOT.TLine()
-            line.SetLineColor(ROOT.kGray + 1)
-            line.SetLineStyle(ROOT.kDashed)
-            line.DrawLine(0, 1, len(chi2Values), 1)
-            canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
+      # plot chi^2/ndf of each physical moments w.r.t. true value, averaged over the mass bins
+      #TODO move to separate function?
+      _, ndf = chi2ValuesForMoments[H000Index]["Re"]  # assume that ndf is the same for all moments; take value from Re[H_0(0, 0)]
+      for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
+        for momentPart in ("Re", "Im"):
+          # get chi^2 values for this momentIndex and momentPart
+          chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
+          histChi2 = ROOT.TH1D(
+            f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
+            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {cfg.maxLPhys};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
+            len(chi2Values), 0, len(chi2Values)
+          )
+          for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
+            histChi2.GetXaxis().SetBinLabel(binIndex + 1, qnIndex.title)  # categorical x axis with moment labels
+            if chi2 is None or ndf is None:
+              continue
+            histChi2.SetBinContent(binIndex + 1, chi2 / ndf)
+          histChi2.GetXaxis().LabelsOption("V")
+          canv = ROOT.TCanvas()
+          histChi2.SetLineColor(ROOT.kBlue + 1)
+          histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
+          # histChi2.SetMaximum(10)
+          histChi2.SetMaximum(3)
+          histChi2.Draw("HIST")
+          # add line at nominal chi2/ndf value to guide the eye
+          line = ROOT.TLine()
+          line.SetLineColor(ROOT.kGray + 1)
+          line.SetLineStyle(ROOT.kDashed)
+          line.DrawLine(0, 1, len(chi2Values), 1)
+          canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
       if momentResultsMeas is not None:
@@ -495,7 +494,7 @@ def makeAllPlots(
         canv = ROOT.TCanvas()
         histRatio.SetMarkerStyle(ROOT.kFullCircle)
         histRatio.SetMarkerSize(0.75)
-        histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
+        histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxLPhys};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
         # histRatio.SetMaximum(0.15)
         histRatio.Draw("PEX0")
         canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
@@ -704,7 +703,7 @@ if __name__ == "__main__":
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        cfg.maxL = maxL
+        cfg.maxLPhys = maxL
         cfg.init()
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
