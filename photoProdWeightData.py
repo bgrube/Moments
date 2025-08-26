@@ -215,6 +215,7 @@ if __name__ == "__main__":
     # 7,
     # 8,
   )
+  # cfg.psGenFileName = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_gen_ideal_flat.PiPi.root"
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
@@ -260,6 +261,7 @@ if __name__ == "__main__":
               massBinIndex     = massBinIndex,
               outFileName      = outFileName,
               cfg              = cfg,
+              # inputDataType    = AnalysisConfig.DataType.GENERATED_PHASE_SPACE,
               # inputDataType    = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,
               inputDataType    = None,  # generate phase-space distribution in angles
               nmbGenPsEvents   = 100000,
