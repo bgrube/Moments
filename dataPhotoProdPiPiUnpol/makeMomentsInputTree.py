@@ -112,6 +112,7 @@ if __name__ == "__main__":
   phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
   phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
   treeName              = "kin"
+  columnsToWrite        = ["mass", "cosTheta", "theta", "phi", "phiDeg"]
 
   # convert real data
   # create friend trees with correct weights
@@ -134,8 +135,8 @@ if __name__ == "__main__":
     dataTChain.Add(dataFileName)
     weightTChain.Add(f"{dataFileName}.weights")
   dataTChain.AddFriend(weightTChain)
-  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   realData = ROOT.RDataFrame(dataTChain)
+  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   for pairLabel, pairLvs, lvRecoil, flipYAxis in (
     ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
     ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
@@ -151,7 +152,7 @@ if __name__ == "__main__":
     outTreeName = pairLabel
     print(f"Writing real data to tree '{outTreeName}' in '{outFileName}'")
     df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
-      .Snapshot(outTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg", "eventWeight"))
+      .Snapshot(outTreeName, outFileName, columnsToWrite + ["eventWeight"])
 
   # convert MC data
   lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
@@ -173,4 +174,4 @@ if __name__ == "__main__":
       outTreeName = pairLabel
       print(f"Writing MC data to tree '{outTreeName}' in '{outFileName}'")
       df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
-        .Snapshot(outTreeName, outFileName, ("mass", "cosTheta", "theta", "phi", "phiDeg"))
+        .Snapshot(outTreeName, outFileName, columnsToWrite)
