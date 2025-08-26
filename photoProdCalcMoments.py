@@ -110,7 +110,7 @@ def calculateAllMoments(
         )
         momentCalculators[labelDataSample].append(
           MomentCalculator(
-            indices              = MomentIndices(maxL = cfg.maxL, polarized = (cfg.polarization is not None)),
+            indices              = MomentIndices(maxL = cfg.maxLPhys, polarized = (cfg.polarization is not None)),
             dataSet              = dataSet,
             binCenters           = {cfg.binVarMass : massBinCenter},
             integralFileBaseName = f"{cfg.outFileDirName}/integralMatrix",
@@ -259,7 +259,7 @@ if __name__ == "__main__":
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Performing moment analysis for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        cfg.maxL = maxL
+        cfg.maxLPhys = maxL
         cfg.init(createOutFileDir = True)
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"

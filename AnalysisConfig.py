@@ -39,7 +39,8 @@ class AnalysisConfig:
   # psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
   # psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
-  maxL:                     int                       = 8  # maximum L of physical and measured moments
+  maxLPhys:                 int                       = 8  # maximum L of physical moments
+  maxLMeas:                 int | None                = None  # maximum L of measured moments; if `None` it is equal to `maxLPhys`
   outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
   # normalizeMoments:         bool                      = True
   normalizeMoments:         bool                      = False
@@ -81,7 +82,7 @@ class AnalysisConfig:
   @property
   def outFileDirName(self) -> str:
     """Returns name of directory into which all output will be written"""
-    return f"{self.outFileDirBaseName}.maxL_{self.maxL}"
+    return f"{self.outFileDirBaseName}.maxL_{self.maxLPhys}"
 
   @property
   def outFileNamePrefix(self) -> str:
@@ -179,7 +180,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   psAccFileName      = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
   psGenFileName      = "./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
   polarization       = "beamPol", # read polarization from tree column
-  maxL               = 4,
+  maxLPhys           = 4,
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",
   massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
 )
@@ -188,7 +189,7 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   dataFileName       = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
   psAccFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
   psGenFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
-  maxL               = 4,
+  maxLPhys           = 4,
   outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
   binVarMass         = KinematicBinningVariable(
     name      = "mass",
@@ -205,7 +206,7 @@ CFG_NIZAR = AnalysisConfig(
   psAccFileName      = "./dataTestNizar/phaseSpace_acc_flat.root",
   psGenFileName      = None,
   polarization       = "beamPol", # read polarization from tree column
-  maxL               = 4,
+  maxLPhys           = 4,
   outFileDirBaseName = "./plotsTestNizar",
   # normalizeMoments   = True,
   binVarMass         = KinematicBinningVariable(
@@ -223,7 +224,7 @@ CFG_KEVIN = AnalysisConfig(
   psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
   psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
   polarization             = "beamPol", # read polarization from tree column
-  maxL                     = 4,
+  maxLPhys                 = 4,
   outFileDirBaseName       = "./plotsTestKevin",
   # normalizeMoments         = True,
   # plotAngularDistributions = True,
