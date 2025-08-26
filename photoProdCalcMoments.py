@@ -110,7 +110,8 @@ def calculateAllMoments(
         )
         momentCalculators[labelDataSample].append(
           MomentCalculator(
-            indices              = MomentIndices(maxL = cfg.maxLPhys, polarized = (cfg.polarization is not None)),
+            indicesMeas          = MomentIndices(maxL = cfg.maxLMeas, polarized = (cfg.polarization is not None)),
+            indicesPhys          = MomentIndices(maxL = cfg.maxLPhys, polarized = (cfg.polarization is not None)),
             dataSet              = dataSet,
             binCenters           = {cfg.binVarMass : massBinCenter},
             integralFileBaseName = f"{cfg.outFileDirName}/integralMatrix",

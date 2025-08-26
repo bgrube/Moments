@@ -641,9 +641,10 @@ if __name__ == "__main__":
             polarization   = beamPolarization,
           )
           momentCalculator = MomentCalculator(
-            indices    = MomentIndices(maxL = maxL, polarized = (beamPolarization is not None)),
-            dataSet    = dataSet,
-            binCenters = {KinematicBinningVariable("foo", "foo", "foo") : 1.0},
+            indicesMeas = MomentIndices(maxL = maxL, polarized = (beamPolarization is not None)),
+            indicesPhys = MomentIndices(maxL = maxL, polarized = (beamPolarization is not None)),
+            dataSet     = dataSet,
+            binCenters  = {KinematicBinningVariable("foo", "foo", "foo") : 1.0},
           )
           # nll2 = momentCalculator.negativeLogLikelihoodFcn
           # print(f"!!! {2 * nll2(momentValuesTruth)=} - {extUnbinnedNllFcn(momentValuesTruth)=} = {2 * nll2(momentValuesTruth) - extUnbinnedNllFcn(momentValuesTruth)}")
