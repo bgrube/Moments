@@ -36,6 +36,7 @@ from MomentCalculator import (
   MomentCalculatorsKinematicBinning,
   MomentIndices,
 )
+from PlottingUtilities import HistAxisBinning
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
@@ -222,7 +223,7 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg.method = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # subtract background at moment level
-  cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
+  # cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
 
   tBinLabels = (
     # "tbin_0.1_0.2",
@@ -245,8 +246,11 @@ if __name__ == "__main__":
     # 7,
     # 8,
   )
+  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
+  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
+  # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
       # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
