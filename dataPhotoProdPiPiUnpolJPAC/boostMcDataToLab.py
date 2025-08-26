@@ -198,14 +198,17 @@ if __name__ == "__main__":
   outputTreeName = "PiPi"
   outputColumns  = ("lvBeamLab", "lvTargetLab", "lvRecoilLab", "lvPipLab", "lvPimLab", "vertexPos")
   runNmb         = 1
+  useJpacData    = True
 
   for tBinLabel, inputFileName in inputData.items():
     os.makedirs(f"{outputDirName}/{tBinLabel}", exist_ok = True)
     outputRootFileName = f"{outputDirName}/{tBinLabel}/data_labFrame_flat.root"
     outputHddmFileName = f"{outputDirName}/{tBinLabel}/data_labFrame.hddm"
+    # outputRootFileName = f"./ideal/data_reweighted_labFrame_flat.root"
+    # outputHddmFileName = f"./ideal/data_reweighted_labFrame.hddm"
 
     df = defineDataFrameColumns(
-      df = readDataJpac(inputFileName),
+      df = readDataJpac(inputFileName) if useJpacData else ROOT.RDataFrame("PiPi", "./ideal/data_reweighted_flat.root"),
       **lorentzVectorsJpac(),
     ).Snapshot(outputTreeName, outputRootFileName, outputColumns)
     # ).Snapshot(outputTreeName, outputRootFileName)
