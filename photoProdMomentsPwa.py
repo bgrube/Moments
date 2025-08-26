@@ -92,17 +92,21 @@ if __name__ == "__main__":
 
   tBinLabels = (
     # "tbin_0.1_0.2",
+    # "tbin_0.1_0.2.Hf.pi+",
+    # "tbin_0.1_0.2.Gj.pi+",
+    # "tbin_0.1_0.2.trackDistFdc",
     "tbin_0.2_0.3",
   )
   beamPolLabels = (
+    # "PARA_0",
     "PARA_0", "PARA_135", "PERP_45", "PERP_90",
-    "0_90", "-45_45", "0_-45", "45_90", "allOrient",
+    # "allOrient",
   )
   maxLs = (
     4,
-    5,
+    # 5,
     6,
-    7,
+    # 7,
     8,
   )
 
