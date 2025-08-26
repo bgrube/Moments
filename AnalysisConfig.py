@@ -161,9 +161,9 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
   # psAccFileName      = None,  # no file with accepted phase-space MC
   # psGenFileName      = None,  # no file with generated phase-space MC
-  dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_flat.PiPi.root"  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
-  psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_acc_flat.PiPi.root"
-  psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_gen_flat.PiPi.root"
+  dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
+  psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_acc_flat.PiPi.root",
+  psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_gen_flat.PiPi.root",
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
   # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
