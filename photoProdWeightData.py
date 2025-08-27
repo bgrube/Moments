@@ -105,7 +105,8 @@ def weightDataWithIntensity(
                 .Filter("acceptEventIntensityWeight == true")
   )
   nmbWeightedEvents = weightedData.Count().GetValue()
-  print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; generator efficiency is {nmbWeightedEvents / nmbGenPsEvents}")
+  print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; "
+        f"weighting efficiency is {nmbWeightedEvents / (nmbGenPsEvents if inputDataType is None else nmbInputEvents)}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
   weightedData.Snapshot(cfg.treeName, outFileName)  #TODO write out only essential columns
@@ -215,7 +216,7 @@ if __name__ == "__main__":
     # 7,
     # 8,
   )
-  # cfg.psGenFileName = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_gen_ideal_flat.PiPi.root"
+  cfg.psGenFileName = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_ideal_flat.PiPi.root"
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
@@ -239,9 +240,9 @@ if __name__ == "__main__":
           timer.start("Total execution time")
           outFileBaseName = f"{cfg.outFileDirName}/data_weighted_flat"
           # outFileBaseName = f"{cfg.outFileDirName}/data_weighted_pwa_SPD_flat"
-          momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+          # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
           # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
-          # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
+          momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
           print(f"Reading moments from file '{momentResultsFileName}'")
           momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
           for momentResultsForBin in momentResults:
@@ -261,9 +262,9 @@ if __name__ == "__main__":
               massBinIndex     = massBinIndex,
               outFileName      = outFileName,
               cfg              = cfg,
-              # inputDataType    = AnalysisConfig.DataType.GENERATED_PHASE_SPACE,
+              inputDataType    = AnalysisConfig.DataType.GENERATED_PHASE_SPACE,
               # inputDataType    = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,
-              inputDataType    = None,  # generate phase-space distribution in angles
+              # inputDataType    = None,  # generate phase-space distribution in angles
               nmbGenPsEvents   = 100000,
               seed             = 12345 + massBinIndex,  # ensure random data in mass bins are independent
             )
