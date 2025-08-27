@@ -104,7 +104,9 @@ def defineAngleFormulas(
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("i")
-  ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.C"
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"

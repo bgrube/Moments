@@ -83,6 +83,8 @@ helphideg_Alex(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
   ROOT.gStyle.SetOptStat("i")
