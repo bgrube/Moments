@@ -106,7 +106,7 @@ if __name__ == "__main__":
   ROOT.gStyle.SetOptStat("i")
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.C"
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
