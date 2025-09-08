@@ -40,13 +40,15 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MASS)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
 
-  tBinLabel      = "tbin_0.4_0.5"
-  # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4_rho.root"
-  # mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4_rho.root"
-  # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
-  mcDataFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
+  tBinLabel = "tbin_0.4_0.5"
+  dataSet        = "2017_01-ver04-70"
+  # mcDataFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_thrown_tbin1_ebin4*.root"
+  mcDataFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_accepted_tbin1_ebin4*.root"
+  # dataSet        = "2018_08-ver02-15"
+  # # mcDataFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_thrown.root"
+  # mcDataFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_recon.root"
   treeName       = "kin"
-  outputDirName  = f"{tBinLabel}/McPlots"
+  outputDirName  = f"./{dataSet}/{tBinLabel}/McPlots"
 
   # create RDataFrame from MC data in AmpTools format and define columns
   # see `plotDataTree.py` for definition of coordinate systems
