@@ -9,32 +9,19 @@ import ROOT
 
 from makeMomentsInputTree import (
   CPP_CODE_MASSPAIR,
+  CPP_CODE_MANDELSTAM_T,
   defineAngleFormulas,
   lorentzVectors,
 )
 
 
-# declare C++ function to calculate invariant mass of a particle
+# C++ function to calculate invariant mass of a particle
 CPP_CODE_MASS = """
 double
-mass(const double Px, const double Py, const double Pz, const double E)
+mass(const double Px, const double Py, const double Pz, const double E)  // 4-momentum of particle [GeV]
 {
   const TLorentzVector p(Px, Py, Pz, E);
   return p.M();
-}
-"""
-
-
-# declare C++ function to calculate momentum transfer squared
-CPP_CODE_MOM_TRANSFER_SQ = """
-double
-momTransferSq(
-  const double PxA, const double PyA, const double PzA, const double EA,
-  const double PxB, const double PyB, const double PzB, const double EB
-)	{
-  const TLorentzVector pA(PxA, PyA, PzA, EA);
-  const TLorentzVector pB(PxB, PyB, PzB, EB);
-  return (pA - pB).M2();
 }
 """
 
@@ -51,7 +38,7 @@ if __name__ == "__main__":
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MASS)
-  ROOT.gInterpreter.Declare(CPP_CODE_MOM_TRANSFER_SQ)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
 
   tBinLabel      = "tbin_0.4_0.5"
   # mcDataFileName = "./amptools_tree_thrown_tbin1_ebin4_rho.root"
@@ -90,19 +77,19 @@ if __name__ == "__main__":
     df.Define("FsMassRecoil", f"mass({lvRecoilProton})")
       .Define("FsMassPip",    f"mass({lvPip})")
       .Define("FsMassPim",    f"mass({lvPim})")
-      .Define("tAbs",         f"std::fabs(momTransferSq({lvTargetProton}, {lvRecoilProton}))")
+      .Define("minusT",       f"-mandelstamT({lvTargetProton}, {lvRecoilProton})")
   )
 
   # define MC histograms
   yAxisLabel = "Events"
   hists = [
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil",  ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",     ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,    2),    "FsMassPip"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",     ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,    2),    "FsMassPim"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcPiPiMassAlex",  ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcPipPMassAlex",  ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcPimPMassAlex",  ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
-    df.Histo1D(ROOT.RDF.TH1DModel("hMcMomTransferSq", ";|t| [GeV^{2}];"           + yAxisLabel,  50, 0,    1),    "tAbs"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassRecoil", ";m_{Recoil} [GeV];"        + yAxisLabel, 100, 0,    2),    "FsMassRecoil"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPip",    ";m_{#pi^{#plus}} [GeV];"   + yAxisLabel, 100, 0,    2),    "FsMassPip"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcFsMassPim",    ";m_{#pi^{#minus}} [GeV];"  + yAxisLabel, 100, 0,    2),    "FsMassPim"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcPiPiMassAlex", ";m_{#pi#pi} [GeV];"        + yAxisLabel, 400, 0.28, 2.28), "MassPiPi"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcPipPMassAlex", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel, 400, 1,    5),    "MassPipP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcPimPMassAlex", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hMcMinusT",       ";#minus t [GeV^{2}];"      + yAxisLabel,  50, 0,    1),    "minusT"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz1", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPipPSq"),
     df.Histo2D(ROOT.RDF.TH2DModel("hMcDalitz2", ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0, 3.5, 100, 1,  7.5), "MassPiPiSq", "MassPimPSq"),
   ]
@@ -124,7 +111,7 @@ if __name__ == "__main__":
   hists += [
     df.Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiMassVsGjCosThetaPipP", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 56, 0.28, 1.40, 72, -1, +1), f"MassPiPi", f"GjPipPCosTheta"),
     df.Histo2D(ROOT.RDF.TH2DModel(f"hMcPiPiMassVsGjCosThetaPimP", ";m_{#pi#pi} [GeV];cos#theta_{GJ}", 56, 0.28, 1.40, 72, -1, +1), f"MassPiPi", f"GjPimPCosTheta"),
-    df.Filter("tAbs < 0.45").Histo2D(ROOT.RDF.TH2DModel(f"hMcPipPMassVsGjCosThetaCutT", ";m_{p#pi^{#plus}} [GeV];cos#theta_{GJ}", 72, 1, 2.8, 72, -1, +1), f"MassPipP", f"GjPipPCosTheta"),
+    df.Filter("minusT < 0.45").Histo2D(ROOT.RDF.TH2DModel(f"hMcPipPMassVsGjCosThetaCutT", ";m_{p#pi^{#plus}} [GeV];cos#theta_{GJ}", 72, 1, 2.8, 72, -1, +1), f"MassPipP", f"GjPipPCosTheta"),
   ]
   # create acceptance histograms for pi pi GJ and HF angles in bins of m_pipi
   massPiPiRange    = (0.28, 1.40)  # [GeV] binning used in PWA
