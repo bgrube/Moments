@@ -8,12 +8,12 @@ import os
 import ROOT
 
 
-# declare C++ function to calculate invariant mass of a pair of particles
-CPP_CODE_MAKEPAIR = """
+# C++ function to calculate invariant mass of a pair of particles
+CPP_CODE_MASSPAIR = """
 double
 massPair(
-	const double Px1, const double Py1, const double Pz1, const double E1,
-	const double Px2, const double Py2, const double Pz2, const double E2
+	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+	const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
 )	{
 	const TLorentzVector p1(Px1, Py1, Pz1, E1);
 	const TLorentzVector p2(Px2, Py2, Pz2, E2);
@@ -107,7 +107,7 @@ if __name__ == "__main__":
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
-  ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
   dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"

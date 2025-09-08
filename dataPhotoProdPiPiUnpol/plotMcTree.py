@@ -8,7 +8,7 @@ import os
 import ROOT
 
 from makeMomentsInputTree import (
-  CPP_CODE_MAKEPAIR,
+  CPP_CODE_MASSPAIR,
   defineAngleFormulas,
   lorentzVectors,
 )
@@ -49,7 +49,7 @@ if __name__ == "__main__":
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
   # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MASS)
   ROOT.gInterpreter.Declare(CPP_CODE_MOM_TRANSFER_SQ)
 
