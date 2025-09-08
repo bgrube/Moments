@@ -21,6 +21,19 @@ massPair(
 }
 """
 
+# C++ function to calculate mandelstam t = (p1 - p2)^2
+CPP_CODE_MANDELSTAM_T = """
+double
+mandelstamT(
+  const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+  const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
+) {
+  const TLorentzVector p1(Px1, Py1, Pz1, E1);
+  const TLorentzVector p2(Px2, Py2, Pz2, E2);
+  return (p1 - p2).M2();
+}
+"""
+
 
 def lorentzVectors(realData: bool = True) -> tuple[str, str, str, str, str]:
   """Returns Lorentz-vectors for beam photon, target proton, recoil proton, pi+, and pi-"""
@@ -153,6 +166,7 @@ if __name__ == "__main__":
     outFileName = f"data_flat.{pairLabel}.root"
     outTreeName = pairLabel
     print(f"Writing real data to tree '{outTreeName}' in '{outFileName}'")
+    #TODO add -t
     df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
       .Snapshot(outTreeName, outFileName, columnsToWrite + ["eventWeight"])
 
