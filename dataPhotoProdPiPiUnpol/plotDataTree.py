@@ -128,12 +128,17 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_ALEX)
 
-  tBinLabel             = "tbin_0.4_0.5"
-  dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
-  dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
-  mcDataFileName        = "./amptools_tree_accepted_tbin1_ebin4*.root"
-  treeName              = "kin"
-  outputDirName         = f"{tBinLabel}/dataPlots"
+  tBinLabel = "tbin_0.4_0.5"
+  dataSet               = "2017_01-ver04-70"
+  dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_data_tbin1_ebin4.root"
+  dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_bkgnd_tbin1_ebin4.root"
+  mcDataFileName        = f"./{dataSet}/{tBinLabel}/amptools_tree_accepted_tbin1_ebin4*.root"
+  # dataSet               = "2018_08-ver02-15"
+  # dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_signal.root"
+  # dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_bkgnd.root"
+  # mcDataFileName        = f"./{dataSet}/{tBinLabel}/tree_amptools_recon.root"
+  treeName      = "kin"
+  outputDirName = f"./{dataSet}/{tBinLabel}/dataPlots"
 
   # create friend trees with correct weights
   os.makedirs(outputDirName, exist_ok = True)
