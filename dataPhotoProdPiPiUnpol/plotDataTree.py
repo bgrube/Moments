@@ -298,32 +298,33 @@ if __name__ == "__main__":
     histFileAlex.Close()
 
   # overlay pipi mass distributions from data, accepted phase-space MC, and total acceptance-weighted intensity from PWA
-  if False:
+  if True:
     lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
     lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
     dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
-              .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
+               .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
     histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 90, 0.2, 2.0), "MassPiPi")
     histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 90, 0.2, 2.0), "MassPiPi", "eventWeight")
-    pwaPlotFile = ROOT.TFile.Open("./pwa_plots3.root", "READ")
-    histMassPiPiPwa = convertGraphToHist(
-      graph    = pwaPlotFile.Get("Total"),
-      binning  = (56, 0.28, 1.40),
-      histName = "PWA Total Intensity",
-    )
-    # histMassPiPiPwa.Scale(0.5)
     outRootFile.cd()
     canv = ROOT.TCanvas()
     histStack = ROOT.THStack("hPiPiMassDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
     histStack.Add(histMassPiPiMc.GetValue())
     histStack.Add(histMassPiPiData.GetValue())
-    # histStack.Add(histMassPiPiPwa)
     histMassPiPiMc.SetLineColor    (ROOT.kBlue  + 1)
     histMassPiPiMc.SetMarkerColor  (ROOT.kBlue  + 1)
     histMassPiPiData.SetLineColor  (ROOT.kRed   + 1)
     histMassPiPiData.SetMarkerColor(ROOT.kRed   + 1)
-    histMassPiPiPwa.SetLineColor   (ROOT.kGreen + 2)
-    histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
+    if False:
+      pwaPlotFile = ROOT.TFile.Open("./pwa_plots3.root", "READ")
+      histMassPiPiPwa = convertGraphToHist(
+        graph    = pwaPlotFile.Get("Total"),
+        binning  = (56, 0.28, 1.40),
+        histName = "PWA Total Intensity",
+      )
+      # histMassPiPiPwa.Scale(0.5)
+      histStack.Add(histMassPiPiPwa)
+      histMassPiPiPwa.SetLineColor   (ROOT.kGreen + 2)
+      histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
     histStack.Draw("NOSTACK")
     canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
     histStack.Write()
