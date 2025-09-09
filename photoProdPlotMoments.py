@@ -198,11 +198,14 @@ class ComparisonMomentsType(Enum):
   PWA  = auto()
 
 def makeAllPlots(
-  cfg:               AnalysisConfig,
-  timer:             Utilities.Timer              = Utilities.Timer(),
-  compareTo:         ComparisonMomentsType | None = None,   # `None` means no comparison moments are plotted
-  plotCompareUncert: bool                         = False,  # whether to plot uncertainties of comparison moments
-  outFileType:       str                          = "pdf",  # "pdf" or "root"
+  cfg:                         AnalysisConfig,
+  timer:                       Utilities.Timer              = Utilities.Timer(),
+  scaleFactorPhysicalMoments:  float                        = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
+  compareTo:                   ComparisonMomentsType | None = None,   # `None` means no comparison moments are plotted
+  normalizeComparisonMoments:  bool                         = False,  # whether to scale comparison moments
+  plotComparisonMomentsUncert: bool                         = False,  # whether to plot uncertainties of comparison moments
+  outFileType:                 str                          = "pdf",  # "pdf" or "root"
+  yAxisUnit:                   str                          = "",  # optional unit for moment values
 ) -> None:
   """Generates all plots for the given analysis configuration and writes them to output files"""
   # load moments from files
@@ -215,6 +218,7 @@ def makeAllPlots(
     momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_meas.pkl")
   print(f"Reading physical moments from file '{momentResultsFileBaseName}_phys.pkl'")
   momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_phys.pkl")
+  momentResultsPhys.scaleBy(scaleFactorPhysicalMoments)  # apply optional scale factor to physical moments
   if compareTo == ComparisonMomentsType.PWA:
     print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
   momentResultsCompare, momentResultsCompareLabel, momentResultsCompareColor = (
@@ -250,21 +254,23 @@ def makeAllPlots(
   momentResultsJpac = None
   if momentResultsCompare is not None and not cfg.normalizeMoments:
     if compareTo == ComparisonMomentsType.CLAS:
-      normalizationFactorClas = momentResultsCompare.normalizeTo(
-        momentResultsPhys,
-        normBinIndex = None,  # normalize to integral over mass bins
-        # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
-      )
       momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
-      momentResultsJpac.scaleBy(normalizationFactorClas)  # use same factor as for CLAS moments
-      print(f"Scaled CLAS and JPAC moments by factor {normalizationFactorClas}")
+      if normalizeComparisonMoments:
+        normalizationFactorClas = momentResultsCompare.normalizeTo(
+          momentResultsPhys,
+          normBinIndex = None,  # normalize to integral over mass bins
+          # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
+        )
+        momentResultsJpac.scaleBy(normalizationFactorClas)  # use same factor as for CLAS moments
+        print(f"Scaled CLAS and JPAC moments by factor {normalizationFactorClas}")
     if compareTo == ComparisonMomentsType.JPAC:
-      normalizationFactorJpac = momentResultsCompare.normalizeTo(
-        momentResultsPhys,
-        normBinIndex = None,  # normalize to integral over mass bins
-        # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
-      )
-      print(f"Scaled JPAC moments by factor {normalizationFactorJpac}")
+      if normalizeComparisonMoments:
+        normalizationFactorJpac = momentResultsCompare.normalizeTo(
+          momentResultsPhys,
+          normBinIndex = None,  # normalize to integral over mass bins
+          # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
+        )
+        print(f"Scaled JPAC moments by factor {normalizationFactorJpac}")
     elif compareTo == ComparisonMomentsType.PWA:
       # scale moments from PWA result
       momentResultsCompare.scaleBy(1 / (8 * math.pi))  #TODO unclear where this factor comes from; could it be the kappa term in the intensity function?
@@ -289,8 +295,9 @@ def makeAllPlots(
             HTruth            = HComp,
             outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
             legendLabels      = ("Moment", momentResultsCompareLabel),
-            plotTruthUncert   = plotCompareUncert,
+            plotTruthUncert   = plotComparisonMomentsUncert,
             truthColor        = momentResultsCompareColor,
+            yAxisUnit         = yAxisUnit,
           )
           if cfg.plotMeasuredMoments and HMeas is not None:
             plotMomentsInBin(
@@ -402,8 +409,9 @@ def makeAllPlots(
           histTitle         = qnIndex.title,
           plotLegend        = True,
           legendLabels      = ("Moment", momentResultsCompareLabel),
-          plotTruthUncert   = plotCompareUncert,
+          plotTruthUncert   = plotComparisonMomentsUncert,
           truthColor        = momentResultsCompareColor,
+          yAxisUnit         = yAxisUnit,
           histsToOverlay    = {  # dict: key = "Re" or "Im", list: tuple: (histogram, draw option, legend entry)
             "Re" : [
               (histsJpac["Re"],     "HIST L", histsJpac["Re"].GetName()),
@@ -640,18 +648,25 @@ def makeAllPlots(
 
 if __name__ == "__main__":
   # compareTo = None
-  # compareTo = ComparisonMomentsType.CLAS
+  compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.PWA
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  compareTo = ComparisonMomentsType.JPAC
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # compareTo = ComparisonMomentsType.JPAC
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  plotCompareUncert = False
+  plotCompareUncert = True
+  # plotCompareUncert = False
+  scaleFactorPhysicalMoments = 1.0
+  # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / (10 MeV * 0.1 GeV^2 * L) with L(Fall 2018) = 0.1305 pb^{-1}
+  normalizeComparisonMoments = True  # whether to scale comparison moments to GlueX moments
+  # normalizeComparisonMoments = False
+  yAxisUnit = ""
+  # yAxisUnit = " [#mub/GeV^{3}]"
 
   tBinLabels = (
     # "tbin_0.1_0.2",
@@ -670,12 +685,13 @@ if __name__ == "__main__":
   maxLs = (
     4,
     # 5,
-    # 6,
+    6,
     # 7,
-    # 8,
+    8,
   )
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
+  # cfg.polarization = None  # treat data as unpolarized
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
@@ -700,10 +716,13 @@ if __name__ == "__main__":
           print(f"Using configuration:\n{cfg}")
           timer.start("Total execution time")
           makeAllPlots(
-            cfg               = cfg,
-            timer             = timer,
-            compareTo         = compareTo,
-            plotCompareUncert = plotCompareUncert,
+            cfg                         = cfg,
+            timer                       = timer,
+            scaleFactorPhysicalMoments  = scaleFactorPhysicalMoments,
+            compareTo                   = compareTo,
+            normalizeComparisonMoments  = normalizeComparisonMoments,
+            plotComparisonMomentsUncert = plotCompareUncert,
+            yAxisUnit                   = yAxisUnit,
           )
           timer.stop("Total execution time")
           print(timer.summary)
