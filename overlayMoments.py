@@ -158,7 +158,7 @@ if __name__ == "__main__":
     (f"{cfg.outFileDirBaseName}.{tBinLabel}.bak/Unpol.maxL_4", "JPAC", None),
     (f"{cfg.outFileDirBaseName}.{tBinLabel}/Unpol.maxL_4",     "HDDM", None),
   )
-  outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}.overlay")
+  outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}.{tBinLabel}.overlay")
 
   # load moment results
   momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
@@ -179,19 +179,15 @@ if __name__ == "__main__":
     assert momentResult.binCenters == binCenters
 
   if normToFirstResult:
-    # get integrals of H_0(0, 0) moments of all fit results
-    H000Integrals: list[float] = []
-    H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-    for moments, _ in momentResultsToOverlay.values():
-      # get H_0(0, 0) moment values in all mass bins
-      H000Vals: tuple[MomentValue, ...] = tuple(HPhys[H000Index] for HPhys in moments if H000Index in HPhys)
-      # calculate integral of H_0(0, 0) moment
-      H000Integrals.append(getHistFromMomentValues(H000Vals, cfg.massBinning, momentPart = "Re").Integral())
     # set scale factors such that all moments are normalized to H_0(0, 0) of the first fit result
-    scaleFactors = [H000Integrals[0] / integral for integral in H000Integrals]
-    for index, label in enumerate(momentResultsToOverlay.keys()):
-      print(f"Applying scale factor {scaleFactors[index]} to fit result '{label}'")
-      momentResultsToOverlay[label] = (momentResultsToOverlay[label][0], scaleFactors[index])
+    firstMomentResults = list(momentResultsToOverlay.values())[0][0]
+    for label, (moments, _) in momentResultsToOverlay.items():
+      scaleFactor = moments.normalizeTo(
+        firstMomentResults,
+        normBinIndex = None,  # normalize to integral over mass bins
+      )
+      print(f"Applying scale factor {scaleFactor} to fit result '{label}'")
+      momentResultsToOverlay[label] = (moments, scaleFactor)
 
   # plot kinematic dependences of all moments
   lastLabel = fitResults[-1][1]
