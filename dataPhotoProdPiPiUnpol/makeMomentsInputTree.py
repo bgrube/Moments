@@ -124,6 +124,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
 
   dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
   dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     weightTChain.Add(f"{dataFileName}.weights")
   dataTChain.AddFriend(weightTChain)
   realData = ROOT.RDataFrame(dataTChain)
-  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   for pairLabel, pairLvs, lvRecoil, flipYAxis in (
     ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
     ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
@@ -169,12 +170,12 @@ if __name__ == "__main__":
     outFileName = f"data_flat.{pairLabel}.root"
     outTreeName = pairLabel
     print(f"Writing real data to tree '{outTreeName}' in '{outFileName}'")
-    #TODO add -t
-    df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
+    df.Define("mass",   f"(Double32_t)massPair({pairLvs[0]}, {pairLvs[1]})") \
+      .Define("minusT", f"(Double32_t)-mandelstamT({lvTargetProton}, {lvRecoilProton})") \
       .Snapshot(outTreeName, outFileName, columnsToWrite + ["eventWeight"])
 
   # convert MC data
-  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
   for inFileName, outFileBaseName in [(phaseSpaceAccFileName, "phaseSpace_acc_flat"), (phaseSpaceGenFileName, "phaseSpace_gen_flat")]:
     print(f"Reading MC data from '{inFileName}'")
     mcData = ROOT.RDataFrame(treeName, inFileName)
@@ -192,5 +193,6 @@ if __name__ == "__main__":
       outFileName = f"{outFileBaseName}.{pairLabel}.root"
       outTreeName = pairLabel
       print(f"Writing MC data to tree '{outTreeName}' in '{outFileName}'")
-      df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
+      df.Define("mass",   f"(Double32_t)massPair({pairLvs[0]}, {pairLvs[1]})") \
+        .Define("minusT", f"(Double32_t)-mandelstamT({lvTargetProton}, {lvRecoilProton})") \
         .Snapshot(outTreeName, outFileName, columnsToWrite)
