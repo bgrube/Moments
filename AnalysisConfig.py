@@ -30,9 +30,14 @@ class AnalysisConfig:
   # defaults are for unpolarized pipi analysis
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
-  dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/data_flat.PiPi.root"  # file with real data to analyze
-  psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
-  psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
+  # Spring 2017 low-energy data
+  dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/2017_01-ver04-70/tbin_0.4_0.5/data_flat.PiPi.root"  # file with real data to analyze
+  psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2017_01-ver04-70/tbin_0.4_0.5/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
+  psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2017_01-ver04-70/tbin_0.4_0.5/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
+  # # Fall 2018 low-energy data
+  # dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/data_flat.PiPi.root"  # file with real data to analyze
+  # psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
+  # psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
   polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
   maxL:                     int                       = 8  # maximum L of physical and measured moments
   outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
