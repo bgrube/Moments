@@ -126,12 +126,21 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
 
-  dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
-  dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
-  phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
-  phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
-  treeName              = "kin"
-  columnsToWrite        = ["mass", "cosTheta", "theta", "phi", "phiDeg"]
+
+  tBinLabel = "tbin_0.4_0.5"
+  # dataSet               = "2017_01-ver04-70"
+  # dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_data_tbin1_ebin4.root"
+  # dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_bkgnd_tbin1_ebin4.root"
+  # phaseSpaceAccFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_accepted_tbin1_ebin4*.root"
+  # phaseSpaceGenFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_thrown_tbin1_ebin4*.root"
+  dataSet               = "2018_08-ver02-15"
+  dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_signal.root"
+  dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_bkgnd.root"
+  phaseSpaceAccFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_recon.root"
+  phaseSpaceGenFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_thrown.root"
+  treeName       = "kin"
+  columnsToWrite = ["cosTheta", "theta", "phi", "phiDeg", "mass", "minusT"]
+  outputDirName  = f"./{dataSet}/{tBinLabel}"
 
   # convert real data
   # create friend trees with correct weights
@@ -158,8 +167,8 @@ if __name__ == "__main__":
   lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   for pairLabel, pairLvs, lvRecoil, flipYAxis in (
     ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
-    ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
-    ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
+    # ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
+    # ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
   ):  # loop over two-body subsystems of pi+ pi- p final state
     df = defineAngleFormulas(
       realData,
@@ -167,7 +176,7 @@ if __name__ == "__main__":
       frame     = "Hf",
       flipYAxis = flipYAxis,
     )
-    outFileName = f"data_flat.{pairLabel}.root"
+    outFileName = f"{outputDirName}/data_flat.{pairLabel}.root"
     outTreeName = pairLabel
     print(f"Writing real data to tree '{outTreeName}' in '{outFileName}'")
     df.Define("mass",   f"(Double32_t)massPair({pairLvs[0]}, {pairLvs[1]})") \
@@ -181,8 +190,8 @@ if __name__ == "__main__":
     mcData = ROOT.RDataFrame(treeName, inFileName)
     for pairLabel, pairLvs, lvRecoil, flipYAxis in (
       ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
-      ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
-      ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
+      # ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
+      # ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
     ):  # loop over two-body subsystems of pi+ pi- p final state
       df = defineAngleFormulas(
         mcData,
@@ -190,7 +199,7 @@ if __name__ == "__main__":
         frame     = "Hf",
         flipYAxis = flipYAxis,
       )
-      outFileName = f"{outFileBaseName}.{pairLabel}.root"
+      outFileName = f"{outputDirName}/{outFileBaseName}.{pairLabel}.root"
       outTreeName = pairLabel
       print(f"Writing MC data to tree '{outTreeName}' in '{outFileName}'")
       df.Define("mass",   f"(Double32_t)massPair({pairLvs[0]}, {pairLvs[1]})") \
