@@ -187,7 +187,6 @@ if __name__ == "__main__":
         normBinIndex = None,  # normalize to integral over mass bins
       )
       print(f"Applying scale factor {scaleFactor} to fit result '{label}'")
-      momentResultsToOverlay[label] = (moments, scaleFactor)
 
   # plot kinematic dependences of all moments
   lastLabel = fitResults[-1][1]
