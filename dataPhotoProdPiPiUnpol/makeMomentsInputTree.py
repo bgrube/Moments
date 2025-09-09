@@ -101,16 +101,19 @@ def defineAngleFormulas(
   phiDegCol   = columnNames["phiCol"     ] + "Deg"
   print(f"Defining columns {cosThetaCol}, {thetaCol}, {phiCol}, and {phiDegCol}")
   return (
-    df.Define(cosThetaCol, f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == "Hf" else f"FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})" )  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
-      .Define(thetaCol,    f"std::acos({cosThetaCol})")
+    df.Define(cosThetaCol, "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == "Hf" else f"FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})") )  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
+      .Define(thetaCol,    f"(Double32_t)std::acos({cosThetaCol})")
       .Define(
         phiCol,
         # use A as analyzer
         # y_HF/GJ = p_beam x p_recoil if flipYAxis is False else -yHF
-             f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
-        else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})"                   # use z_GJ = p_beam
+        "(Double32_t)" +
+        (
+          f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
+          else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})"                   # use z_GJ = p_beam
+        )
       )
-      .Define(phiDegCol,   f"{phiCol} * TMath::RadToDeg()")
+      .Define(phiDegCol,   f"(Double32_t){phiCol} * TMath::RadToDeg()")
   )
 
 
