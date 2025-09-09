@@ -133,7 +133,7 @@ if __name__ == "__main__":
   # dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_bkgnd_tbin1_ebin4.root"
   # phaseSpaceAccFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_accepted_tbin1_ebin4*.root"
   # phaseSpaceGenFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_thrown_tbin1_ebin4*.root"
-  dataSet               = "2018_08-ver02-15"
+  dataSet               = "2018_08-ver02-05"
   dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_signal.root"
   dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_bkgnd.root"
   phaseSpaceAccFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_recon.root"
