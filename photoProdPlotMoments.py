@@ -335,7 +335,7 @@ def makeAllPlots(
             outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             graphTitle        = binTitle,
           )
-      if cfg.plotMomentsInBins:
+      if compareTo is not None and cfg.plotMomentsInBins:
         #TODO move to separate function?
         # plot average chi^2/ndf of all physical moments w.r.t. true values as a function of mass
         for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
@@ -439,36 +439,37 @@ def makeAllPlots(
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
-      # plot chi^2/ndf of each physical moments w.r.t. true value, averaged over the mass bins
-      #TODO move to separate function?
-      _, ndf = chi2ValuesForMoments[H000Index]["Re"]  # assume that ndf is the same for all moments; take value from Re[H_0(0, 0)]
-      for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
-        for momentPart in ("Re", "Im"):
-          # get chi^2 values for this momentIndex and momentPart
-          chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
-          histChi2 = ROOT.TH1D(
-            f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
-            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {cfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
-            len(chi2Values), 0, len(chi2Values)
-          )
-          for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
-            histChi2.GetXaxis().SetBinLabel(binIndex + 1, qnIndex.title)  # categorical x axis with moment labels
-            if chi2 is None or ndf is None:
-              continue
-            histChi2.SetBinContent(binIndex + 1, chi2 / ndf)
-          histChi2.GetXaxis().LabelsOption("V")
-          canv = ROOT.TCanvas()
-          histChi2.SetLineColor(ROOT.kBlue + 1)
-          histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-          # histChi2.SetMaximum(10)
-          histChi2.SetMaximum(3)
-          histChi2.Draw("HIST")
-          # add line at nominal chi2/ndf value to guide the eye
-          line = ROOT.TLine()
-          line.SetLineColor(ROOT.kGray + 1)
-          line.SetLineStyle(ROOT.kDashed)
-          line.DrawLine(0, 1, len(chi2Values), 1)
-          canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
+      if compareTo is not None:
+        # plot chi^2/ndf of each physical moments w.r.t. true value, averaged over the mass bins
+        #TODO move to separate function?
+        _, ndf = chi2ValuesForMoments[H000Index]["Re"]  # assume that ndf is the same for all moments; take value from Re[H_0(0, 0)]
+        for momentIndex in range(momentResultsPhys[0].indices.momentIndexRange):
+          for momentPart in ("Re", "Im"):
+            # get chi^2 values for this momentIndex and momentPart
+            chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
+            histChi2 = ROOT.TH1D(
+              f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
+              f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {cfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
+              len(chi2Values), 0, len(chi2Values)
+            )
+            for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
+              histChi2.GetXaxis().SetBinLabel(binIndex + 1, qnIndex.title)  # categorical x axis with moment labels
+              if chi2 is None or ndf is None:
+                continue
+              histChi2.SetBinContent(binIndex + 1, chi2 / ndf)
+            histChi2.GetXaxis().LabelsOption("V")
+            canv = ROOT.TCanvas()
+            histChi2.SetLineColor(ROOT.kBlue + 1)
+            histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
+            # histChi2.SetMaximum(10)
+            histChi2.SetMaximum(3)
+            histChi2.Draw("HIST")
+            # add line at nominal chi2/ndf value to guide the eye
+            line = ROOT.TLine()
+            line.SetLineColor(ROOT.kGray + 1)
+            line.SetLineStyle(ROOT.kDashed)
+            line.DrawLine(0, 1, len(chi2Values), 1)
+            canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
       if momentResultsMeas is not None:
