@@ -22,6 +22,7 @@ import numpy as np
 import nptyping as npt
 import os
 import pickle
+import scipy
 import textwrap
 from typing import (
   Any,
@@ -1545,7 +1546,6 @@ class MomentCalculator:
   _integralMatrix:      AcceptanceIntegralMatrix | None = None   # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
 
   def __post_init__(self) -> None:
-    assert self.indicesMeas.maxL >= self.indicesPhys.maxL, f"L_max = {self.indicesMeas.maxL} of measured moments must be equal to or larger than L_max = {self.indicesPhys.maxL} of physical moments"
     # set polarized moments case of `indicesMeas` and `indicesPhys` according to info provided by `dataSet`
     if self.dataSet.polarization is None:
       self.indicesMeas.setPolarized(False)
@@ -1625,6 +1625,9 @@ class MomentCalculator:
     bootstrapRandomSeed:       int            = 12345,  # seed used for random number generator used for bootstrap samples
   ) -> None:
     """Calculates photoproduction moments and their covariances using given data source"""
+    # ensure compatibility of moment indices for measured and physical moments
+    assert self.indicesMeas.maxL >= self.indicesPhys.maxL, f"{self.indicesMeas.maxL=} must be equal to or larger than {self.indicesPhys.maxL=}"
+    assert self.indicesMeas.polarized == self.indicesPhys.polarized, f"{self.indicesMeas.polarized=} and {self.indicesPhys.polarized=} must be the same"
     # define dataset and integral matrix to use for moment calculation
     dataSet        = None
     integralMatrix = self._integralMatrix
@@ -1691,8 +1694,10 @@ class MomentCalculator:
     else:
       assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
       nmbMomentsPhys = len(self.indicesPhys)
-      # get inverse of acceptance integral matrix
-      Iinv = integralMatrix.inverse
+      # get (pseudo-)inverse of acceptance integral matrix
+      # Iinv = integralMatrix.inverse
+      Iinv, IinvRank = scipy.linalg.pinv(integralMatrix, return_rank = True)  # use pseudo-inverse in case integral matrix is not square
+      print(f"Using pseudo-inverse of integral matrix with effective rank {IinvRank} vs. full rank {nmbMomentsMeas}")
       # calculate physical moments, i.e. correct for detection efficiency
       self.HPhys._valsFlatIndex = Iinv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # calculate bootstrap samples for H_phys
