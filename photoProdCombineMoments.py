@@ -14,7 +14,6 @@ from copy import deepcopy
 import functools
 import os
 
-from scipy.stats import moment
 from wurlitzer import pipes, STDOUT
 
 from MomentCalculator import MomentResultsKinematicBinning
@@ -49,8 +48,8 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
   tBinLabels = (
-    # "tbin_0.1_0.2",
-    "tbin_0.1_0.2.Gj.pi+",
+    "tbin_0.1_0.2",
+    # "tbin_0.1_0.2.Gj.pi+",
     # "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
   )
@@ -83,8 +82,9 @@ if __name__ == "__main__":
           cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
           cfg.init()
           momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
+        # combining moment results
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{labelCombined}"
-        cfg.init()
+        cfg.init(createOutFileDir = True)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
         with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file

@@ -8,16 +8,29 @@ import os
 import ROOT
 
 
-# declare C++ function to calculate invariant mass of a pair of particles
-CPP_CODE_MAKEPAIR = """
+# C++ function to calculate invariant mass of a pair of particles
+CPP_CODE_MASSPAIR = """
 double
 massPair(
-	const double Px1, const double Py1, const double Pz1, const double E1,
-	const double Px2, const double Py2, const double Pz2, const double E2
+	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+	const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
 )	{
 	const TLorentzVector p1(Px1, Py1, Pz1, E1);
 	const TLorentzVector p2(Px2, Py2, Pz2, E2);
 	return (p1 + p2).M();
+}
+"""
+
+# C++ function to calculate mandelstam t = (p1 - p2)^2
+CPP_CODE_MANDELSTAM_T = """
+double
+mandelstamT(
+  const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+  const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
+) {
+  const TLorentzVector p1(Px1, Py1, Pz1, E1);
+  const TLorentzVector p2(Px2, Py2, Pz2, E2);
+  return (p1 - p2).M2();
 }
 """
 
@@ -88,31 +101,46 @@ def defineAngleFormulas(
   phiDegCol   = columnNames["phiCol"     ] + "Deg"
   print(f"Defining columns {cosThetaCol}, {thetaCol}, {phiCol}, and {phiDegCol}")
   return (
-    df.Define(cosThetaCol, f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == "Hf" else f"FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})" )  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
-      .Define(thetaCol,    f"std::acos({cosThetaCol})")
+    df.Define(cosThetaCol, "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == "Hf" else f"FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})") )  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
+      .Define(thetaCol,    f"(Double32_t)std::acos({cosThetaCol})")
       .Define(
         phiCol,
         # use A as analyzer
         # y_HF/GJ = p_beam x p_recoil if flipYAxis is False else -yHF
-             f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
-        else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})"                   # use z_GJ = p_beam
+        "(Double32_t)" +
+        (
+          f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
+          else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})"                   # use z_GJ = p_beam
+        )
       )
-      .Define(phiDegCol,   f"{phiCol} * TMath::RadToDeg()")
+      .Define(phiDegCol,   f"(Double32_t){phiCol} * TMath::RadToDeg()")
   )
 
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gStyle.SetOptStat("i")
-  ROOT.gROOT.ProcessLine(f".x {os.environ['FSROOT']}/rootlogon.FSROOT.C")
-  ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
 
-  dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
-  dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
-  phaseSpaceAccFileName = "./amptools_tree_accepted_tbin1_ebin4*.root"
-  phaseSpaceGenFileName = "./amptools_tree_thrown_tbin1_ebin4*.root"
-  treeName              = "kin"
-  columnsToWrite        = ["mass", "cosTheta", "theta", "phi", "phiDeg"]
+
+  tBinLabel = "tbin_0.4_0.5"
+  # dataSet               = "2017_01-ver04-70"
+  # dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_data_tbin1_ebin4.root"
+  # dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_bkgnd_tbin1_ebin4.root"
+  # phaseSpaceAccFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_accepted_tbin1_ebin4*.root"
+  # phaseSpaceGenFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_thrown_tbin1_ebin4*.root"
+  dataSet               = "2018_08-ver02-05"
+  dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_signal.root"
+  dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_bkgnd.root"
+  phaseSpaceAccFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_recon.root"
+  phaseSpaceGenFileName = f"./{dataSet}/{tBinLabel}/tree_amptools_thrown.root"
+  treeName       = "kin"
+  columnsToWrite = ["cosTheta", "theta", "phi", "phiDeg", "mass", "minusT"]
+  outputDirName  = f"./{dataSet}/{tBinLabel}"
 
   # convert real data
   # create friend trees with correct weights
@@ -136,11 +164,11 @@ if __name__ == "__main__":
     weightTChain.Add(f"{dataFileName}.weights")
   dataTChain.AddFriend(weightTChain)
   realData = ROOT.RDataFrame(dataTChain)
-  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = True)
   for pairLabel, pairLvs, lvRecoil, flipYAxis in (
     ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
-    ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
-    ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
+    # ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
+    # ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
   ):  # loop over two-body subsystems of pi+ pi- p final state
     df = defineAngleFormulas(
       realData,
@@ -148,21 +176,22 @@ if __name__ == "__main__":
       frame     = "Hf",
       flipYAxis = flipYAxis,
     )
-    outFileName = f"data_flat.{pairLabel}.root"
+    outFileName = f"{outputDirName}/data_flat.{pairLabel}.root"
     outTreeName = pairLabel
     print(f"Writing real data to tree '{outTreeName}' in '{outFileName}'")
-    df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
+    df.Define("mass",   f"(Double32_t)massPair({pairLvs[0]}, {pairLvs[1]})") \
+      .Define("minusT", f"(Double32_t)-mandelstamT({lvTargetProton}, {lvRecoilProton})") \
       .Snapshot(outTreeName, outFileName, columnsToWrite + ["eventWeight"])
 
   # convert MC data
-  lvBeamPhoton, _, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
+  lvBeamPhoton, lvTargetProton, lvRecoilProton, lvPip, lvPim = lorentzVectors(realData = False)
   for inFileName, outFileBaseName in [(phaseSpaceAccFileName, "phaseSpace_acc_flat"), (phaseSpaceGenFileName, "phaseSpace_gen_flat")]:
     print(f"Reading MC data from '{inFileName}'")
     mcData = ROOT.RDataFrame(treeName, inFileName)
     for pairLabel, pairLvs, lvRecoil, flipYAxis in (
       ("PiPi", (lvPip, lvPim         ), lvRecoilProton, True ),
-      ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
-      ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
+      # ("PipP", (lvPip, lvRecoilProton), lvPim,          False),
+      # ("PimP", (lvPim, lvRecoilProton), lvPip,          False),
     ):  # loop over two-body subsystems of pi+ pi- p final state
       df = defineAngleFormulas(
         mcData,
@@ -170,8 +199,9 @@ if __name__ == "__main__":
         frame     = "Hf",
         flipYAxis = flipYAxis,
       )
-      outFileName = f"{outFileBaseName}.{pairLabel}.root"
+      outFileName = f"{outputDirName}/{outFileBaseName}.{pairLabel}.root"
       outTreeName = pairLabel
       print(f"Writing MC data to tree '{outTreeName}' in '{outFileName}'")
-      df.Define("mass", f"massPair({pairLvs[0]}, {pairLvs[1]})") \
+      df.Define("mass",   f"(Double32_t)massPair({pairLvs[0]}, {pairLvs[1]})") \
+        .Define("minusT", f"(Double32_t)-mandelstamT({lvTargetProton}, {lvRecoilProton})") \
         .Snapshot(outTreeName, outFileName, columnsToWrite)

@@ -9,7 +9,8 @@ import os
 import ROOT
 
 from makeMomentsInputTree import (
-  CPP_CODE_MAKEPAIR,
+  CPP_CODE_MASSPAIR,
+  CPP_CODE_MANDELSTAM_T,
   defineAngleFormulas,
   lorentzVectors,
 )
@@ -114,22 +115,30 @@ def convertGraphToHist(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.C"
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
   ROOT.gStyle.SetOptStat("i")
   # ROOT.gStyle.SetOptStat(1111111)
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
   # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_MAKEPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_ALEX)
 
-  tBinLabel             = "tbin_0.4_0.5"
-  dataSigRegionFileName = "./amptools_tree_data_tbin1_ebin4.root"
-  dataBkgRegionFileName = "./amptools_tree_bkgnd_tbin1_ebin4.root"
-  mcDataFileName        = "./amptools_tree_accepted_tbin1_ebin4*.root"
-  treeName              = "kin"
-  outputDirName         = f"{tBinLabel}/dataPlots"
+  tBinLabel = "tbin_0.4_0.5"
+  dataSet               = "2017_01-ver04-70"
+  dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_data_tbin1_ebin4.root"
+  dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_bkgnd_tbin1_ebin4.root"
+  mcDataFileName        = f"./{dataSet}/{tBinLabel}/amptools_tree_accepted_tbin1_ebin4*.root"
+  # dataSet               = "2018_08-ver02-05"
+  # dataSigRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_signal.root"
+  # dataBkgRegionFileName = f"./{dataSet}/{tBinLabel}/amptools_tree_2018-08_LE_bkgnd.root"
+  # mcDataFileName        = f"./{dataSet}/{tBinLabel}/tree_amptools_recon.root"
+  treeName      = "kin"
+  outputDirName = f"./{dataSet}/{tBinLabel}/dataPlots"
 
   # create friend trees with correct weights
   os.makedirs(outputDirName, exist_ok = True)
@@ -180,20 +189,21 @@ if __name__ == "__main__":
       df.Define(f"Mass{pairLabel}",   f"massPair({pairLvs[0]}, {pairLvs[1]})")
         .Define(f"Mass{pairLabel}Sq", f"std::pow(massPair({pairLvs[0]}, {pairLvs[1]}), 2)")
     )
+  df = df.Define("minusT", f"-mandelstamT({lvTargetProton}, {lvRecoilProton})")
   df = (
-    #                                                                 [    two-body system    ]  [   "recoil"   ]  [   "beam"   ]
-    df.Define(f"HfPiPiCosThetaDiff", f"HfPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton})")
-      .Define(f"HfPiPiPhiDegDiff",   f"HfPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton})")
-      .Define(f"HfPipPCosThetaDiff", f"HfPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
-      .Define(f"HfPipPPhiDegDiff",   f"HfPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
-      .Define(f"HfPimPCosThetaDiff", f"HfPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
-      .Define(f"HfPimPPhiDegDiff",   f"HfPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
-    # df.Define(f"GjPiPiCosThetaDiff", f"GjPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
-    #   .Define(f"GjPiPiPhiDegDiff",   f"GjPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
-    #   .Define(f"GjPipPCosThetaDiff", f"GjPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
-    #   .Define(f"GjPipPPhiDegDiff",   f"GjPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
-    #   .Define(f"GjPimPCosThetaDiff", f"GjPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
-    #   .Define(f"GjPimPPhiDegDiff",   f"GjPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
+    #                                                                [    two-body system    ]  [   "recoil"   ]  [   "beam"   ]
+    df.Define("HfPiPiCosThetaDiff", f"HfPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton})")
+      .Define("HfPiPiPhiDegDiff",   f"HfPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton})")
+      .Define("HfPipPCosThetaDiff", f"HfPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
+      .Define("HfPipPPhiDegDiff",   f"HfPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvBeamPhoton})")
+      .Define("HfPimPCosThetaDiff", f"HfPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
+      .Define("HfPimPPhiDegDiff",   f"HfPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvBeamPhoton})")
+    # df.Define("GjPiPiCosThetaDiff", f"GjPiPiCosTheta - cosTheta_Alex({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
+    #   .Define("GjPiPiPhiDegDiff",   f"GjPiPiPhiDeg   - phiDeg_Alex  ({lvPip}, {lvPim},          {lvRecoilProton}, {lvBeamPhoton}  )")
+    #   .Define("GjPipPCosThetaDiff", f"GjPipPCosTheta - cosTheta_Alex({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
+    #   .Define("GjPipPPhiDegDiff",   f"GjPipPPhiDeg   - phiDeg_Alex  ({lvPip}, {lvRecoilProton}, {lvPim},          {lvTargetProton})")
+    #   .Define("GjPimPCosThetaDiff", f"GjPimPCosTheta - cosTheta_Alex({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
+    #   .Define("GjPimPPhiDegDiff",   f"GjPimPPhiDeg   - phiDeg_Alex  ({lvPim}, {lvRecoilProton}, {lvPip},          {lvTargetProton})")
   )
 
   # define real-data histograms applying RF-sideband subtraction
@@ -206,6 +216,7 @@ if __name__ == "__main__":
     df.Histo1D(ROOT.RDF.TH1DModel("hDataPipPMassClas", ";m_{p#pi^{#plus}} [GeV];"  + yAxisLabel,  72, 1,    2.8),  "MassPipP", "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataPimPMass",     ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel, 400, 1,    5),    "MassPimP", "eventWeight"),
     df.Histo1D(ROOT.RDF.TH1DModel("hDataPimPMassClas", ";m_{p#pi^{#minus}} [GeV];" + yAxisLabel,  72, 1,    2.8),  "MassPimP", "eventWeight"),
+    df.Histo1D(ROOT.RDF.TH1DModel("hDataMinusT",       ";#minus t [GeV^{2}];"      + yAxisLabel, 100, 0,    1),    "minusT",   "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataPipPMassVsPiPiMassClas",   ";m_{#pi#pi} [GeV];m_{p#pi^{#plus}} [GeV]",                  100, 0.2,  1.8,  100,    1,  2.8), "MassPiPi",   "MassPipP",       "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",  100, 0,    3.5,  100,    1,  7.5), "MassPiPiSq", "MassPipPSq",     "eventWeight"),
     df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]", 100, 0,    3.5,  100,    1,  7.5), "MassPiPiSq", "MassPimPSq",     "eventWeight"),
@@ -265,55 +276,58 @@ if __name__ == "__main__":
     canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
   # check against Alex' RF-sideband subtracted histograms
-  histFileNameAlex = "./plots_tbin1_ebin4.root"
-  histNamesAlex = {  # map histogram names
-    "hDataPiPiMass"                 : "M",
-    "hDataPipPMass"                 : "Deltapp",
-    "hDataPimPMass"                 : "Deltaz",
-    "hDataPiPiMassVsHfCosThetaAlex" : "MassVsCosth",
-    "hDataPiPiMassVsHfPhiDegAlex"   : "MassVsphi",
-  }
-  histFileAlex = ROOT.TFile.Open(histFileNameAlex, "READ")
-  for hist in hists:
-    if not hist.GetName() in histNamesAlex:
-      continue
-    histAlex = histFileAlex.Get(histNamesAlex[hist.GetName()])
-    histDiff = hist.Clone(f"{hist.GetName()}_diff")
-    histDiff.Add(histAlex, -1)
-    canv = ROOT.TCanvas()
-    histDiff.Draw("COLZ")
-    canv.SaveAs(f"{outputDirName}/{hist.GetName()}_diff.pdf")
-  histFileAlex.Close()
+  if False:
+    histFileNameAlex = "./plots_tbin1_ebin4.root"
+    histNamesAlex = {  # map histogram names
+      "hDataPiPiMass"                 : "M",
+      "hDataPipPMass"                 : "Deltapp",
+      "hDataPimPMass"                 : "Deltaz",
+      "hDataPiPiMassVsHfCosThetaAlex" : "MassVsCosth",
+      "hDataPiPiMassVsHfPhiDegAlex"   : "MassVsphi",
+    }
+    histFileAlex = ROOT.TFile.Open(histFileNameAlex, "READ")
+    for hist in hists:
+      if not hist.GetName() in histNamesAlex:
+        continue
+      histAlex = histFileAlex.Get(histNamesAlex[hist.GetName()])
+      histDiff = hist.Clone(f"{hist.GetName()}_diff")
+      histDiff.Add(histAlex, -1)
+      canv = ROOT.TCanvas()
+      histDiff.Draw("COLZ")
+      canv.SaveAs(f"{outputDirName}/{hist.GetName()}_diff.pdf")
+    histFileAlex.Close()
 
   # overlay pipi mass distributions from data, accepted phase-space MC, and total acceptance-weighted intensity from PWA
-  lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
-  lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
-  dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
-             .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
-  histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 90, 0.2, 2.0), "MassPiPi")
-  histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 90, 0.2, 2.0), "MassPiPi", "eventWeight")
-  pwaPlotFile = ROOT.TFile.Open("./pwa_plots3.root", "READ")
-  histMassPiPiPwa = convertGraphToHist(
-    graph    = pwaPlotFile.Get("Total"),
-    binning  = (56, 0.28, 1.40),
-    histName = "PWA Total Intensity",
-  )
-  # histMassPiPiPwa.Scale(0.5)
-  outRootFile.cd()
-  canv = ROOT.TCanvas()
-  histStack = ROOT.THStack("hPiPiMassDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
-  histStack.Add(histMassPiPiMc.GetValue())
-  histStack.Add(histMassPiPiData.GetValue())
-  # histStack.Add(histMassPiPiPwa)
-  histMassPiPiMc.SetLineColor    (ROOT.kBlue  + 1)
-  histMassPiPiMc.SetMarkerColor  (ROOT.kBlue  + 1)
-  histMassPiPiData.SetLineColor  (ROOT.kRed   + 1)
-  histMassPiPiData.SetMarkerColor(ROOT.kRed   + 1)
-  histMassPiPiPwa.SetLineColor   (ROOT.kGreen + 2)
-  histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
-  histStack.Draw("NOSTACK")
-  canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-  histStack.Write()
-  canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
+  if True:
+    lvPip = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # not clear whether correct index is 1 or 2
+    lvPim = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # not clear whether correct index is 1 or 2
+    dfMc = ROOT.RDataFrame(treeName, mcDataFileName) \
+               .Define("MassPiPi", f"massPair({lvPip}, {lvPim})")
+    histMassPiPiMc   = dfMc.Histo1D(ROOT.RDF.TH1DModel("Accepted Phase-Space MC", "", 90, 0.2, 2.0), "MassPiPi")
+    histMassPiPiData = df.Histo1D  (ROOT.RDF.TH1DModel("RF-subtracted Data",      "", 90, 0.2, 2.0), "MassPiPi", "eventWeight")
+    outRootFile.cd()
+    canv = ROOT.TCanvas()
+    histStack = ROOT.THStack("hPiPiMassDataAndMc", ";m_{#pi#pi} [GeV];Events / 20 MeV")
+    histStack.Add(histMassPiPiMc.GetValue())
+    histStack.Add(histMassPiPiData.GetValue())
+    histMassPiPiMc.SetLineColor    (ROOT.kBlue  + 1)
+    histMassPiPiMc.SetMarkerColor  (ROOT.kBlue  + 1)
+    histMassPiPiData.SetLineColor  (ROOT.kRed   + 1)
+    histMassPiPiData.SetMarkerColor(ROOT.kRed   + 1)
+    if False:
+      pwaPlotFile = ROOT.TFile.Open("./pwa_plots3.root", "READ")
+      histMassPiPiPwa = convertGraphToHist(
+        graph    = pwaPlotFile.Get("Total"),
+        binning  = (56, 0.28, 1.40),
+        histName = "PWA Total Intensity",
+      )
+      # histMassPiPiPwa.Scale(0.5)
+      histStack.Add(histMassPiPiPwa)
+      histMassPiPiPwa.SetLineColor   (ROOT.kGreen + 2)
+      histMassPiPiPwa.SetMarkerColor (ROOT.kGreen + 2)
+    histStack.Draw("NOSTACK")
+    canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
+    histStack.Write()
+    canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
 
 outRootFile.Close()
