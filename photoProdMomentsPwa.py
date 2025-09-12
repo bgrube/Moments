@@ -116,7 +116,7 @@ if __name__ == "__main__":
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Calculating moment values from partial-wave amplitudes for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        cfg.maxLPhys = maxL
+        cfg.maxL = maxL
         cfg.init(createOutFileDir = True)
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"

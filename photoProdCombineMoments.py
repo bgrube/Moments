@@ -73,7 +73,7 @@ if __name__ == "__main__":
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for tBinLabel in tBinLabels:
     for maxL in maxLs:
-      cfg.maxLPhys = maxL
+      cfg.maxL = maxL
       for labelCombined, beamPolLabels in dataSetsToCombine.items():
         print(f"Combining moments for data sets '{beamPolLabels}' for t bin '{tBinLabel}' and L_max = {maxL}")
         # constructing input file names
