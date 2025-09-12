@@ -1545,13 +1545,13 @@ class MomentCalculator:
   _integralMatrix:      AcceptanceIntegralMatrix | None = None   # if None no acceptance correction is performed; must either be given or calculated by calling calculateIntegralMatrix()
 
   def __post_init__(self) -> None:
-    # set polarized moments case of `indices` according to info provided by `dataSet`
+    assert self.indicesMeas.maxL >= self.indicesPhys.maxL, f"L_max = {self.indicesMeas.maxL} of measured moments must be equal to or larger than L_max = {self.indicesPhys.maxL} of physical moments"
+    # set polarized moments case of `indicesMeas` and `indicesPhys` according to info provided by `dataSet`
     if self.dataSet.polarization is None:
       self.indicesMeas.setPolarized(False)
-      self.indicesPhys.setPolarized(False)
     else:
       self.indicesMeas.setPolarized(True)
-      self.indicesPhys.setPolarized(True)
+    self.indicesPhys.setPolarized(self.indicesMeas.polarized)
     # initialize _HMeas and _HPhys to empty `MomentResults` if None
     if self._HMeas is None:
       self._HMeas = MomentResult(
@@ -1602,7 +1602,10 @@ class MomentCalculator:
   ) -> None:
     """Calculates acceptance integral matrix"""
     #TODO extend AcceptanceIntegralMatrix to non-square shape
-    self._integralMatrix = AcceptanceIntegralMatrix(self.indicesPhys, self.dataSet)
+    self._integralMatrix = AcceptanceIntegralMatrix(
+      indices = self.indicesPhys,
+      dataSet = self.dataSet,
+    )
     if forceCalculation:
       self._integralMatrix.calculate()
     else:
@@ -1641,11 +1644,11 @@ class MomentCalculator:
     )
     nmbEvents = thetas.size()
     # calculate basis-function values and values of measured moments
-    nmbMomentsMeas = len(self.indicesMeas)
-    fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbEvents), dtype = np.complex128)
     bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapRandomSeed)
     self.HMeas.nmbBootstrapSamples = nmbBootstrapSamples
     self.HMeas.bootstrapRandomSeed = bootstrapRandomSeed
+    nmbMomentsMeas = len(self.indicesMeas)
+    fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbEvents), dtype = np.complex128)
     for flatIndex in self.indicesMeas.flatIndices:
       qnIndex = self.indicesMeas[flatIndex]
       fMeas[flatIndex] = np.asarray(ROOT.f_meas(
@@ -1687,7 +1690,7 @@ class MomentCalculator:
       np.copyto(self.HPhys._bsSamplesFlatIndex, self.HMeas._bsSamplesFlatIndex)
     else:
       assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
-      nmbMoments = len(self.indicesPhys)
+      nmbMomentsPhys = len(self.indicesPhys)
       # get inverse of acceptance integral matrix
       Iinv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
@@ -1699,7 +1702,7 @@ class MomentCalculator:
         self.HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = Iinv @ self.HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
       J = Iinv  # Jacobian of efficiency correction; Eq. (101)
-      Jconj = np.zeros((nmbMoments, nmbMoments), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
+      Jconj = np.zeros((nmbMomentsPhys, nmbMomentsPhys), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
       J_aug = np.block([
         [J,                   Jconj],
         [np.conjugate(Jconj), np.conjugate(J)],
