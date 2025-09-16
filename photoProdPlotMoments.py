@@ -649,15 +649,15 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  # compareTo = None
-  compareTo = ComparisonMomentsType.CLAS
+  compareTo = None
+  # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
-  cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.PWA
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.JPAC
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
@@ -671,37 +671,37 @@ if __name__ == "__main__":
   # yAxisUnit = " [#mub/GeV^{3}]"
 
   tBinLabels = (
-    # "tbin_0.1_0.2",
+    "tbin_0.1_0.2",
     # "tbin_0.1_0.2.Hf.pi+",
     # "tbin_0.1_0.2.trackDistFdc",
     # "tbin_0.2_0.3",
     # "tbin_0.1_0.5",
-    "tbin_0.4_0.5",
+    # "tbin_0.4_0.5",
   )
   beamPolLabels = (
-    # "PARA_0",
+    "PARA_0",
     # "PARA_0", "PARA_135", "PERP_45", "PERP_90",
     # "allOrient",
-    "Unpol",
+    # "Unpol",
   )
   maxLs = (
-    4,
+    (4, 4),
+    # 4,
     # 5,
-    6,
+    # 6,
     # 7,
-    8,
+    # 8,
   )
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
-  # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
-      # cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-      # cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-      # cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
+      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
