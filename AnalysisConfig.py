@@ -121,6 +121,8 @@ class AnalysisConfig:
     createOutFileDir: bool = False,
   ) -> None:
     """Creates output directory and initializes member variables; needs to be called before passing the config to any consumer"""
+    if not isinstance(self.maxL, int):
+      assert self.maxL[0] <= self.maxL[1], f"Maximum L for physical moments {self.maxL[0]=} must be smaller than or equal to maximum L for measured moments {self.maxL[1]=}"
     self.massBinning.var = self.binVarMass
     if createOutFileDir:
       Utilities.makeDirPath(self.outFileDirName)

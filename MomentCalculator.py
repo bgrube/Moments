@@ -564,38 +564,54 @@ def readInputData(
 @dataclass
 class AcceptanceIntegralMatrix:
   """Container class that calculates, stores, and provides access to acceptance integral matrix"""
-  indices:     MomentIndices  # index mapping and iterators
+  indicesMeas: MomentIndices  # index mapping and iterators for measured moments
+  indicesPhys: MomentIndices  # index mapping and iterators for physical moments
   dataSet:     DataSet        # info on data samples
-  _IFlatIndex: npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128] | None = None  # acceptance integral matrix with flat indices; first index is for measured moments, second index is for physical moments; must either be given or set be calling load() or calculate()
+  _IFlatIndex: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbMomentsPhys"], npt.Complex128] | None = None  # acceptance integral matrix with flat indices; first index is for measured moments, second index is for physical moments; must either be given or set be calling load() or calculate()
 
   def __post_init__(self) -> None:
-    # set polarized moments case of `indices` according to info provided by `dataSet`
+    # set polarized moments case of `indicesMeas` and `indicesPhys` according to info provided by `dataSet`
     if self.dataSet.polarization is None:
-      self.indices.setPolarized(False)
+      self.indicesMeas.setPolarized(False)
     else:
-      self.indices.setPolarized(True)
+      self.indicesMeas.setPolarized(True)
+    self.indicesPhys.setPolarized(self.indicesMeas.polarized)
 
   # accessor that guarantees existence of optional field
   @property
-  def matrix(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns acceptance integral matrix"""
+  def matrix(self) -> npt.NDArray[npt.Shape["nmbMomentsMeas, nmbMomentsPhys"], npt.Complex128]:
+    """Returns acceptance integral matrix as 2D NumPy array with flat indices; first index is for measured moments, second index is for physical moments"""
     assert self._IFlatIndex is not None, "self._IFlatIndex must not be None"
     return self._IFlatIndex
 
   @property
-  def matrixNormalized(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns acceptance integral matrix normalized to its diagonal elements"""
+  def matrixNormalized(self) -> npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128]:
+    """Returns square acceptance integral matrix normalized to its diagonal elements"""
+    dim = self.matrix.shape
+    assert dim[0] == dim[1], f"integral matrix must be square, but is ({dim[0]} times {dim[1]})"
     norm = np.diag(np.reciprocal(np.sqrt(np.diag(self.matrix))))  # diagonal matrix with 1 / sqrt(self_ii)
     return norm @ self.matrix @ norm
 
   @property
-  def inverse(self) -> npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]:
-    """Returns inverse of acceptance integral matrix"""
-    return np.linalg.inv(self.matrix)
+  def inverse(self) -> npt.NDArray[npt.Shape["nmbMomentsPhys, nmbMomentsMeas"], npt.Complex128]:
+    """Returns (pseudo-)inverse of acceptance integral matrix"""
+    dim = self.matrix.shape
+    # if dim[0] == dim[1]:
+    if False:
+      print(f"Calculating inverse of square integral matrix")
+      return np.linalg.inv(self.matrix)
+    else:
+      # Iinv, IinvRank = scipy.linalg.pinv(self.matrix, return_rank = True)
+      # print(f"Calculating pseudo-inverse of ({dim[0]} times {dim[1]}) integral matrix with effective rank {IinvRank} vs. full rank {len(self.indicesMeas)}")
+      # return Iinv
+      print(f"Calculating pseudo-inverse of ({dim[0]} times {dim[1]}) integral matrix")
+      return np.linalg.pinv(self.matrix)
 
   @property
-  def eigenDecomp(self) -> tuple[npt.NDArray[npt.Shape["Dim"], npt.Complex128], npt.NDArray[npt.Shape["Dim, Dim"], npt.Complex128]]:
-    """Returns eigenvalues and eigenvectors of acceptance integral matrix"""
+  def eigenDecomp(self) -> tuple[npt.NDArray[npt.Shape["nmbMoments"], npt.Complex128], npt.NDArray[npt.Shape["nmbMoments, nmbMoments"], npt.Complex128]]:
+    """Returns eigenvalues and eigenvectors of square acceptance integral matrix"""
+    dim = self.matrix.shape
+    assert dim[0] == dim[1], f"integral matrix must be square, but is ({dim[0]} times {dim[1]})"
     return np.linalg.eig(self.matrix)
 
   @overload
@@ -631,8 +647,8 @@ class AcceptanceIntegralMatrix:
       return None
     else:
       # turn quantum-number indices to flat indices
-      flatIndexMeas: int | slice = self.indices[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
-      flatIndexPhys: int | slice = self.indices[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
+      flatIndexMeas: int | slice = self.indicesMeas[subscript[0]] if isinstance(subscript[0], QnMomentIndex) else subscript[0]
+      flatIndexPhys: int | slice = self.indicesPhys[subscript[1]] if isinstance(subscript[1], QnMomentIndex) else subscript[1]
       return self._IFlatIndex[flatIndexMeas, flatIndexPhys]
 
   def __str__(self) -> str:
@@ -643,9 +659,13 @@ class AcceptanceIntegralMatrix:
 
   def calculate(self) -> None:
     """Calculates integral matrix of basis functions from (accepted) phase-space data"""
+    # ensure compatibility of moment indices for measured and physical moments
+    assert self.indicesMeas.maxL >= self.indicesPhys.maxL, f"{self.indicesMeas.maxL=} must be equal to or larger than {self.indicesPhys.maxL=}"
+    assert self.indicesMeas.polarized == self.indicesPhys.polarized, f"{self.indicesMeas.polarized=} and {self.indicesPhys.polarized=} must be the same"
+    # read input data
     if self.dataSet.phaseSpaceData is None:
       print("Warning: no phase-space data; using perfect acceptance")
-      self._IFlatIndex = np.eye(len(self.indices), dtype = np.complex128)
+      self._IFlatIndex = np.eye(len(self.indicesMeas), dtype = np.complex128)
       return
     print("Reading phase-space data for the calculation of the acceptance integral matrix")
     beamPol, thetas, phis, Phis, eventWeights = readInputData(
@@ -653,37 +673,41 @@ class AcceptanceIntegralMatrix:
       data         = self.dataSet.phaseSpaceData,
     )
     nmbAccEvents = thetas.size()
-    # calculate basis-function values for physical and measured moments; Eqs. (175) and (176); defined in `basisFunctions.C`
-    nmbMoments = len(self.indices)
-    fMeas: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
-    fPhys: npt.NDArray[npt.Shape["nmbMoments, nmbAccEvents"], npt.Complex128] = np.empty((nmbMoments, nmbAccEvents), dtype = np.complex128)
-    for flatIndex in self.indices.flatIndices:
-      qnIndex = self.indices[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(
-        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+    # calculate basis-function values for measured moments; Eq. (175); defined in `basisFunctions.C`
+    nmbMomentsMeas = len(self.indicesMeas)
+    fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
+    for flatIndexMeas in self.indicesMeas.flatIndices:
+      qnIndexMeas = self.indicesMeas[flatIndexMeas]
+      fMeas[flatIndexMeas] = np.asarray(ROOT.f_meas(
+        qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
         thetas,
         phis,
         Phis,
         beamPol,
       ))
-      fPhys[flatIndex] = np.asarray(ROOT.f_phys(
-        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+    # calculate basis-function values for physical moments; Eq. (176); defined in `basisFunctions.C`
+    nmbMomentsPhys = len(self.indicesPhys)
+    fPhys: npt.NDArray[npt.Shape["nmbMomentsPhys, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsPhys, nmbAccEvents), dtype = np.complex128)
+    for flatIndexPhys in self.indicesPhys.flatIndices:
+      qnIndexPhys = self.indicesPhys[flatIndexPhys]
+      fPhys[flatIndexPhys] = np.asarray(ROOT.f_phys(
+        qnIndexPhys.momentIndex, qnIndexPhys.L, qnIndexPhys.M,
         thetas,
         phis,
         Phis,
         beamPol,
       ))
     # calculate integral-matrix elements; Eq. (178)
-    self._IFlatIndex = np.empty((nmbMoments, nmbMoments), dtype = np.complex128)
-    for flatIndexMeas in self.indices.flatIndices:
-      for flatIndexPhys in self.indices.flatIndices:
+    self._IFlatIndex = np.empty((nmbMomentsMeas, nmbMomentsPhys), dtype = np.complex128)
+    for flatIndexMeas in self.indicesMeas.flatIndices:
+      for flatIndexPhys in self.indicesPhys.flatIndices:
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = ((8 * np.pi**2 / self.dataSet.nmbGenEvents)
           * np.dot(np.multiply(eventWeights, fMeas[flatIndexMeas]), fPhys[flatIndexPhys]))
     assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
 
   def isValid(self) -> bool:
     """Returns whether acceptance integral matrix exists and has correct shape"""
-    return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.indices), len(self.indices))
+    return (self._IFlatIndex is not None) and self._IFlatIndex.shape == (len(self.indicesMeas), len(self.indicesPhys))
 
   def save(
     self,
@@ -702,8 +726,8 @@ class AcceptanceIntegralMatrix:
     """Loads NumPy array that holds the acceptance integral matrix from file with given name"""
     print(f"Loading acceptance integral matrix from file '{fileName}'.")
     array = np.load(fileName)
-    if not array.shape == (len(self.indices), len(self.indices)):
-      raise IndexError(f"NumPy array loaded from file '{fileName}' has wrong shape. Expected {(len(self.indices), len(self.indices))} but got {array.shape}.")
+    if not array.shape == (len(self.indicesMeas), len(self.indicesPhys)):
+      raise IndexError(f"NumPy array loaded from file '{fileName}' has wrong shape. Expected {(len(self.indicesMeas), len(self.indicesPhys))} but got {array.shape}.")
     self._IFlatIndex = array
     assert self.isValid(), f"Integral matrix data are inconsistent"
 
@@ -1601,10 +1625,10 @@ class MomentCalculator:
     forceCalculation: bool = False,
   ) -> None:
     """Calculates acceptance integral matrix"""
-    #TODO extend AcceptanceIntegralMatrix to non-square shape
     self._integralMatrix = AcceptanceIntegralMatrix(
-      indices = self.indicesPhys,
-      dataSet = self.dataSet,
+      indicesMeas = self.indicesMeas,
+      indicesPhys = self.indicesPhys,
+      dataSet     = self.dataSet,
     )
     if forceCalculation:
       self._integralMatrix.calculate()
@@ -1695,9 +1719,7 @@ class MomentCalculator:
       assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
       nmbMomentsPhys = len(self.indicesPhys)
       # get (pseudo-)inverse of acceptance integral matrix
-      # Iinv = integralMatrix.inverse
-      Iinv, IinvRank = scipy.linalg.pinv(integralMatrix, return_rank = True)  # use pseudo-inverse in case integral matrix is not square
-      print(f"Using pseudo-inverse of integral matrix with effective rank {IinvRank} vs. full rank {nmbMomentsMeas}")
+      Iinv = integralMatrix.inverse
       # calculate physical moments, i.e. correct for detection efficiency
       self.HPhys._valsFlatIndex = Iinv @ self.HMeas._valsFlatIndex  # Eq. (83)
       # calculate bootstrap samples for H_phys
@@ -2013,7 +2035,7 @@ class MomentCalculator:
     # use successful fit with lowest NLL value to fill `HPhys`
     if successfulFitMinuits:
       # bestFitMinuit = sorted(successfulFitMinuits, lambda minuit: minuit.fmin.fval)[0]  # select fit with lowest NLL
-      bestFitMinuit = successfulFitMinuits[0]  #TODO clarify why taking the first successful fit is okay
+      bestFitMinuit = successfulFitMinuits[0]  #TODO clarify why taking the first successful fit is okay; shouldn't the above be better?
       self._convertIminuitToMomentResult(bestFitMinuit, normalize = normalize)
     else:
       print(f"Warning: No successful fits found. Cannot set physical moment values for kinematic bin {self.binCenters}.")
