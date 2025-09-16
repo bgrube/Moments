@@ -559,7 +559,8 @@ def makeAllPlots(
         # load integral matrix
         binLabel = MomentCalculator.binLabel(HPhys)
         accIntMatrix = AcceptanceIntegralMatrix(
-          indices = HPhys.indices,
+          indicesMeas = HPhys.indices,  #TODO use correct indices here
+          indicesPhys = HPhys.indices,
           dataSet = DataSet(
             data           = None,
             phaseSpaceData = None,
