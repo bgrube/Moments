@@ -127,8 +127,8 @@ def calculateAllMoments(
       print(f"Calculating acceptance integral matrices for {len(momentCalculatorsFirstSample)} bins using {nmbOpenMpThreads} OpenMP threads")
       momentCalculatorsFirstSample.calculateIntegralMatrices(forceCalculation = True)
       print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{momentCalculatorsFirstSample[0].integralMatrix}")
-      eigenVals, _ = momentCalculatorsFirstSample[0].integralMatrix.eigenDecomp
-      print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
+      # eigenVals, _ = momentCalculatorsFirstSample[0].integralMatrix.eigenDecomp
+      # print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
     # assign integral matrices to `MomentCalculators` for other data samples
     labelsOtherSamples = (label for label in momentCalculators.keys() if label is not labelFirstSample)
     for labelDataSample in labelsOtherSamples:
