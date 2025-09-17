@@ -109,7 +109,7 @@ class AnalysisConfig:
   @property
   def outFileDirName(self) -> str:
     """Returns name of directory into which all output will be written"""
-    return f"{self.outFileDirBaseName}.maxL_{self.maxL}"
+    return f"{self.outFileDirBaseName}.maxL_{self.maxL if isinstance(self.maxL, int) else f'{self.maxL[0]}_{self.maxL[1]}'}"
 
   @property
   def outFileNamePrefix(self) -> str:
