@@ -22,7 +22,6 @@ import numpy as np
 import nptyping as npt
 import os
 import pickle
-import scipy
 import textwrap
 from typing import (
   Any,
@@ -596,14 +595,10 @@ class AcceptanceIntegralMatrix:
   def inverse(self) -> npt.NDArray[npt.Shape["nmbMomentsPhys, nmbMomentsMeas"], npt.Complex128]:
     """Returns (pseudo-)inverse of acceptance integral matrix"""
     dim = self.matrix.shape
-    # if dim[0] == dim[1]:
-    if False:
+    if dim[0] == dim[1]:
       print(f"Calculating inverse of square integral matrix")
       return np.linalg.inv(self.matrix)
     else:
-      # Iinv, IinvRank = scipy.linalg.pinv(self.matrix, return_rank = True)
-      # print(f"Calculating pseudo-inverse of ({dim[0]} times {dim[1]}) integral matrix with effective rank {IinvRank} vs. full rank {len(self.indicesMeas)}")
-      # return Iinv
       print(f"Calculating pseudo-inverse of ({dim[0]} times {dim[1]}) integral matrix")
       return np.linalg.pinv(self.matrix)
 
@@ -1711,12 +1706,13 @@ class MomentCalculator:
     Vphys_aug = np.empty(Vmeas_aug.shape, dtype = np.complex128)
     if integralMatrix is None:
       # ideal detector: physical moments are identical to measured moments
+      #TODO this assertion is too strict, it is sufficient that maxL of measured moments is larger than maxL of physical moments and then only the corresponding subset of the measured moments and covariances is copied
       assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
       np.copyto(self.HPhys._valsFlatIndex, self.HMeas._valsFlatIndex)
       np.copyto(Vphys_aug, Vmeas_aug)
       np.copyto(self.HPhys._bsSamplesFlatIndex, self.HMeas._bsSamplesFlatIndex)
     else:
-      assert self.indicesMeas == self.indicesPhys, f"Incompatible moment indices: {self.indicesMeas=} vs. {self.indicesPhys=}"
+      assert self.indicesMeas.maxL >= self.indicesPhys.maxL, f"{self.indicesMeas.maxL=} must be equal to or larger than {self.indicesPhys.maxL=}"
       nmbMomentsPhys = len(self.indicesPhys)
       # get (pseudo-)inverse of acceptance integral matrix
       Iinv = integralMatrix.inverse
@@ -1729,7 +1725,7 @@ class MomentCalculator:
         self.HPhys._bsSamplesFlatIndex[:, bsSampleIndex] = Iinv @ self.HMeas._bsSamplesFlatIndex[:, bsSampleIndex]
       # perform linear uncertainty propagation
       J = Iinv  # Jacobian of efficiency correction; Eq. (101)
-      Jconj = np.zeros((nmbMomentsPhys, nmbMomentsPhys), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
+      Jconj = np.zeros((nmbMomentsPhys, nmbMomentsMeas), dtype = np.complex128)  # conjugate Jacobian; Eq. (101)
       J_aug = np.block([
         [J,                   Jconj],
         [np.conjugate(Jconj), np.conjugate(J)],
