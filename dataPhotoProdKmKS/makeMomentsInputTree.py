@@ -265,7 +265,7 @@ if __name__ == "__main__":
   useRDataFrame   = True
 
   # Fall 2018 data
-  dataToProcess: tuple[tuple[str, str, float, DataSetType], ...] = (  # (data directory, file name, event weight, use MC truth, data set type)
+  dataToProcess: tuple[tuple[str, str, float, DataSetType], ...] = (  # (data directory, file name, event weight, data set type)
     ("data",       "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       DataSetType.RDSig),
     ("data",       "pipkmks_100_11100_B4_M16_SIDEDBANDS_SKIM_A2.root",   -1.0 / 6.0, DataSetType.RDBkg),
     ("phaseSpace", "pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root",        1.0,       DataSetType.MCSig),

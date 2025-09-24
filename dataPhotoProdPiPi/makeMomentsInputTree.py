@@ -5,10 +5,12 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import (
+  dataclass,
+  field,
+)
 from enum import Enum
 import functools
-from re import sub
 import numpy as np
 import pandas as pd
 
@@ -33,8 +35,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # data period : {beam ori
   "2017_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3537,
-      # PhiLab = 1.8,
-      PhiLab = 1.77,
+      PhiLab = 1.8,
     ),
     # "PERP_45" : BeamPolInfo(
     #   pol    = 0.3484,
@@ -358,16 +359,18 @@ class SubSystemInfo:
 @dataclass
 class DataSetInfo:
   """Stores information about a data set"""
-  subsystem:       SubSystemInfo
-  inputFormat:     InputDataFormatType
-  dataPeriod:      str
-  tBinLabel:       str
-  beamOrientation: str
-  inputFileNames:  tuple[str, ...] | tuple[tuple[str, ...], tuple[str, ...]]  # either a tuple of input file names for MC or a tuple with 2 tuples of input file names for real data (signal region, background region)
-  inputTreeName:   str
-  outputFileName:  str
-  outputTreeName:  str
-  outputColumns:   tuple[str, ...]
+  subsystem:            SubSystemInfo
+  inputFormat:          InputDataFormatType
+  dataPeriod:           str
+  tBinLabel:            str
+  beamOrientation:      str
+  inputFileNames:       tuple[str, ...] | tuple[tuple[str, ...], tuple[str, ...]]  # either a tuple of input file names for MC or a tuple with 2 tuples of input file names for real data (signal region, background region)
+  inputTreeName:        str
+  outputFileName:       str
+  outputTreeName:       str
+  outputColumns:        tuple[str, ...]
+  additionalColumnDefs: dict[str, str] = field(default_factory=dict)
+  additionalFilterDefs: list[str]      = field(default_factory=list)
 
 
 if __name__ == "__main__":
@@ -390,6 +393,16 @@ if __name__ == "__main__":
   tBinLabels            = ("tbin_0.1_0.2", )
   outputDataBaseDirName = "./polarized"
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
+  additionalColumnDefs  = {}
+  additionalFilterDefs  = []
+  if False:  # cut away forward tracks in reconstructed data
+    lvs = lorentzVectors(dataFormat = InputDataFormatType.ampToolsRdReco)
+    additionalColumnDefs = {
+      "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['lvPip']})",
+      "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['lvPim']})",
+    }
+    additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
+
   subsystems: tuple[SubSystemInfo, ...] = (
       SubSystemInfo(pairLabel = "PiPi", lvALabel = "lvPip", lvBLabel = "lvPim",      lvRecoilLabel = "lvRecoil"),
       # SubSystemInfo(pairLabel = "PipP", lvALabel = "lvPip", lvBLabel = "lvRecoil", lvRecoilLabel = "lvPim"   ),
@@ -408,17 +421,19 @@ if __name__ == "__main__":
         for beamOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
           print(f"Setting up beam orientation '{beamOrientation}': pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg")
           dataSetRd = DataSetInfo(  # real data (signal + background)
-            subsystem       = subsystem,
-            inputFormat     = InputDataFormatType.ampToolsRdReco,
-            dataPeriod      = dataPeriod,
-            tBinLabel       = tBinLabel,
-            beamOrientation = beamOrientation,
-            inputFileNames  = ((f"{inputDataDirName}/amptools_tree_data_{beamOrientation}_30274_31057.root", ),
-                               (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}_30274_31057.root",)),
-            inputTreeName   = "kin",
-            outputFileName  = f"{outputDataDirName}/data_flat_{beamOrientation}.root",
-            outputTreeName  = subsystem.pairLabel,
-            outputColumns   = outputColumns + ("eventWeight", ),
+            subsystem            = subsystem,
+            inputFormat          = InputDataFormatType.ampToolsRdReco,
+            dataPeriod           = dataPeriod,
+            tBinLabel            = tBinLabel,
+            beamOrientation      = beamOrientation,
+            inputFileNames       = ((f"{inputDataDirName}/amptools_tree_data_{beamOrientation}_30274_31057.root", ),
+                                    (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}_30274_31057.root",)),
+            inputTreeName        = "kin",
+            outputFileName       = f"{outputDataDirName}/data_flat_{beamOrientation}.root",
+            outputTreeName       = subsystem.pairLabel,
+            outputColumns        = outputColumns + ("eventWeight", ),
+            additionalColumnDefs = additionalColumnDefs,
+            additionalFilterDefs = additionalFilterDefs,
           )
           dataSetsPol.append(dataSetRd)
           dataSetPsAcc = deepcopy(dataSetRd)  # accepted phase-space MC
@@ -429,10 +444,12 @@ if __name__ == "__main__":
           dataSetPsAcc.outputColumns  = outputColumns
           dataSetsPol.append(dataSetPsAcc)
           dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
-          dataSetPsGen.inputFormat    = InputDataFormatType.ampToolsMcTruth
-          dataSetPsGen.inputFileNames = (f"{inputDataDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",
-                                         f"{inputDataDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
-          dataSetPsGen.outputFileName = f"{outputDataDirName}/phaseSpace_gen_flat_{beamOrientation}.root"
+          dataSetPsGen.inputFormat          = InputDataFormatType.ampToolsMcTruth
+          dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",
+                                               f"{inputDataDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+          dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat_{beamOrientation}.root"
+          dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
+          dataSetPsGen.additionalFilterDefs = []
           dataSetsPol.append(dataSetPsGen)
 
   dataSets = dataSetsPol
@@ -456,20 +473,14 @@ if __name__ == "__main__":
     print(f"Converting {dataSet.inputFormat} data for {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamOrientation} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     defineDataFrameColumns(
-      df          = df,
-      lvTarget    = lvs["lvTarget"],
-      lvBeam      = lvs["lvBeam"],
-      lvRecoil    = lvs[dataSet.subsystem.lvRecoilLabel],
-      lvA         = lvs[dataSet.subsystem.lvALabel],
-      lvB         = lvs[dataSet.subsystem.lvBLabel],
-      beamPolInfo = BEAM_POL_INFOS[dataSet.dataPeriod][dataSet.beamOrientation],
-      frame       = frame,
+      df                   = df,
+      lvTarget             = lvs["lvTarget"],
+      lvBeam               = lvs["lvBeam"],
+      lvRecoil             = lvs[dataSet.subsystem.lvRecoilLabel],
+      lvA                  = lvs[dataSet.subsystem.lvALabel],
+      lvB                  = lvs[dataSet.subsystem.lvBLabel],
+      beamPolInfo          = BEAM_POL_INFOS[dataSet.dataPeriod][dataSet.beamOrientation],
+      frame                = frame,
+      additionalColumnDefs = dataSet.additionalColumnDefs,
+      additionalFilterDefs = dataSet.additionalFilterDefs
     ).Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
-
-
-  # if applyCutsOnForwardTracks:
-  #   df = (
-  #     df.Define("DistFdcPip", f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvPip})")
-  #       .Define("DistFdcPim", f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvPim})")
-  #       .Filter("(DistFdcPip > 4) and (DistFdcPim > 4)")  # require minimum distance of tracks at FDC position [cm]
-  #   )
