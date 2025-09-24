@@ -224,6 +224,9 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg.method = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # subtract background at moment level
   # cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
+  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
+  # cfg.massBinning = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
+  # cfg.polarization = None  # treat data as unpolarized
 
   tBinLabels = (
     "tbin_0.1_0.2",
@@ -240,22 +243,26 @@ if __name__ == "__main__":
     # "Unpol",
   )
   maxLs = (
-    (4, 4),
+    # 4,
+    # (4, 6),
+    # (4, 8),
+    # (4, 12),
+    (4, 16),
+    (4, 20),
     # 5,
     # 6,
     # 7,
     # 8,
+    (8, 16),
+    (8, 20),
   )
-  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
-  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
-  # outFileDirBaseNameCommon = f"{cfg.outFileDirBaseName}.ideal"
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
-      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.dataFileName       = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
+      cfg.psAccFileName      = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
+      cfg.psGenFileName      = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Performing moment analysis for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")

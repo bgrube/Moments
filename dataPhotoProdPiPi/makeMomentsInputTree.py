@@ -389,9 +389,8 @@ if __name__ == "__main__":
   frame = CoordSysType.Hf  # helicity frame: use z_HF = -p_recoil
 
   # polarized data
-  inputDataBaseDirName  = "../dataPhotoProdPiPiPol/pipi_gluex_coh"
+  dataBaseDirName       = "./polarized"
   tBinLabels            = ("tbin_0.1_0.2", )
-  outputDataBaseDirName = "./polarized"
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   additionalColumnDefs  = {}
   additionalFilterDefs  = []
@@ -415,8 +414,8 @@ if __name__ == "__main__":
       print(f"Setting up t bin '{tBinLabel}':")
       for subsystem in subsystems:
         print(f"Setting up subsystem '{subsystem}':")
-        inputDataDirName  = f"{inputDataBaseDirName}/{tBinLabel}"
-        outputDataDirName = f"{outputDataBaseDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+        inputDataDirName  = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex"
+        outputDataDirName = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
         os.makedirs(outputDataDirName, exist_ok = True)
         for beamOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
           print(f"Setting up beam orientation '{beamOrientation}': pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg")

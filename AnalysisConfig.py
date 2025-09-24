@@ -205,9 +205,9 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
 )
 # configuration for polarized pi+ pi- data
 CFG_POLARIZED_PIPI = AnalysisConfig(
-  dataFileName       = "./dataPhotoProdPiPiPol/data_flat_0.0.root",
-  psAccFileName      = "./dataPhotoProdPiPiPol/phaseSpace_acc_flat.root",
-  psGenFileName      = "./dataPhotoProdPiPiPol/phaseSpace_gen_flat.root",
+  dataFileName       = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/data_flat_0.0.root",
+  psAccFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat.root",
+  psGenFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_gen_flat.root",
   polarization       = "beamPol", # read polarization from tree column
   maxL               = 4,
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",

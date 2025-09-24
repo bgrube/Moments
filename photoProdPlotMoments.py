@@ -648,7 +648,6 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  compareTo = None
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
@@ -656,18 +655,22 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.JPAC
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  compareTo = None
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  plotCompareUncert = True
-  # plotCompareUncert = False
+  # plotCompareUncert = True
+  plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0
   # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / (10 MeV * 0.1 GeV^2 * L) with L(Fall 2018) = 0.1305 pb^{-1}
   normalizeComparisonMoments = True  # whether to scale comparison moments to GlueX moments
   # normalizeComparisonMoments = False
   yAxisUnit = ""
   # yAxisUnit = " [#mub/GeV^{3}]"
+  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
+  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
+  # cfg.polarization = None  # treat data as unpolarized
 
   tBinLabels = (
     "tbin_0.1_0.2",
@@ -684,23 +687,23 @@ if __name__ == "__main__":
     # "Unpol",
   )
   maxLs = (
-    (4, 4),
     # 4,
+    (4, 16),
+    (4, 20),
     # 5,
     # 6,
     # 7,
     # 8,
+    (8, 16),
+    (8, 20),
   )
-  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
-  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
-  # cfg.polarization = None  # treat data as unpolarized
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for tBinLabel in tBinLabels:
     for beamPolLabel in beamPolLabels:
-      cfg.dataFileName       = f"./dataPhotoProdPiPiPol/{tBinLabel}/data_flat_{beamPolLabel}.root"
-      cfg.psAccFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-      cfg.psGenFileName      = f"./dataPhotoProdPiPiPol/{tBinLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      cfg.dataFileName       = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
+      cfg.psAccFileName      = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
+      cfg.psGenFileName      = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
       cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
       for maxL in maxLs:
         print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
