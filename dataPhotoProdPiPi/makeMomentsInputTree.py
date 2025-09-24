@@ -366,14 +366,15 @@ class DataSetInfo:
   inputFormat:          InputDataFormatType
   dataPeriod:           str
   tBinLabel:            str
-  beamOrientation:      str
   inputFileNames:       tuple[str, ...] | tuple[tuple[str, ...], tuple[str, ...]]  # either a tuple of input file names for MC or a tuple with 2 tuples of input file names for real data (signal region, background region)
   inputTreeName:        str
   outputFileName:       str
   outputTreeName:       str
   outputColumns:        tuple[str, ...]
-  additionalColumnDefs: dict[str, str] = field(default_factory=dict)
-  additionalFilterDefs: list[str]      = field(default_factory=list)
+  beamOrientation:      str                = ""
+  beamPolInfo:          BeamPolInfo | None = None  # photon beam polarization
+  additionalColumnDefs: dict[str, str]     = field(default_factory=dict)
+  additionalFilterDefs: list[str]          = field(default_factory=list)
 
 
 if __name__ == "__main__":
@@ -429,6 +430,7 @@ if __name__ == "__main__":
             dataPeriod           = dataPeriod,
             tBinLabel            = tBinLabel,
             beamOrientation      = beamOrientation,
+            beamPolInfo          = beamPolInfo,
             inputFileNames       = ((f"{inputDataDirName}/amptools_tree_data_{beamOrientation}.root",  ),
                                     (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}.root", )),
             inputTreeName        = "kin",
@@ -481,7 +483,7 @@ if __name__ == "__main__":
       lvRecoil             = lvs[dataSet.subsystem.lvRecoilLabel],
       lvA                  = lvs[dataSet.subsystem.lvALabel],
       lvB                  = lvs[dataSet.subsystem.lvBLabel],
-      beamPolInfo          = BEAM_POL_INFOS[dataSet.dataPeriod][dataSet.beamOrientation],
+      beamPolInfo          = dataSet.beamPolInfo,
       frame                = frame,
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
