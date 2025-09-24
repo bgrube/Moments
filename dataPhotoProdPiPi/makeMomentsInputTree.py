@@ -429,8 +429,8 @@ if __name__ == "__main__":
             dataPeriod           = dataPeriod,
             tBinLabel            = tBinLabel,
             beamOrientation      = beamOrientation,
-            inputFileNames       = ((f"{inputDataDirName}/amptools_tree_data_{beamOrientation}_30274_31057.root", ),
-                                    (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}_30274_31057.root",)),
+            inputFileNames       = ((f"{inputDataDirName}/amptools_tree_data_{beamOrientation}.root",  ),
+                                    (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}.root", )),
             inputTreeName        = "kin",
             outputFileName       = f"{outputDataDirName}/data_flat_{beamOrientation}.root",
             outputTreeName       = subsystem.pairLabel,
@@ -441,15 +441,13 @@ if __name__ == "__main__":
           dataSetsPol.append(dataSetRd)
           dataSetPsAcc = deepcopy(dataSetRd)  # accepted phase-space MC
           dataSetPsAcc.inputFormat    = InputDataFormatType.ampToolsMcReco
-          dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/MC_100M/amptools_tree_accepted_30274_31057_noMcut.root",
-                                         f"{inputDataDirName}/MC_10M_rho_t/amptools_tree_accepted_30274_31057_notcut.root")
+          dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/amptools_tree_accepted*.root", )
           dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat_{beamOrientation}.root"
           dataSetPsAcc.outputColumns  = outputColumns
           dataSetsPol.append(dataSetPsAcc)
           dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
           dataSetPsGen.inputFormat          = InputDataFormatType.ampToolsMcTruth
-          dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/MC_100M/amptools_tree_thrown_30274_31057.root",
-                                               f"{inputDataDirName}/MC_10M_rho_t/amptools_tree_thrown_30274_31057.root")
+          dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/amptools_tree_thrown*.root", )
           dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat_{beamOrientation}.root"
           dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
           dataSetPsGen.additionalFilterDefs = []
@@ -465,6 +463,7 @@ if __name__ == "__main__":
         dataSigRegionFileNames  = dataSet.inputFileNames[0],
         dataBkgRegionFileNames  = dataSet.inputFileNames[1],
         treeName                = dataSet.inputTreeName,
+        #TODO fix file names for friend trees; derive from input file names
         friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamOrientation}.root.weights",
         friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamOrientation}.root.weights",
       )
