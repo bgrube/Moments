@@ -31,7 +31,7 @@ class BeamPolInfo:
 
 # polarization values from Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
 # beam polarization angles in lab frame taken from `Lab Phi` column of tables 2 to 5 in GlueX-doc-3977
-BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # data period : {beam orientation : BeamPolInfo(...)}
+BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {beam orientation : BeamPolInfo(...)}
   "2017_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3537,
@@ -49,6 +49,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # data period : {beam ori
     #   pol    = 0.3512,
     #   PhiLab = -41.6,
     # ),
+    # "AMO" : None,
   },
   # "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
   #   "PARA_0" : BeamPolInfo(
@@ -67,6 +68,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # data period : {beam ori
   #     pol    = 0.3517,
   #     PhiLab = -42.4,
   #   ),
+  #   "AMO" : None,
   # },
   # "2018_08" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
   #   "PARA_0" : BeamPolInfo(
@@ -85,6 +87,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo]] = {  # data period : {beam ori
   #     pol    = 0.3523,
   #     PhiLab = -42.1,
   #   ),
+  #   "AMO" : None,
   # },
 }
 
@@ -386,10 +389,10 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  frame = CoordSysType.Hf  # helicity frame: use z_HF = -p_recoil
+  frame = CoordSysType.Hf  # helicity frame, i.e. z_HF = -p_recoil
 
-  # polarized data
-  dataBaseDirName       = "./polarized"
+  # set up polarized pi+pi- real data
+  dataDirName           = "./polarized"
   tBinLabels            = ("tbin_0.1_0.2", )
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   additionalColumnDefs  = {}
@@ -414,11 +417,12 @@ if __name__ == "__main__":
       print(f"Setting up t bin '{tBinLabel}':")
       for subsystem in subsystems:
         print(f"Setting up subsystem '{subsystem}':")
-        inputDataDirName  = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex"
-        outputDataDirName = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+        inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
+        outputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
         os.makedirs(outputDataDirName, exist_ok = True)
         for beamOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
-          print(f"Setting up beam orientation '{beamOrientation}': pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg")
+          print(f"Setting up beam orientation '{beamOrientation}'"
+                + (": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           dataSetRd = DataSetInfo(  # real data (signal + background)
             subsystem            = subsystem,
             inputFormat          = InputDataFormatType.ampToolsRdReco,
@@ -481,5 +485,5 @@ if __name__ == "__main__":
       beamPolInfo          = BEAM_POL_INFOS[dataSet.dataPeriod][dataSet.beamOrientation],
       frame                = frame,
       additionalColumnDefs = dataSet.additionalColumnDefs,
-      additionalFilterDefs = dataSet.additionalFilterDefs
+      additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
