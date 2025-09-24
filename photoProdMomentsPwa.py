@@ -91,11 +91,11 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
 
   tBinLabels = (
-    # "tbin_0.1_0.2",
+    "tbin_0.1_0.2",
     # "tbin_0.1_0.2.Hf.pi+",
     # "tbin_0.1_0.2.Gj.pi+",
     # "tbin_0.1_0.2.trackDistFdc",
-    "tbin_0.2_0.3",
+    # "tbin_0.2_0.3",
   )
   beamPolLabels = (
     # "PARA_0",
@@ -105,9 +105,9 @@ if __name__ == "__main__":
   maxLs = (
     4,
     # 5,
-    6,
+    # 6,
     # 7,
-    8,
+    # 8,
   )
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
@@ -165,8 +165,8 @@ if __name__ == "__main__":
               ]
             else:
               # polarized data
-              # pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD.txt"
-              pwaAmplitudesFileName = "./dataPhotoProdPiPiPol/PWA_S_P_D/amplitudes_SPD_100M.txt"
+              # pwaAmplitudesFileName = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD.txt"
+              pwaAmplitudesFileName = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD_100M.txt"
               waves = [  # order must match columns in file with partial-wave amplitudes
                 # S-waves
                 ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),
