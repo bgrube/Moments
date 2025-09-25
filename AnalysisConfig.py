@@ -34,13 +34,14 @@ class AnalysisConfig:
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   # Spring 2017 low-energy data
-  dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/2017_01-ver04-70/tbin_0.4_0.5/data_flat.PiPi.root"  # file with real data to analyze
-  psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2017_01-ver04-70/tbin_0.4_0.5/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
-  psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2017_01-ver04-70/tbin_0.4_0.5/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
+  dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
+  psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC
+  psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC
+  #TODO make it easier to switch data
   # # Fall 2018 low-energy data
-  # dataFileName:             str                       = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/data_flat.PiPi.root"  # file with real data to analyze
-  # psAccFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/phaseSpace_acc_flat.PiPi.root"  # file with accepted phase-space MC
-  # psGenFileName:            str | None                = "./dataPhotoProdPiPiUnpol/2018_08-ver02-05/tbin_0.4_0.5/phaseSpace_gen_flat.PiPi.root"  # file with generated phase-space MC
+  # dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
+  # psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC
+  # psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC
   polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
   maxL:                     int | tuple[int, int]     = 8  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
   outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
@@ -215,9 +216,9 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
 )
 # configuration for unpolarized pi+ p data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
-  dataFileName       = "./dataPhotoProdPiPiUnpol/data_flat.PipP.root",
-  psAccFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_acc_flat.PipP.root",
-  psGenFileName      = "./dataPhotoProdPiPiUnpol/phaseSpace_gen_flat.PipP.root",
+  dataFileName       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/data_flat.root",
+  psAccFileName      = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/phaseSpace_acc_flat.root",
+  psGenFileName      = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/phaseSpace_gen_flat.root",
   maxL               = 4,
   outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
   binVarMass         = KinematicBinningVariable(
