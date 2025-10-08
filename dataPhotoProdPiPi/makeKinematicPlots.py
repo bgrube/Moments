@@ -238,20 +238,19 @@ if __name__ == "__main__":
 
   dataDirName          = "./polarized"
   dataPeriods          = ("2018_08", )
-  tBinLabels           = ("tbin_0.1_0.2", )
-  # tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
+  tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
   additionalColumnDefs = {}
   additionalFilterDefs = []
   treeName             = "kin"
   inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
     InputDataType.realData : InputDataFormat.ampTools,
-    # InputDataType.mcReco   : InputDataFormat.ampTools,
-    # InputDataType.mcTruth  : InputDataFormat.ampTools,
+    InputDataType.mcReco   : InputDataFormat.ampTools,
+    InputDataType.mcTruth  : InputDataFormat.ampTools,
   }
   subsystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-      SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
-      SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
-      # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip"   ),
+      SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"),
+      # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#minus}"),
+      # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip",    pairTLatexLabel = "p#pi^{#plus}"),
     )
 
   for dataPeriod in dataPeriods:

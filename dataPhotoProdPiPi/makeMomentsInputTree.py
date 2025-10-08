@@ -371,10 +371,11 @@ def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
 @dataclass
 class SubSystemInfo:
   """Stores information about a two-body subsystem (particle pair)"""
-  pairLabel:     str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
-  lvALabel:      str  # label of Lorentz-vector of daughter A (analyzer)
-  lvBLabel:      str  # label of Lorentz-vector of daughter B
-  lvRecoilLabel: str  # label of Lorentz-vector of recoil particle
+  pairLabel:       str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
+  lvALabel:        str  # label of Lorentz-vector of daughter A (analyzer)
+  lvBLabel:        str  # label of Lorentz-vector of daughter B
+  lvRecoilLabel:   str  # label of Lorentz-vector of recoil particle
+  pairTLatexLabel: str = ""   # optional LaTeX label for particle pair (e.g. "#pi#pi" for pi+ pi- pair)
 
 class InputDataType(Enum):
   realData = 1  # reconstructed real data
