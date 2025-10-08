@@ -94,28 +94,29 @@ def bookHistogram(
   applyWeights: bool,
 ) -> ROOT.TH1D | ROOT.TH2D | ROOT.TH3D:
   """Books a single histogram according to the given definition and returns it"""
-  histDimension = len(histDef.binning)
+  # apply optional filter
   dfHist = df.Filter(histDef.filter) if histDef.filter else df
+  # get functions to book histogram of correct dimension
+  histDimension = len(histDef.binning)
+  if histDimension not in (1, 2, 3):
+    raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
+  THNDModelFunc = (
+    ROOT.RDF.TH1DModel if histDimension == 1 else
+    ROOT.RDF.TH2DModel if histDimension == 2 else
+    ROOT.RDF.TH3DModel
+  )
+  dfHistoNDFunc = (
+    dfHist.Histo1D if histDimension == 1 else
+    dfHist.Histo2D if histDimension == 2 else
+    dfHist.Histo3D
+  )
   # flatten binning into single tuple
   binning = tuple(entry for binningTuple in histDef.binning for entry in binningTuple)
+  # book histogram with or without event weights
   if applyWeights:
-    if   histDimension == 1:
-      return dfHist.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
-    elif histDimension == 2:
-      return dfHist.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
-    elif histDimension == 3:
-      return dfHist.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
-    else:
-      raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
+    return dfHistoNDFunc(THNDModelFunc(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
   else:
-    if   histDimension == 1:
-      return dfHist.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *binning), *histDef.columnNames)
-    elif histDimension == 2:
-      return dfHist.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *binning), *histDef.columnNames)
-    elif histDimension == 3:
-      return dfHist.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *binning), *histDef.columnNames)
-    else:
-      raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
+    return dfHistoNDFunc(THNDModelFunc(histDef.name, histDef.title, *binning), *histDef.columnNames)
 
 
 def bookHistograms(
@@ -154,6 +155,9 @@ def makePlots(
   print(f"Writing histograms to '{outRootFileName}'")
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
+    ROOT.gStyle.SetOptStat("i")
+    # ROOT.gStyle.SetOptStat(1111111)
+    ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
     canv = ROOT.TCanvas()
     if "TH2" in hist.ClassName() and str(hist.GetName()).startswith("mass"):
       canv.SetLogz(1)
@@ -176,9 +180,6 @@ if __name__ == "__main__":
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
-  ROOT.gStyle.SetOptStat("i")
-  # ROOT.gStyle.SetOptStat(1111111)
-  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
