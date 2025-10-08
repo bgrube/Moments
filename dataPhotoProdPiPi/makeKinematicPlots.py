@@ -78,12 +78,44 @@ def defineColumnsForPlots(
 @dataclass
 class HistogramDefinition:
   """Stores information needed to define a histogram"""
-  name:       str  # name of the histogram
-  title:      str  # title of the histogram
-  binning:    tuple[int, float, float] | tuple[tuple[int, float, float], tuple[int, float, float]]
-              # 1D binning: (number of bins, minimum value, maximum value)
-              # 2D binning: ((number of x bins, minimum x value, maximum x value), (number of y bins, minimum y value, maximum y value))
-  columnName: str  # name of RDataFrame column to plot
+  name:        str  # name of the histogram
+  title:       str  # title of the histogram
+  binning:     tuple[tuple[int, float, float], ] | tuple[tuple[int, float, float], tuple[int, float, float]] | tuple[tuple[int, float, float], tuple[int, float, float], tuple[int, float, float]]
+               # 1D binning: ((number of x bins, minimum x value, maximum x value), )
+               # 2D binning: ((number of x bins, minimum x value, maximum x value), (number of y bins, minimum y value, maximum y value))
+               # 3D binning: ((number of x bins, minimum x value, maximum x value), (number of y bins, minimum y value, maximum y value), (number of z bins, minimum z value, maximum z value))
+  columnNames: tuple[str, ] | tuple[str, str] | tuple[str, str, str]  # name(s) of RDataFrame column(s) to plot
+  filter:      str = ""  # optional filter condition to apply to the histogram
+
+
+def bookHistogram(
+  df:           ROOT.RDataFrame,
+  histDef:      HistogramDefinition,
+  applyWeights: bool,
+) -> ROOT.TH1D | ROOT.TH2D | ROOT.TH3D:
+  """Books a single histogram according to the given definition and returns it"""
+  histDimension = len(histDef.binning)
+  dfHist = df.Filter(histDef.filter) if histDef.filter else df
+  # flatten binning into single tuple
+  binning = tuple(entry for binningTuple in histDef.binning for entry in binningTuple)
+  if applyWeights:
+    if   histDimension == 1:
+      return dfHist.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
+    elif histDimension == 2:
+      return dfHist.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
+    elif histDimension == 3:
+      return dfHist.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
+    else:
+      raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
+  else:
+    if   histDimension == 1:
+      return dfHist.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *binning), *histDef.columnNames)
+    elif histDimension == 2:
+      return dfHist.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *binning), *histDef.columnNames)
+    elif histDimension == 3:
+      return dfHist.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *binning), *histDef.columnNames)
+    else:
+      raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
 
 
 def bookHistograms(
@@ -106,25 +138,7 @@ def bookHistograms(
   # book histograms
   hists = []
   for histDef in histDefs:
-    histDimension = len(histDef.binning)
-    if applyWeights:
-      if histDimension == 1:
-        hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *(histDef.binning[0])), *histDef.columnNames, "eventWeight"))
-      elif histDimension == 2:
-        hists.append(df.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1])), *histDef.columnNames, "eventWeight"))
-      elif histDimension == 3:
-        hists.append(df.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1]), *(histDef.binning[2])), *histDef.columnNames, "eventWeight"))
-      else:
-        raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
-    else:
-      if histDimension == 1:
-        hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *(histDef.binning[0])), *histDef.columnNames))
-      elif histDimension == 2:
-        hists.append(df.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1])), *histDef.columnNames))
-      elif histDimension == 3:
-        hists.append(df.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1]), *(histDef.binning[2])), *histDef.columnNames, "eventWeight"))
-      else:
-        raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
+    hists.append(bookHistogram(df, histDef, applyWeights))
   return hists
 
 
