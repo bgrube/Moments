@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import os
 
 import ROOT
@@ -72,6 +73,74 @@ def defineColumnsForPlots(
   print(f"!!! {df.GetDefinedColumnNames()=}")
   print(f"!!! {dfResult.GetDefinedColumnNames()=}")
   return dfResult
+
+
+@dataclass
+class HistogramDefinition:
+  """Stores information needed to define a histogram"""
+  name:       str  # name of the histogram
+  title:      str  # title of the histogram
+  binning:    tuple[int, float, float] | tuple[tuple[int, float, float], tuple[int, float, float]]
+              # 1D binning: (number of bins, minimum value, maximum value)
+              # 2D binning: ((number of x bins, minimum x value, maximum x value), (number of y bins, minimum y value, maximum y value))
+  columnName: str  # name of RDataFrame column to plot
+
+
+def bookHistograms(
+  df:            ROOT.RDataFrame,
+  inputDataType: InputDataType,
+  subsystem:     SubSystemInfo,
+) -> list[ROOT.TH1D | ROOT.TH2D | ROOT.TH3D]:
+  """Books histograms for kinematic plots and returns the list of histograms"""
+  applyWeights = inputDataType == InputDataType.realData and df.HasColumn("eventWeight")
+  yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
+  # define 1D histograms
+  histDefs: list[HistogramDefinition] = [
+    HistogramDefinition("Ebeam",          ";E_{beam} [GeV];"                    + yAxisLabel, (100, 8,   9), "Ebeam"),
+    HistogramDefinition("momLabP",        ";p_{p} [GeV];"                       + yAxisLabel, (100, 0,   1), "momLabP"),
+    HistogramDefinition("momLabPip",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, (100, 0,  10), "momLabPip"),
+    HistogramDefinition("momLabPim",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, (100, 0,  10), "momLabPim"),
+    HistogramDefinition("thetaDegLabP",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, (100, 0, 100), "thetaDegLabP"),
+    HistogramDefinition("thetaDegLabPip", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, (100, 0,  30), "thetaDegLabPip"),
+    HistogramDefinition("thetaDegLabPim", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, (100, 0,  30), "thetaDegLabPim"),
+  ]
+  # HistogramDefinition("minusT",   ";#minus t [GeV^{2}];" + yAxisLabel, (100, 0,    1),    "minusTPiPi"),
+  # HistogramDefinition("massPiPi", ";m_{#pi#pi} [GeV];"   + yAxisLabel, (400, 0.28, 2.28), "massPiPi"),
+  # book histograms
+  hists = []
+  for histDef in histDefs:
+    if applyWeights:
+      hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *histDef.binning), histDef.columnName, "eventWeight"))
+    else:
+      hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *histDef.binning), histDef.columnName))
+  return hists
+
+
+def makePlots(
+  hists:         list[ROOT.TH1D | ROOT.TH2D | ROOT.TH3D],  # list of histograms to plot
+  outputDirName: str,
+) -> None:
+  """Writes histograms to ROOT file and generates PDF plots"""
+  os.makedirs(outputDirName, exist_ok = True)
+  outRootFileName = f"{outputDirName}/plots.root"
+  outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
+  outRootFile.cd()
+  print(f"Writing histograms to '{outRootFileName}'")
+  for hist in hists:
+    print(f"Generating histogram '{hist.GetName()}'")
+    canv = ROOT.TCanvas()
+    if "TH2" in hist.ClassName() and str(hist.GetName()).startswith("mass"):
+      canv.SetLogz(1)
+    hist.SetMinimum(0)
+    if "TH3" in hist.ClassName():
+      hist.GetXaxis().SetTitleOffset(1.5)
+      hist.GetYaxis().SetTitleOffset(2)
+      hist.GetZaxis().SetTitleOffset(1.5)
+      hist.Draw("BOX2Z")
+    else:
+      hist.Draw("COLZ")
+    hist.Write()
+    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
 
 if __name__ == "__main__":
@@ -145,9 +214,14 @@ if __name__ == "__main__":
               additionalColumnDefs = additionalColumnDefs,
               additionalFilterDefs = additionalFilterDefs,
             )
-            # outputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}/plots_{inputDataType.name}/{beamOrientation}"
-            # os.makedirs(outputDataDirName, exist_ok = True)
-
+            makePlots(
+              hists = bookHistograms(
+                df            = dfSubsystem,
+                inputDataType = inputDataType,
+                subsystem     = subsystem,
+              ),
+              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}/plots_{inputDataType.name}/{beamOrientation}",
+            )
 
   # # create RDataFrame from real data in AmpTools format and define columns
   # lvs = lorentzVectors(realData = True)
@@ -173,14 +247,6 @@ if __name__ == "__main__":
   #   df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPipP",           ";m_{p#pi^{#plus}} [GeV];"             + yAxisLabel, 400, 1,      5),    "MassPipP",    "eventWeight"),
   #   df.Histo1D(ROOT.RDF.TH1DModel("hDataMassPimP",           ";m_{p#pi^{#minus}} [GeV];"            + yAxisLabel, 400, 1,      5),    "MassPimP",    "eventWeight"),
   #   df.Histo1D(ROOT.RDF.TH1DModel("hDataMinusT",             ";#minus t [GeV^{2}];"                 + yAxisLabel, 100, 0,      1),    "minusT",      "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataMomLabPip",          ";p_{#pi^{#plus}} [GeV];"              + yAxisLabel, 100, 0,     10),    "MomLabPip",   "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataMomLabPim",          ";p_{#pi^{#minus}} [GeV];"             + yAxisLabel, 100, 0,     10),    "MomLabPim",   "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataThetaLabPip",        ";#theta_{#pi^{#plus}}^{lab} [deg];"   + yAxisLabel, 100, 0,     30),    "ThetaLabPip", "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataThetaLabPim",        ";#theta_{#pi^{#minus}}^{lab} [deg];"  + yAxisLabel, 100, 0,     30),    "ThetaLabPim", "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataDistFdcPip",         ";#Delta r_{#pi^{#plus}}^{FDC} [cm];"  + yAxisLabel, 100, 0,     40),    "DistFdcPip",  "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataDistFdcPim",         ";#Delta r_{#pi^{#minus}}^{FDC} [cm];" + yAxisLabel, 100, 0,     40),    "DistFdcPim",  "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataHfCosThetaPiPiDiff", ";#Delta cos#theta_{HF}",  1000, -3e-13, +3e-13), "HfCosThetaPiPiDiff", "eventWeight"),
-  #   df.Histo1D(ROOT.RDF.TH1DModel("hDataHfPhiDegPiPiDiff",   ";#Delta #phi_{HF} [deg]", 1000, -1e-11, +1e-11), "HfPhiDegPiPiDiff",   "eventWeight"),
   #   #
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesGjPiPi",             ";cos#theta_{GJ};#phi_{GJ} [deg]",     100, -1,   +1,     72, -180, +180), "GjCosThetaPiPi", "GjPhiDegPiPi",   "eventWeight"),
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataAnglesHfPiPi",             ";cos#theta_{HF};#phi_{HF} [deg]",     100, -1,   +1,     72, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi",   "eventWeight"),
