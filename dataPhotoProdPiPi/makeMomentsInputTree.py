@@ -196,35 +196,35 @@ class InputDataFormatType(Enum):
     TLorentzVectors = 5  # data with TLorentzVectors for particle 4-momenta
 
 def lorentzVectors(dataFormat: InputDataFormatType) -> dict[str, str]:
-  """Returns Lorentz-vectors for beam photon ("lvBeam"), target proton ("lvTarget"), recoil proton ("lvRecoil"), pi+ ("lvPip"), and pi- ("lvPim")"""
+  """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
   lvs = {}
-  lvs["lvTarget"] = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
+  lvs["target"] = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
   if dataFormat == InputDataFormatType.ampToolsRdReco or dataFormat == InputDataFormatType.ampToolsMcReco:
-    lvs["lvBeam"  ] = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"  # beam photon
-    lvs["lvRecoil"] = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"     # recoil proton
-    lvs["lvPip"   ] = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"   # pi+
-    lvs["lvPim"   ] = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"   # pi-
+    lvs["beam"  ] = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"  # beam photon
+    lvs["recoil"] = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"     # recoil proton
+    lvs["pip"   ] = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"   # pi+
+    lvs["pim"   ] = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"   # pi-
   elif dataFormat == InputDataFormatType.ampToolsMcTruth:
-    lvs["lvBeam"  ] = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
-    lvs["lvRecoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
-    lvs["lvPip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+  #TODO not clear whether correct index is 1 or 2
-    lvs["lvPim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-  #TODO not clear whether correct index is 1 or 2
+    lvs["beam"  ] = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
+    lvs["recoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
+    lvs["pip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+
+    lvs["pim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-
   elif dataFormat == InputDataFormatType.jpacMc:
     # kinematic variables according to Eq. (1) in BIBRZYCKI et al., PD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
     # four-momenta are defined as
     #                 (p_x, p_y, p_z, E)
-    lvs["lvBeam"  ] = "q1,  q2,  q3,  q0"   # beam photon
-    lvs["lvTarget"] = "p11, p12, p13, p10"  # target proton
-    lvs["lvRecoil"] = "p21, p22, p23, p20"  # recoil proton
-    lvs["lvPip"   ] = "k11, k12, k13, k10"  # pi+
-    lvs["lvPim"   ] = "k21, k22, k23, k20"  # pi-
+    lvs["beam"  ] = "q1,  q2,  q3,  q0"   # beam photon
+    lvs["target"] = "p11, p12, p13, p10"  # target proton
+    lvs["recoil"] = "p21, p22, p23, p20"  # recoil proton
+    lvs["pip"   ] = "k11, k12, k13, k10"  # pi+
+    lvs["pim"   ] = "k21, k22, k23, k20"  # pi-
   elif dataFormat == InputDataFormatType.TLorentzVectors:
-    lvs["lvBeam"  ] = "lvBeamLab.X(),   lvBeamLab.Y(),   lvBeamLab.Z(),   lvBeamLab.E()"    # beam photon
-    lvs["lvTarget"] = "lvTargetLab.X(), lvTargetLab.Y(), lvTargetLab.Z(), lvTargetLab.E()"  # target proton
-    lvs["lvRecoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
-    lvs["lvPip"   ] = "lvPipLab.X(),    lvPipLab.Y(),    lvPipLab.Z(),    lvPipLab.E()"     # pi+
-    lvs["lvPim"   ] = "lvPimLab.X(),    lvPimLab.Y(),    lvPimLab.Z(),    lvPimLab.E()"     # pi-
+    lvs["beam"  ] = "lvBeamLab.X(),   lvBeamLab.Y(),   lvBeamLab.Z(),   lvBeamLab.E()"    # beam photon
+    lvs["target"] = "lvTargetLab.X(), lvTargetLab.Y(), lvTargetLab.Z(), lvTargetLab.E()"  # target proton
+    lvs["recoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
+    lvs["pip"   ] = "lvPipLab.X(),    lvPipLab.Y(),    lvPipLab.Z(),    lvPipLab.E()"     # pi+
+    lvs["pim"   ] = "lvPimLab.X(),    lvPimLab.Y(),    lvPimLab.Z(),    lvPimLab.E()"     # pi-
   else:
     raise RuntimeError(f"Unsupported data format type '{dataFormat}'")
   return lvs
@@ -391,10 +391,10 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
   frame = CoordSysType.Hf  # helicity frame, i.e. z_HF = -p_recoil
-  subsystems: tuple[SubSystemInfo, ...] = (
-      SubSystemInfo(pairLabel = "PiPi", lvALabel = "lvPip", lvBLabel = "lvPim",      lvRecoilLabel = "lvRecoil"),
-      # SubSystemInfo(pairLabel = "PipP", lvALabel = "lvPip", lvBLabel = "lvRecoil", lvRecoilLabel = "lvPim"   ),
-      # SubSystemInfo(pairLabel = "PimP", lvALabel = "lvPim", lvBLabel = "lvRecoil", lvRecoilLabel = "lvPip"   ),
+  subsystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
+      SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
+      # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
+      # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip"   ),
     )
 
   # set up polarized pi+pi- real data
@@ -407,8 +407,8 @@ if __name__ == "__main__":
   if False:  # cut away forward tracks in reconstructed data
     lvs = lorentzVectors(dataFormat = InputDataFormatType.ampToolsRdReco)
     additionalColumnDefs = {
-      "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['lvPip']})",
-      "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['lvPim']})",
+      "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['pip']})",
+      "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
     }
     additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
   dataSetsPol: list[DataSetInfo] = []
@@ -528,8 +528,8 @@ if __name__ == "__main__":
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     defineDataFrameColumns(
       df                   = df,
-      lvTarget             = lvs["lvTarget"],
-      lvBeam               = lvs["lvBeam"],
+      lvTarget             = lvs["target"],
+      lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
       lvRecoil             = lvs[dataSet.subsystem.lvRecoilLabel],
       lvA                  = lvs[dataSet.subsystem.lvALabel],
       lvB                  = lvs[dataSet.subsystem.lvBLabel],
