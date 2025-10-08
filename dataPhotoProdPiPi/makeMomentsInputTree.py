@@ -37,58 +37,58 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {b
       pol    = 0.3537,
       PhiLab = 1.8,
     ),
-    # "PERP_45" : BeamPolInfo(
-    #   pol    = 0.3484,
-    #   PhiLab = 47.9,
-    # ),
-    # "PERP_90" : BeamPolInfo(
-    #   pol    = 0.3472,
-    #   PhiLab = 94.5,
-    # ),
-    # "PARA_135" : BeamPolInfo(
-    #   pol    = 0.3512,
-    #   PhiLab = -41.6,
-    # ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3484,
+      PhiLab = 47.9,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3472,
+      PhiLab = 94.5,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3512,
+      PhiLab = -41.6,
+    ),
+    "AMO" : None,
+  },
+  "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3420,
+      PhiLab = 4.1,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3474,
+      PhiLab = 48.5,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3478,
+      PhiLab = 94.2,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3517,
+      PhiLab = -42.4,
+    ),
     # "AMO" : None,
   },
-  # "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
-  #   "PARA_0" : BeamPolInfo(
-  #     pol    = 0.3420,
-  #     PhiLab = 4.1,
-  #   ),
-  #   "PERP_45" : BeamPolInfo(
-  #     pol    = 0.3474,
-  #     PhiLab = 48.5,
-  #   ),
-  #   "PERP_90" : BeamPolInfo(
-  #     pol    = 0.3478,
-  #     PhiLab = 94.2,
-  #   ),
-  #   "PARA_135" : BeamPolInfo(
-  #     pol    = 0.3517,
-  #     PhiLab = -42.4,
-  #   ),
-  #   "AMO" : None,
-  # },
-  # "2018_08" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
-  #   "PARA_0" : BeamPolInfo(
-  #     pol    = 0.3563,
-  #     PhiLab = 3.3,
-  #   ),
-  #   "PERP_45" : BeamPolInfo(
-  #     pol    = 0.3403,
-  #     PhiLab = 48.3,
-  #   ),
-  #   "PERP_90" : BeamPolInfo(
-  #     pol    = 0.3430,
-  #     PhiLab = 92.9,
-  #   ),
-  #   "PARA_135" : BeamPolInfo(
-  #     pol    = 0.3523,
-  #     PhiLab = -42.1,
-  #   ),
-  #   "AMO" : None,
-  # },
+  "2018_08" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3563,
+      PhiLab = 3.3,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3403,
+      PhiLab = 48.3,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3430,
+      PhiLab = 92.9,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3523,
+      PhiLab = -42.1,
+    ),
+    # "AMO" : None,
+  },
 }
 
 
@@ -399,7 +399,8 @@ if __name__ == "__main__":
 
   # set up polarized pi+pi- real data
   dataDirName           = "./polarized"
-  tBinLabels            = ("tbin_0.1_0.2", )
+  dataPeriods           = ("2018_08", )
+  tBinLabels            = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   additionalColumnDefs  = {}
   additionalFilterDefs  = []
@@ -411,7 +412,7 @@ if __name__ == "__main__":
     }
     additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
   dataSetsPol: list[DataSetInfo] = []
-  for dataPeriod in BEAM_POL_INFOS:
+  for dataPeriod in dataPeriods:
     print(f"Setting up data period '{dataPeriod}':")
     for tBinLabel in tBinLabels:
       print(f"Setting up t bin '{tBinLabel}':")
@@ -422,7 +423,7 @@ if __name__ == "__main__":
         os.makedirs(outputDataDirName, exist_ok = True)
         for beamOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
           print(f"Setting up beam orientation '{beamOrientation}'"
-                + (": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
+                + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           dataSetRd = DataSetInfo(  # real data (signal + background)
             subsystem            = subsystem,
             inputFormat          = InputDataFormatType.ampToolsRdReco,
@@ -534,6 +535,7 @@ if __name__ == "__main__":
       lvB                  = lvs[dataSet.subsystem.lvBLabel],
       beamPolInfo          = dataSet.beamPolInfo,
       frame                = frame,
+      flipYAxis            = (frame == CoordSysType.Hf) and subsystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
