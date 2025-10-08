@@ -188,28 +188,30 @@ trackDistFdc(
 """
 
 
-class InputDataFormatType(Enum):
-    ampToolsRdReco  = 1  # reconstructed real data in ampTools format
-    ampToolsMcReco  = 2  # reconstructed MC data in ampTools format
-    ampToolsMcTruth = 3  # MC truth data in ampTools format
-    jpacMc          = 4  # MC truth data in JPAC text format
-    TLorentzVectors = 5  # data with TLorentzVectors for particle 4-momenta
+class InputDataFormat(Enum):
+    # ampToolsRdReco  = 1  # reconstructed real data in ampTools format
+    # ampToolsMcReco  = 2  # reconstructed MC data in ampTools format
+    # ampToolsMcTruth = 3  # MC truth data in ampTools format
+    foo             = 1  #TODO rename placeholder
+    ampTools        = 2  # AmpTools format
+    jpacMc          = 3  # MC truth data in JPAC text format
+    TLorentzVectors = 4  # TLorentzVector for each particle
 
-def lorentzVectors(dataFormat: InputDataFormatType) -> dict[str, str]:
+def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
   lvs = {}
   lvs["target"] = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
-  if dataFormat == InputDataFormatType.ampToolsRdReco or dataFormat == InputDataFormatType.ampToolsMcReco:
+  if dataFormat == InputDataFormat.foo:
     lvs["beam"  ] = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"  # beam photon
     lvs["recoil"] = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"     # recoil proton
     lvs["pip"   ] = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"   # pi+
     lvs["pim"   ] = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"   # pi-
-  elif dataFormat == InputDataFormatType.ampToolsMcTruth:
+  elif dataFormat == InputDataFormat.ampTools:
     lvs["beam"  ] = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
     lvs["recoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
     lvs["pip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+
     lvs["pim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-
-  elif dataFormat == InputDataFormatType.jpacMc:
+  elif dataFormat == InputDataFormat.jpacMc:
     # kinematic variables according to Eq. (1) in BIBRZYCKI et al., PD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
     # four-momenta are defined as
@@ -219,7 +221,7 @@ def lorentzVectors(dataFormat: InputDataFormatType) -> dict[str, str]:
     lvs["recoil"] = "p21, p22, p23, p20"  # recoil proton
     lvs["pip"   ] = "k11, k12, k13, k10"  # pi+
     lvs["pim"   ] = "k21, k22, k23, k20"  # pi-
-  elif dataFormat == InputDataFormatType.TLorentzVectors:
+  elif dataFormat == InputDataFormat.TLorentzVectors:
     lvs["beam"  ] = "lvBeamLab.X(),   lvBeamLab.Y(),   lvBeamLab.Z(),   lvBeamLab.E()"    # beam photon
     lvs["target"] = "lvTargetLab.X(), lvTargetLab.Y(), lvTargetLab.Z(), lvTargetLab.E()"  # target proton
     lvs["recoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
@@ -359,11 +361,17 @@ class SubSystemInfo:
   lvBLabel:      str  # label of Lorentz-vector of daughter B
   lvRecoilLabel: str  # label of Lorentz-vector of recoil particle
 
+class InputDataType(Enum):
+  realData = 1  # reconstructed real data
+  mcReco   = 2  # reconstructed MC data
+  mcTruth  = 3  # MC truth data
+
 @dataclass
 class DataSetInfo:
   """Stores information about a data set"""
   subsystem:            SubSystemInfo
-  inputFormat:          InputDataFormatType
+  inputType:            InputDataType
+  inputFormat:          InputDataFormat
   dataPeriod:           str
   tBinLabel:            str
   inputFileNames:       tuple[str, ...] | tuple[tuple[str, ...], tuple[str, ...]]  # either a tuple of input file names for MC or a tuple with 2 tuples of input file names for real data (signal region, background region)
@@ -404,8 +412,13 @@ if __name__ == "__main__":
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   additionalColumnDefs  = {}
   additionalFilterDefs  = []
+  inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
+    InputDataType.realData : InputDataFormat.ampTools,
+    InputDataType.mcReco   : InputDataFormat.ampTools,
+    InputDataType.mcTruth  : InputDataFormat.ampTools,
+  }
   if False:  # cut away forward tracks in reconstructed data
-    lvs = lorentzVectors(dataFormat = InputDataFormatType.ampToolsRdReco)
+    lvs = lorentzVectors(dataFormat = InputDataFormat.foo)
     additionalColumnDefs = {
       "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['pip']})",
       "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
@@ -426,7 +439,8 @@ if __name__ == "__main__":
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           dataSetRd = DataSetInfo(  # real data (signal + background)
             subsystem            = subsystem,
-            inputFormat          = InputDataFormatType.ampToolsRdReco,
+            inputType            = InputDataType.realData,
+            inputFormat          = inputDataFormats[InputDataType.realData],
             dataPeriod           = dataPeriod,
             tBinLabel            = tBinLabel,
             beamOrientation      = beamOrientation,
@@ -442,13 +456,15 @@ if __name__ == "__main__":
           )
           dataSetsPol.append(dataSetRd)
           dataSetPsAcc = deepcopy(dataSetRd)  # accepted phase-space MC
-          dataSetPsAcc.inputFormat    = InputDataFormatType.ampToolsMcReco
+          dataSetPsAcc.inputType      = InputDataType.mcReco
+          dataSetPsAcc.inputFormat    = inputDataFormats[InputDataType.mcReco]
           dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/amptools_tree_accepted*.root", )
           dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat_{beamOrientation}.root"
           dataSetPsAcc.outputColumns  = outputColumns
           dataSetsPol.append(dataSetPsAcc)
           dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
-          dataSetPsGen.inputFormat          = InputDataFormatType.ampToolsMcTruth
+          dataSetPsGen.inputType            = InputDataType.mcTruth
+          dataSetPsGen.inputFormat          = inputDataFormats[InputDataType.mcTruth]
           dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/amptools_tree_thrown*.root", )
           dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat_{beamOrientation}.root"
           dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
@@ -463,6 +479,11 @@ if __name__ == "__main__":
   additionalColumnDefs  = {}
   additionalFilterDefs  = []
   dataSetsUnpol: list[DataSetInfo] = []
+  inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
+    InputDataType.realData : InputDataFormat.foo,
+    InputDataType.mcReco   : InputDataFormat.foo,
+    InputDataType.mcTruth  : InputDataFormat.ampTools,
+  }
   #TODO merge with loop for polarized data sets and move into function
   for dataPeriod in dataPeriods:
     print(f"Setting up data period '{dataPeriod}':")
@@ -475,7 +496,8 @@ if __name__ == "__main__":
         os.makedirs(outputDataDirName, exist_ok = True)
         dataSetRd = DataSetInfo(  # real data (signal + background)
           subsystem            = subsystem,
-          inputFormat          = InputDataFormatType.ampToolsRdReco,
+          inputType            = InputDataType.realData,
+          inputFormat          = inputDataFormats[InputDataType.realData],
           dataPeriod           = dataPeriod,
           tBinLabel            = tBinLabel,
           inputFileNames       = ((f"{inputDataDirName}/amptools_tree_signal.root", ),
@@ -489,13 +511,15 @@ if __name__ == "__main__":
         )
         dataSetsUnpol.append(dataSetRd)
         dataSetPsAcc = deepcopy(dataSetRd)  # accepted phase-space MC
-        dataSetPsAcc.inputFormat    = InputDataFormatType.ampToolsMcReco
+        dataSetPsAcc.inputType      = InputDataType.mcReco
+        dataSetPsAcc.inputFormat    = inputDataFormats[InputDataType.mcReco]
         dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/amptools_tree_accepted*.root", )
         dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat.root"
         dataSetPsAcc.outputColumns  = outputColumns
         dataSetsUnpol.append(dataSetPsAcc)
         dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
-        dataSetPsGen.inputFormat          = InputDataFormatType.ampToolsMcTruth
+        dataSetPsGen.inputType            = InputDataType.mcTruth
+        dataSetPsGen.inputFormat          = inputDataFormats[InputDataType.mcTruth]
         dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/amptools_tree_thrown*.root", )
         dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat.root"
         dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
@@ -508,7 +532,7 @@ if __name__ == "__main__":
   dataSets = dataSetsPol + dataSetsUnpol
   for dataSet in dataSets:
     df = None
-    if dataSet.inputFormat == InputDataFormatType.ampToolsRdReco:
+    if dataSet.inputType == InputDataType.realData:
       # combine signal and background region data with correct event weights into one RDataFrame
       outputDataDirName = os.path.dirname(dataSet.outputFileName)
       df = getDataFrameWithCorrectEventWeights(
@@ -518,12 +542,12 @@ if __name__ == "__main__":
         friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamOrientation}.root.weights",
         friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamOrientation}.root.weights",
       )
-    elif dataSet.inputFormat == InputDataFormatType.ampToolsMcReco or dataSet.inputFormat == InputDataFormatType.ampToolsMcTruth:
+    elif dataSet.inputType == InputDataType.mcReco or dataSet.inputType == InputDataType.mcTruth:
       # read all MC files into one RDataFrame
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
-      raise RuntimeError(f"Unsupported input data format '{dataSet.inputFormat}'")
-    print(f"Converting {dataSet.inputFormat} data for {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamOrientation} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
+      raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
+    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamOrientation} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     defineDataFrameColumns(
       df                   = df,
