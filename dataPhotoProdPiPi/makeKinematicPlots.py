@@ -57,14 +57,17 @@ def defineColumnsForPlots(
       additionalFilterDefs = additionalFilterDefs,
       colNameSuffix        = subsystem.pairLabel,
     )
+  # define additional columns that are independent of subsystem
   dfResult = (
     dfResult.Define(f"mass{subsystem.pairLabel}Sq", f"std::pow(mass{subsystem.pairLabel}, 2)")
+            .Define("Ebeam",                        f"TLorentzVector({lvs['beam']}).E()")
             # track kinematics
-            .Define("momLabP",     f"TLorentzVector({lvs['recoil']}).P()")
-            .Define("momLabPip",   f"TLorentzVector({lvs['pip'   ]}).P()")
-            .Define("momLabPim",   f"TLorentzVector({lvs['pim'   ]}).P()")
-            .Define("thetaLabPip", f"TLorentzVector({lvs['pip'   ]}).Theta() * TMath::RadToDeg()")
-            .Define("thetaLabPim", f"TLorentzVector({lvs['pim'   ]}).Theta() * TMath::RadToDeg()")
+            .Define("momLabP",        f"TLorentzVector({lvs['recoil']}).P()")
+            .Define("momLabPip",      f"TLorentzVector({lvs['pip'   ]}).P()")
+            .Define("momLabPim",      f"TLorentzVector({lvs['pim'   ]}).P()")
+            .Define("thetaDegLabP",   f"TLorentzVector({lvs['recoil']}).Theta() * TMath::RadToDeg()")
+            .Define("thetaDegLabPip", f"TLorentzVector({lvs['pip'   ]}).Theta() * TMath::RadToDeg()")
+            .Define("thetaDegLabPim", f"TLorentzVector({lvs['pim'   ]}).Theta() * TMath::RadToDeg()")
   )
   print(f"!!! {df.GetDefinedColumnNames()=}")
   print(f"!!! {dfResult.GetDefinedColumnNames()=}")
@@ -189,8 +192,8 @@ if __name__ == "__main__":
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataMassPiPiVsMinusT",         ";m_{#pi#pi} [GeV];#minus t [GeV^{2}]", 50,  0.28, 2.28,  50,    0,    1), "MassPiPi",       "minusT",         "eventWeight"),
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz1",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#plus}}^{2} [GeV^{2}]",   100, 0,  6, 100, 0.5, 16.5), "MassPiPiSq", "MassPipPSq",  "eventWeight"),
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataDalitz2",                  ";m_{#pi#pi}^{2} [GeV^{2}];m_{p#pi^{#minus}}^{2} [GeV^{2}]",  100, 0,  6, 100, 0.5, 16.5), "MassPiPiSq", "MassPimPSq",  "eventWeight"),
-  #   df.Histo2D(ROOT.RDF.TH2DModel("hDataThetaLabVsMomLabPip",      ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",    100, 0, 10, 100, 0,   15),   "MomLabPip",  "ThetaLabPip", "eventWeight"),
-  #   df.Histo2D(ROOT.RDF.TH2DModel("hDataThetaLabVsMomLabPim",      ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]",  100, 0, 10, 100, 0,   15),   "MomLabPim",  "ThetaLabPim", "eventWeight"),
+  #   df.Histo2D(ROOT.RDF.TH2DModel("hDatathetaDegLabVsMomLabPip",      ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",    100, 0, 10, 100, 0,   15),   "MomLabPip",  "thetaDegLabPip", "eventWeight"),
+  #   df.Histo2D(ROOT.RDF.TH2DModel("hDatathetaDegLabVsMomLabPim",      ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]",  100, 0, 10, 100, 0,   15),   "MomLabPim",  "thetaDegLabPim", "eventWeight"),
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataDistFdcVsMomLabPip",       ";p_{#pi^{#plus}} [GeV];#Delta r_{#pi^{#plus}}^{FDC} [cm]",   100, 0, 10, 100, 0,   20),   "MomLabPip",  "DistFdcPip",  "eventWeight"),
   #   df.Histo2D(ROOT.RDF.TH2DModel("hDataDistFdcVsMomLabPim",       ";p_{#pi^{#minus}} [GeV];#Delta r_{#pi^{#minus}}^{FDC} [cm]", 100, 0, 10, 100, 0,   20),   "MomLabPim",  "DistFdcPim",  "eventWeight"),
   #   df.Histo3D(ROOT.RDF.TH3DModel("hDataPhiDegVsHfPhiDegPiPiVsHfCosThetaPiPi", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 25, -1, +1, 25, -180, +180, 25, -180, +180), "HfCosThetaPiPi", "HfPhiDegPiPi", "PhiDeg", "eventWeight"),
