@@ -94,25 +94,37 @@ def bookHistograms(
   """Books histograms for kinematic plots and returns the list of histograms"""
   applyWeights = inputDataType == InputDataType.realData and df.HasColumn("eventWeight")
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
-  # define 1D histograms
+  # define histograms that are independent of subsystem
   histDefs: list[HistogramDefinition] = [
-    HistogramDefinition("Ebeam",          ";E_{beam} [GeV];"                    + yAxisLabel, (100, 8,   9), "Ebeam"),
-    HistogramDefinition("momLabP",        ";p_{p} [GeV];"                       + yAxisLabel, (100, 0,   1), "momLabP"),
-    HistogramDefinition("momLabPip",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, (100, 0,  10), "momLabPip"),
-    HistogramDefinition("momLabPim",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, (100, 0,  10), "momLabPim"),
-    HistogramDefinition("thetaDegLabP",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, (100, 0, 100), "thetaDegLabP"),
-    HistogramDefinition("thetaDegLabPip", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, (100, 0,  30), "thetaDegLabPip"),
-    HistogramDefinition("thetaDegLabPim", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, (100, 0,  30), "thetaDegLabPim"),
-  ]
-  # HistogramDefinition("minusT",   ";#minus t [GeV^{2}];" + yAxisLabel, (100, 0,    1),    "minusTPiPi"),
-  # HistogramDefinition("massPiPi", ";m_{#pi#pi} [GeV];"   + yAxisLabel, (400, 0.28, 2.28), "massPiPi"),
+    HistogramDefinition("Ebeam",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100, 8,   9), ), ("Ebeam",          )),
+    HistogramDefinition("momLabP",        ";p_{p} [GeV];"                       + yAxisLabel, ((100, 0,   1), ), ("momLabP",        )),
+    HistogramDefinition("momLabPip",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100, 0,  10), ), ("momLabPip",      )),
+    HistogramDefinition("momLabPim",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100, 0,  10), ), ("momLabPim",      )),
+    HistogramDefinition("thetaDegLabP",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100, 0, 100), ), ("thetaDegLabP",   )),
+    HistogramDefinition("thetaDegLabPip", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100, 0,  30), ), ("thetaDegLabPip", )),
+    HistogramDefinition("thetaDegLabPim", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100, 0,  30), ), ("thetaDegLabPim", )),
   # book histograms
   hists = []
   for histDef in histDefs:
+    histDimension = len(histDef.binning)
     if applyWeights:
-      hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *histDef.binning), histDef.columnName, "eventWeight"))
+      if histDimension == 1:
+        hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *(histDef.binning[0])), *histDef.columnNames, "eventWeight"))
+      elif histDimension == 2:
+        hists.append(df.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1])), *histDef.columnNames, "eventWeight"))
+      elif histDimension == 3:
+        hists.append(df.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1]), *(histDef.binning[2])), *histDef.columnNames, "eventWeight"))
+      else:
+        raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
     else:
-      hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *histDef.binning), histDef.columnName))
+      if histDimension == 1:
+        hists.append(df.Histo1D(ROOT.RDF.TH1DModel(histDef.name, histDef.title, *(histDef.binning[0])), *histDef.columnNames))
+      elif histDimension == 2:
+        hists.append(df.Histo2D(ROOT.RDF.TH2DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1])), *histDef.columnNames))
+      elif histDimension == 3:
+        hists.append(df.Histo3D(ROOT.RDF.TH3DModel(histDef.name, histDef.title, *(histDef.binning[0]), *(histDef.binning[1]), *(histDef.binning[2])), *histDef.columnNames, "eventWeight"))
+      else:
+        raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
   return hists
 
 
@@ -141,6 +153,7 @@ def makePlots(
       hist.Draw("COLZ")
     hist.Write()
     canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+  outRootFile.Close()
 
 
 if __name__ == "__main__":
