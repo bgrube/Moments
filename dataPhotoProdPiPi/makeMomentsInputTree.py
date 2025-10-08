@@ -236,26 +236,42 @@ class CoordSysType(Enum):
     Hf = 1  # helicity frame
     Gj = 2  # Gottfried-Jackson frame
 
+def DefineOverwrite(
+  df:         ROOT.RDataFrame,
+  colName:    str,
+  newFormula: str,
+) -> ROOT.RDataFrame:
+  """If column `colName` exists, redefines it using formula `newExpr`"""
+  if not df.HasColumn(colName):
+    # print(f"Defining column '{colName}' = '{newExpr}'")
+    df = df.Define(colName, newFormula)
+  else:
+    print(f"Redefining column '{colName}' to '{newFormula}'")
+    df = df.Redefine(colName, newFormula)
+  return df
+
 def defineDataFrameColumns(
-  df:                       ROOT.RDataFrame,
-  lvTarget:                 str,  # function-argument list with Lorentz-vector components of target proton
-  lvBeam:                   str,  # function-argument list with Lorentz-vector components of beam photon
-  lvRecoil:                 str,  # function-argument list with Lorentz-vector components of recoil proton
-  lvA:                      str,  # function-argument list with Lorentz-vector components of daughter A (analyzer)
-  lvB:                      str,  # function-argument list with Lorentz-vector components of daughter B
-  beamPolInfo:              BeamPolInfo | None = None,  # photon beam polarization
-  frame:                    CoordSysType       = CoordSysType.Hf,  # reference frame for angle definitions
-  flipYAxis:                bool               = True,  # if set y-axis of reference frame is inverted
-  additionalColumnDefs:     dict[str, str]     = {},  # additional columns to define
-  additionalFilterDefs:     list[str]          = [],  # additional filter conditions to apply
+  df:                   ROOT.RDataFrame,
+  lvTarget:             str,  # function-argument list with Lorentz-vector components of target proton
+  lvBeam:               str,  # function-argument list with Lorentz-vector components of beam photon
+  lvRecoil:             str,  # function-argument list with Lorentz-vector components of recoil proton
+  lvA:                  str,  # function-argument list with Lorentz-vector components of daughter A (analyzer)
+  lvB:                  str,  # function-argument list with Lorentz-vector components of daughter B
+  beamPolInfo:          BeamPolInfo | None = None,  # photon beam polarization
+  frame:                CoordSysType       = CoordSysType.Hf,  # reference frame for angle definitions
+  flipYAxis:            bool               = True,  # if set y-axis of reference frame is inverted
+  additionalColumnDefs: dict[str, str]     = {},  # additional columns to define
+  additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
+  colNameSuffix:        str                = "",  # suffix appended to column names
 ) -> ROOT.RDataFrame:
   """Returns RDataFrame with additional columns for moments analysis"""
   """Defines formulas for (A, B) pair mass, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
-  print(f"Defining angles in '{frame}' frame and using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
+  print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
+  angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   df = (
-    df.Define("cosTheta", "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == CoordSysType.Hf else
+    df.Define(f"cosTheta{angColNameSuffix}", "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == CoordSysType.Hf else  #TODO fix if statements for frame
                                             f"FSMath::gjcostheta ({lvA}, {lvB}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
-      .Define("theta",    "(Double32_t)std::acos(cosTheta)")
+      .Define(f"theta{angColNameSuffix}", f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
       #TODO there seems to be a bug in the way FSRoot calculates phi (at least for the HF frame)
       #     when using the same analyzer as for cosTheta, i.e. pi+, phi is flipped by 180 deg
       #     this difference is seen when comparing to Alex' function and also when comparing to the PWA result
@@ -267,23 +283,22 @@ def defineDataFrameColumns(
       # #WORKAROUND use pi- as analyzer and y_HF/GJ = p_beam x p_recoil
       # .Define("phi",      "(Double32_t)" + (f"FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})" if frame == CoordSysType.Hf else
       #                                       f"FSMath::gjphi ({lvB}, {lvA}, {lvRecoil}, {lvBeam})"))
-      .Define("phi",
+      .Define(f"phi{angColNameSuffix}",
         # use A as analyzer and y_HF/GJ = (p_beam x p_recoil), if flipYAxis is False else -yHF
         "(Double32_t)" +
-        (      f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if CoordSysType.Hf  # use z_HF = -p_recoil
-          else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")                    # use z_GJ = p_beam
+        (      f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == CoordSysType.Hf  # use z_HF = -p_recoil
+          else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")                             # use z_GJ = p_beam
       )
-      .Define("phiDeg",   "(Double32_t)(phi * TMath::RadToDeg())")
-      .Define("mass",    f"(Double32_t)massPair({lvA}, {lvB})")
-      .Define("minusT",  f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+      .Define(f"phiDeg{angColNameSuffix}", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
   )
+  # allow for redefinition of already existing columns with identical formula if function is called for several frames
+  df = DefineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
+  df = DefineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
-    df = (
-      df.Define("beamPol",       f"(Double32_t){beamPolInfo.pol}")
-        .Define("beamPolPhiLab", f"(Double32_t){beamPolInfo.PhiLab}")
-        .Define("Phi",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab)")
-        .Define("PhiDeg",         "(Double32_t)(Phi * TMath::RadToDeg())")
-    )
+    df = DefineOverwrite(df, f"beamPol{colNameSuffix}",       f"(Double32_t){beamPolInfo.pol}")
+    df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}", f"(Double32_t){beamPolInfo.PhiLab}")
+    df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix})")
+    df = DefineOverwrite(df, f"PhiDeg{colNameSuffix}",        f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
   if additionalColumnDefs:
     for columnName, columnFormula in additionalColumnDefs.items():
       print(f"Defining additional column '{columnName}' = '{columnFormula}'")
