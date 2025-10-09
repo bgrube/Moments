@@ -29,7 +29,7 @@ from makeMomentsInputTree import (
 def defineColumnsForPlots(
   df:                   ROOT.RDataFrame,
   inputDataFormat:      InputDataFormat,
-  subsystem:            SubSystemInfo,
+  subSystem:            SubSystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   additionalColumnDefs: dict[str, str] = {},  # additional columns to define
   additionalFilterDefs: list[str]      = [],  # additional filter conditions to apply
@@ -48,19 +48,19 @@ def defineColumnsForPlots(
       df                   = dfResult,
       lvTarget             = lvs["target"],
       lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
-      lvRecoil             = lvs[subsystem.lvRecoilLabel],
-      lvA                  = lvs[subsystem.lvALabel],
-      lvB                  = lvs[subsystem.lvBLabel],
+      lvRecoil             = lvs[subSystem.lvRecoilLabel],
+      lvA                  = lvs[subSystem.lvALabel],
+      lvB                  = lvs[subSystem.lvBLabel],
       beamPolInfo          = beamPolInfo,
       frame                = frame,
-      flipYAxis            = (frame == CoordSysType.Hf) and subsystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
+      flipYAxis            = (frame == CoordSysType.Hf) and subSystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
       additionalColumnDefs = additionalColumnDefs,
       additionalFilterDefs = additionalFilterDefs,
-      colNameSuffix        = subsystem.pairLabel,
+      colNameSuffix        = subSystem.pairLabel,
     )
   # define additional columns that are independent of subsystem
   dfResult = (
-    dfResult.Define(f"mass{subsystem.pairLabel}Sq", f"std::pow(mass{subsystem.pairLabel}, 2)")
+    dfResult.Define(f"mass{subSystem.pairLabel}Sq", f"std::pow(mass{subSystem.pairLabel}, 2)")
             .Define("Ebeam",                        f"TLorentzVector({lvs['beam']}).E()")
             # track kinematics
             .Define("momLabP",        f"TLorentzVector({lvs['recoil']}).P()")
@@ -122,7 +122,7 @@ def bookHistogram(
 def bookHistograms(
   df:            ROOT.RDataFrame,
   inputDataType: InputDataType,
-  subsystem:     SubSystemInfo,
+  subSystem:     SubSystemInfo,
 ) -> list[ROOT.TH1D | ROOT.TH2D | ROOT.TH3D]:
   """Books histograms for kinematic plots and returns the list of histograms"""
   applyWeights = inputDataType == InputDataType.realData and df.HasColumn("eventWeight")
@@ -141,8 +141,8 @@ def bookHistograms(
     HistogramDefinition("thetaDegLabVsMomLabPim", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100, 0, 10), (100,  0, 30)), ("momLabPim", "thetaDegLabPim")),
   ]
   # define subsystem-dependent histograms
-  pairLabel = subsystem.pairLabel
-  pairTLatexLabel = subsystem.pairTLatexLabel
+  pairLabel = subSystem.pairLabel
+  pairTLatexLabel = subSystem.pairTLatexLabel
   histDefs += [
     HistogramDefinition(f"anglesGj{pairLabel}",                    f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]",                      ((100, -1,   +1  ), ( 72, -180, +180)), (f"cosThetaGj{pairLabel}", f"phiDegGj{pairLabel}")),
     HistogramDefinition(f"anglesHf{pairLabel}",                    f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]",                      ((100, -1,   +1  ), ( 72, -180, +180)), (f"cosThetaHf{pairLabel}", f"phiDegHf{pairLabel}")),
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     InputDataType.mcReco   : InputDataFormat.ampTools,
     InputDataType.mcTruth  : InputDataFormat.ampTools,
   }
-  subsystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
+  subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
       SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"),
       # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#minus}"),
       # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip",    pairTLatexLabel = "p#pi^{#plus}"),
@@ -281,21 +281,21 @@ if __name__ == "__main__":
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_thrown*.root")
           else:
             raise RuntimeError(f"Unsupported input data type '{inputDataType}'")
-          for subsystem in subsystems:
-            print(f"Generating plots for subsystem '{subsystem}':")
-            dfSubsystem = defineColumnsForPlots(
+          for subSystem in subSystems:
+            print(f"Generating plots for subsystem '{subSystem}':")
+            dfSubSystem = defineColumnsForPlots(
               df                   = df,
               inputDataFormat      = inputDataFormat,
-              subsystem            = subsystem,
+              subSystem            = subSystem,
               beamPolInfo          = beamPolInfo,
               additionalColumnDefs = additionalColumnDefs,
               additionalFilterDefs = additionalFilterDefs,
             )
             makePlots(
               hists = bookHistograms(
-                df            = dfSubsystem,
+                df            = dfSubSystem,
                 inputDataType = inputDataType,
-                subsystem     = subsystem,
+                subSystem     = subSystem,
               ),
-              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}/plots_{inputDataType.name}/{beamOrientation}",
+              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamOrientation}",
             )

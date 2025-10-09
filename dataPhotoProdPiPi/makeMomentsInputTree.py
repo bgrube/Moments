@@ -49,7 +49,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {b
       pol    = 0.3512,
       PhiLab = -41.6,
     ),
-    "AMO" : None,
+    # "AMO" : None,
   },
   "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(

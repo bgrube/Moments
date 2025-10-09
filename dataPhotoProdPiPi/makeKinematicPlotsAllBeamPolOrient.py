@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 
+from __future__ import annotations
+
 import os
 import subprocess
 
 import ROOT
-from matplotlib.pyplot import plot
 
 
 if __name__ == "__main__":
