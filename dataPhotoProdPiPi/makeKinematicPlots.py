@@ -70,8 +70,8 @@ def defineColumnsForPlots(
             .Define("thetaDegLabPip", f"TLorentzVector({lvs['pip'   ]}).Theta() * TMath::RadToDeg()")
             .Define("thetaDegLabPim", f"TLorentzVector({lvs['pim'   ]}).Theta() * TMath::RadToDeg()")
   )
-  print(f"!!! {df.GetDefinedColumnNames()=}")
-  print(f"!!! {dfResult.GetDefinedColumnNames()=}")
+  # print(f"!!! {df.GetDefinedColumnNames()=}")
+  # print(f"!!! {dfResult.GetDefinedColumnNames()=}")
   return dfResult
 
 
@@ -237,8 +237,10 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
   dataDirName          = "./polarized"
-  dataPeriods          = ("2018_08", )
-  tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
+  dataPeriods          = ("2017_01", )
+  tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3")
+  # dataPeriods          = ("2018_08", )
+  # tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
   additionalColumnDefs = {}
   additionalFilterDefs = []
   treeName             = "kin"
