@@ -9,6 +9,31 @@ import subprocess
 import ROOT
 
 
+def plotHistogram(
+  hist:    ROOT.TH1,
+  plotDir: str,
+  logZ:    bool = False,
+) -> None:
+  """Plots a histogram to a PDF file in the specified directory"""
+  histName = hist.GetName()
+  print(f"Plotting histogram '{histName}'")
+  ROOT.gStyle.SetOptStat("i")
+  # ROOT.gStyle.SetOptStat(1111111)
+  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+  canv = ROOT.TCanvas()
+  hist.SetMinimum(0)
+  if "TH3" in hist.ClassName():
+    hist.GetXaxis().SetTitleOffset(1.5)
+    hist.GetYaxis().SetTitleOffset(2)
+    hist.GetZaxis().SetTitleOffset(1.5)
+    hist.Draw("BOX2Z")
+  else:
+    hist.Draw("COLZ")
+  if logZ and "TH2" in hist.ClassName():
+    canv.SetLogz()
+  canv.SaveAs(f"{plotDir}/{histName}.pdf")
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
@@ -21,7 +46,11 @@ if __name__ == "__main__":
   tBinLabels       = ("tbin_0.1_0.2", "tbin_0.2_0.3")
   # dataPeriods      = ("2018_08", )
   # tBinLabels       = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
-  subsystems       = ("PiPi", )
+  subsystems       = (
+    "PiPi",
+    # "PipP",
+    # "PimP",
+  )
   beamOrientations = ("PARA_0", "PARA_135", "PERP_45", "PERP_90")  # beam orientations to combine
 
   for dataPeriod in dataPeriods:
@@ -40,22 +69,12 @@ if __name__ == "__main__":
         for key in mergedPlotFile.GetListOfKeys():
           obj = key.ReadObj()
           if obj.InheritsFrom("TH1"):
-            hist = obj
-            histName = hist.GetName()
-            print(f"Plotting histogram '{histName}'")
-            ROOT.gStyle.SetOptStat("i")
-            # ROOT.gStyle.SetOptStat(1111111)
-            ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
-            canv = ROOT.TCanvas()
-            hist.SetMinimum(0)
-            if "TH3" in hist.ClassName():
-              hist.GetXaxis().SetTitleOffset(1.5)
-              hist.GetYaxis().SetTitleOffset(2)
-              hist.GetZaxis().SetTitleOffset(1.5)
-              hist.Draw("BOX2Z")
-            else:
-              hist.Draw("COLZ")
-            canv.SaveAs(f"{plotDir}/{histName}.pdf")
+            plotHistogram(obj, plotDir)
+            # plot log version of selected 2D histograms
+            histName = obj.GetName()
+            if histName.startswith("massPiPiVs"):
+              obj.SetName(f"{histName}_log")
+              plotHistogram(obj, plotDir, logZ = True)
 
         # overlay real-data mass distribution for all beam polarization orientations combined
         # with mass distribution from accepted phase-space MC
