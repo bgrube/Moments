@@ -98,7 +98,7 @@ double
 massPair(
 	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
 	const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
-)	{
+) {
 	const TLorentzVector p1(Px1, Py1, Pz1, E1);
 	const TLorentzVector p2(Px2, Py2, Pz2, E2);
 	return (p1 + p2).M();
@@ -109,12 +109,12 @@ massPair(
 CPP_CODE_MANDELSTAM_T = """
 double
 mandelstamT(
-  const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
-  const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
+	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
+	const double Px2, const double Py2, const double Pz2, const double E2   // 4-momentum of particle 2 [GeV]
 ) {
-  const TLorentzVector p1(Px1, Py1, Pz1, E1);
-  const TLorentzVector p2(Px2, Py2, Pz2, E2);
-  return (p1 - p2).M2();
+	const TLorentzVector p1(Px1, Py1, Pz1, E1);
+	const TLorentzVector p2(Px2, Py2, Pz2, E2);
+	return (p1 - p2).M2();
 }
 """
 
@@ -178,9 +178,9 @@ CPP_CODE_TRACKDISTFDC = """
 double
 trackDistFdc(
 	const double primVertZ,  // z position of primary vertex [cm]
-  const double Px, const double Py, const double Pz, const double E  // 4-momentum of particle [GeV]
+	const double Px, const double Py, const double Pz, const double E  // 4-momentum of particle [GeV]
 ) {
-  const TLorentzVector p(Px, Py, Pz, E);
+	const TLorentzVector p(Px, Py, Pz, E);
 	const double deltaZ = 176.939 - primVertZ;  // distance along z of primary vertex and FDC [cm]
 	const double deltaR = deltaZ * tan(p.Theta());
 	return deltaR;
@@ -189,13 +189,10 @@ trackDistFdc(
 
 
 class InputDataFormat(Enum):
-    # ampToolsRdReco  = 1  # reconstructed real data in ampTools format
-    # ampToolsMcReco  = 2  # reconstructed MC data in ampTools format
-    # ampToolsMcTruth = 3  # MC truth data in ampTools format
-    foo             = 1  #TODO rename placeholder
-    ampTools        = 2  # AmpTools format
-    jpacMc          = 3  # MC truth data in JPAC text format
-    TLorentzVectors = 4  # TLorentzVector for each particle
+  foo             = 1  #TODO rename placeholder
+  ampTools        = 2  # AmpTools format
+  jpacMc          = 3  # MC truth data in JPAC text format
+  TLorentzVectors = 4  # TLorentzVector for each particle
 
 def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
@@ -233,8 +230,8 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
 
 
 class CoordSysType(Enum):
-    Hf = 1  # helicity frame
-    Gj = 2  # Gottfried-Jackson frame
+  Hf = 1  # helicity frame
+  Gj = 2  # Gottfried-Jackson frame
 
 def DefineOverwrite(
   df:         ROOT.RDataFrame,
@@ -270,7 +267,7 @@ def defineDataFrameColumns(
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   df = (
     df.Define(f"cosTheta{angColNameSuffix}", "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == CoordSysType.Hf else  #TODO fix if statements for frame
-                                            f"FSMath::gjcostheta ({lvA}, {lvB}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
+                                                               f"FSMath::gjcostheta ({lvA}, {lvB}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
       .Define(f"theta{angColNameSuffix}", f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
       #TODO there seems to be a bug in the way FSRoot calculates phi (at least for the HF frame)
       #     when using the same analyzer as for cosTheta, i.e. pi+, phi is flipped by 180 deg
