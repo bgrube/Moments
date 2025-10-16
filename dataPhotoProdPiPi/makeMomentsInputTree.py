@@ -503,59 +503,63 @@ if __name__ == "__main__":
           dataSetsPol.append(dataSetPsGen)
 
   # setup unpolarized pi+pi- real data
-  dataDirName           = "./unpolarized"
-  dataPeriods           = ("2017_01", "2018_08")
-  tBinLabels            = ("tbin_0.4_0.5", )
-  outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
-  additionalColumnDefs  = {}
-  additionalFilterDefs  = []
-  dataSetsUnpol: list[DataSetInfo] = []
-  inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
-    InputDataType.realData : InputDataFormat.foo,
-    InputDataType.mcReco   : InputDataFormat.foo,
-    InputDataType.mcTruth  : InputDataFormat.ampTools,
-  }
-  #TODO merge with loop for polarized data sets and move into function
-  for dataPeriod in dataPeriods:
-    print(f"Setting up data period '{dataPeriod}':")
-    for tBinLabel in tBinLabels:
-      print(f"Setting up t bin '{tBinLabel}':")
-      for subsystem in subsystems:
-        print(f"Setting up subsystem '{subsystem}':")
-        inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
-        outputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
-        os.makedirs(outputDataDirName, exist_ok = True)
-        dataSetRd = DataSetInfo(  # real data (signal + background)
-          subsystem            = subsystem,
-          inputType            = InputDataType.realData,
-          inputFormat          = inputDataFormats[InputDataType.realData],
-          dataPeriod           = dataPeriod,
-          tBinLabel            = tBinLabel,
-          inputFileNames       = ((f"{inputDataDirName}/amptools_tree_signal.root", ),
-                                  (f"{inputDataDirName}/amptools_tree_bkgnd.root",  )),
-          inputTreeName        = "kin",
-          outputFileName       = f"{outputDataDirName}/data_flat.root",
-          outputTreeName       = subsystem.pairLabel,
-          outputColumns        = outputColumns + ("eventWeight", ),
-          additionalColumnDefs = additionalColumnDefs,
-          additionalFilterDefs = additionalFilterDefs,
-        )
-        dataSetsUnpol.append(dataSetRd)
-        dataSetPsAcc = deepcopy(dataSetRd)  # accepted phase-space MC
-        dataSetPsAcc.inputType      = InputDataType.mcReco
-        dataSetPsAcc.inputFormat    = inputDataFormats[InputDataType.mcReco]
-        dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/amptools_tree_accepted*.root", )
-        dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat.root"
-        dataSetPsAcc.outputColumns  = outputColumns
-        dataSetsUnpol.append(dataSetPsAcc)
-        dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
-        dataSetPsGen.inputType            = InputDataType.mcTruth
-        dataSetPsGen.inputFormat          = inputDataFormats[InputDataType.mcTruth]
-        dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/amptools_tree_thrown*.root", )
-        dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat.root"
-        dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
-        dataSetPsGen.additionalFilterDefs = []
-        dataSetsUnpol.append(dataSetPsGen)
+  if False:
+    dataDirName           = "./unpolarized"
+    dataPeriods           = (
+      "2017_01",
+      "2018_08",
+    )
+    tBinLabels            = ("tbin_0.4_0.5", )
+    outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
+    additionalColumnDefs  = {}
+    additionalFilterDefs  = []
+    dataSetsUnpol: list[DataSetInfo] = []
+    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
+      InputDataType.realData : InputDataFormat.foo,
+      InputDataType.mcReco   : InputDataFormat.foo,
+      InputDataType.mcTruth  : InputDataFormat.ampTools,
+    }
+    #TODO merge with loop for polarized data sets and move into function
+    for dataPeriod in dataPeriods:
+      print(f"Setting up data period '{dataPeriod}':")
+      for tBinLabel in tBinLabels:
+        print(f"Setting up t bin '{tBinLabel}':")
+        for subsystem in subsystems:
+          print(f"Setting up subsystem '{subsystem}':")
+          inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
+          outputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+          os.makedirs(outputDataDirName, exist_ok = True)
+          dataSetRd = DataSetInfo(  # real data (signal + background)
+            subsystem            = subsystem,
+            inputType            = InputDataType.realData,
+            inputFormat          = inputDataFormats[InputDataType.realData],
+            dataPeriod           = dataPeriod,
+            tBinLabel            = tBinLabel,
+            inputFileNames       = ((f"{inputDataDirName}/amptools_tree_signal.root", ),
+                                    (f"{inputDataDirName}/amptools_tree_bkgnd.root",  )),
+            inputTreeName        = "kin",
+            outputFileName       = f"{outputDataDirName}/data_flat.root",
+            outputTreeName       = subsystem.pairLabel,
+            outputColumns        = outputColumns + ("eventWeight", ),
+            additionalColumnDefs = additionalColumnDefs,
+            additionalFilterDefs = additionalFilterDefs,
+          )
+          dataSetsUnpol.append(dataSetRd)
+          dataSetPsAcc = deepcopy(dataSetRd)  # accepted phase-space MC
+          dataSetPsAcc.inputType      = InputDataType.mcReco
+          dataSetPsAcc.inputFormat    = inputDataFormats[InputDataType.mcReco]
+          dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/amptools_tree_accepted*.root", )
+          dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat.root"
+          dataSetPsAcc.outputColumns  = outputColumns
+          dataSetsUnpol.append(dataSetPsAcc)
+          dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
+          dataSetPsGen.inputType            = InputDataType.mcTruth
+          dataSetPsGen.inputFormat          = inputDataFormats[InputDataType.mcTruth]
+          dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/amptools_tree_thrown*.root", )
+          dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat.root"
+          dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
+          dataSetPsGen.additionalFilterDefs = []
+          dataSetsUnpol.append(dataSetPsGen)
 
   # process data sets
   # dataSets = dataSetsPol
