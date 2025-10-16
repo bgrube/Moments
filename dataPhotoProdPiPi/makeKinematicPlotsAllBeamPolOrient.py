@@ -41,12 +41,12 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
-  dataDirName      = "./polarized"
-  dataPeriods      = ("2017_01", )
-  tBinLabels       = ("tbin_0.1_0.2", "tbin_0.2_0.3")
-  # dataPeriods      = ("2018_08", )
-  # tBinLabels       = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
-  subsystems       = (
+  dataDirName = "./polarized"
+  dataPeriods = ("2017_01", )
+  tBinLabels  = ("tbin_0.1_0.2", "tbin_0.2_0.3")
+  # dataPeriods = ("2018_08", )
+  # tBinLabels  = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
+  subsystems  = (
     "PiPi",
     # "PipP",
     # "PimP",

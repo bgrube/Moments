@@ -212,7 +212,7 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     lvs["pip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+
     lvs["pim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-
   elif dataFormat == InputDataFormat.jpacMc:
-    # kinematic variables according to Eq. (1) in BIBRZYCKI et al., PD 111, 014002 (2025)
+    # kinematic variables according to Eq. (1) in Bibrzycki et al., PRD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
     # four-momenta are defined as
     #                 (p_x, p_y, p_z, E)

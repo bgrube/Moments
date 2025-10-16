@@ -1261,6 +1261,7 @@ class MomentResult:
         term += "* " + (f"[{qnIndex.label}] " if useMomentSymbols else f"({HLM.imag if momentIndex == 2 else HLM.real}) ")  # real or imaginary part of moment value
         term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # real or imaginary part of spherical harmonic
       intensityComponentTerms[momentIndex].append(term)
+    #TODO better distinguish polarized and unpolarized cases, i.e. don't set only the first component for the unpolarized case
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3
     for momentIndex, terms in enumerate(intensityComponentTerms):
