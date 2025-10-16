@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # "PipP",
     # "PimP",
   )
-  beamOrientations = ("PARA_0", "PARA_135", "PERP_45", "PERP_90")  # beam orientations to combine
+  beamPolOrientations = ("PARA_0", "PARA_135", "PERP_45", "PERP_90")  # beam orientations to combine
 
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         # generate real-data plots for all beam polarization orientations combined
         plotDir = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem}/plots_realData"
         # `hadd` ROOT files with plots for real data for all beam polarization orientations
-        sourcePlotFileNames = tuple(f"{plotDir}/{beamOrientation}/plots.root" for beamOrientation in beamOrientations)
+        sourcePlotFileNames = tuple(f"{plotDir}/{beamPolOrientation}/plots.root" for beamPolOrientation in beamPolOrientations)
         mergedPlotFileName  = f"{plotDir}/plots.root"
         print(f"`hadd`ing files for data period '{dataPeriod}', t bin '{tBinLabel}', subsystem '{subsystem}': {sourcePlotFileNames}")
         subprocess.run(f"hadd -f {mergedPlotFileName} {' '.join(sourcePlotFileNames)}", shell = True, check = True)

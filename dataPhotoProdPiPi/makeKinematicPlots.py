@@ -262,18 +262,18 @@ if __name__ == "__main__":
       inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
       for inputDataType, inputDataFormat in inputDataFormats.items():
         print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
-        for beamOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
-          print(f"Generating plots for beam orientation '{beamOrientation}'"
+        for beamPolOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
+          print(f"Generating plots for beam orientation '{beamPolOrientation}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           df = None
           if inputDataType == InputDataType.realData:
             # combine signal and background region data with correct event weights into one RDataFrame
             df = getDataFrameWithCorrectEventWeights(
-              dataSigRegionFileNames  = (f"{inputDataDirName}/amptools_tree_signal_{beamOrientation}.root", ),
-              dataBkgRegionFileNames  = (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}.root",  ),
+              dataSigRegionFileNames  = (f"{inputDataDirName}/amptools_tree_signal_{beamPolOrientation}.root", ),
+              dataBkgRegionFileNames  = (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolOrientation}.root",  ),
               treeName                = treeName,
-              friendSigRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_sig_{beamOrientation}.root.weights",
-              friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamOrientation}.root.weights",
+              friendSigRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolOrientation}.root.weights",
+              friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolOrientation}.root.weights",
             )
           elif inputDataType == InputDataType.mcReco:
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_accepted*.root")
@@ -297,5 +297,5 @@ if __name__ == "__main__":
                 inputDataType = inputDataType,
                 subSystem     = subSystem,
               ),
-              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamOrientation}",
+              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolOrientation}",
             )

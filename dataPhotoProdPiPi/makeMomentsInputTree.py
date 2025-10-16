@@ -395,7 +395,7 @@ class DataSetInfo:
   outputFileName:       str
   outputTreeName:       str
   outputColumns:        tuple[str, ...]
-  beamOrientation:      str                = ""
+  beamPolOrientation:   str                = ""
   beamPolInfo:          BeamPolInfo | None = None  # photon beam polarization
   additionalColumnDefs: dict[str, str]     = field(default_factory=dict)
   additionalFilterDefs: list[str]          = field(default_factory=list)
@@ -423,8 +423,22 @@ if __name__ == "__main__":
 
   # set up polarized pi+pi- real data
   dataDirName           = "./polarized"
-  dataPeriods           = ("2018_08", )
-  tBinLabels            = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
+  dataPeriods           = (
+    "2017_01",
+    # "2018_08",
+  )
+  tBinLabels            = (
+    "tbin_0.1_0.2",
+    "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
+  )
+  beamPolOrientations = (
+    "PARA_0",
+    "PARA_135",
+    "PERP_45",
+    "PERP_90",
+  )
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   additionalColumnDefs  = {}
   additionalFilterDefs  = []
@@ -450,8 +464,9 @@ if __name__ == "__main__":
         inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
         outputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
         os.makedirs(outputDataDirName, exist_ok = True)
-        for beamOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
-          print(f"Setting up beam orientation '{beamOrientation}'"
+        for beamPolOrientation in beamPolOrientations:
+          beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolOrientation]
+          print(f"Setting up beam orientation '{beamPolOrientation}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           dataSetRd = DataSetInfo(  # real data (signal + background)
             subsystem            = subsystem,
@@ -459,12 +474,12 @@ if __name__ == "__main__":
             inputFormat          = inputDataFormats[InputDataType.realData],
             dataPeriod           = dataPeriod,
             tBinLabel            = tBinLabel,
-            beamOrientation      = beamOrientation,
+            beamPolOrientation   = beamPolOrientation,
             beamPolInfo          = beamPolInfo,
-            inputFileNames       = ((f"{inputDataDirName}/amptools_tree_signal_{beamOrientation}.root", ),
-                                    (f"{inputDataDirName}/amptools_tree_bkgnd_{beamOrientation}.root",  )),
+            inputFileNames       = ((f"{inputDataDirName}/amptools_tree_signal_{beamPolOrientation}.root", ),
+                                    (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolOrientation}.root",  )),
             inputTreeName        = "kin",
-            outputFileName       = f"{outputDataDirName}/data_flat_{beamOrientation}.root",
+            outputFileName       = f"{outputDataDirName}/data_flat_{beamPolOrientation}.root",
             outputTreeName       = subsystem.pairLabel,
             outputColumns        = outputColumns + ("eventWeight", ),
             additionalColumnDefs = additionalColumnDefs,
@@ -475,14 +490,14 @@ if __name__ == "__main__":
           dataSetPsAcc.inputType      = InputDataType.mcReco
           dataSetPsAcc.inputFormat    = inputDataFormats[InputDataType.mcReco]
           dataSetPsAcc.inputFileNames = (f"{inputDataDirName}/amptools_tree_accepted*.root", )
-          dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat_{beamOrientation}.root"
+          dataSetPsAcc.outputFileName = f"{outputDataDirName}/phaseSpace_acc_flat_{beamPolOrientation}.root"
           dataSetPsAcc.outputColumns  = outputColumns
           dataSetsPol.append(dataSetPsAcc)
           dataSetPsGen = deepcopy(dataSetPsAcc)  # generated phase-space MC
           dataSetPsGen.inputType            = InputDataType.mcTruth
           dataSetPsGen.inputFormat          = inputDataFormats[InputDataType.mcTruth]
           dataSetPsGen.inputFileNames       = (f"{inputDataDirName}/amptools_tree_thrown*.root", )
-          dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat_{beamOrientation}.root"
+          dataSetPsGen.outputFileName       = f"{outputDataDirName}/phaseSpace_gen_flat_{beamPolOrientation}.root"
           dataSetPsGen.additionalColumnDefs = {}  # no selection cuts for generated MC
           dataSetPsGen.additionalFilterDefs = []
           dataSetsPol.append(dataSetPsGen)
@@ -555,15 +570,15 @@ if __name__ == "__main__":
         dataSigRegionFileNames  = dataSet.inputFileNames[0],
         dataBkgRegionFileNames  = dataSet.inputFileNames[1],
         treeName                = dataSet.inputTreeName,
-        friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamOrientation}.root.weights",
-        friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamOrientation}.root.weights",
+        friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamPolOrientation}.root.weights",
+        friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamPolOrientation}.root.weights",
       )
     elif dataSet.inputType == InputDataType.mcReco or dataSet.inputType == InputDataType.mcTruth:
       # read all MC files into one RDataFrame
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
       raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
-    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamOrientation} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
+    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamPolOrientation} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     defineDataFrameColumns(
       df                   = df,
