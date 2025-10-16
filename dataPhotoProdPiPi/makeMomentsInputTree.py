@@ -310,7 +310,7 @@ def defineDataFrameColumns(
   return df
 
 
-DATA_TCHAIN = ROOT.TChain()  # use global variables to avoid garbage collection
+DATA_TCHAINS: list[ROOT.TChain] = []  # use global variable to avoid garbage collection
 def getDataFrameWithCorrectEventWeights(
   dataSigRegionFileNames:    Sequence[str],
   dataBkgRegionFileNames:    Sequence[str],
@@ -333,18 +333,18 @@ def getDataFrameWithCorrectEventWeights(
         .Define("eventWeight", weightFormula) \
         .Snapshot(treeName, friendFileName, ["eventWeight"])
   # chain trees for signal and background regions and add friend trees with weights
-  DATA_TCHAIN.Reset()
-  DATA_TCHAIN.SetName(treeName)
+  dataTChain   = ROOT.TChain(treeName)
   weightTChain = ROOT.TChain(treeName)
   for dataFileNames, friendFileName in (
     (dataSigRegionFileNames, friendSigRegionFileName),
     (dataBkgRegionFileNames, friendBkgRegionFileName),
   ):
     for dataFileName in dataFileNames:
-      DATA_TCHAIN.Add(dataFileName)
+      dataTChain.Add(dataFileName)
     weightTChain.Add(friendFileName)
-  DATA_TCHAIN.AddFriend(weightTChain)
-  return ROOT.RDataFrame(DATA_TCHAIN)
+  dataTChain.AddFriend(weightTChain)
+  DATA_TCHAINS.append(dataTChain)  # avoid garbage collection of TChain
+  return ROOT.RDataFrame(dataTChain)
 
 
 def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
@@ -442,7 +442,7 @@ if __name__ == "__main__":
   outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
   additionalColumnDefs  = {}
   additionalFilterDefs  = []
-  inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
+  inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format  #TODO rewrite processing such that this dict defines which data to process
     InputDataType.realData : InputDataFormat.ampTools,
     InputDataType.mcReco   : InputDataFormat.ampTools,
     InputDataType.mcTruth  : InputDataFormat.ampTools,
@@ -562,6 +562,7 @@ if __name__ == "__main__":
   # dataSets = dataSetsUnpol
   dataSets = dataSetsPol + dataSetsUnpol
   for dataSet in dataSets:
+    #TODO add console output about data set being processed
     df = None
     if dataSet.inputType == InputDataType.realData:
       # combine signal and background region data with correct event weights into one RDataFrame
