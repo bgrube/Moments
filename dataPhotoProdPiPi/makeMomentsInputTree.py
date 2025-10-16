@@ -503,6 +503,7 @@ if __name__ == "__main__":
           dataSetsPol.append(dataSetPsGen)
 
   # setup unpolarized pi+pi- real data
+  dataSetsUnpol: list[DataSetInfo] = []
   if False:
     dataDirName           = "./unpolarized"
     dataPeriods           = (
@@ -513,7 +514,6 @@ if __name__ == "__main__":
     outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
-    dataSetsUnpol: list[DataSetInfo] = []
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
       InputDataType.realData : InputDataFormat.foo,
       InputDataType.mcReco   : InputDataFormat.foo,
