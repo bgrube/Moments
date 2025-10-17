@@ -67,7 +67,7 @@ def plotDistributions1D(
 ) -> None:
   """Overlays 1D distributions from data and weighted Monte Carlo"""
   dataToOverlay = DataToOverlay(
-    data   = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
+    data       = ROOT.RDataFrame(treeName, dataFileName      ).Filter(filter),
     weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
   )
   hists1DToOverlay = HistsToOverlay()

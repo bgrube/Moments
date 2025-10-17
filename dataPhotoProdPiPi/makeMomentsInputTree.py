@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+This module converts input data into the format expected by `MomentCalculator`.
+
+Usage: Run this module as a script to convert input data files.
+"""
 
 
 from __future__ import annotations

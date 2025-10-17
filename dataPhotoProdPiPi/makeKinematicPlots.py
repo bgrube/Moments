@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
+"""
+This module plots kinematic distributions from input data.
+
+Usage: Run this module as a script to generate kinematic plots.
+"""
 
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+import functools
 import os
 
 import ROOT
@@ -24,6 +30,10 @@ from makeMomentsInputTree import (
   SubSystemInfo,
   lorentzVectors,
 )
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 def defineColumnsForPlots(
@@ -188,6 +198,12 @@ def bookHistograms(
   hists = []
   for histDef in histDefs:
     hists.append(bookHistogram(df, histDef, applyWeights))
+  if applyWeights:
+    hists.append(bookHistogram(
+      df,
+      HistogramDefinition("eventWeight", ";Event weight;Combos", ((100, -1, +2), ), ("eventWeight", )),
+      applyWeights = False,
+    ))
   return hists
 
 
