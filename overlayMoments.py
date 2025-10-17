@@ -59,6 +59,8 @@ def overlayMoments1D(
   binning:                HistAxisBinning,  # binning to use for plot
   normalizedMoments:      bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
   pdfFileNamePrefix:      str  = "",    # name prefix for output files
+  styleIndexOffset:       int  = 0,  # allows to offset style indices for overlaid plots
+  styleIndexStride:       int  = 1,  # step size, by which style indices are incremented
 ) -> None:
   """Overlays moments H_i(L, M) from different analyses as function of kinematical variable"""
   print(f"Overlaying {qnIndex.label} moments as a function of the '{binning.var.name}' variable")
@@ -71,8 +73,13 @@ def overlayMoments1D(
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(HPhys[qnIndex] for HPhys in momentResults if qnIndex in HPhys)
       histData = getHistFromMomentValues(HVals, binning, momentPart, legendLabel)
-      setCbFriendlyStyle(histData, styleIndex = index, filledMarkers = True)
+      setCbFriendlyStyle(
+        graphOrHist   = histData,
+        styleIndex    = index * styleIndexStride + styleIndexOffset,
+        filledMarkers = True,
+      )
       if scaleFactor is not None:
+        print(f"Applying scale factor {scaleFactor} to fit result '{legendLabel}'")
         histData.Scale(scaleFactor)
       histStack.Add(histData, "PE1X0")
     canv = ROOT.TCanvas()
@@ -126,18 +133,22 @@ if __name__ == "__main__":
 
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
+      # scaleFactor_2018_08 = 0.4916841615225002 if tBinLabel == "tbin_0.1_0.2" else 0.5159984154089572  # scale factors to match Spring 2017 H_0(0, 0) integral for L_max = 4
+      scaleFactor_2018_08 = None
       fitResults: tuple[tuple[str, str, float | None], ...] = (  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last fit result defines which moments are plotted
         (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_4", "L_{max} = 4", None),
         (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_6", "L_{max} = 6", None),
         (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_8", "L_{max} = 8", None),
         #
         # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_4", "Spring 2017, L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/allOrient.maxL_4",      "Fall 2018, L_{max} = 4",   None),
+        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/allOrient.maxL_4",      "Fall 2018, L_{max} = 4",   scaleFactor_2018_08),  # scale factor to match Spring 2017 H_0(0, 0) integral
+        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_8", "Spring 2017, L_{max} = 8", None),
+        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/allOrient.maxL_8",      "Fall 2018, L_{max} = 8",   scaleFactor_2018_08),  # use same scale factor as for L_max = 4
       )
       outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}.overlay")
       # outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{tBinLabel}.overlay")
 
-      # load moment results``
+      # load moment results
       momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
       for fitResultDirName, fitResultLabel, scaleFactor in fitResults:
         print(f"Loading moment results from directory {fitResultDirName}")
@@ -174,6 +185,8 @@ if __name__ == "__main__":
           binning                = cfg.massBinning,
           normalizedMoments      = cfg.normalizeMoments,
           pdfFileNamePrefix      = f"{outputDirName}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
+          # styleIndexOffset       = 1,
+          # styleIndexStride       = 2,
         )
 
   timer.stop("Total execution time")
