@@ -56,9 +56,9 @@ if __name__ == "__main__":
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
       for subsystem in subsystems:
-        # generate real-data plots for all beam polarization orientations combined
+        # generate real-data plots for all beam-polarization orientations combined
         plotDir = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem}/plots_realData"
-        # `hadd` ROOT files with plots for real data for all beam polarization orientations
+        # `hadd` ROOT files with plots for real data for all beam-polarization orientations
         sourcePlotFileNames = tuple(f"{plotDir}/{beamPolOrientation}/plots.root" for beamPolOrientation in beamPolOrientations)
         mergedPlotFileName  = f"{plotDir}/plots.root"
         print(f"`hadd`ing files for data period '{dataPeriod}', t bin '{tBinLabel}', subsystem '{subsystem}': {sourcePlotFileNames}")
@@ -76,11 +76,11 @@ if __name__ == "__main__":
               obj.SetName(f"{histName}_log")
               plotHistogram(obj, plotDir, logZ = True)
 
-        # overlay real-data mass distribution for all beam polarization orientations combined
+        # overlay real-data mass distribution for all beam-polarization orientations combined
         # with mass distribution from accepted phase-space MC
         histMassName = f"mass{subsystem}"
         histMassData = mergedPlotFile.Get(histMassName)
-        #!NOTE! we use the same phase-space MC for all beam polarization orientations, hence we
+        #!NOTE! we use the same phase-space MC for all beam-polarization orientations, hence we
         #       overlay the MC distribution for only one orientation
         mcPlotFile = ROOT.TFile.Open(f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem}/plots_mcReco/PARA_0/plots.root", "READ")
         histMassMc = mcPlotFile.Get(histMassName)

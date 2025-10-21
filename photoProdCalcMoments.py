@@ -259,6 +259,9 @@ if __name__ == "__main__":
     8,
     # (8, 16),
     # (8, 20),
+    # 12,
+    # 16,
+    # 20,
   )
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName

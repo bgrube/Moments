@@ -253,10 +253,22 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
   dataDirName          = "./polarized"
-  dataPeriods          = ("2017_01", )
-  tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3")
-  # dataPeriods          = ("2018_08", )
-  # tBinLabels           = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
+  dataPeriods          = (
+    "2017_01",
+    # "2018_08",
+  )
+  tBinLabels           = (
+    "tbin_0.1_0.2",
+    "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
+  )
+  beamPolOrientations  = (
+    "PARA_0",
+    "PARA_135",
+    "PERP_45",
+    "PERP_90",
+  )
   additionalColumnDefs = {}
   additionalFilterDefs = []
   treeName             = "kin"
@@ -278,8 +290,9 @@ if __name__ == "__main__":
       inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
       for inputDataType, inputDataFormat in inputDataFormats.items():
         print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
-        for beamPolOrientation, beamPolInfo in BEAM_POL_INFOS[dataPeriod].items():
-          print(f"Generating plots for beam orientation '{beamPolOrientation}'"
+        for beamPolOrientation in beamPolOrientations:  #TODO process only 1 orientation for MC data
+          beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolOrientation]
+          print(f"Generating plots for beam-polarization orientation '{beamPolOrientation}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           df = None
           if inputDataType == InputDataType.realData:

@@ -36,7 +36,7 @@ class BeamPolInfo:
 
 # polarization values from Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
 # beam polarization angles in lab frame taken from `Lab Phi` column of tables 2 to 5 in GlueX-doc-3977
-BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {beam orientation : BeamPolInfo(...)}
+BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {beam-polarization orientation : BeamPolInfo(...)}
   "2017_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3537,
@@ -469,7 +469,7 @@ if __name__ == "__main__":
           os.makedirs(outputDataDirName, exist_ok = True)
           for beamPolOrientation in beamPolOrientations:  #TODO process only 1 orientation for MC data
             beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolOrientation]
-            print(f"Setting up beam orientation '{beamPolOrientation}'"
+            print(f"Setting up beam-polarization orientation '{beamPolOrientation}'"
                   + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
             for inputDataType, inputDataFormat in inputDataFormats.items():
               print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
