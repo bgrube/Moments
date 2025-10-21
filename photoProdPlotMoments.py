@@ -664,7 +664,7 @@ if __name__ == "__main__":
   # plotCompareUncert = True
   plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0
-  # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / (10 MeV * 0.1 GeV^2 * L) with L(Fall 2018) = 0.1305 pb^{-1}
+  # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
   normalizeComparisonMoments = True  # whether to scale comparison moments to GlueX moments
   # normalizeComparisonMoments = False
   yAxisUnit = ""
