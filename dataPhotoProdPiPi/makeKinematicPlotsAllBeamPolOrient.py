@@ -42,16 +42,29 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
   dataDirName = "./polarized"
-  dataPeriods = ("2017_01", )
-  tBinLabels  = ("tbin_0.1_0.2", "tbin_0.2_0.3")
-  # dataPeriods = ("2018_08", )
-  # tBinLabels  = ("tbin_0.1_0.2", "tbin_0.2_0.3", "tbin_0.3_0.4", "tbin_0.4_0.5")
+  # data sets to process
+  dataPeriods = (
+    "2017_01",
+    # "2018_08",
+  )
+  tBinLabels  = (
+    "tbin_0.1_0.2",
+    "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
+  )
   subsystems  = (
     "PiPi",
-    # "PipP",
-    # "PimP",
+    "PipP",
+    "PimP",
   )
-  beamPolOrientations = ("PARA_0", "PARA_135", "PERP_45", "PERP_90")  # beam orientations to combine
+  # beam-polarization orientations to combine
+  beamPolOrientations = (
+    "PARA_0",
+    "PARA_135",
+    "PERP_45",
+    "PERP_90",
+  )
 
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
