@@ -30,6 +30,17 @@ class DataToOverlay:
   realData:   ROOT.RDataFrame
   weightedMc: ROOT.RDataFrame
 
+  def Filter(
+    self,
+    filterExpr: str
+  ) -> DataToOverlay:
+    """Returns a new `DataToOverlay` instance with data frames filtered by `filterExpr`"""
+    return DataToOverlay(
+      realData   = self.realData.Filter  (filterExpr),
+      weightedMc = self.weightedMc.Filter(filterExpr),
+    )
+
+
 @dataclass
 class HistsToOverlay:
   """Stores histograms for data and weighted MC"""
@@ -39,21 +50,14 @@ class HistsToOverlay:
 
 
 def makePlots(
-  realDataFileName:   str,
-  weightedMcFileName: str,
-  treeName:           str,
-  outputDirName:      str = ".",
-  filter:             str = "(true)",
-  pairLabel:          str = "PiPi",
-  histTitle:          str = "",
-  pdfFileMameSuffix:  str = "",
-  yAxisLabel:         str = "RF-Sideband Subtracted Combos",
+  dataToOverlay:     DataToOverlay,
+  outputDirName:     str = ".",
+  pairLabel:         str = "PiPi",
+  histTitle:         str = "",
+  pdfFileMameSuffix: str = "",
+  yAxisLabel:        str = "RF-Sideband Subtracted Combos",
 ) -> None:
   """Overlays 1D distributions and compares 2D distributions from real data and weighted Monte Carlo"""
-  dataToOverlay = DataToOverlay(
-    realData   = ROOT.RDataFrame(treeName, realDataFileName  ).Filter(filter),
-    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName).Filter(filter),
-  )
   histsToOverlay = HistsToOverlay()
   for member in fields(dataToOverlay):  # loop over members of `DataToOverlay`
     df    = getattr(dataToOverlay, member.name)
@@ -152,21 +156,24 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
-  realDataFileName   = "./polarized/2018_08/tbin_0.1_0.2/PiPi/data_flat_PARA_0.root"
-  weightedMcFileName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/weighted.maxL_4/PARA_0/data_weighted_flat.root"
-  outputDirName      = "./polarized/2018_08/tbin_0.1_0.2/PiPi/weighted.maxL_4/PARA_0"
-  treeName           = "PiPi"
-  massMin            = 0.28  # [GeV]
-  massBinWidth       = 0.04  # [GeV]
-  nmbBins            = 50
+  realDataDirName     = "./polarized/2018_08/tbin_0.1_0.2/PiPi"
+  realDataFileName    = f"{realDataDirName}/data_flat_PARA_0.root"
+  weightedDataDirName = f"{realDataDirName}/weighted.maxL_4/PARA_0"
+  weightedMcFileName  = f"{weightedDataDirName}/data_weighted_flat.root"
+  treeName            = "PiPi"
+  massMin             = 0.28  # [GeV]
+  massBinWidth        = 0.04  # [GeV]
+  nmbBins             = 50
 
-  print(f"Overlaying histograms for full mass range and writing plots into '{outputDirName}'")
+  dataToOverlay = DataToOverlay(
+    realData   = ROOT.RDataFrame(treeName, realDataFileName  ),
+    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName),
+  )
+  print(f"Overlaying histograms for full mass range and writing plots into '{weightedDataDirName}'")
   makePlots(
-    realDataFileName   = realDataFileName,
-    weightedMcFileName = weightedMcFileName,
-    treeName           = treeName,
-    outputDirName      = outputDirName,
-    histTitle          = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
+    dataToOverlay = dataToOverlay,
+    outputDirName = weightedDataDirName,
+    histTitle     = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
   )
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
@@ -174,11 +181,8 @@ if __name__ == "__main__":
     print(f"Overlaying histograms for mass range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
     massRangeFilter = f"(({massBinMin} < mass) && (mass < {massBinMax}))"
     makePlots(
-      realDataFileName   = realDataFileName,
-      weightedMcFileName = weightedMcFileName,
-      treeName           = treeName,
-      outputDirName      = outputDirName,
-      filter             = massRangeFilter,
-      histTitle          = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
-      pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+      dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
+      outputDirName     = weightedDataDirName,
+      histTitle         = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
+      pdfFileMameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
     )
