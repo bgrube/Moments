@@ -11,6 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import functools
 import os
+from typing import Union
+from typing_extensions import TypeAlias
+# from typing import TypeAlias  # for Python 3.10+
 
 import ROOT
 
@@ -98,11 +101,15 @@ class HistogramDefinition:
   filter:      str = ""  # optional filter condition to apply to the histogram
 
 
+HistType:           TypeAlias = Union[ROOT.TH1D, ROOT.TH2D, ROOT.TH3D]
+HistRResultPtrType: TypeAlias = Union[ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D]]
+HistListType:       TypeAlias = Union[list[HistType], list[HistRResultPtrType]]
+
 def bookHistogram(
   df:           ROOT.RDataFrame,
   histDef:      HistogramDefinition,
   applyWeights: bool,
-) -> ROOT.TH1D | ROOT.TH2D | ROOT.TH3D:
+) -> HistType | HistRResultPtrType:
   """Books a single histogram according to the given definition and returns it"""
   # apply optional filter
   dfHist = df.Filter(histDef.filter) if histDef.filter else df
@@ -133,9 +140,9 @@ def bookHistograms(
   df:            ROOT.RDataFrame,
   inputDataType: InputDataType,
   subSystem:     SubSystemInfo,
-) -> list[ROOT.TH1D | ROOT.TH2D | ROOT.TH3D]:
+) -> HistListType:
   """Books histograms for kinematic plots and returns the list of histograms"""
-  applyWeights = inputDataType == InputDataType.realData and df.HasColumn("eventWeight")
+  applyWeights = (inputDataType == InputDataType.realData and df.HasColumn("eventWeight"))
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   # define histograms that are independent of subsystem
   histDefs: list[HistogramDefinition] = [
@@ -208,7 +215,7 @@ def bookHistograms(
 
 
 def makePlots(
-  hists:         list[ROOT.TH1D | ROOT.TH2D | ROOT.TH3D],  # list of histograms to plot
+  hists:         HistListType,
   outputDirName: str,
 ) -> None:
   """Writes histograms to ROOT file and generates PDF plots"""
