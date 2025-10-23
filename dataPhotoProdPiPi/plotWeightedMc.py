@@ -63,17 +63,17 @@ def makePlots(
     histNameSuffix = pairLabel + label  # e.g. "PiPiRealData" or "PiPiWeightedMc"
     hists = [
       # 1D histograms
-      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, ((50,    0.28,    2.28), ), ("mass",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"cosThetaHf{histNameSuffix}", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ((50,   -1,      +1   ), ), ("cosTheta", )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegHf{histNameSuffix}",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, ((50, -180,    +180   ), ), ("phiDeg",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     histTitle + ";#Phi [deg];"       + yAxisLabel, ((50, -180,    +180   ), ), ("PhiDeg",   )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (( 50,    0.28,    2.28), ), ("mass",     )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"cosThetaHf{histNameSuffix}", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ((100,   -1,      +1   ), ), ("cosTheta", )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"phiDegHf{histNameSuffix}",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, (( 72, -180,    +180   ), ), ("phiDeg",   )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     histTitle + ";#Phi [deg];"       + yAxisLabel, (( 72, -180,    +180   ), ), ("PhiDeg",   )), applyWeights),
       # 2D histograms
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsCosThetaHf{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50,  0.28, 2.28), (25,   -1,   +1)), ("mass",     "cosTheta")), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDegHf{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50,  0.28, 2.28), (25, -180, +180)), ("mass",     "phiDeg"  )), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDeg{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50,  0.28, 2.28), (25, -180, +180)), ("mass",     "PhiDeg"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"anglesHf{histNameSuffix}",                    ";cos#theta_{HF};#phi_{HF} [deg]",   ((25, -1,   +1   ), (25, -180, +180)), ("cosTheta", "phiDeg"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDegVsCosThetaHf{histNameSuffix}",          ";cos#theta_{HF};#Phi [deg]",        ((25, -1,   +1   ), (25, -180, +180)), ("cosTheta", "PhiDeg"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDegVsPhiDegHf{histNameSuffix}",            ";#phi_{HF} [deg];#Phi [deg]",       ((25, -180, +180 ), (25, -180, +180)), ("phiDeg",   "PhiDeg"  )), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsCosThetaHf{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  (( 50,  0.28, 2.28), (100,   -1,   +1)), ("mass",     "cosTheta")), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDegHf{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", (( 50,  0.28, 2.28), ( 72, -180, +180)), ("mass",     "phiDeg"  )), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDeg{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      (( 50,  0.28, 2.28), ( 72, -180, +180)), ("mass",     "PhiDeg"  )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"anglesHf{histNameSuffix}",                    ";cos#theta_{HF};#phi_{HF} [deg]",   ((100, -1,   +1   ), (72, -180, +180)),  ("cosTheta", "phiDeg"  )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDegVsCosThetaHf{histNameSuffix}",          ";cos#theta_{HF};#Phi [deg]",        ((100, -1,   +1   ), (72, -180, +180)),  ("cosTheta", "PhiDeg"  )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDegVsPhiDegHf{histNameSuffix}",            ";#phi_{HF} [deg];#Phi [deg]",       (( 72, -180, +180 ), (72, -180, +180)),  ("phiDeg",   "PhiDeg"  )), applyWeights),
     ]
     setattr(histsToOverlay, member.name, hists)
   for histIndex, histRealData in enumerate(histsToOverlay.realData):
@@ -81,6 +81,10 @@ def makePlots(
     # normalize weighted MC to integral of real data
     normFactor = histRealData.Integral() / histWeightedMc.Integral()
     histWeightedMc.Scale(normFactor)
+    histWeightedMc.SetMinimum(0)
+    histRealData.SetMinimum  (0)
+    histWeightedMc.SetTitle("Weighted MC")
+    histRealData.SetTitle  ("Real data")
     # generate plots
     ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
     if "TH1" in histRealData.ClassName():
@@ -89,15 +93,13 @@ def makePlots(
       ROOT.gStyle.SetOptStat(False)
       canv = ROOT.TCanvas()
       histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
-      histWeightedMc.SetTitle("Weighted MC")
-      histRealData.SetTitle  ("Real data")
-      histStack.Add(histWeightedMc.GetValue(), "HIST E")
-      histStack.Add(histRealData.GetValue(),   "E")
       histRealData.SetLineColor  (ROOT.kRed + 1)
       histWeightedMc.SetLineColor(ROOT.kBlue + 1)
       histRealData.SetMarkerColor  (ROOT.kRed + 1)
       histWeightedMc.SetMarkerColor(ROOT.kBlue + 1)
       histWeightedMc.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
+      histStack.Add(histWeightedMc.GetValue(), "HIST E")
+      histStack.Add(histRealData.GetValue(),   "E")
       histStack.Draw("NOSTACK")
       # histStack.SetMaximum(1.1 * histStack.GetMaximum())
       histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
@@ -113,13 +115,14 @@ def makePlots(
       # generate 2D comparison plots
       print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
       ROOT.gStyle.SetOptStat("i")
-      histRealData.SetTitle("Real data")
       canv = ROOT.TCanvas()
+      maxZ = histRealData.GetMaximum() * 1.1
+      histRealData.SetMaximum(maxZ)
       histRealData.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histRealData.GetName()}{pdfFileMameSuffix}.pdf")
       print(f"Plotting weighted-MC 2D histogram '{histWeightedMc.GetName()}'")
-      histWeightedMc.SetTitle("Weighted MC")
       canv = ROOT.TCanvas()
+      histWeightedMc.SetMaximum(maxZ)
       histWeightedMc.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histWeightedMc.GetName()}{pdfFileMameSuffix}.pdf")
       print(f"Plotting pulls of 2D histograms '{histRealData.GetName()}' - '{histWeightedMc.GetName()}'")
@@ -134,7 +137,7 @@ def makePlots(
             histPulls.SetBinContent(xBin, yBin, histPulls.GetBinContent(xBin, yBin) / binError)
           else:
             histPulls.SetBinContent(xBin, yBin, 0)
-      histPulls.SetTitle("(Real data#minus Weighted MC) / #sigma_{Real data}")
+      histPulls.SetTitle("(Real data#minus Weighted MC)/#sigma_{Real data}")
       canv = ROOT.TCanvas()
       histPulls.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileMameSuffix}.pdf")
