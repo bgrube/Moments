@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-This module weights accepted phase-space data with the intensity
-calculated from the results of the moment analysis of unpolarized and
-polarized pi+ pi- photoproduction data. The moment values are read
-from files produced by the script `photoProdCalcMoments.py` that
-calculates the moments.
+This module weights data (usually generated or accepted phase-space
+data) with the intensity distribution calculated from the results of
+the moment analysis of unpolarized or polarized pi+ pi-
+photoproduction data.  The moment values are read from files produced
+by the script `photoProdCalcMoments.py` that calculates the moments.
 
 Usage: Run this module as a script to generate the output files.
 """
@@ -48,18 +48,17 @@ def weightDataWithIntensity(
   massBinIndex:     int,  # index of mass bin to generate data for
   outFileName:      str,  # ROOT file to which weighted events are written
   cfg:              AnalysisConfig,
-  inputDataType:    AnalysisConfig.DataType | None = None,    # if `None`, phase-space distribution in angles is generated
-  nmbGenPsEvents:   int                            = 100000,  # number phase-space events to generate
-  seed:             int                            = 123456789,
+  inputDataType:    AnalysisConfig.DataType | None = None,       # if `None`, phase-space distribution in angles is generated
+  nmbGenPsEvents:   int                            = 100000,     # number phase-space events to generate
+  seed:             int                            = 123456789,  # seed for rejection sampling and for generating phase-space events
 ) -> None:
-  """Weight phase-space MC data with given intensity formula"""
-  kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
-  kinematicBinRange: tuple[float, float] = cfg.massBinning.binValueRange(massBinIndex)
+  """Weight input data specified by `inputDataType` with given intensity formula"""
   # get input data
+  ROOT.gRandom.SetSeed(seed)
   dataToWeight: ROOT.RDataFrame | None = None
   if inputDataType is None:
     print(f"Generating phase-space distribution with {nmbGenPsEvents} events")
-    ROOT.gRandom.SetSeed(seed)
+    kinematicBinRange: tuple[float, float] = cfg.massBinning.binValueRange(massBinIndex)
     dataToWeight = (
       ROOT.RDataFrame(nmbGenPsEvents)
           .Define("cosTheta", "(Double32_t)gRandom->Uniform(-1, +1)")
@@ -67,7 +66,7 @@ def weightDataWithIntensity(
           .Define("phiDeg",   "(Double32_t)gRandom->Uniform(-180, +180)")
           .Define("phi",      "(Double32_t)phiDeg * TMath::DegToRad()")
           .Define("mass",    f"(Double32_t)gRandom->Uniform({kinematicBinRange[0]}, {kinematicBinRange[1]})")
-          .Filter('if (rdfentry_ == 0) { cout << "Running event loop in weightAccPhaseSpaceWithIntensity()" << endl; } return true;')  # noop filter that just logs when event loop is running
+          .Filter('if (rdfentry_ == 0) { cout << "Running event loop in weightAccPhaseSpaceWithIntensity()" << endl; } return true;')  # noop filter that just prints a log message when event loop is running
     )
     if cfg.polarization is not None:
       # polarized case: add Phi and polarization columns
@@ -83,25 +82,26 @@ def weightDataWithIntensity(
     print(f"Loading data of type '{inputDataType}'")
     dataToWeight = cfg.loadData(inputDataType)
     assert dataToWeight is not None, f"Could not load data of type '{inputDataType}'"
+    kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
     nmbInputEvents = dataToWeight.Count().GetValue()
     print(f"Input data contain {nmbInputEvents} events in bin '{kinematicBinFilter}'")
   # calculate intensity weight and random number in [0, 1] for each event
   print(f"Calculating weights using formula '{intensityFormula}'")
-  # ROOT.gRandom.SetSeed(seed)
   dataToWeight = (
-    dataToWeight.Define("intensityWeight", f"(Double32_t){intensityFormula}")
-                .Define("intensityRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
+    dataToWeight.Define("intensityWeight",      f"(Double32_t){intensityFormula}")
+                .Define("intensityWeightRndNmb", "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
   )
-  tmpFileName = f"{outFileName}.phaseSpace.root"
-  dataToWeight.Snapshot(cfg.treeName, tmpFileName)  # write unweighted data to file to ensure that random columns are filled only once
-  dataToWeight = ROOT.RDataFrame(cfg.treeName, tmpFileName)  # read data back
+  # write unweighted data to file and read data back to ensure that random columns are filled only once
+  tmpFileName = f"{outFileName}.tmp.root"
+  dataToWeight.Snapshot(cfg.treeName, tmpFileName)
+  dataToWeight = ROOT.RDataFrame(cfg.treeName, tmpFileName)
   # determine maximum weight
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
   print(f"Maximum intensity is {maxIntensityWeight}")
   # apply weights by accepting each event with probability intensityWeight / maxIntensityWeight
   weightedData = (
-    dataToWeight.Define("acceptEventIntensityWeight", f"(bool)(intensityRndNmb < (intensityWeight / {maxIntensityWeight}))")
+    dataToWeight.Define("acceptEventIntensityWeight", f"(bool)(intensityWeightRndNmb < (intensityWeight / {maxIntensityWeight}))")
                 .Filter("acceptEventIntensityWeight == true")
   )
   nmbWeightedEvents = weightedData.Count().GetValue()
@@ -110,7 +110,7 @@ def weightDataWithIntensity(
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
   weightedData.Snapshot(cfg.treeName, outFileName)  #TODO write out only essential columns
-  subprocess.run(f"rm -fv {tmpFileName}", shell = True)
+  subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  # remove temporary file
 
 
 def reweightData(
