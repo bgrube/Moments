@@ -43,19 +43,13 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
-def weightDataWithIntensity(
-  intensityFormula: str,  # formula for intensity function
-  massBinIndex:     int,  # index of mass bin to generate data for
-  outFileName:      str,  # ROOT file to which weighted events are written
-  cfg:              AnalysisConfig,
-  inputDataType:    AnalysisConfig.DataType | None = None,       # if `None`, phase-space distribution in angles is generated
-  nmbGenPsEvents:   int                            = 100000,     # number phase-space events to generate
-  seed:             int                            = 123456789,  # seed for rejection sampling and for generating phase-space events
-) -> None:
-  """Weight input data specified by `inputDataType` with given intensity formula"""
-  # get input data
-  ROOT.gRandom.SetSeed(seed)
-  dataToWeight: ROOT.RDataFrame | None = None
+def loadInputData(
+  inputDataType:  AnalysisConfig.DataType | None,  # if `None`, phase-space distribution in angles is generated
+  cfg:            AnalysisConfig,
+  massBinIndex:   int,  # index of mass bin to load/generate data for
+  nmbGenPsEvents: int = 100000,  # number phase-space events to generate
+) -> tuple[ROOT.RDataFrame, int]:
+  """Loads data specified by `inputDataType` and returns them as RDataFrame and the number of input events. If inputDataType is None, generate a phase-space distribution in angles."""
   if inputDataType is None:
     print(f"Generating phase-space distribution with {nmbGenPsEvents} events")
     kinematicBinRange: tuple[float, float] = cfg.massBinning.binValueRange(massBinIndex)
@@ -71,14 +65,16 @@ def weightDataWithIntensity(
     if cfg.polarization is not None:
       # polarized case: add Phi and polarization columns
       dataToWeight = (
-        dataToWeight.Define("PhiDeg",   "(Double32_t)gRandom->Uniform(-180, +180)")
-                    .Define("Phi",      "(Double32_t)PhiDeg * TMath::DegToRad()")
+        dataToWeight.Define("PhiDeg", "(Double32_t)gRandom->Uniform(-180, +180)")
+                    .Define("Phi",    "(Double32_t)PhiDeg * TMath::DegToRad()")
       )
       if isinstance(cfg.polarization, float):
         dataToWeight = dataToWeight.Define("beamPol", f"(Double32_t){cfg.polarization}")
       elif isinstance(cfg.polarization, str):
         raise ValueError(f"Cannot read polarization from column '{cfg.polarization}'")
-  else:
+    #TODO is a snapshot necessary here to fill random columns only once?
+    return dataToWeight, nmbGenPsEvents
+  elif isinstance(inputDataType, AnalysisConfig.DataType):
     print(f"Loading data of type '{inputDataType}'")
     dataToWeight = cfg.loadData(inputDataType)
     assert dataToWeight is not None, f"Could not load data of type '{inputDataType}'"
@@ -86,6 +82,30 @@ def weightDataWithIntensity(
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
     nmbInputEvents = dataToWeight.Count().GetValue()
     print(f"Input data contain {nmbInputEvents} events in bin '{kinematicBinFilter}'")
+    return dataToWeight, nmbInputEvents
+  else:
+    raise ValueError(f"Invalid {inputDataType=}")
+
+
+def weightDataWithIntensity(
+  intensityFormula: str,  # formula for intensity function
+  massBinIndex:     int,  # index of mass bin to generate data for
+  outFileName:      str,  # ROOT file to which weighted events are written
+  cfg:              AnalysisConfig,
+  inputDataType:    AnalysisConfig.DataType | None = None,       # if `None`, phase-space distribution in angles is generated
+  nmbGenPsEvents:   int                            = 100000,     # number phase-space events to generate
+  seed:             int                            = 123456789,  # seed for rejection sampling and for generating phase-space events
+) -> None:
+  """Weight input data specified by `inputDataType` with given intensity formula"""
+  # get input data
+  ROOT.gRandom.SetSeed(seed)
+  # load input data
+  dataToWeight, nmbInputEvents = loadInputData(
+    inputDataType  = inputDataType,
+    cfg            = cfg,
+    massBinIndex   = massBinIndex,
+    nmbGenPsEvents = nmbGenPsEvents,
+  )
   # calculate intensity weight and random number in [0, 1] for each event
   print(f"Calculating weights using formula '{intensityFormula}'")
   dataToWeight = (
@@ -106,7 +126,7 @@ def weightDataWithIntensity(
   )
   nmbWeightedEvents = weightedData.Count().GetValue()
   print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; "
-        f"weighting efficiency is {nmbWeightedEvents / (nmbGenPsEvents if inputDataType is None else nmbInputEvents)}")
+        f"weighting efficiency is {nmbWeightedEvents / nmbInputEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
   weightedData.Snapshot(cfg.treeName, outFileName)  #TODO write out only essential columns
