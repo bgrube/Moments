@@ -1452,11 +1452,23 @@ class MomentResultsKinematicBinning:
     """Returns number of kinematic bins"""
     return len(self.moments)
 
+  @overload
   def __getitem__(
     self,
     subscript: int,
-  ) -> MomentResult:
-    """Returns `MomentResult` that correspond to given bin index"""
+  ) -> MomentResult: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: slice,
+  ) -> list[MomentResult]: ...
+
+  def __getitem__(
+    self,
+    subscript: int | slice,
+  ) -> MomentResult | list[MomentResult]:
+    """Returns `MomentResult` instance(s) that correspond to given bin index or slice"""
     return self.moments[subscript]
 
   def __setitem__(
@@ -2067,11 +2079,23 @@ class MomentCalculatorsKinematicBinning:
     """Returns number of kinematic bins"""
     return len(self.calculators)
 
+  @overload
   def __getitem__(
     self,
     subscript: int,
-  ) -> MomentCalculator:
-    """Returns `MomentCalculator` that correspond to given bin index"""
+  ) -> MomentCalculator: ...
+
+  @overload
+  def __getitem__(
+    self,
+    subscript: slice,
+  ) -> list[MomentCalculator]: ...
+
+  def __getitem__(
+    self,
+    subscript: int | slice,
+  ) -> MomentCalculator | list[MomentCalculator]:
+    """Returns `MomentCalculator` instance(s) that correspond to given bin index or slice"""
     return self.calculators[subscript]
 
   def __iter__(self) -> Iterator[MomentCalculator]:
