@@ -45,9 +45,10 @@ print = functools.partial(print, flush = True)
 
 
 def calculateAllMoments(
-  cfg:                   AnalysisConfig,
-  timer:                 Utilities.Timer        = Utilities.Timer(),
-  limitToDataEntryRange: tuple[int, int] | None = None,  # for debugging: limit analysis to entry range [begin, end) of real-data data tree
+  cfg:                            AnalysisConfig,
+  timer:                          Utilities.Timer        = Utilities.Timer(),
+  forceIntegralMatrixCalculation: bool                   = True,  # if `True` integral matrices are recalculated even if pickled versions exist
+  limitToDataEntryRange:          tuple[int, int] | None = None,  # for debugging: limit analysis to entry range [begin, end) of real-data data tree
 ) -> None:
   """Performs the moment analysis for the given configuration"""
   # setup MomentCalculators for all data samples and mass bins
@@ -125,7 +126,7 @@ def calculateAllMoments(
     labelFirstSample, momentCalculatorsFirstSample = next(iter(momentCalculators.items()))  # get first entry in momentCalculators
     with timer.timeThis(f"Time to calculate integral matrices for {len(momentCalculatorsFirstSample)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating acceptance integral matrices for {len(momentCalculatorsFirstSample)} bins using {nmbOpenMpThreads} OpenMP threads")
-      momentCalculatorsFirstSample.calculateIntegralMatrices(forceCalculation = True)
+      momentCalculatorsFirstSample.calculateIntegralMatrices(forceIntegralMatrixCalculation)
       print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{momentCalculatorsFirstSample[0].integralMatrix}")
       # eigenVals, _ = momentCalculatorsFirstSample[0].integralMatrix.eigenDecomp
       # print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
@@ -263,6 +264,8 @@ if __name__ == "__main__":
     # 16,
     # 20,
   )
+  forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
+  # forceIntegralMatrixCalculation = False
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
@@ -289,6 +292,10 @@ if __name__ == "__main__":
               print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
               print(f"Using configuration:\n{cfg}")
               timer.start("Total execution time")
-              calculateAllMoments(cfg, timer)
+              calculateAllMoments(
+                cfg                            = cfg,
+                timer                          = timer,
+                forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
+              )
               timer.stop("Total execution time")
               print(timer.summary)

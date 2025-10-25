@@ -162,12 +162,6 @@ class AnalysisConfig:
           return None  # no events with weight < 0
       else:
         return None  # if there is no `eventWeight` column all events have weight 1
-      # # RDataFrame::Redefine() is available only in ROOT V6.26+
-      # # quick hack to ensure that data in background region have positive weight by dropping the `eventWeight` column and re-adding it with opposite value
-      # data.Define("eventWeight2", "-eventWeight")
-      # data.Snapshot(self.treeName, f"{self.outFileDirName}/foo.root", ("beamPol", "beamPolPhi", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT", "eventWeight2"))
-      # data = ROOT.RDataFrame(self.treeName, f"{self.outFileDirName}/foo.root")
-      # data = dataPwaModelBkgRegion.Define("eventWeight", "eventWeight2")
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
       if self.psGenFileName is None:
         print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
@@ -197,9 +191,9 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
   # psAccFileName      = None,  # no file with accepted phase-space MC
   # psGenFileName      = None,  # no file with generated phase-space MC
-  dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
-  psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_acc_flat.PiPi.root",
-  psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal/phaseSpace_gen_flat.PiPi.root",
+  dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
+  psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
+  psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
   # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
