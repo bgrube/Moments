@@ -50,7 +50,7 @@ def defineColumnsForPlots(
   """Defines RDataFrame columns for kinematic plots"""
   lvs = lorentzVectors(dataFormat = inputDataFormat)
   dfResult = df
-  for frame in (CoordSysType.Hf, CoordSysType.Gj):
+  for frame in (CoordSysType.HF, CoordSysType.GJ):
     #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
     #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
     #    HF for pi+- p  baryon system: use pi+- as analyzer and z_HF = -p_pi-+   and y_HF = p_beam   x p_pi-+
@@ -66,7 +66,7 @@ def defineColumnsForPlots(
       lvB                  = lvs[subSystem.lvBLabel],
       beamPolInfo          = beamPolInfo,
       frame                = frame,
-      flipYAxis            = (frame == CoordSysType.Hf) and subSystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
+      flipYAxis            = (frame == CoordSysType.HF) and subSystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
       additionalColumnDefs = additionalColumnDefs,
       additionalFilterDefs = additionalFilterDefs,
       colNameSuffix        = subSystem.pairLabel,
@@ -142,7 +142,7 @@ def bookHistograms(
   subSystem:     SubSystemInfo,
 ) -> HistListType:
   """Books histograms for kinematic plots and returns the list of histograms"""
-  applyWeights = (inputDataType == InputDataType.realData and df.HasColumn("eventWeight"))
+  applyWeights = (inputDataType == InputDataType.REAL_DATA and df.HasColumn("eventWeight"))
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   # define histograms that are independent of subsystem
   histDefs: list[HistogramDefinition] = [
@@ -161,6 +161,7 @@ def bookHistograms(
   pairLabel = subSystem.pairLabel
   pairTLatexLabel = subSystem.pairTLatexLabel
   histDefs += [
+    #TODO add 1D angular distributions
     HistogramDefinition(f"anglesGj{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaGj{pairLabel}", f"phiDegGj{pairLabel}")),
     HistogramDefinition(f"anglesHf{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaHf{pairLabel}", f"phiDegHf{pairLabel}")),
     HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGj{pairLabel}VsCosThetaGj{pairLabel}", f"{pairTLatexLabel};cos#theta_{{Gj}};#phi_{{Gj}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGj{pairLabel}", f"phiDegGj{pairLabel}", f"PhiDeg{pairLabel}")),
@@ -280,9 +281,9 @@ if __name__ == "__main__":
   additionalFilterDefs = []
   treeName             = "kin"
   inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
-    InputDataType.realData : InputDataFormat.ampTools,
-    InputDataType.mcReco   : InputDataFormat.ampTools,
-    InputDataType.mcTruth  : InputDataFormat.ampTools,
+    InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+    InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
   }
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
       SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"),
@@ -302,7 +303,7 @@ if __name__ == "__main__":
           print(f"Generating plots for beam-polarization orientation '{beamPolOrientation}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           df = None
-          if inputDataType == InputDataType.realData:
+          if inputDataType == InputDataType.REAL_DATA:
             # combine signal and background region data with correct event weights into one RDataFrame
             df = getDataFrameWithCorrectEventWeights(
               dataSigRegionFileNames  = (f"{inputDataDirName}/amptools_tree_signal_{beamPolOrientation}.root", ),
@@ -311,9 +312,9 @@ if __name__ == "__main__":
               friendSigRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolOrientation}.root.weights",
               friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolOrientation}.root.weights",
             )
-          elif inputDataType == InputDataType.mcReco:
+          elif inputDataType == InputDataType.ACCEPTED_PHASE_SPACE:
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_accepted*.root")
-          elif inputDataType == InputDataType.mcTruth:
+          elif inputDataType == InputDataType.GENERATED_PHASE_SPACE:
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_thrown*.root")
           else:
             raise RuntimeError(f"Unsupported input data type '{inputDataType}'")

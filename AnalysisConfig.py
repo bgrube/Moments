@@ -26,9 +26,9 @@ class AnalysisConfig:
 
   class MethodType(Enum):
     """Enumerates methods used for moment analysis"""
-    LIN_ALG_BG_SUBTR_NEG_WEIGHTS = auto()  # linear-algebra method for acceptance correction + background subtraction by negative event weights
-    LIN_ALG_BG_SUBTR_MOMENTS     = auto()  # linear-algebra method for acceptance correction + background subtraction by subtracting moments
-    MAX_LIKELIHOOD_FIT           = auto()  # maximum-likelihood fit for acceptance correction + background subtraction by subtracting moments
+    LIN_ALG_BG_SUBTR_NEG_WEIGHTS = 0  # linear-algebra method for acceptance correction + background subtraction by negative event weights
+    LIN_ALG_BG_SUBTR_MOMENTS     = 1  # linear-algebra method for acceptance correction + background subtraction by subtracting moments
+    MAX_LIKELIHOOD_FIT           = 2  # maximum-likelihood fit for acceptance correction + background subtraction by subtracting moments
 
   # defaults are for unpolarized pipi analysis
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
@@ -130,11 +130,11 @@ class AnalysisConfig:
 
   class DataType(Enum):
     """Enumerates used input data types"""
-    REAL_DATA             = auto()
-    REAL_DATA_SIGNAL      = auto()  # real data in signal region
-    REAL_DATA_SIDEBAND    = auto()  # real data in sideband region(s)
-    GENERATED_PHASE_SPACE = auto()
-    ACCEPTED_PHASE_SPACE  = auto()
+    REAL_DATA             = 0
+    REAL_DATA_SIGNAL      = 1  # real data in signal region
+    REAL_DATA_SIDEBAND    = 2  # real data in sideband region(s)
+    GENERATED_PHASE_SPACE = 3
+    ACCEPTED_PHASE_SPACE  = 4
 
   def loadData(
     self,

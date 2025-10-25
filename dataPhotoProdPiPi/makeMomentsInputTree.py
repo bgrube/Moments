@@ -194,26 +194,26 @@ trackDistFdc(
 
 
 class InputDataFormat(Enum):
-  foo             = 1  #TODO rename placeholder
-  ampTools        = 2  # AmpTools format
-  jpacMc          = 3  # MC truth data in JPAC text format
-  TLorentzVectors = 4  # TLorentzVector for each particle
+  ALEX            = 0  # Alex' data format  #TODO improve naming
+  AMPTOOLS        = 1  # AmpTools format
+  JPAC_MC         = 2  # MC truth data in JPAC text format
+  TLORENTZVECTORS = 3  # TLorentzVector for each particle
 
 def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
   lvs = {}
   lvs["target"] = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
-  if dataFormat == InputDataFormat.foo:
+  if dataFormat == InputDataFormat.ALEX:
     lvs["beam"  ] = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"  # beam photon
     lvs["recoil"] = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"     # recoil proton
     lvs["pip"   ] = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"   # pi+
     lvs["pim"   ] = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"   # pi-
-  elif dataFormat == InputDataFormat.ampTools:
+  elif dataFormat == InputDataFormat.AMPTOOLS:
     lvs["beam"  ] = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
     lvs["recoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
     lvs["pip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+
     lvs["pim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-
-  elif dataFormat == InputDataFormat.jpacMc:
+  elif dataFormat == InputDataFormat.JPAC_MC:
     # kinematic variables according to Eq. (1) in Bibrzycki et al., PRD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
     # four-momenta are defined as
@@ -223,7 +223,7 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     lvs["recoil"] = "p21, p22, p23, p20"  # recoil proton
     lvs["pip"   ] = "k11, k12, k13, k10"  # pi+
     lvs["pim"   ] = "k21, k22, k23, k20"  # pi-
-  elif dataFormat == InputDataFormat.TLorentzVectors:
+  elif dataFormat == InputDataFormat.TLORENTZVECTORS:
     lvs["beam"  ] = "lvBeamLab.X(),   lvBeamLab.Y(),   lvBeamLab.Z(),   lvBeamLab.E()"    # beam photon
     lvs["target"] = "lvTargetLab.X(), lvTargetLab.Y(), lvTargetLab.Z(), lvTargetLab.E()"  # target proton
     lvs["recoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
@@ -235,8 +235,8 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
 
 
 class CoordSysType(Enum):
-  Hf = 1  # helicity frame
-  Gj = 2  # Gottfried-Jackson frame
+  HF = 0  # helicity frame
+  GJ = 1  # Gottfried-Jackson frame
 
 def DefineOverwrite(
   df:         ROOT.RDataFrame,
@@ -260,7 +260,7 @@ def defineDataFrameColumns(
   lvA:                  str,  # function-argument list with Lorentz-vector components of daughter A (analyzer)
   lvB:                  str,  # function-argument list with Lorentz-vector components of daughter B
   beamPolInfo:          BeamPolInfo | None = None,  # photon beam polarization
-  frame:                CoordSysType       = CoordSysType.Hf,  # reference frame for angle definitions
+  frame:                CoordSysType       = CoordSysType.HF,  # reference frame for angle definitions
   flipYAxis:            bool               = True,  # if set y-axis of reference frame is inverted
   additionalColumnDefs: dict[str, str]     = {},  # additional columns to define
   additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
@@ -271,7 +271,7 @@ def defineDataFrameColumns(
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   df = (
-    df.Define(f"cosTheta{angColNameSuffix}", "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == CoordSysType.Hf else  #TODO fix if statements for frame
+    df.Define(f"cosTheta{angColNameSuffix}", "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == CoordSysType.HF else  #TODO fix if statements for frame
                                                                f"FSMath::gjcostheta ({lvA}, {lvB}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
       .Define(f"theta{angColNameSuffix}", f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
       #TODO there seems to be a bug in the way FSRoot calculates phi (at least for the HF frame)
@@ -288,7 +288,7 @@ def defineDataFrameColumns(
       .Define(f"phi{angColNameSuffix}",
         # use A as analyzer and y_HF/GJ = (p_beam x p_recoil), if flipYAxis is False else -yHF
         "(Double32_t)" +
-        (      f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == CoordSysType.Hf  # use z_HF = -p_recoil
+        (      f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == CoordSysType.HF  # use z_HF = -p_recoil
           else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")                             # use z_GJ = p_beam
       )
       .Define(f"phiDeg{angColNameSuffix}", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
@@ -379,10 +379,10 @@ class SubSystemInfo:
   lvRecoilLabel:   str  # label of Lorentz-vector of recoil particle
   pairTLatexLabel: str = ""  # optional LaTeX label for particle pair (e.g. "#pi#pi" for pi+ pi- pair)
 
-class InputDataType(Enum):
-  realData = 1  # reconstructed real data
-  mcReco   = 2  # reconstructed MC data
-  mcTruth  = 3  # MC truth data
+class InputDataType(Enum):  #TODO use AnalysisConfig.DataType instead
+  REAL_DATA             = 0
+  GENERATED_PHASE_SPACE = 3
+  ACCEPTED_PHASE_SPACE  = 4
 
 @dataclass
 class DataSetInfo:
@@ -416,7 +416,7 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  frame = CoordSysType.Hf  # helicity frame, i.e. z_HF = -p_recoil
+  frame = CoordSysType.HF  # helicity frame, i.e. z_HF = -p_recoil
   subsystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
       SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
       # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
@@ -447,12 +447,12 @@ if __name__ == "__main__":
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
-      InputDataType.realData : InputDataFormat.ampTools,
-      InputDataType.mcReco   : InputDataFormat.ampTools,
-      InputDataType.mcTruth  : InputDataFormat.ampTools,
+      InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
     if False:  # cut away forward tracks in reconstructed data
-      lvs = lorentzVectors(dataFormat = InputDataFormat.foo)
+      lvs = lorentzVectors(dataFormat = InputDataFormat.ALEX)
       additionalColumnDefs = {
         "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['pip']})",
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
@@ -483,27 +483,27 @@ if __name__ == "__main__":
                 beamPolInfo          = beamPolInfo,
                 inputFileNames       = (
                   ((f"{inputDataDirName}/amptools_tree_signal_{beamPolOrientation}.root", ),  # real data: signal and background
-                   (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolOrientation}.root",  )) if inputDataType == InputDataType.realData else
-                   (f"{inputDataDirName}/amptools_tree_accepted*.root", )                    if inputDataType == InputDataType.mcReco else
+                   (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolOrientation}.root",  )) if inputDataType == InputDataType.REAL_DATA else
+                   (f"{inputDataDirName}/amptools_tree_accepted*.root", )                    if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                    (f"{inputDataDirName}/amptools_tree_thrown*.root", )                       # inputDataType == InputDataType.mcTruth
                 ),
                 inputTreeName        = "kin",
                 outputFileName       = (
-                  f"{outputDataDirName}/data_flat_{beamPolOrientation}.root"           if inputDataType == InputDataType.realData else
-                  f"{outputDataDirName}/phaseSpace_acc_flat_{beamPolOrientation}.root" if inputDataType == InputDataType.mcReco else
+                  f"{outputDataDirName}/data_flat_{beamPolOrientation}.root"           if inputDataType == InputDataType.REAL_DATA else
+                  f"{outputDataDirName}/phaseSpace_acc_flat_{beamPolOrientation}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   f"{outputDataDirName}/phaseSpace_gen_flat_{beamPolOrientation}.root"  # inputDataType == InputDataType.mcTruth
                 ),
                 outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
-                  outputColumns + ("eventWeight", ) if inputDataType == InputDataType.realData else
+                  outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
                   outputColumns  # no event weights for MC data
                 ),
                 additionalColumnDefs = (
-                  additionalColumnDefs if inputDataType == InputDataType.realData or inputDataType == InputDataType.mcReco else
+                  additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   {}  # no additional variables for MC truth
                 ),
                 additionalFilterDefs = (
-                  additionalFilterDefs if inputDataType == InputDataType.realData or inputDataType == InputDataType.mcReco else
+                  additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   []  # no additional selection cuts for MC truth
                 ),
               )
@@ -521,9 +521,9 @@ if __name__ == "__main__":
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
-      InputDataType.realData : InputDataFormat.foo,
-      InputDataType.mcReco   : InputDataFormat.foo,
-      InputDataType.mcTruth  : InputDataFormat.ampTools,
+      InputDataType.REAL_DATA             : InputDataFormat.ALEX,
+      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.ALEX,
+      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
     #TODO merge with loop for polarized data sets and move into function
     for dataPeriod in dataPeriods:
@@ -545,27 +545,27 @@ if __name__ == "__main__":
               tBinLabel            = tBinLabel,
               inputFileNames       = (
                 ((f"{inputDataDirName}/amptools_tree_signal.root", ),  # real data: signal and background
-                 (f"{inputDataDirName}/amptools_tree_bkgnd.root",  ))   if inputDataType == InputDataType.realData else
+                 (f"{inputDataDirName}/amptools_tree_bkgnd.root",  ))   if inputDataType == InputDataType.REAL_DATA else
                  (f"{inputDataDirName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.mcReco else
                  (f"{inputDataDirName}/amptools_tree_thrown*.root", )    # inputDataType == InputDataType.mcTruth
               ),
               inputTreeName        = "kin",
               outputFileName       = (
-                f"{outputDataDirName}/data_flat.root"           if inputDataType == InputDataType.realData else
+                f"{outputDataDirName}/data_flat.root"           if inputDataType == InputDataType.REAL_DATA else
                 f"{outputDataDirName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.mcReco else
                 f"{outputDataDirName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.mcTruth
               ),
               outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
-                  outputColumns + ("eventWeight", ) if inputDataType == InputDataType.realData else
+                  outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
                   outputColumns  # no event weights for MC data
                 ),
                 additionalColumnDefs = (
-                  additionalColumnDefs if inputDataType == InputDataType.realData or inputDataType == InputDataType.mcReco else
+                  additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   {}  # no additional variables for MC truth
                 ),
                 additionalFilterDefs = (
-                  additionalFilterDefs if inputDataType == InputDataType.realData or inputDataType == InputDataType.mcReco else
+                  additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   []  # no additional selection cuts for MC truth
                 ),
             )
@@ -574,7 +574,7 @@ if __name__ == "__main__":
   # process data sets
   for dataSet in dataSets:
     df = None
-    if dataSet.inputType == InputDataType.realData:
+    if dataSet.inputType == InputDataType.REAL_DATA:
       # combine signal and background region data with correct event weights into one RDataFrame
       outputDataDirName = os.path.dirname(dataSet.outputFileName)
       df = getDataFrameWithCorrectEventWeights(
@@ -584,7 +584,7 @@ if __name__ == "__main__":
         friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamPolOrientation}.root.weights",
         friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamPolOrientation}.root.weights",
       )
-    elif dataSet.inputType == InputDataType.mcReco or dataSet.inputType == InputDataType.mcTruth:
+    elif dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE:
       # read all MC files into one RDataFrame
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
@@ -600,7 +600,7 @@ if __name__ == "__main__":
       lvB                  = lvs[dataSet.subsystem.lvBLabel],
       beamPolInfo          = dataSet.beamPolInfo,
       frame                = frame,
-      flipYAxis            = (frame == CoordSysType.Hf) and subsystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
+      flipYAxis            = (frame == CoordSysType.HF) and subsystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)

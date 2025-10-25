@@ -193,9 +193,9 @@ def readMomentResultsJpac(
 
 class ComparisonMomentsType(Enum):
   """Enumerates moment data to compare to"""
-  CLAS = auto()
-  JPAC = auto()
-  PWA  = auto()
+  CLAS = 0
+  JPAC = 1
+  PWA  = 2
 
 def makeAllPlots(
   cfg:                         AnalysisConfig,

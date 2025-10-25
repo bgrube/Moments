@@ -1632,9 +1632,9 @@ class MomentCalculator:
       self._integralMatrix.loadOrCalculate(self.integralFileName)
     self._integralMatrix.save(self.integralFileName)
 
-  class DataSourceType(Enum):
-    REAL_DATA            = auto()
-    ACCEPTED_PHASE_SPACE = auto()
+  class DataSourceType(Enum):  #TODO use AnalysisConfig.DataType instead
+    REAL_DATA            = 0
+    ACCEPTED_PHASE_SPACE = 4
 
   def calculateMoments(
     self,

@@ -144,10 +144,10 @@ def setup(useRDataFrame: bool) -> None:
 
 
 class DataSetType(Enum):
-    RDSig = 1
-    RDBkg = 2
-    MCSig = 3
-    MCGen = 4
+    RDSig = 0
+    RDBkg = 1
+    MCSig = 2
+    MCGen = 3
 
 def plotHistsAndWriteTree(
   dataSetType:     DataSetType,
