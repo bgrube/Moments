@@ -20,10 +20,10 @@ import ROOT
 from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
-  CPP_CODE_MASSPAIR,
-  CPP_CODE_MANDELSTAM_T,
   CPP_CODE_BEAM_POL_PHI,
   CPP_CODE_FLIPYAXIS,
+  CPP_CODE_MASSPAIR,
+  CPP_CODE_MANDELSTAM_T,
   CPP_CODE_TRACKDISTFDC,
   CoordSysType,
   defineDataFrameColumns,
@@ -254,48 +254,48 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
   # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  dataDirName          = "./polarized"
-  dataPeriods          = (
+  dataDirName   = "./polarized"
+  dataPeriods   = (
     "2017_01",
     # "2018_08",
   )
-  tBinLabels           = (
+  tBinLabels    = (
     "tbin_0.1_0.2",
     "tbin_0.2_0.3",
     # "tbin_0.3_0.4",
     # "tbin_0.4_0.5",
   )
-  beamPolLabels  = (
+  beamPolLabels = (
     "PARA_0",
     "PARA_135",
     "PERP_45",
     "PERP_90",
   )
-  additionalColumnDefs = {}
-  additionalFilterDefs = []
-  treeName             = "kin"
   inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
     InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
     InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
     InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
   }
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-      SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"),
-      SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#plus}"),
-      SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip",    pairTLatexLabel = "p#pi^{#minus}"),
-    )
+    SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"       ),
+    SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#plus}" ),
+    SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip",    pairTLatexLabel = "p#pi^{#minus}"),
+  )
+  additionalColumnDefs = {}
+  additionalFilterDefs = []
+  treeName             = "kin"
 
   for dataPeriod in dataPeriods:
     print(f"Generating plots for data period '{dataPeriod}':")
     for tBinLabel in tBinLabels:
       print(f"Generating plots for t bin '{tBinLabel}':")
-      inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
+      inputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
       for inputDataType, inputDataFormat in inputDataFormats.items():
         print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
         for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data

@@ -266,8 +266,7 @@ def defineDataFrameColumns(
   additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
   colNameSuffix:        str                = "",  # suffix appended to column names
 ) -> ROOT.RDataFrame:
-  """Returns RDataFrame with additional columns for moments analysis"""
-  """Defines formulas for (A, B) pair mass, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
+  """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   df = (
@@ -409,29 +408,30 @@ if __name__ == "__main__":
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
+
   # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
   frame = CoordSysType.HF  # helicity frame, i.e. z_HF = -p_recoil
   subsystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-      SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
-      # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
-      # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip"   ),
-    )
+    SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
+    # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
+    # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip"   ),
+  )
   dataSets: list[DataSetInfo] = []
 
   # set up polarized pi+pi- real data
   if True:
-    dataDirName           = "./polarized"
-    dataPeriods           = (
+    dataDirName   = "./polarized"
+    dataPeriods   = (
       "2017_01",
       # "2018_08",
     )
-    tBinLabels            = (
+    tBinLabels    = (
       "tbin_0.1_0.2",
       "tbin_0.2_0.3",
       # "tbin_0.3_0.4",
@@ -443,14 +443,14 @@ if __name__ == "__main__":
       "PERP_45",
       "PERP_90",
     )
-    outputColumns         = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
-    additionalColumnDefs  = {}
-    additionalFilterDefs  = []
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
       InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
       InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
+    outputColumns        = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
+    additionalColumnDefs = {}
+    additionalFilterDefs = []
     if False:  # cut away forward tracks in reconstructed data
       lvs = lorentzVectors(dataFormat = InputDataFormat.ALEX)
       additionalColumnDefs = {
@@ -458,6 +458,7 @@ if __name__ == "__main__":
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
       }
       additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
+
     for dataPeriod in dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
       for tBinLabel in tBinLabels:

@@ -33,7 +33,7 @@ if __name__ == "__main__":
     "Sig" : ROOT.RDataFrame(treeName, inputDataFileNamePatternSig),
     "Bkg" : ROOT.RDataFrame(treeName, inputDataFileNamePatternBkg),
   }
-  lvs = lorentzVectors(dataFormat = InputDataFormat.ampTools)
+  lvs = lorentzVectors(dataFormat = InputDataFormat.AMPTOOLS)
   dfs = {label : df.Define("massPiPi", f"(Double32_t)massPair({lvs['pip']}, {lvs['pim']})") for label, df in dfs.items()}
   hists = {
     label : df.Histo1D(
