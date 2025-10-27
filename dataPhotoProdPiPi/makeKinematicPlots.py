@@ -117,11 +117,6 @@ def bookHistogram(
   histDimension = len(histDef.binning)
   if histDimension not in (1, 2, 3):
     raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
-  THNDModelFunc = (
-    ROOT.RDF.TH1DModel if histDimension == 1 else
-    ROOT.RDF.TH2DModel if histDimension == 2 else
-    ROOT.RDF.TH3DModel
-  )
   dfHistoNDFunc = (
     dfHist.Histo1D if histDimension == 1 else
     dfHist.Histo2D if histDimension == 2 else
@@ -131,9 +126,9 @@ def bookHistogram(
   binning = tuple(entry for binningTuple in histDef.binning for entry in binningTuple)
   # book histogram with or without event weights
   if applyWeights:
-    return dfHistoNDFunc(THNDModelFunc(histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
+    return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
   else:
-    return dfHistoNDFunc(THNDModelFunc(histDef.name, histDef.title, *binning), *histDef.columnNames)
+    return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames)
 
 
 def bookHistograms(
