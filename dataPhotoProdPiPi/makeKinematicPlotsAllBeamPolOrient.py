@@ -59,7 +59,7 @@ if __name__ == "__main__":
     "PimP",
   )
   # beam-polarization orientations to combine
-  beamPolOrientations = (
+  beamPolLabels = (
     "PARA_0",
     "PARA_135",
     "PERP_45",
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         # generate real-data plots for all beam-polarization orientations combined
         plotDir = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem}/plots_realData"
         # `hadd` ROOT files with plots for real data for all beam-polarization orientations
-        sourcePlotFileNames = tuple(f"{plotDir}/{beamPolOrientation}/plots.root" for beamPolOrientation in beamPolOrientations)
+        sourcePlotFileNames = tuple(f"{plotDir}/{beamPolLabel}/plots.root" for beamPolLabel in beamPolLabels)
         mergedPlotFileName  = f"{plotDir}/plots.root"
         print(f"`hadd`ing files for data period '{dataPeriod}', t bin '{tBinLabel}', subsystem '{subsystem}': {sourcePlotFileNames}")
         subprocess.run(f"hadd -f {mergedPlotFileName} {' '.join(sourcePlotFileNames)}", shell = True, check = True)

@@ -271,7 +271,7 @@ if __name__ == "__main__":
     # "tbin_0.3_0.4",
     # "tbin_0.4_0.5",
   )
-  beamPolOrientations  = (
+  beamPolLabels  = (
     "PARA_0",
     "PARA_135",
     "PERP_45",
@@ -298,19 +298,19 @@ if __name__ == "__main__":
       inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
       for inputDataType, inputDataFormat in inputDataFormats.items():
         print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
-        for beamPolOrientation in beamPolOrientations:  #TODO process only 1 orientation for MC data
-          beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolOrientation]
-          print(f"Generating plots for beam-polarization orientation '{beamPolOrientation}'"
+        for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
+          beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
+          print(f"Generating plots for beam-polarization orientation '{beamPolLabel}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
           df = None
           if inputDataType == InputDataType.REAL_DATA:
             # combine signal and background region data with correct event weights into one RDataFrame
             df = getDataFrameWithCorrectEventWeights(
-              dataSigRegionFileNames  = (f"{inputDataDirName}/amptools_tree_signal_{beamPolOrientation}.root", ),
-              dataBkgRegionFileNames  = (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolOrientation}.root",  ),
+              dataSigRegionFileNames  = (f"{inputDataDirName}/amptools_tree_signal_{beamPolLabel}.root", ),
+              dataBkgRegionFileNames  = (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
               treeName                = treeName,
-              friendSigRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolOrientation}.root.weights",
-              friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolOrientation}.root.weights",
+              friendSigRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
+              friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
             )
           elif inputDataType == InputDataType.ACCEPTED_PHASE_SPACE:
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_accepted*.root")
@@ -334,5 +334,5 @@ if __name__ == "__main__":
                 inputDataType = inputDataType,
                 subSystem     = subSystem,
               ),
-              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolOrientation}",
+              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}",
             )

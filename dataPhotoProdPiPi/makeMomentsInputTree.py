@@ -397,7 +397,7 @@ class DataSetInfo:
   outputFileName:       str
   outputTreeName:       str
   outputColumns:        tuple[str, ...]
-  beamPolOrientation:   str                = ""
+  beamPolLabel:         str                = ""
   beamPolInfo:          BeamPolInfo | None = None  # photon beam polarization
   additionalColumnDefs: dict[str, str]     = field(default_factory=dict)
   additionalFilterDefs: list[str]          = field(default_factory=list)
@@ -437,7 +437,7 @@ if __name__ == "__main__":
       # "tbin_0.3_0.4",
       # "tbin_0.4_0.5",
     )
-    beamPolOrientations = (
+    beamPolLabels = (
       "PARA_0",
       "PARA_135",
       "PERP_45",
@@ -467,9 +467,9 @@ if __name__ == "__main__":
           inputDataDirName  = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
           outputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
           os.makedirs(outputDataDirName, exist_ok = True)
-          for beamPolOrientation in beamPolOrientations:  #TODO process only 1 orientation for MC data
-            beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolOrientation]
-            print(f"Setting up beam-polarization orientation '{beamPolOrientation}'"
+          for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
+            beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
+            print(f"Setting up beam-polarization orientation '{beamPolLabel}'"
                   + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
             for inputDataType, inputDataFormat in inputDataFormats.items():
               print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
@@ -479,19 +479,19 @@ if __name__ == "__main__":
                 inputFormat          = inputDataFormat,
                 dataPeriod           = dataPeriod,
                 tBinLabel            = tBinLabel,
-                beamPolOrientation   = beamPolOrientation,
+                beamPolLabel         = beamPolLabel,
                 beamPolInfo          = beamPolInfo,
                 inputFileNames       = (
-                  ((f"{inputDataDirName}/amptools_tree_signal_{beamPolOrientation}.root", ),  # real data: signal and background
-                   (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolOrientation}.root",  )) if inputDataType == InputDataType.REAL_DATA else
-                   (f"{inputDataDirName}/amptools_tree_accepted*.root", )                    if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                   (f"{inputDataDirName}/amptools_tree_thrown*.root", )                       # inputDataType == InputDataType.mcTruth
+                  ((f"{inputDataDirName}/amptools_tree_signal_{beamPolLabel}.root", ),  # real data: signal and background
+                   (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolLabel}.root",  )) if inputDataType == InputDataType.REAL_DATA else
+                   (f"{inputDataDirName}/amptools_tree_accepted*.root", )              if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                   (f"{inputDataDirName}/amptools_tree_thrown*.root", )                 # inputDataType == InputDataType.mcTruth
                 ),
                 inputTreeName        = "kin",
                 outputFileName       = (
-                  f"{outputDataDirName}/data_flat_{beamPolOrientation}.root"           if inputDataType == InputDataType.REAL_DATA else
-                  f"{outputDataDirName}/phaseSpace_acc_flat_{beamPolOrientation}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  f"{outputDataDirName}/phaseSpace_gen_flat_{beamPolOrientation}.root"  # inputDataType == InputDataType.mcTruth
+                  f"{outputDataDirName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
+                  f"{outputDataDirName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  f"{outputDataDirName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.mcTruth
                 ),
                 outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
@@ -581,15 +581,15 @@ if __name__ == "__main__":
         dataSigRegionFileNames  = dataSet.inputFileNames[0],
         dataBkgRegionFileNames  = dataSet.inputFileNames[1],
         treeName                = dataSet.inputTreeName,
-        friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamPolOrientation}.root.weights",
-        friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamPolOrientation}.root.weights",
+        friendSigRegionFileName = f"{outputDataDirName}/data_sig_{dataSet.beamPolLabel}.root.weights",
+        friendBkgRegionFileName = f"{outputDataDirName}/data_bkg_{dataSet.beamPolLabel}.root.weights",
       )
     elif dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE:
       # read all MC files into one RDataFrame
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
       raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
-    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.subsystem.pairLabel} subsystem, {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamPolOrientation} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
+    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.subsystem.pairLabel} subsystem, {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamPolLabel} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     defineDataFrameColumns(
       df                   = df,
