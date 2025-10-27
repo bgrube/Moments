@@ -30,6 +30,18 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_PWA,
   HistAxisBinning,
 )
+from dataPhotoProdPiPi.makeMomentsInputTree import (
+  BeamPolInfo,
+  BEAM_POL_INFOS,
+  CPP_CODE_BEAM_POL_PHI,
+  CPP_CODE_FLIPYAXIS,
+  CPP_CODE_MANDELSTAM_T,
+  CPP_CODE_MASSPAIR,
+  CoordSysType,
+  defineDataFrameColumns,
+  InputDataFormat,
+  lorentzVectors,
+)
 from MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
@@ -45,27 +57,44 @@ print = functools.partial(print, flush = True)
 
 
 def loadInputData(
-  inputDataDef: AnalysisConfig.DataType | str | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-                                                      # if `str`, a file name is expected
-                                                      # if `int`, phase-space distribution in angles is generated with given number of events
+  inputDataDef: AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
+                                                                  # if `tuple[str, str]`, a tuple (<tree name>, <file name>) for raw data is expected
+                                                                  # if `int`, phase-space distribution in angles is generated with given number of events
   cfg:          AnalysisConfig,
   massBinIndex: int,  # index of mass bin to load/generate data for
-) -> tuple[ROOT.RDataFrame, int]:
+  beamPolInfo:  BeamPolInfo | None = None,  # beam polarization information needed for raw data files
+) -> tuple[ROOT.RDataFrame, int, list[str]]:
   """Loads data specified by `inputDataDef` and returns them as RDataFrame and the number of input events."""
-  if isinstance(inputDataDef, AnalysisConfig.DataType) or isinstance(inputDataDef, str):
+  if isinstance(inputDataDef, AnalysisConfig.DataType) or (isinstance(inputDataDef, tuple) and len(inputDataDef) == 2):
     dataToWeight = None
     if isinstance(inputDataDef, AnalysisConfig.DataType):
       print(f"Loading data of type '{inputDataDef}'")
       dataToWeight = cfg.loadData(inputDataDef)
-    elif isinstance(inputDataDef, str):
-      print(f"Loading data from file '{inputDataDef}'")
-      dataToWeight = ROOT.RDataFrame(cfg.treeName, inputDataDef)
+    elif isinstance(inputDataDef, tuple):
+      print(f"Loading raw data in tree '{inputDataDef[0]}' from file '{inputDataDef[1]}'")
+      dataToWeight = ROOT.RDataFrame(inputDataDef[0], inputDataDef[1])
     assert dataToWeight is not None, f"Could not load data of type '{inputDataDef}'"
+    originalColumns = list(dataToWeight.GetColumnNames())
+    if isinstance(inputDataDef, tuple):
+      # define columns needed to calculate intensity
+      lvs = lorentzVectors(dataFormat = InputDataFormat.AMPTOOLS)
+      assert beamPolInfo is not None, "Beam polarization information must be provided when loading raw data from file"
+      dataToWeight = defineDataFrameColumns(
+        df          = dataToWeight,
+        lvTarget    = lvs["target"],
+        lvBeam      = lvs["beam"],
+        lvRecoil    = lvs["recoil"],
+        lvA         = lvs["pip"],
+        lvB         = lvs["pim"],
+        beamPolInfo = beamPolInfo,
+        frame       = CoordSysType.HF,
+        flipYAxis   = True,
+      )
     kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
     nmbInputEvents = dataToWeight.Count().GetValue()
     print(f"Input data contain {nmbInputEvents} events in bin '{kinematicBinFilter}'")
-    return dataToWeight, nmbInputEvents
+    return dataToWeight, nmbInputEvents, originalColumns
   elif isinstance(inputDataDef, int):
     nmbGenPsEvents = inputDataDef
     print(f"Generating phase-space distribution with {nmbGenPsEvents} events")
@@ -90,42 +119,39 @@ def loadInputData(
       elif isinstance(cfg.polarization, str):
         raise ValueError(f"Cannot read polarization from column '{cfg.polarization}'")
     #TODO is a snapshot necessary here to fill random columns only once?
-    return dataToWeight, nmbGenPsEvents
+    return dataToWeight, nmbGenPsEvents, list(dataToWeight.GetColumnNames())
   else:
     raise ValueError(f"Invalid {inputDataDef=}")
 
 
 def weightDataWithIntensity(
-  inputDataDef:  AnalysisConfig.DataType | str | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-                                                       # if `str`, a file name is expected
-                                                       # if `int`, phase-space distribution in angles is generated with given number of events
+  inputDataDef: AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
+                                                                  # if `tuple[str, str]`, a tuple (<tree name>, <file name>) is expected
+                                                                  # if `int`, phase-space distribution in angles is generated with given number of events
   massBinIndex:  int,           # index of mass bin to generate data for
   momentResults: MomentResult,  # moment values in the mass bin defined by `massBinIndex`
   outFileName:   str,           # ROOT file to which weighted events are written
   cfg:           AnalysisConfig,
-  seed:          int = 123456789,  # seed for rejection sampling and for generating phase-space events
+  seed:          int                = 123456789,  # seed for rejection sampling and for generating phase-space events
+  beamPolInfo:   BeamPolInfo | None = None,  # beam polarization information needed for raw data files
 ) -> None:
   """Weight input data specified by `inputDataDef` with given intensity formula"""
   ROOT.gRandom.SetSeed(seed)
   # load input data
-  dataToWeight, nmbInputEvents = loadInputData(
+  dataToWeight, nmbInputEvents, originalColumns = loadInputData(
     inputDataDef = inputDataDef,
     cfg          = cfg,
     massBinIndex = massBinIndex,
+    beamPolInfo  = beamPolInfo,
   )
-  originalColumns = dataToWeight.GetColumnNames()
   # construct intensity formula
-  intensityFormula = ""
-  if isinstance(inputDataDef, AnalysisConfig.DataType) or isinstance(inputDataDef, int):
-    intensityFormula = momentResults.intensityFormula(
-      polarization                = cfg.polarization,
-      thetaFormula                = "theta",
-      phiFormula                  = "phi",
-      PhiFormula                  = "Phi",
-      includeParityViolatingTerms = True,
-    )
-  else:
-    raise ValueError(f"Invalid {inputDataDef=}")
+  intensityFormula = momentResults.intensityFormula(
+    polarization                = cfg.polarization,
+    thetaFormula                = "theta",
+    phiFormula                  = "phi",
+    PhiFormula                  = "Phi",
+    includeParityViolatingTerms = True,
+  )
   print(f"Calculating weights using formula '{intensityFormula}'")
   # add columns for intensity weight and random number in [0, 1]
   dataToWeight = (
@@ -232,16 +258,29 @@ def reweightKinDistribution(
 
 
 if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
+  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
+
+  # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
+  ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)   # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
 
-  inputDataDef = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  dataBaseDirName = "./dataPhotoProdPiPi/polarized"
+  inputDataDef = ("kin", "amptools_tree_accepted*.root")
+  # inputDataDef = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
   # inputDatadef = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
   # inputDatadef = 100000  # generate phase-space distribution in angles with given number of events
-  dataBaseDirName = "./dataPhotoProdPiPi/polarized"
   dataPeriods = (
     # "2017_01",
     "2018_08",
@@ -313,12 +352,14 @@ if __name__ == "__main__":
               outFileName = f"{weightedDataDirName}/data_weighted_flat_bin_{massBinIndex}.root"
               print(f"Weighting events in mass bin {massBinIndex} at {massBinCenter:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit} by intensity function")
               weightDataWithIntensity(
-                inputDataDef  = inputDataDef,
+                inputDataDef  = (inputDataDef[0], f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex/{inputDataDef[1]}") \
+                                if isinstance(inputDataDef, tuple) else inputDataDef,
                 massBinIndex  = massBinIndex,
                 momentResults = momentResultsInBin,
                 outFileName   = outFileName,
                 cfg           = cfg,
                 seed          = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
+                beamPolInfo   = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
               )
 
             # merge trees with weighted MC data for individual mass bins into single file
