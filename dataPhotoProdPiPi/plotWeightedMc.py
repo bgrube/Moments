@@ -15,8 +15,19 @@ import ROOT
 
 from makeKinematicPlots import (
   bookHistogram,
+  defineColumnsForPlots,
   HistListType,
   HistogramDefinition,
+)
+from makeMomentsInputTree import (
+  BEAM_POL_INFOS,
+  CPP_CODE_BEAM_POL_PHI,
+  CPP_CODE_FLIPYAXIS,
+  CPP_CODE_MANDELSTAM_T,
+  CPP_CODE_MASSPAIR,
+  getDataFrameWithCorrectEventWeights,
+  InputDataFormat,
+  SubSystemInfo,
 )
 
 
@@ -56,28 +67,30 @@ def makePlots(
   histTitle:         str = "",
   pdfFileNameSuffix: str = "",
   yAxisLabel:        str = "RF-Sideband Subtracted Combos",
+  colNameSuffix:     str = "",  # suffix appended to column names
 ) -> None:
   """Overlays 1D distributions and compares 2D distributions from real data and weighted Monte Carlo"""
   histsToOverlay = HistsToOverlay()
   for member in fields(dataToOverlay):  # loop over members of `DataToOverlay`
-    df    = getattr(dataToOverlay, member.name)
+    df = getattr(dataToOverlay, member.name)
     label = member.name
     applyWeights = (label == "realData" and df.HasColumn("eventWeight"))
     label = label[0].upper() + label[1:]  # make sure first character is upper case
     histNameSuffix = pairLabel + label  # e.g. "PiPiRealData" or "PiPiWeightedMc"
     hists = [
+      # distributions in X rest frame
       # 1D histograms
-      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (( 50,    0.28,    2.28), ), ("mass",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"cosThetaHf{histNameSuffix}", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ((100,   -1,      +1   ), ), ("cosTheta", )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegHf{histNameSuffix}",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, (( 72, -180,    +180   ), ), ("phiDeg",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     histTitle + ";#Phi [deg];"       + yAxisLabel, (( 72, -180,    +180   ), ), ("PhiDeg",   )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       histTitle + ";m_{#pi#pi} [GeV];" + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"cosThetaHF{histNameSuffix}", histTitle + ";cos#theta_{HF};"   + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"phiDegHF{histNameSuffix}",   histTitle + ";#phi_{HF} [deg];"  + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiDegHF{colNameSuffix}",   )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     histTitle + ";#Phi [deg];"       + yAxisLabel, (( 72, -180,    +180   ), ), (f"PhiDeg{colNameSuffix}",     )), applyWeights),
       # 2D histograms
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsCosThetaHf{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  (( 50,  0.28, 2.28), (100,   -1,   +1)), ("mass",     "cosTheta")), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDegHf{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", (( 50,  0.28, 2.28), ( 72, -180, +180)), ("mass",     "phiDeg"  )), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDeg{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      (( 50,  0.28, 2.28), ( 72, -180, +180)), ("mass",     "PhiDeg"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"anglesHf{histNameSuffix}",                    ";cos#theta_{HF};#phi_{HF} [deg]",   ((100, -1,   +1   ), (72, -180, +180)),  ("cosTheta", "phiDeg"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDegVsCosThetaHf{histNameSuffix}",          ";cos#theta_{HF};#Phi [deg]",        ((100, -1,   +1   ), (72, -180, +180)),  ("cosTheta", "PhiDeg"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDegVsPhiDegHf{histNameSuffix}",            ";#phi_{HF} [deg];#Phi [deg]",       (( 72, -180, +180 ), (72, -180, +180)),  ("phiDeg",   "PhiDeg"  )), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsCosThetaHF{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{colNameSuffix}", "cosThetaHF{histNameSuffix}")), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDegHF{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{colNameSuffix}", "phiDegHF{histNameSuffix}"  )), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDeg{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{colNameSuffix}", "PhiDeg"                    )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"anglesHF{histNameSuffix}",           ";cos#theta_{HF};#phi_{HF} [deg]", ((100, -1,   +1  ), (72, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiDegHF{colNameSuffix}")), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDegVsCosThetaHF{histNameSuffix}", ";cos#theta_{HF};#Phi [deg]",      ((100, -1,   +1  ), (72, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"  )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDegVsPhiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];#Phi [deg]",     (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"  )), applyWeights),
     ]
     setattr(histsToOverlay, member.name, hists)
   for histIndex, histRealData in enumerate(histsToOverlay.realData):
@@ -157,33 +170,66 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
-  realDataDirName     = "./polarized/2018_08/tbin_0.1_0.2/PiPi"
-  realDataFileName    = f"{realDataDirName}/data_flat_PARA_0.root"
-  weightedDataDirName = f"{realDataDirName}/weighted.maxL_4/PARA_0"
-  weightedMcFileName  = f"{weightedDataDirName}/data_weighted_flat.root"
-  treeName            = "PiPi"
-  massMin             = 0.28  # [GeV]
-  massBinWidth        = 0.04  # [GeV]
-  nmbBins             = 50
+  # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
+  ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 
+  dataPeriod   = "2018_08"
+  tBinLabel    = "tbin_0.1_0.2"
+  beamPolLabel = "PARA_0"
+  massMin      = 0.28  # [GeV]
+  massBinWidth = 0.04  # [GeV]
+  nmbBins      = 50
+
+  # realDataDirName     = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi"
+  # weightedDataDirName = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
+  # dataToOverlay = DataToOverlay(
+  #   realData   = ROOT.RDataFrame("PiPi", f"{realDataDirName}/data_flat_{beamPolLabel}.root"),
+  #   weightedMc = ROOT.RDataFrame("PiPi", f"{weightedDataDirName}/data_weighted_flat.root"  ),
+  # )
+
+  dataDirName         = f"./polarized/{dataPeriod}/{tBinLabel}"
+  # weightedDataDirName = f"{dataDirName}/PiPi/weighted.maxL_4/{beamPolLabel}"
+  weightedDataDirName = f".."
   dataToOverlay = DataToOverlay(
-    realData   = ROOT.RDataFrame(treeName, realDataFileName  ),
-    weightedMc = ROOT.RDataFrame(treeName, weightedMcFileName),
+    realData   = getDataFrameWithCorrectEventWeights(
+      dataSigRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_signal_{beamPolLabel}.root", ),
+      dataBkgRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
+      treeName                = "kin",
+      friendSigRegionFileName = f"./polarized/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
+      friendBkgRegionFileName = f"./polarized/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
+    ),
+    weightedMc = ROOT.RDataFrame("PiPi", f"{weightedDataDirName}/data_weighted_flat.root"),
   )
+  for member in fields(dataToOverlay):  # loop over members of `DataToOverlay`
+    df = getattr(dataToOverlay, member.name)
+    df = defineColumnsForPlots(
+      df              = df,
+      inputDataFormat = InputDataFormat.AMPTOOLS,
+      subSystem       = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"),
+      beamPolInfo     = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
+    )
+    setattr(dataToOverlay, member.name, df)
+
   print(f"Overlaying histograms for full mass range and writing plots into '{weightedDataDirName}'")
+  colNameSuffix = "PiPi"
   makePlots(
     dataToOverlay = dataToOverlay,
     outputDirName = weightedDataDirName,
     histTitle     = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
+    colNameSuffix = colNameSuffix,
   )
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
     massBinMax = massBinMin + massBinWidth
     print(f"Overlaying histograms for mass range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
-    massRangeFilter = f"(({massBinMin} < mass) && (mass < {massBinMax}))"
+    massRangeFilter = f"(({massBinMin} < mass{colNameSuffix}) && (mass{colNameSuffix} < {massBinMax}))"
     makePlots(
       dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
       outputDirName     = weightedDataDirName,
       histTitle         = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
       pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+      colNameSuffix     = colNameSuffix,
     )
