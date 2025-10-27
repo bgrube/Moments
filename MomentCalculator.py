@@ -885,7 +885,7 @@ class MomentResult:
   ) -> bool:
     """Returns whether two `MomentResult` objects have the same indices and bin centers"""
     if not isinstance(other, MomentResult):
-      raise TypeError(f"Expect 'other' to be of type 'MomentResults'; got '{type(other)}' instead")
+      raise TypeError(f"Expect 'other' to be of type 'MomentResult'; got '{type(other)}' instead")
     return (
       (self.indices == other.indices)
       and (self.binCenters == other.binCenters)
@@ -1352,7 +1352,7 @@ class MomentResultsKinematicBinning:
     self,
     factor: float,
   ) -> None:
-    """Scales all `MomentResults` by given factor"""
+    """Scales all `MomentResult`s by given factor"""
     for moment in self:
       moment.scaleBy(factor)
 
@@ -1385,7 +1385,7 @@ class MomentResultsKinematicBinning:
     self,
     scalar: int | float,
   ) -> MomentResultsKinematicBinning:
-    """Multiplication of all `MomentResults` with a scalar"""
+    """Multiplication of all `MomentResult`s with a scalar"""
     for momentResult in self:
       momentResult *= scalar
     return self
@@ -1410,7 +1410,7 @@ class MomentResultsKinematicBinning:
     self,
     other: MomentResultsKinematicBinning,
   ) -> MomentResultsKinematicBinning:
-    """Combines this and another `MomentResultsKinematicBinning` instance by summing the `MomentResults` for each kinematic bin"""
+    """Combines this and another `MomentResultsKinematicBinning` instance by summing the `MomentResult`s for each kinematic bin"""
     if not isinstance(other, MomentResultsKinematicBinning):
       return NotImplemented
     # ensure that `other` has the same kinematic bins
@@ -1423,7 +1423,7 @@ class MomentResultsKinematicBinning:
     self,
     other: MomentResultsKinematicBinning,
   ) -> MomentResultsKinematicBinning:
-    """Combines this and another `MomentResultsKinematicBinning` into a new `MomentResultsKinematicBinning` by summing the `MomentResults` for each kinematic bin"""
+    """Combines this and another `MomentResultsKinematicBinning` into a new `MomentResultsKinematicBinning` by summing the `MomentResult`s for each kinematic bin"""
     sum = copy.deepcopy(self)
     sum += other
     return sum
@@ -1432,7 +1432,7 @@ class MomentResultsKinematicBinning:
     self,
     other: MomentResultsKinematicBinning,
   ) -> MomentResultsKinematicBinning:
-    """Combines this and another `MomentResultsKinematicBinning` into one `MomentResultsKinematicBinning` by subtracting the `MomentResults` for each kinematic bin"""
+    """Combines this and another `MomentResultsKinematicBinning` into one `MomentResultsKinematicBinning` by subtracting the `MomentResult`s for each kinematic bin"""
     if not isinstance(other, MomentResultsKinematicBinning):
       return NotImplemented
     self += (-1 * other)
@@ -1442,7 +1442,7 @@ class MomentResultsKinematicBinning:
     self,
     other: MomentResultsKinematicBinning,
   ) -> MomentResultsKinematicBinning:
-    """Combines this and another `MomentResult` into one `MomentResult` by subtracting the the `MomentResults` for each kinematic bin"""
+    """Combines this and another `MomentResultsKinematicBinning` into one `MomentResultsKinematicBinning` by subtracting the the `MomentResult`s for each kinematic bin"""
     if not isinstance(other, MomentResultsKinematicBinning):
       return NotImplemented
     return self + (-1 * other)
@@ -1480,7 +1480,7 @@ class MomentResultsKinematicBinning:
     self.moments[subscript] = value
 
   def __iter__(self) -> Iterator[MomentResult]:
-    """Iterates over `MomentResults` in kinematic bins"""
+    """Iterates over `MomentResult`s in kinematic bins"""
     return iter(self.moments)
 
   def append(
@@ -1496,7 +1496,7 @@ class MomentResultsKinematicBinning:
     return tuple(momentResult.binCenters for momentResult in self)
 
   def normalize(self) -> None:
-    """Scales all `MomentResults` such that in each bin H_0(0, 0) = 1"""
+    """Scales all `MomentResult`s such that in each bin H_0(0, 0) = 1"""
     for moment in self:
       moment.normalize()
 
@@ -1584,7 +1584,7 @@ class MomentCalculator:
     else:
       self.indicesMeas.setPolarized(True)
     self.indicesPhys.setPolarized(self.indicesMeas.polarized)
-    # initialize _HMeas and _HPhys to empty `MomentResults` if None
+    # initialize _HMeas and _HPhys to empty `MomentResult` if None
     if self._HMeas is None:
       self._HMeas = MomentResult(
         indices    = self.indicesMeas,
