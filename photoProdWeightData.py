@@ -44,13 +44,29 @@ print = functools.partial(print, flush = True)
 
 
 def loadInputData(
-  inputDataType:  AnalysisConfig.DataType | None,  # if `None`, phase-space distribution in angles is generated
-  cfg:            AnalysisConfig,
-  massBinIndex:   int,  # index of mass bin to load/generate data for
-  nmbGenPsEvents: int = 100000,  # number phase-space events to generate
+  inputDataDef: AnalysisConfig.DataType | str | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
+                                                      # if `str`, a file name is expected
+                                                      # if `int`, phase-space distribution in angles is generated with given number of events
+  cfg:          AnalysisConfig,
+  massBinIndex: int,  # index of mass bin to load/generate data for
 ) -> tuple[ROOT.RDataFrame, int]:
-  """Loads data specified by `inputDataType` and returns them as RDataFrame and the number of input events. If inputDataType is None, generate a phase-space distribution in angles."""
-  if inputDataType is None:
+  """Loads data specified by `inputDataDef` and returns them as RDataFrame and the number of input events."""
+  if isinstance(inputDataDef, AnalysisConfig.DataType) or isinstance(inputDataDef, str):
+    dataToWeight = None
+    if isinstance(inputDataDef, AnalysisConfig.DataType):
+      print(f"Loading data of type '{inputDataDef}'")
+      dataToWeight = cfg.loadData(inputDataDef)
+    elif isinstance(inputDataDef, str):
+      print(f"Loading data from file '{inputDataDef}'")
+      dataToWeight = ROOT.RDataFrame(cfg.treeName, inputDataDef)
+    assert dataToWeight is not None, f"Could not load data of type '{inputDataDef}'"
+    kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
+    dataToWeight = dataToWeight.Filter(kinematicBinFilter)
+    nmbInputEvents = dataToWeight.Count().GetValue()
+    print(f"Input data contain {nmbInputEvents} events in bin '{kinematicBinFilter}'")
+    return dataToWeight, nmbInputEvents
+  elif isinstance(inputDataDef, int):
+    nmbGenPsEvents = inputDataDef
     print(f"Generating phase-space distribution with {nmbGenPsEvents} events")
     kinematicBinRange: tuple[float, float] = cfg.massBinning.binValueRange(massBinIndex)
     dataToWeight = (
@@ -74,37 +90,28 @@ def loadInputData(
         raise ValueError(f"Cannot read polarization from column '{cfg.polarization}'")
     #TODO is a snapshot necessary here to fill random columns only once?
     return dataToWeight, nmbGenPsEvents
-  elif isinstance(inputDataType, AnalysisConfig.DataType):
-    print(f"Loading data of type '{inputDataType}'")
-    dataToWeight = cfg.loadData(inputDataType)
-    assert dataToWeight is not None, f"Could not load data of type '{inputDataType}'"
-    kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
-    dataToWeight = dataToWeight.Filter(kinematicBinFilter)
-    nmbInputEvents = dataToWeight.Count().GetValue()
-    print(f"Input data contain {nmbInputEvents} events in bin '{kinematicBinFilter}'")
-    return dataToWeight, nmbInputEvents
   else:
-    raise ValueError(f"Invalid {inputDataType=}")
+    raise ValueError(f"Invalid {inputDataDef=}")
 
 
 def weightDataWithIntensity(
-  intensityFormula: str,  # formula for intensity function
+  inputDataDef:     AnalysisConfig.DataType | str | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
+                                                          # if `str`, a file name is expected
+                                                          # if `int`, phase-space distribution in angles is generated with given number of events
   massBinIndex:     int,  # index of mass bin to generate data for
+  intensityFormula: str,  # formula for intensity function
   outFileName:      str,  # ROOT file to which weighted events are written
   cfg:              AnalysisConfig,
-  inputDataType:    AnalysisConfig.DataType | None = None,       # if `None`, phase-space distribution in angles is generated
-  nmbGenPsEvents:   int                            = 100000,     # number phase-space events to generate
-  seed:             int                            = 123456789,  # seed for rejection sampling and for generating phase-space events
+  seed:             int = 123456789,  # seed for rejection sampling and for generating phase-space events
 ) -> None:
-  """Weight input data specified by `inputDataType` with given intensity formula"""
+  """Weight input data specified by `inputDataDef` with given intensity formula"""
   # get input data
   ROOT.gRandom.SetSeed(seed)
   # load input data
   dataToWeight, nmbInputEvents = loadInputData(
-    inputDataType  = inputDataType,
-    cfg            = cfg,
-    massBinIndex   = massBinIndex,
-    nmbGenPsEvents = nmbGenPsEvents,
+    inputDataDef = inputDataDef,
+    cfg          = cfg,
+    massBinIndex = massBinIndex,
   )
   # calculate intensity weight and random number in [0, 1] for each event
   print(f"Calculating weights using formula '{intensityFormula}'")
@@ -213,11 +220,14 @@ def reweightKinDistribution(
 
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)   # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
 
+  inputDataDef = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  # inputDatadef = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
+  # inputDatadef = 100000  # generate phase-space distribution in angles with given number of events
   dataBaseDirName = "./dataPhotoProdPiPi/polarized"
   dataPeriods = (
     # "2017_01",
@@ -290,6 +300,8 @@ if __name__ == "__main__":
               outFileName = f"{weightedDataDirName}/data_weighted_flat_bin_{massBinIndex}.root"
               print(f"Weighting events in mass bin {massBinIndex} at {massBinCenter:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit} by intensity function")
               weightDataWithIntensity(
+                inputDataDef     = inputDataDef,
+                massBinIndex     = massBinIndex,
                 intensityFormula = momentResultsInBin.intensityFormula(
                   polarization                = cfg.polarization,
                   thetaFormula                = "theta",
@@ -298,13 +310,8 @@ if __name__ == "__main__":
                   printFormula                = False,
                   includeParityViolatingTerms = True,
                 ),
-                massBinIndex     = massBinIndex,
                 outFileName      = outFileName,
                 cfg              = cfg,
-                inputDataType    = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,
-                # inputDataType    = AnalysisConfig.DataType.GENERATED_PHASE_SPACE,
-                # inputDataType    = None,  # generate phase-space distribution in angles
-                # nmbGenPsEvents   = 100000,  # number phase-space events to generate
                 seed             = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
               )
 
