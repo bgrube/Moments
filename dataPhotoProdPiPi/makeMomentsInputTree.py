@@ -344,6 +344,7 @@ def getDataFrameWithCorrectEventWeights(
       dataTChain.Add(dataFileName)
     weightTChain.Add(friendFileName)
   dataTChain.AddFriend(weightTChain)
+  #TODO have a look at <https://root.cern/doc/v632/classROOT_1_1RDataFrame.html#rdf-from-spec> to build data frame.
   DATA_TCHAINS.append(dataTChain)  # avoid garbage collection of TChain
   return ROOT.RDataFrame(dataTChain)
 

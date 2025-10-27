@@ -54,7 +54,7 @@ def makePlots(
   outputDirName:     str = ".",
   pairLabel:         str = "PiPi",
   histTitle:         str = "",
-  pdfFileMameSuffix: str = "",
+  pdfFileNameSuffix: str = "",
   yAxisLabel:        str = "RF-Sideband Subtracted Combos",
 ) -> None:
   """Overlays 1D distributions and compares 2D distributions from real data and weighted Monte Carlo"""
@@ -114,7 +114,7 @@ def makePlots(
       label.SetNDC()
       label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
       label.DrawLatex(0.15, 0.89, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
-      canv.SaveAs(f"{outputDirName}/{histStack.GetName()}{pdfFileMameSuffix}.pdf")
+      canv.SaveAs(f"{outputDirName}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
     elif "TH2" in histRealData.ClassName():
       # generate 2D comparison plots
       print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
@@ -123,12 +123,12 @@ def makePlots(
       maxZ = histRealData.GetMaximum() * 1.1
       histRealData.SetMaximum(maxZ)
       histRealData.Draw("COLZ")
-      canv.SaveAs(f"{outputDirName}/{histRealData.GetName()}{pdfFileMameSuffix}.pdf")
+      canv.SaveAs(f"{outputDirName}/{histRealData.GetName()}{pdfFileNameSuffix}.pdf")
       print(f"Plotting weighted-MC 2D histogram '{histWeightedMc.GetName()}'")
       canv = ROOT.TCanvas()
       histWeightedMc.SetMaximum(maxZ)
       histWeightedMc.Draw("COLZ")
-      canv.SaveAs(f"{outputDirName}/{histWeightedMc.GetName()}{pdfFileMameSuffix}.pdf")
+      canv.SaveAs(f"{outputDirName}/{histWeightedMc.GetName()}{pdfFileNameSuffix}.pdf")
       print(f"Plotting pulls of 2D histograms '{histRealData.GetName()}' - '{histWeightedMc.GetName()}'")
       ROOT.gStyle.SetOptStat(False)
       histPulls = histRealData.Clone(f"{histWeightedMc.GetName()}_pulls")
@@ -143,8 +143,9 @@ def makePlots(
             histPulls.SetBinContent(xBin, yBin, 0)
       histPulls.SetTitle("(Real data#minus Weighted MC)/#sigma_{Real data}")
       canv = ROOT.TCanvas()
+      #TODO improve color scale and z-range for pulls
       histPulls.Draw("COLZ")
-      canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileMameSuffix}.pdf")
+      canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
     else:
       raise RuntimeError(f"Unsupported histogram type '{histRealData.ClassName()}'")
 
@@ -184,5 +185,5 @@ if __name__ == "__main__":
       dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
       outputDirName     = weightedDataDirName,
       histTitle         = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
-      pdfFileMameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+      pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
     )

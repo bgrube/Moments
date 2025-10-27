@@ -47,7 +47,7 @@ def plotDistributions1D(
   filter:             str,
   histTitle:          str = "",
   pdfOutputDir:       str = ".",
-  pdfFileMameSuffix:  str = "",
+  pdfFileNameSuffix:  str = "",
   yAxisLabel:         str = "Events"
 ) -> None:
   dataToOverlay = DataToOverlay(
@@ -93,7 +93,7 @@ def plotDistributions1D(
     label.SetNDC()
     label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
     label.DrawLatex(0.15, 0.89, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
-    canv.SaveAs(f"{pdfOutputDir}/{histStack.GetName()}{pdfFileMameSuffix}.pdf")
+    canv.SaveAs(f"{pdfOutputDir}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
 
 
 if __name__ == "__main__":
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         filter             = massRangeFilter,
         histTitle          = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
         pdfOutputDir       = weightedMcDirName,
-        pdfFileMameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+        pdfFileNameSuffix  = f"_{massBinMin:.2f}_{massBinMax:.2f}",
       )
 
     if False:
