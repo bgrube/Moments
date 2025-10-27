@@ -31,6 +31,7 @@ from AnalysisConfig import (
   HistAxisBinning,
 )
 from MomentCalculator import (
+  MomentResult,
   MomentResultsKinematicBinning,
   QnMomentIndex,
 )
@@ -95,17 +96,16 @@ def loadInputData(
 
 
 def weightDataWithIntensity(
-  inputDataDef:     AnalysisConfig.DataType | str | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-                                                          # if `str`, a file name is expected
-                                                          # if `int`, phase-space distribution in angles is generated with given number of events
-  massBinIndex:     int,  # index of mass bin to generate data for
-  intensityFormula: str,  # formula for intensity function
-  outFileName:      str,  # ROOT file to which weighted events are written
-  cfg:              AnalysisConfig,
-  seed:             int = 123456789,  # seed for rejection sampling and for generating phase-space events
+  inputDataDef:  AnalysisConfig.DataType | str | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
+                                                       # if `str`, a file name is expected
+                                                       # if `int`, phase-space distribution in angles is generated with given number of events
+  massBinIndex:  int,           # index of mass bin to generate data for
+  momentResults: MomentResult,  # moment values in the mass bin defined by `massBinIndex`
+  outFileName:   str,           # ROOT file to which weighted events are written
+  cfg:           AnalysisConfig,
+  seed:          int = 123456789,  # seed for rejection sampling and for generating phase-space events
 ) -> None:
   """Weight input data specified by `inputDataDef` with given intensity formula"""
-  # get input data
   ROOT.gRandom.SetSeed(seed)
   # load input data
   dataToWeight, nmbInputEvents = loadInputData(
@@ -113,8 +113,21 @@ def weightDataWithIntensity(
     cfg          = cfg,
     massBinIndex = massBinIndex,
   )
-  # calculate intensity weight and random number in [0, 1] for each event
+  originalColumns = dataToWeight.GetColumnNames()
+  # construct intensity formula
+  intensityFormula = ""
+  if isinstance(inputDataDef, AnalysisConfig.DataType) or isinstance(inputDataDef, int):
+    intensityFormula = momentResults.intensityFormula(
+      polarization                = cfg.polarization,
+      thetaFormula                = "theta",
+      phiFormula                  = "phi",
+      PhiFormula                  = "Phi",
+      includeParityViolatingTerms = True,
+    )
+  else:
+    raise ValueError(f"Invalid {inputDataDef=}")
   print(f"Calculating weights using formula '{intensityFormula}'")
+  # add columns for intensity weight and random number in [0, 1]
   dataToWeight = (
     dataToWeight.Define("intensityWeight",      f"(Double32_t){intensityFormula}")
                 .Define("intensityWeightRndNmb", "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
@@ -136,7 +149,7 @@ def weightDataWithIntensity(
         f"weighting efficiency is {nmbWeightedEvents / nmbInputEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{outFileName}'")
-  weightedData.Snapshot(cfg.treeName, outFileName)  #TODO write out only essential columns
+  weightedData.Snapshot(cfg.treeName, outFileName, originalColumns)
   subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  # remove temporary file
 
 
@@ -300,19 +313,12 @@ if __name__ == "__main__":
               outFileName = f"{weightedDataDirName}/data_weighted_flat_bin_{massBinIndex}.root"
               print(f"Weighting events in mass bin {massBinIndex} at {massBinCenter:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit} by intensity function")
               weightDataWithIntensity(
-                inputDataDef     = inputDataDef,
-                massBinIndex     = massBinIndex,
-                intensityFormula = momentResultsInBin.intensityFormula(
-                  polarization                = cfg.polarization,
-                  thetaFormula                = "theta",
-                  phiFormula                  = "phi",
-                  PhiFormula                  = "Phi",
-                  printFormula                = False,
-                  includeParityViolatingTerms = True,
-                ),
-                outFileName      = outFileName,
-                cfg              = cfg,
-                seed             = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
+                inputDataDef  = inputDataDef,
+                massBinIndex  = massBinIndex,
+                momentResults = momentResultsInBin,
+                outFileName   = outFileName,
+                cfg           = cfg,
+                seed          = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
               )
 
             # merge trees with weighted MC data for individual mass bins into single file
