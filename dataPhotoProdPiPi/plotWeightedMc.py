@@ -180,9 +180,14 @@ def makePlots(
             histPulls.SetBinContent(xBin, yBin, 0)
       histPulls.SetTitle("(Real data#minus Weighted MC)/#sigma_{Real data}")
       canv = ROOT.TCanvas()
-      #TODO improve color scale and z-range for pulls
+      # draw pull plot with different color palette and symmetric z axis
+      ROOT.gStyle.SetPalette(ROOT.kLightTemperature)
+      zRange = max(abs(histPulls.GetMinimum()), abs(histPulls.GetMaximum()))
+      histPulls.SetMinimum(-zRange)
+      histPulls.SetMaximum(zRange)
       histPulls.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
+      ROOT.gStyle.SetPalette(ROOT.kBird)  # restore previous color palette
     else:
       raise RuntimeError(f"Unsupported histogram type '{histRealData.ClassName()}'")
 
@@ -207,6 +212,7 @@ if __name__ == "__main__":
   massBinWidth = 0.04  # [GeV]
   nmbBins      = 50
 
+  # setup data in `MomentCalculator` format
   # realDataDirName      = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi"
   # weightedDataDirName  = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
   # weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
@@ -215,6 +221,7 @@ if __name__ == "__main__":
   #   weightedMc = ROOT.RDataFrame("PiPi", weightedDataFileName                              ),
   # )
 
+  # setup raw data
   dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
   weightedDataDirName  = f"{dataDirName}/PiPi/weighted.maxL_4/{beamPolLabel}"
   weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
