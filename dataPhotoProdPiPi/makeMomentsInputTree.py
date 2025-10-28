@@ -326,10 +326,11 @@ def getDataFrameWithCorrectEventWeights(
     (dataSigRegionFileNames,  "Weight", friendSigRegionFileName),
     (dataBkgRegionFileNames, "-Weight", friendBkgRegionFileName),
   ):
+    print(f"Loading real-data file(s) {dataFileNames}")
     if not forceOverwriteFriendFiles and os.path.exists(friendFileName):
       print(f"File '{friendFileName}' already exists, skipping creation of event-weight friend tree")
       continue
-    print(f"Creating file '{friendFileName}' that contains friend tree with event weights for file {dataFileNames}")
+    print(f"Writing event-weight friend tree to file '{friendFileName}'")
     ROOT.RDataFrame(treeName, dataFileNames) \
         .Define("eventWeight", weightFormula) \
         .Snapshot(treeName, friendFileName, ["eventWeight"])
