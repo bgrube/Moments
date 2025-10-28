@@ -156,20 +156,28 @@ def bookHistograms(
   pairLabel = subSystem.pairLabel
   pairTLatexLabel = subSystem.pairTLatexLabel
   histDefs += [
-    #TODO add 1D angular distributions
-    HistogramDefinition(f"anglesGj{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaGj{pairLabel}", f"phiDegGj{pairLabel}")),
-    HistogramDefinition(f"anglesHf{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaHf{pairLabel}", f"phiDegHf{pairLabel}")),
-    HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGj{pairLabel}VsCosThetaGj{pairLabel}", f"{pairTLatexLabel};cos#theta_{{Gj}};#phi_{{Gj}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGj{pairLabel}", f"phiDegGj{pairLabel}", f"PhiDeg{pairLabel}")),
-    HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHf{pairLabel}VsCosThetaHf{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaHf{pairLabel}", f"phiDegHf{pairLabel}", f"PhiDeg{pairLabel}")),
+    HistogramDefinition(f"cosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaHF{pairLabel}", )),
+    HistogramDefinition(f"cosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaGJ{pairLabel}", )),
+    HistogramDefinition(f"phiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegHF{pairLabel}",   )),
+    HistogramDefinition(f"phiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegGJ{pairLabel}",   )),
+    HistogramDefinition(f"PhiDeg{pairLabel}",     f"{pairTLatexLabel};#Phi [deg];"        + yAxisLabel, (( 72, -180, +180), ), (f"PhiDeg{pairLabel}",     )),
+    HistogramDefinition(f"anglesHF{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}")),
+    HistogramDefinition(f"anglesGJ{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}")),
+    HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  )),
+    HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  )),
+    HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  )),
+    HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  )),
+    HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGJ{pairLabel}VsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}", f"PhiDeg{pairLabel}")),
+    HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{pairLabel}VsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}", f"PhiDeg{pairLabel}")),
   ]
   if pairLabel == "PiPi":
     histDefs += [
       HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 0.28, 2.28), ), (f"mass{pairLabel}",   )),
       HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0,    1),    ), (f"minusT{pairLabel}", )),
-      HistogramDefinition(f"mass{pairLabel}VsCosThetaGj{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGj{pairLabel}")),
-      HistogramDefinition(f"mass{pairLabel}VsPhiDegGj{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGj{pairLabel}"  )),
-      HistogramDefinition(f"mass{pairLabel}VsCosThetaHf{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHf{pairLabel}")),
-      HistogramDefinition(f"mass{pairLabel}VsPhiDegHf{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHf{pairLabel}"  )),
+      HistogramDefinition(f"mass{pairLabel}VsCosThetaGJ{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
+      HistogramDefinition(f"mass{pairLabel}VsPhiDegGJ{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
+      HistogramDefinition(f"mass{pairLabel}VsCosThetaHF{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
+      HistogramDefinition(f"mass{pairLabel}VsPhiDegHF{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
       HistogramDefinition(f"mass{pairLabel}VsPhiDeg",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
       HistogramDefinition(f"mass{pairLabel}VsMinusT{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 0.28, 2.28), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
     ]
@@ -183,17 +191,21 @@ def bookHistograms(
       massPiPiBinFilter = f"({massPiPiBinMin} < massPiPi) and (massPiPi < {massPiPiBinMax})"
       histNameSuffix    = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
       histDefs += [
-        HistogramDefinition(f"anglesGj{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaGj{pairLabel}", f"phiDegGj{pairLabel}"), massPiPiBinFilter),
-        HistogramDefinition(f"anglesHf{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaHf{pairLabel}", f"phiDegHf{pairLabel}"), massPiPiBinFilter),
+        HistogramDefinition(f"anglesGJ{pairLabel}{histNameSuffix}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}"), massPiPiBinFilter),
+        HistogramDefinition(f"anglesHF{pairLabel}{histNameSuffix}",           f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}"), massPiPiBinFilter),
+        HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
+        HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
+        HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
+        HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
       ]
   else:
     histDefs += [
       HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 1, 5 ), ), (f"mass{pairLabel}",   )),
       HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0, 15), ), (f"minusT{pairLabel}", )),
-      HistogramDefinition(f"mass{pairLabel}VsCosThetaGj{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGj{pairLabel}")),
-      HistogramDefinition(f"mass{pairLabel}VsPhiDegGj{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGj{pairLabel}"  )),
-      HistogramDefinition(f"mass{pairLabel}VsCosThetaHf{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHf{pairLabel}")),
-      HistogramDefinition(f"mass{pairLabel}VsPhiDegHf{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHf{pairLabel}"  )),
+      HistogramDefinition(f"mass{pairLabel}VsCosThetaGJ{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
+      HistogramDefinition(f"mass{pairLabel}VsPhiDegGJ{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
+      HistogramDefinition(f"mass{pairLabel}VsCosThetaHF{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
+      HistogramDefinition(f"mass{pairLabel}VsPhiDegHF{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
       HistogramDefinition(f"mass{pairLabel}VsPhiDeg",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
       HistogramDefinition(f"mass{pairLabel}VsMinusT{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 1, 5), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
     ]
@@ -257,14 +269,14 @@ if __name__ == "__main__":
 
   dataDirName   = "./polarized"
   dataPeriods   = (
-    "2017_01",
-    # "2018_08",
+    # "2017_01",
+    "2018_08",
   )
   tBinLabels    = (
     "tbin_0.1_0.2",
     "tbin_0.2_0.3",
-    # "tbin_0.3_0.4",
-    # "tbin_0.4_0.5",
+    "tbin_0.3_0.4",
+    "tbin_0.4_0.5",
   )
   beamPolLabels = (
     "PARA_0",
