@@ -71,51 +71,56 @@ def makePlots(
 ) -> None:
   """Overlays 1D distributions and compares 2D distributions from real data and weighted Monte Carlo"""
   histsToOverlay = HistsToOverlay()
-  for member in fields(dataToOverlay):  # loop over members of `DataToOverlay`
+  # loop over members of `DataToOverlay` and book histograms for `realData` and `weightedMc`
+  for member in fields(dataToOverlay):
     df = getattr(dataToOverlay, member.name)
     label = member.name
     applyWeights = (label == "realData" and df.HasColumn("eventWeight"))
     label = label[0].upper() + label[1:]  # make sure first character is upper case
     histNameSuffix = pairLabel + label  # e.g. "PiPiRealData" or "PiPiWeightedMc"
-    hists = [  #TODO reuse histogram definitions from makeKinematicPlots.py?
+    hists = [
       # distributions in X rest frame
       # 1D histograms
-      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       histTitle + ";m_{#pi#pi} [GeV];"              + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"minusT{histNameSuffix}",     histTitle + ";#minus t_{#pi#pi} [GeV^{{2}}];" + yAxisLabel, ((100,    0,       1   ), ), (f"minusT{colNameSuffix}",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"cosThetaHF{histNameSuffix}", histTitle + ";cos#theta_{HF};"                + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegHF{histNameSuffix}",   histTitle + ";#phi_{HF} [deg];"               + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiDegHF{colNameSuffix}",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     histTitle + ";#Phi [deg];"                    + yAxisLabel, (( 72, -180,    +180   ), ), (f"PhiDeg{colNameSuffix}",     )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       histTitle + ";m_{#pi#pi} [GeV];"            + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"minusT{histNameSuffix}",     histTitle + ";#minus t_{#pi#pi} [GeV^{2}];" + yAxisLabel, ((100,    0,       1   ), ), (f"minusT{colNameSuffix}",     )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"cosThetaHF{histNameSuffix}", histTitle + ";cos#theta_{HF};"              + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"phiDegHF{histNameSuffix}",   histTitle + ";#phi_{HF} [deg];"             + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiDegHF{colNameSuffix}",   )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     histTitle + ";#Phi [deg];"                  + yAxisLabel, (( 72, -180,    +180   ), ), (f"PhiDeg{colNameSuffix}",     )), applyWeights),
       # 2D histograms
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsCosThetaHF{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{colNameSuffix}", "cosThetaHF{histNameSuffix}")), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDegHF{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{colNameSuffix}", "phiDegHF{histNameSuffix}"  )), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDeg{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{colNameSuffix}", "PhiDeg"                    )), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsCosThetaHF{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{colNameSuffix}", "cosThetaHF{colNameSuffix}")), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDegHF{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{colNameSuffix}", "phiDegHF{colNameSuffix}"  )), applyWeights),
+      # bookHistogram(df, HistogramDefinition(f"mass{pairLabel}VsPhiDeg{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{colNameSuffix}", "PhiDeg"                   )), applyWeights),
       bookHistogram(df, HistogramDefinition(f"anglesHF{histNameSuffix}",           ";cos#theta_{HF};#phi_{HF} [deg]", ((100, -1,   +1  ), (72, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiDegHF{colNameSuffix}")), applyWeights),
       bookHistogram(df, HistogramDefinition(f"PhiDegVsCosThetaHF{histNameSuffix}", ";cos#theta_{HF};#Phi [deg]",      ((100, -1,   +1  ), (72, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"  )), applyWeights),
       bookHistogram(df, HistogramDefinition(f"PhiDegVsPhiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];#Phi [deg]",     (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"  )), applyWeights),
       # distributions in lab frame
       # 1D histograms
-      bookHistogram(df, HistogramDefinition("Ebeam",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100, 8,  9), ), ("Ebeam",          )), applyWeights),
-      bookHistogram(df, HistogramDefinition("momLabP",        ";p_{p} [GeV];"                       + yAxisLabel, ((100, 0,  1), ), ("momLabP",        )), applyWeights),
-      bookHistogram(df, HistogramDefinition("momLabPip",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100, 0, 10), ), ("momLabPip",      )), applyWeights),
-      bookHistogram(df, HistogramDefinition("momLabPim",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100, 0, 10), ), ("momLabPim",      )), applyWeights),
-      bookHistogram(df, HistogramDefinition("thetaDegLabP",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabP",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition("thetaDegLabPip", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPip", )), applyWeights),
-      bookHistogram(df, HistogramDefinition("thetaDegLabPim", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPim", )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"Ebeam{histNameSuffix}",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100, 8,  9), ), ("Ebeam",          )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"momLabP{histNameSuffix}",        ";p_{p} [GeV];"                       + yAxisLabel, ((100, 0,  1), ), ("momLabP",        )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"momLabPip{histNameSuffix}",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100, 0, 10), ), ("momLabPip",      )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"momLabPim{histNameSuffix}",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100, 0, 10), ), ("momLabPim",      )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"thetaDegLabP{histNameSuffix}",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabP",   )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"thetaDegLabPip{histNameSuffix}", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPip", )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"thetaDegLabPim{histNameSuffix}", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPim", )), applyWeights),
       # 2D histograms
-      bookHistogram(df, HistogramDefinition("thetaDegLabVsMomLabP",   ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                       ((100, 0,  1), (100, 65, 80)), ("momLabP",   "thetaDegLabP"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition("thetaDegLabVsMomLabPip", ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",   ((100, 0, 10), (100,  0, 30)), ("momLabPip", "thetaDegLabPip")), applyWeights),
-      bookHistogram(df, HistogramDefinition("thetaDegLabVsMomLabPim", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100, 0, 10), (100,  0, 30)), ("momLabPim", "thetaDegLabPim")), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"thetaDegLabPVsMomLabP{histNameSuffix}",     ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                       ((100, 0,  1), (100, 60, 80)), ("momLabP",   "thetaDegLabP"  )), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"thetaDegLabPipVsMomLabPip{histNameSuffix}", ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",   ((100, 0, 10), (100,  0, 30)), ("momLabPip", "thetaDegLabPip")), applyWeights),
+      bookHistogram(df, HistogramDefinition(f"thetaDegLabPimVsMomLabPim{histNameSuffix}", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100, 0, 10), (100,  0, 30)), ("momLabPim", "thetaDegLabPim")), applyWeights),
     ]
     setattr(histsToOverlay, member.name, hists)
   for histIndex, histRealData in enumerate(histsToOverlay.realData):
     histWeightedMc = histsToOverlay.weightedMc[histIndex]
-    # normalize weighted MC to integral of real data
-    normFactor = histRealData.Integral() / histWeightedMc.Integral()
-    histWeightedMc.Scale(normFactor)
+    print(f"Comparing histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
     histWeightedMc.SetMinimum(0)
     histRealData.SetMinimum  (0)
     histWeightedMc.SetTitle("Weighted MC")
     histRealData.SetTitle  ("Real data")
+    # normalize weighted MC to integral of real data
+    weightedMcIntegral = histWeightedMc.Integral()
+    if weightedMcIntegral != 0:
+      histWeightedMc.Scale(histRealData.Integral() / weightedMcIntegral)
+    else:
+      print(f"??? Warning: weighted-MC histogram '{histWeightedMc.GetName()}' has zero integral, cannot normalize to real data!")
     # generate plots
     ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
     if "TH1" in histRealData.ClassName():
@@ -123,7 +128,7 @@ def makePlots(
       print(f"Overlaying 1D histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
       ROOT.gStyle.SetOptStat(False)
       canv = ROOT.TCanvas()
-      histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
+      histStack = ROOT.THStack(histWeightedMc.GetName(), "")
       histRealData.SetLineColor  (ROOT.kRed + 1)
       histWeightedMc.SetLineColor(ROOT.kBlue + 1)
       histRealData.SetMarkerColor  (ROOT.kRed + 1)
@@ -132,11 +137,16 @@ def makePlots(
       histStack.Add(histWeightedMc.GetValue(), "HIST E")
       histStack.Add(histRealData.GetValue(),   "E")
       histStack.Draw("NOSTACK")
-      # histStack.SetMaximum(1.1 * histStack.GetMaximum())
+      histStack.SetMaximum(1.1 * max(histRealData.GetMaximum(), histWeightedMc.GetMaximum()))
       histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
       histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
       canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
-      chi2PerBin = histWeightedMc.Chi2Test(histRealData.GetValue(), "WW P CHI2") / histWeightedMc.GetNbinsX()
+      nmbNonZeroBins = 0
+      for binIndex in range(1, histRealData.GetNbinsX() + 1):
+        # both histograms have same binning by construction
+        if histRealData.GetBinContent(binIndex) > 0 or histWeightedMc.GetBinContent(binIndex) > 0:
+          nmbNonZeroBins += 1
+      chi2PerBin = histWeightedMc.Chi2Test(histRealData.GetValue(), "WW P CHI2") / nmbNonZeroBins
       label = ROOT.TLatex()
       label.SetNDC()
       label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
@@ -197,16 +207,17 @@ if __name__ == "__main__":
   massBinWidth = 0.04  # [GeV]
   nmbBins      = 50
 
-  # realDataDirName     = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi"
-  # weightedDataDirName = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
+  # realDataDirName      = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi"
+  # weightedDataDirName  = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
+  # weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
   # dataToOverlay = DataToOverlay(
   #   realData   = ROOT.RDataFrame("PiPi", f"{realDataDirName}/data_flat_{beamPolLabel}.root"),
-  #   weightedMc = ROOT.RDataFrame("PiPi", f"{weightedDataDirName}/data_weighted_flat.root"  ),
+  #   weightedMc = ROOT.RDataFrame("PiPi", weightedDataFileName                              ),
   # )
 
-  dataDirName         = f"./polarized/{dataPeriod}/{tBinLabel}"
-  # weightedDataDirName = f"{dataDirName}/PiPi/weighted.maxL_4/{beamPolLabel}"
-  weightedDataDirName = f".."
+  dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
+  weightedDataDirName  = f"{dataDirName}/PiPi/weighted.maxL_4/{beamPolLabel}"
+  weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
   dataToOverlay = DataToOverlay(
     realData   = getDataFrameWithCorrectEventWeights(
       dataSigRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_signal_{beamPolLabel}.root", ),
@@ -215,9 +226,11 @@ if __name__ == "__main__":
       friendSigRegionFileName = f"./polarized/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
       friendBkgRegionFileName = f"./polarized/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
     ),
-    weightedMc = ROOT.RDataFrame("PiPi", f"{weightedDataDirName}/data_weighted_flat.root"),
+    weightedMc = ROOT.RDataFrame("PiPi", weightedDataFileName),
   )
-  for member in fields(dataToOverlay):  # loop over members of `DataToOverlay`
+  print(f"Loaded weighted-MC data from '{weightedDataFileName}'")
+  # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
+  for member in fields(dataToOverlay):
     df = getattr(dataToOverlay, member.name)
     df = defineColumnsForPlots(
       df              = df,
@@ -238,7 +251,7 @@ if __name__ == "__main__":
   for massBinIndex in range(nmbBins):
     massBinMin = massMin + massBinIndex * massBinWidth
     massBinMax = massBinMin + massBinWidth
-    print(f"Overlaying histograms for mass range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
+    print(f"Overlaying histograms for mass bin {massBinIndex} with range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
     massRangeFilter = f"(({massBinMin} < mass{colNameSuffix}) && (mass{colNameSuffix} < {massBinMax}))"
     makePlots(
       dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
