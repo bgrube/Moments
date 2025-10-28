@@ -157,7 +157,7 @@ def makePlots(
       print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
       ROOT.gStyle.SetOptStat("i")
       canv = ROOT.TCanvas()
-      maxZ = histRealData.GetMaximum() * 1.1
+      maxZ = histRealData.GetMaximum()
       histRealData.SetMaximum(maxZ)
       histRealData.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histRealData.GetName()}{pdfFileNameSuffix}.pdf")
@@ -205,65 +205,87 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 
-  dataPeriod   = "2018_08"
-  tBinLabel    = "tbin_0.1_0.2"
-  beamPolLabel = "PARA_0"
+  dataPeriods   = (
+    # "2017_01",
+    "2018_08",
+  )
+  tBinLabels    = (
+    "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
+  )
+  beamPolLabels = (
+    "PARA_0",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
+  )
   massMin      = 0.28  # [GeV]
   massBinWidth = 0.04  # [GeV]
   nmbBins      = 50
+  subSystem    = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
 
-  # setup data in `MomentCalculator` format
-  # realDataDirName      = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi"
-  # weightedDataDirName  = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
-  # weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
-  # dataToOverlay = DataToOverlay(
-  #   realData   = ROOT.RDataFrame("PiPi", f"{realDataDirName}/data_flat_{beamPolLabel}.root"),
-  #   weightedMc = ROOT.RDataFrame("PiPi", weightedDataFileName                              ),
-  # )
+  for dataPeriod in dataPeriods:
+    print(f"Generating plots for data period '{dataPeriod}':")
+    for tBinLabel in tBinLabels:
+      print(f"Generating plots for t bin '{tBinLabel}':")
+      for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
+        beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
+        print(f"Generating plots for beam-polarization orientation '{beamPolLabel}'"
+              + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
 
-  # setup raw data
-  dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
-  weightedDataDirName  = f"{dataDirName}/PiPi/weighted.maxL_4/{beamPolLabel}"
-  weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
-  dataToOverlay = DataToOverlay(
-    realData   = getDataFrameWithCorrectEventWeights(
-      dataSigRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_signal_{beamPolLabel}.root", ),
-      dataBkgRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
-      treeName                = "kin",
-      friendSigRegionFileName = f"./polarized/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
-      friendBkgRegionFileName = f"./polarized/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
-    ),
-    weightedMc = ROOT.RDataFrame("PiPi", weightedDataFileName),
-  )
-  print(f"Loaded weighted-MC data from '{weightedDataFileName}'")
-  # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
-  for member in fields(dataToOverlay):
-    df = getattr(dataToOverlay, member.name)
-    df = defineColumnsForPlots(
-      df              = df,
-      inputDataFormat = InputDataFormat.AMPTOOLS,
-      subSystem       = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"),
-      beamPolInfo     = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
-    )
-    setattr(dataToOverlay, member.name, df)
+        # setup data in `MomentCalculator` format
+        realDataDirName      = f"./polarized/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}"
+        weightedDataDirName  = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
+        weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
+        dataToOverlay = DataToOverlay(
+          realData   = ROOT.RDataFrame(subSystem.pairLabel, f"{realDataDirName}/data_flat_{beamPolLabel}.root"),
+          weightedMc = ROOT.RDataFrame(subSystem.pairLabel, weightedDataFileName                              ),
+        )
 
-  print(f"Overlaying histograms for full mass range and writing plots into '{weightedDataDirName}'")
-  colNameSuffix = "PiPi"
-  makePlots(
-    dataToOverlay = dataToOverlay,
-    outputDirName = weightedDataDirName,
-    histTitle     = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
-    colNameSuffix = colNameSuffix,
-  )
-  for massBinIndex in range(nmbBins):
-    massBinMin = massMin + massBinIndex * massBinWidth
-    massBinMax = massBinMin + massBinWidth
-    print(f"Overlaying histograms for mass bin {massBinIndex} with range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
-    massRangeFilter = f"(({massBinMin} < mass{colNameSuffix}) && (mass{colNameSuffix} < {massBinMax}))"
-    makePlots(
-      dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
-      outputDirName     = weightedDataDirName,
-      histTitle         = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
-      pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
-      colNameSuffix     = colNameSuffix,
-    )
+        # setup raw data
+        dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
+        weightedDataDirName  = f"{dataDirName}/{subSystem.pairLabel}/weighted.maxL_4/{beamPolLabel}"
+        weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
+        dataToOverlay = DataToOverlay(
+          realData   = getDataFrameWithCorrectEventWeights(
+            dataSigRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_signal_{beamPolLabel}.root", ),
+            dataBkgRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
+            treeName                = "kin",
+            friendSigRegionFileName = f"{dataDirName}/data_sig_{beamPolLabel}.root.weights",
+            friendBkgRegionFileName = f"{dataDirName}/data_bkg_{beamPolLabel}.root.weights",
+          ),
+          weightedMc = ROOT.RDataFrame(subSystem.pairLabel, weightedDataFileName),
+        )
+        print(f"Loaded weighted-MC data from '{weightedDataFileName}'")
+        # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
+        for member in fields(dataToOverlay):
+          df = getattr(dataToOverlay, member.name)
+          df = defineColumnsForPlots(
+            df              = df,
+            inputDataFormat = InputDataFormat.AMPTOOLS,
+            subSystem       = subSystem,
+            beamPolInfo     = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
+          )
+          setattr(dataToOverlay, member.name, df)
+
+        print(f"Overlaying histograms for full mass range and writing plots into '{weightedDataDirName}'")
+        makePlots(
+          dataToOverlay = dataToOverlay,
+          outputDirName = weightedDataDirName,
+          histTitle     = f"{massMin:.2f} < m_{{#pi#pi}} < {massMin + nmbBins * massBinWidth:.2f} GeV",
+          colNameSuffix = subSystem.pairLabel,
+        )
+        for massBinIndex in range(nmbBins):
+          massBinMin = massMin + massBinIndex * massBinWidth
+          massBinMax = massBinMin + massBinWidth
+          print(f"Overlaying histograms for mass bin {massBinIndex} with range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
+          massRangeFilter = f"(({massBinMin} < mass{subSystem.pairLabel}) && (mass{subSystem.pairLabel} < {massBinMax}))"
+          makePlots(
+            dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
+            outputDirName     = weightedDataDirName,
+            histTitle         = f"{massBinMin:.2f} < m_{{#pi#pi}} < {massBinMax:.2f} GeV",
+            pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+            colNameSuffix     = subSystem.pairLabel,
+          )
