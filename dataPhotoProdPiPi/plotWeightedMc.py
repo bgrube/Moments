@@ -230,24 +230,14 @@ if __name__ == "__main__":
     print(f"Generating plots for data period '{dataPeriod}':")
     for tBinLabel in tBinLabels:
       print(f"Generating plots for t bin '{tBinLabel}':")
-      for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
+      for beamPolLabel in beamPolLabels:
         beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
         print(f"Generating plots for beam-polarization orientation '{beamPolLabel}'"
               + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
-
-        # setup data in `MomentCalculator` format
-        realDataDirName      = f"./polarized/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}"
-        weightedDataDirName  = f"{realDataDirName}/weighted.maxL_4/{beamPolLabel}"
-        weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
-        dataToOverlay = DataToOverlay(
-          realData   = ROOT.RDataFrame(subSystem.pairLabel, f"{realDataDirName}/data_flat_{beamPolLabel}.root"),
-          weightedMc = ROOT.RDataFrame(subSystem.pairLabel, weightedDataFileName                              ),
-        )
-
-        # setup raw data
+        # load data in AMPTOOLS format
         dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
         weightedDataDirName  = f"{dataDirName}/{subSystem.pairLabel}/weighted.maxL_4/{beamPolLabel}"
-        weightedDataFileName = f"{weightedDataDirName}/data_weighted_flat.root"
+        weightedDataFileName = f"{weightedDataDirName}/phaseSpace_acc_weighted_raw.root"
         dataToOverlay = DataToOverlay(
           realData   = getDataFrameWithCorrectEventWeights(
             dataSigRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_signal_{beamPolLabel}.root", ),
@@ -269,7 +259,7 @@ if __name__ == "__main__":
             beamPolInfo     = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
           )
           setattr(dataToOverlay, member.name, df)
-
+        # plot overlays for full mass range and for individual mass bins
         print(f"Overlaying histograms for full mass range and writing plots into '{weightedDataDirName}'")
         makePlots(
           dataToOverlay = dataToOverlay,
