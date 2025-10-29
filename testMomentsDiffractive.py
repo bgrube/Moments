@@ -9,10 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import threadpoolctl
-from typing import (
-  Any,
-  Collection,
-)
+from typing import Collection
 
 import py3nj
 from uncertainties import UFloat, ufloat
@@ -45,7 +42,6 @@ def plotComparison(
   else:
     fileNameSuffix    = "Im"
     legendEntrySuffix = "Imag Part"
-
   # overlay measured and input values
   hStack = ROOT.THStack(f"h{dataLabel}_Compare_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}", "")
   nmbBins = len(measVals)
@@ -84,7 +80,6 @@ def plotComparison(
   # hStack.GetHistogram().SetLineWidth(0)  # remove zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
   canv.BuildLegend(0.7, 0.75, 0.99, 0.99)
   canv.SaveAs(f"{pdfFileNamePrefix}{hStack.GetName()}.pdf")
-
   # plot pulls
   pulls = tuple((measVal[0] - trueVals[index]) / measVal[1] if measVal[1] > 0 else 0 for index, measVal in enumerate(measVals))
   hPulls = ROOT.TH1D(f"h{dataLabel}_Pulls_H{momentIndex if useMomentSubscript else ''}_{fileNameSuffix}",
@@ -154,7 +149,7 @@ def generateDataLegPolLC(
   maxDegree:         int,
   parameters:        Collection[float],
   outFileNamePrefix: str = "",
-) -> Any:
+) -> ROOT.RDataFrame:
   """Generates data according to linear combination of Legendre polynomials"""
   assert len(parameters) >= maxDegree + 1, f"Need {maxDegree + 1} parameters; only {len(parameters)} were given: {parameters}"
   # linear combination of legendre polynomials up to given degree
@@ -165,12 +160,10 @@ def generateDataLegPolLC(
   for index, parameter in enumerate(parameters):
     legendrePolLC.SetParameter(index, parameter)
   legendrePolLC.SetMinimum(0)
-
   # draw function
   canv = ROOT.TCanvas()
   legendrePolLC.Draw()
   canv.SaveAs(f"{outFileNamePrefix}hLegendrePolLC.pdf")
-
   # generate random data that follow linear combination of legendre polynomials
   treeName = "data"
   fileName = f"{outFileNamePrefix}{legendrePolLC.GetName()}.root"
@@ -186,7 +179,7 @@ def generateDataLegPolLC(
 
 
 def calculateLegMoments(
-  dataFrame: Any,
+  dataFrame: ROOT.RDataFrame,
   maxDegree: int,
 ) -> dict[tuple[int, ...], UFloat]:
   """Calculates moments of Legendre polynomials"""
@@ -217,7 +210,7 @@ def generateDataSphHarmLC(
   maxEll:            int,  # maximum spin of decaying object
   parameters:        Collection[float],  # make sure that resulting linear combination is positive definite
   outFileNamePrefix: str = "",
-) -> Any:
+) -> ROOT.RDataFrame:
   """Generates data according to linear combination of spherical harmonics"""
   nmbTerms = 6 * maxEll  # Eq. (17)
   assert len(parameters) >= nmbTerms, f"Need {nmbTerms} parameters; only {len(parameters)} were given: {parameters}"
@@ -242,12 +235,10 @@ def generateDataSphHarmLC(
   for index, parameter in enumerate(parameters):
     sphericalHarmLC.SetParameter(index, parameter)
   sphericalHarmLC.SetMinimum(0)
-
   # draw function
   canv = ROOT.TCanvas()
   sphericalHarmLC.Draw("COLZ")
   canv.SaveAs(f"{outFileNamePrefix}hSphericalHarmlLC.pdf")
-
   # generate random data that follow linear combination of of spherical harmonics
   treeName = "data"
   fileName = f"{outFileNamePrefix}{sphericalHarmLC.GetName()}.root"
@@ -269,7 +260,7 @@ def generateDataSphHarmLC(
 assert ROOT.gROOT.LoadMacro("./Covariance.C+") == 0, "Error loading './Covariance.C+'"
 
 def calculateSphHarmMoments(
-  dataFrame:         Any,
+  dataFrame:         ROOT.RDataFrame,
   maxEll:            int,  # maximum spin of decaying object
   integralMatrix:    dict[tuple[int, ...], complex] | None = None,  # acceptance integral matrix
   pdfFileNamePrefix: str = "",
@@ -445,7 +436,7 @@ def generateDataPwd(
   prodAmps:          dict[int, tuple[complex, ...]],
   efficiencyFormula: str | None = None,
   outFileNamePrefix: str = "",
-) -> Any:
+) -> ROOT.RDataFrame:
   """Generates data according to partial-wave decomposition for fixed set of 7 lowest waves up to \\ell = 2 and |m| = 1"""
   # construct TF2 for intensity in Eq. (28) with rank = 1 and using wave set in Eqs. (41) and (42)
   assert len(prodAmps) == len(WAVE_SET), f"Need {len(WAVE_SET)} parameters; only {len(prodAmps)} were given: {prodAmps}"
@@ -470,12 +461,10 @@ def generateDataPwd(
   intensityFcn.SetNpy(500)
   intensityFcn.SetContour(100)
   intensityFcn.SetMinimum(0)
-
   # draw function
   canv = ROOT.TCanvas()
   intensityFcn.Draw("COLZ")
   canv.SaveAs(f"{outFileNamePrefix}hIntensity.pdf")
-
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
   fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
@@ -554,7 +543,7 @@ def calculateInputPwdMoments(
 
 
 def calculateWignerDMoment(
-  dataFrame: Any,
+  dataFrame: ROOT.RDataFrame,
   L:         int,
   M:         int,
 ) -> tuple[UFloat, UFloat]:  # real and imag part with uncertainty
@@ -571,7 +560,7 @@ def calculateWignerDMoment(
 
 
 def calculateWignerDMoments(
-  dataFrame: Any,
+  dataFrame: ROOT.RDataFrame,
   maxEll:    int,  # maximum spin of decaying object
 ) -> None:
   """Calculates moments of Wigner-D function D^L_{M 0}"""
@@ -594,7 +583,7 @@ def generateData2BodyPS(
   nmbEvents:         int,  # number of events to generate
   efficiencyFormula: str | None = None,
   outFileNamePrefix: str = "",
-) -> Any:
+) -> ROOT.RDataFrame:
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   # construct efficiency function
   efficiencyFcn = ROOT.TF2("efficiency", "1" if efficiencyFormula is None else efficiencyFormula, -1, +1, -180, +180)
@@ -603,12 +592,10 @@ def generateData2BodyPS(
   efficiencyFcn.SetNpy(500)
   efficiencyFcn.SetContour(100)
   efficiencyFcn.SetMinimum(0)
-
   # draw function
   canv = ROOT.TCanvas()
   efficiencyFcn.Draw("COLZ")
   canv.SaveAs(f"{outFileNamePrefix}hEfficiency.pdf")
-
   # generate isotropic distributions in cos theta and phi and weight with efficiency function
   treeName = "data"
   fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
@@ -627,7 +614,7 @@ def generateData2BodyPS(
 
 
 def calcIntegralMatrix(
-  phaseSpaceDataFrame: Any,
+  phaseSpaceDataFrame: ROOT.RDataFrame,
   maxEll:              int,  # maximum orbital angular momentum
   nmbEvents:           int,  # number of events in RDataFrame
 ) -> dict[tuple[int, ...], complex]:
