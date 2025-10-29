@@ -334,17 +334,13 @@ def plotComplexMatrix(
 
 def drawTF3(
   fcn:         ROOT.TF3,  # function to plot
+  #TODO read binning ranges from fcn and just define number of points
   binnings:    tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
   pdfFileName: str,                  # name of PDF file to write
   histTitle:   str          = "",    # histogram title
-  nmbPoints:   int | None   = None,  # number of function points; used in numeric integration performed by GetRandom()
   maxVal:      float | None = None,  # maximum plot range
 ) -> None:
-  """Draws given TF3 into histogram"""
-  if nmbPoints:
-    fcn.SetNpx(nmbPoints)  # used in numeric integration performed by GetRandom()
-    fcn.SetNpy(nmbPoints)
-    fcn.SetNpz(nmbPoints)
+  """Plots given TF3 into PDF file with given name using the binning defined by `binnings`"""
   canv = ROOT.TCanvas()
   # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead

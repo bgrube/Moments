@@ -67,7 +67,10 @@ def genAccepted2BodyPs(
   """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
   print("Drawing efficiency function")
   efficiencyFcn = ROOT.TF3("efficiency", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", nmbPoints = 100, maxVal = 1.0)
+  efficiencyFcn.SetNpx(100)
+  efficiencyFcn.SetNpy(100)
+  efficiencyFcn.SetNpz(100)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", maxVal = 1.0)
 
   # don't regenerate data if file already exists
   treeName = "data"

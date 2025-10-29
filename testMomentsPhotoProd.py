@@ -72,7 +72,10 @@ def genDataFromWaves(
 
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3(f"efficiencyGen{nameSuffix}", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, nmbPoints = 100, maxVal = 1.0,
+  efficiencyFcn.SetNpx(100)
+  efficiencyFcn.SetNpy(100)
+  efficiencyFcn.SetNpz(100)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, maxVal = 1.0,
     pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
 
   # construct TF3 for intensity distribution in Eq. (171)
@@ -142,7 +145,10 @@ def genAccepted2BodyPsPhotoProd(
   print(f"Generating {nmbEvents} events distributed according to two-body phase-space weighted by efficiency {efficiencyFormula}")
   # construct and draw efficiency function
   efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", nmbPoints = 100, maxVal = 1.0)
+  efficiencyFcn.SetNpx(100)
+  efficiencyFcn.SetNpy(100)
+  efficiencyFcn.SetNpz(100)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -231,7 +237,10 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
     if efficiencyFormulaDetune:
       efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-      drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/hEfficiencyDetune.pdf", nmbPoints = 100, maxVal = 1.0)
+      efficiencyFcnDetune.SetNpx(100)
+      efficiencyFcnDetune.SetNpy(100)
+      efficiencyFcnDetune.SetNpz(100)
+      drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
       efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
     else:
       efficiencyFormulaReco = efficiencyFormulaGen
