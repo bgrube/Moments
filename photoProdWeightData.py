@@ -47,7 +47,10 @@ from MomentCalculator import (
   MomentResultsKinematicBinning,
   QnMomentIndex,
 )
-from PlottingUtilities import setupPlotStyle
+from PlottingUtilities import (
+  drawTF3,
+  setupPlotStyle,
+)
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 import Utilities
 
@@ -77,8 +80,8 @@ def loadInputData(
     originalColumns = list(dataToWeight.GetColumnNames())
     if isinstance(inputDataDef, tuple):
       # define columns needed to calculate intensity
-      lvs = lorentzVectors(dataFormat = InputDataFormat.AMPTOOLS)
       assert beamPolInfo is not None, "Beam polarization information must be provided when loading raw data from file"
+      lvs = lorentzVectors(dataFormat = InputDataFormat.AMPTOOLS)
       dataToWeight = defineDataFrameColumns(
         df          = dataToWeight,
         lvTarget    = lvs["target"],
@@ -133,9 +136,9 @@ def weightDataWithIntensity(
   outFileName:   str,           # ROOT file to which weighted events are written
   cfg:           AnalysisConfig,
   seed:          int                = 123456789,  # seed for rejection sampling and for generating phase-space events
-  beamPolInfo:   BeamPolInfo | None = None,  # beam polarization information needed for raw data files
+  beamPolInfo:   BeamPolInfo | None = None,       # beam polarization information needed for raw data files
 ) -> None:
-  """Weight input data specified by `inputDataDef` with given intensity formula"""
+  """Weight input data specified by `inputDataDef` and `massBinIndex` with intensity formula from `momentResults` and write data to `outFileName`"""
   ROOT.gRandom.SetSeed(seed)
   # load input data
   dataToWeight, nmbInputEvents, originalColumns = loadInputData(
@@ -146,7 +149,7 @@ def weightDataWithIntensity(
   )
   # construct intensity formula
   intensityFormula = momentResults.intensityFormula(
-    polarization                = cfg.polarization,
+    polarization                = "beamPol",  # read polarization from tree column
     thetaFormula                = "theta",
     phiFormula                  = "phi",
     PhiFormula                  = "Phi",
@@ -257,6 +260,40 @@ def reweightKinDistribution(
   reweightedData.Snapshot(treeName, outFileName)
 
 
+def plotIntensityFcn(
+  momentResults:  MomentResult,
+  massBinIndex:   int,
+  beamPolInfo:    BeamPolInfo,
+  outputDirName:  str,
+  nmbBinsPerAxis: int = 25,
+) -> None:
+  """Draw intensity function in given mass bin and save PDF to output directory"""
+  print(f"Plotting intensity function for mass bin {massBinIndex}")
+  # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
+  intensityFormula = momentResults.intensityFormula(
+    polarization                = beamPolInfo.pol,
+    thetaFormula                = "std::acos(x)",
+    phiFormula                  = "TMath::DegToRad() * y",
+    PhiFormula                  = "TMath::DegToRad() * z",
+    includeParityViolatingTerms = True,
+  )
+  intensityFcn = ROOT.TF3(f"intensityFcn_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
+  intensityFcn.SetNpx(100)
+  intensityFcn.SetNpy(100)
+  intensityFcn.SetNpz(100)
+  intensityFcn.SetMinimum(0)
+  drawTF3(
+    fcn         = intensityFcn,
+    binnings    = (
+      HistAxisBinning(nmbBinsPerAxis,   -1,   +1),
+      HistAxisBinning(nmbBinsPerAxis, -180, +180),
+      HistAxisBinning(nmbBinsPerAxis, -180, +180),
+    ),
+    pdfFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf",
+    histTitle   = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
+    )
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
@@ -314,6 +351,7 @@ if __name__ == "__main__":
     # 20,
   )
   reweightMassDistribution = False  # whether to reweight mass distribution after weighting with intensity function
+  makeIntensityFcnPlots    = False  # whether to draw intensity function in each mass bin
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
@@ -361,6 +399,13 @@ if __name__ == "__main__":
                 seed          = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo   = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
               )
+              if makeIntensityFcnPlots:
+                plotIntensityFcn(
+                  momentResults  = momentResultsInBin,
+                  massBinIndex   = massBinIndex,
+                  beamPolInfo    = BEAM_POL_INFOS[dataPeriod][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
+                  outputDirName  = weightedDataDirName,
+                )
 
             # merge trees with weighted MC data for individual mass bins into single file
             mergedFileName  = f"{weightedDataDirName}/data_weighted_flat.root"
