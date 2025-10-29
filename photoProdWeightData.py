@@ -269,29 +269,47 @@ def plotIntensityFcn(
 ) -> None:
   """Draw intensity function in given mass bin and save PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex}")
-  # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-  intensityFormula = momentResults.intensityFormula(
-    polarization                = beamPolInfo.pol,
-    thetaFormula                = "std::acos(x)",
-    phiFormula                  = "TMath::DegToRad() * y",
-    PhiFormula                  = "TMath::DegToRad() * z",
-    includeParityViolatingTerms = True,
-  )
-  intensityFcn = ROOT.TF3(f"intensityFcn_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
-  intensityFcn.SetNpx(100)
-  intensityFcn.SetNpy(100)
-  intensityFcn.SetNpz(100)
-  intensityFcn.SetMinimum(0)
-  drawTF3(
-    fcn         = intensityFcn,
-    binnings    = (
-      HistAxisBinning(nmbBinsPerAxis,   -1,   +1),
-      HistAxisBinning(nmbBinsPerAxis, -180, +180),
-      HistAxisBinning(nmbBinsPerAxis, -180, +180),
-    ),
-    pdfFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf",
-    histTitle   = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
+  if False:
+    # draw intensity function as 3D plot
+    # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
+    intensityFormula = momentResults.intensityFormula(
+      polarization                = beamPolInfo.pol,
+      thetaFormula                = "std::acos(x)",
+      phiFormula                  = "TMath::DegToRad() * y",
+      PhiFormula                  = "TMath::DegToRad() * z",
+      includeParityViolatingTerms = True,
     )
+    intensityFcn = ROOT.TF3(f"intensityFcn_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
+    intensityFcn.SetMinimum(0)
+    drawTF3(
+      fcn         = intensityFcn,
+      binnings    = (
+        HistAxisBinning(nmbBinsPerAxis,   -1,   +1),
+        HistAxisBinning(nmbBinsPerAxis, -180, +180),
+        HistAxisBinning(nmbBinsPerAxis, -180, +180),
+      ),
+      pdfFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf",
+      histTitle   = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
+      )
+  if True:
+    # draw intensity as function of phi_HF and Phi for fixed cos(theta)_HF value
+    cosTheta = 0.0  # fixed value of cos(theta)_HF
+    # formula uses variables: x = phi in [-180, +180] deg; y = Phi in [-180, +180] deg
+    intensityFormulaFixedCosTheta = momentResults.intensityFormula(
+      polarization                = beamPolInfo.pol,
+      thetaFormula                = f"std::acos({cosTheta})",
+      phiFormula                  = "TMath::DegToRad() * x",
+      PhiFormula                  = "TMath::DegToRad() * y",
+      includeParityViolatingTerms = True,
+    )
+    intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcnFixedCosTheta_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
+    intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{HF}} = {cosTheta};#phi_{{HF}} [deg];#Phi [deg]")
+    intensityFcnFixedCosTheta.SetNpx(100)
+    intensityFcnFixedCosTheta.SetNpy(100)
+    intensityFcnFixedCosTheta.SetMinimum(0)
+    canv = ROOT.TCanvas()
+    intensityFcnFixedCosTheta.Draw("COLZ")
+    canv.SaveAs(f"{outputDirName}/{intensityFcnFixedCosTheta.GetName()}.pdf")
 
 
 if __name__ == "__main__":
