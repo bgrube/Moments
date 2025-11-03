@@ -75,8 +75,8 @@ def getCbFriendlyRootColor(
 # 11 filled marker styles
 # the float is a relative scaling factor to obtain approximately equal apparent sizes
 MARKERS_FILLED: tuple[tuple[int, float], ...] = (
-  (ROOT.kFullCircle,            0.75),
   (ROOT.kFullSquare,            0.70),
+  (ROOT.kFullCircle,            0.75),
   (ROOT.kFullDiamond,           1.00),
   (ROOT.kFullCross,             0.85),
   (ROOT.kFullCrossX,            0.85),
@@ -89,8 +89,8 @@ MARKERS_FILLED: tuple[tuple[int, float], ...] = (
 )
 # 11 open marker styles
 MARKERS_OPEN: tuple[tuple[int, float], ...] = (
-  (ROOT.kOpenCircle,            0.75),
   (ROOT.kOpenSquare,            0.70),
+  (ROOT.kOpenCircle,            0.75),
   (ROOT.kOpenDiamond,           1.00),
   (ROOT.kOpenCross,             0.85),
   (ROOT.kOpenCrossX,            0.85),
