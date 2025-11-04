@@ -197,29 +197,30 @@ def reweightData(
     ),
     variableName,
   ).GetValue()
-  # # save plots of distributions
-  # canv = ROOT.TCanvas()
-  # currentDistr.Draw()
-  # canv.SaveAs(f"{currentDistr.GetName()}.root")
-  # canv = ROOT.TCanvas()
-  # targetDistr.Draw()
-  # canv.SaveAs(f"{targetDistr.GetName()}.root")
+  if False:
+    # save plots of current and target distributions
+    canv = ROOT.TCanvas()
+    currentDistr.Draw()
+    canv.SaveAs(f"{currentDistr.GetName()}.root")
+    canv = ROOT.TCanvas()
+    targetDistr.Draw()
+    canv.SaveAs(f"{targetDistr.GetName()}.root")
   # normalize histograms such that they represent the corresponding PDFs
-  targetDistr.Scale (1.0 / targetDistr.Integral ())
+  targetDistr.Scale (1.0 / targetDistr.Integral() )
   currentDistr.Scale(1.0 / currentDistr.Integral())
-  # calculate PDF ratio that defines the weight histogram
+  # calculate the ratio of the target and the current PDF, that defines the weight histogram
   weightsHist = targetDistr.Clone("weightsHist")
   weightsHist.Divide(currentDistr)
-  # add weights to input data
-  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python object in C++
+  # add columns for rejection sampling to input data
+  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++
   dataToWeight = (
     dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
-                .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")
+                .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
   )
   tmpFileName = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
-  dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to file to ensure that random columns are filled only once
-  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back
-  nmbEvents = dataToWeight.Count().GetValue()
+  dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to temporary file to ensure that random column is filled only once
+  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back from temporary file
+  nmbEvents = dataToWeight.Count().GetValue()  # number of events before reweighting
   # determine maximum weight
   maxWeight = dataToWeight.Max("reweightingWeight").GetValue()
   print(f"Maximum weight is {maxWeight}")
@@ -230,7 +231,7 @@ def reweightData(
   )
   nmbWeightedEvents = reweightedData.Count().GetValue()
   print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
-  subprocess.run(f"rm -fv {tmpFileName}", shell = True)
+  subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)
   return reweightedData
 
 
@@ -241,7 +242,8 @@ def reweightKinDistribution(
   momentResults: MomentResultsKinematicBinning,  # moment values
   outFileName:   str,  # name of file to write data into
 ) -> None:
-  """Reweight mass distribution of data according to mass dependence of H_0(0, 0)"""
+  """Reweight mass distribution of given data according to the mass dependence of H_0(0, 0)"""
+  #TODO reweight so that it matches data distribution instead of H_0(0, 0)
   print(f"Reweighting {binning.var.name} dependence")
   # construct target distribution from H_0(0, 0) values in kinematic bins
   targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple)
@@ -250,6 +252,7 @@ def reweightKinDistribution(
     massBinCenter = momentResultsForBin.binCenters[binning.var]
     targetDistr.SetBinContent(targetDistr.FindBin(massBinCenter), momentResultsForBin[H000Index].real[0])
   # reweight data
+  originalColumns = list(dataToWeight.GetColumnNames())
   reweightedData = reweightData(
     dataToWeight = dataToWeight,
     treeName     = treeName,
@@ -257,7 +260,7 @@ def reweightKinDistribution(
     targetDistr  = targetDistr,
   )
   print(f"Writing reweighted data to file '{outFileName}'")
-  reweightedData.Snapshot(treeName, outFileName)
+  reweightedData.Snapshot(treeName, outFileName, originalColumns)
 
 
 def plotIntensityFcn(
@@ -371,8 +374,10 @@ if __name__ == "__main__":
     # 16,
     # 20,
   )
-  reweightMassDistribution = False  # whether to reweight mass distribution after weighting with intensity function
-  makeIntensityFcnPlots    = False  # whether to draw intensity function in each mass bin
+  reweightMassDistribution = True  # whether to reweight mass distribution after weighting with intensity function
+  # reweightMassDistribution = False
+  # makeIntensityFcnPlots    = True  # whether to draw intensity function in each mass bin
+  makeIntensityFcnPlots    = False
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
@@ -404,8 +409,8 @@ if __name__ == "__main__":
             # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
             print(f"Reading moments from file '{momentResultsFileName}'")
             momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
-            for momentResultsInBin in momentResults:
-              massBinCenter = momentResultsInBin.binCenters[cfg.massBinning.var]
+            for momentResultsForBin in momentResults:
+              massBinCenter = momentResultsForBin.binCenters[cfg.massBinning.var]
               massBinIndex  = cfg.massBinning.findBin(massBinCenter)
               assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} {cfg.massBinning.var.unit}"
               print(f"Weighting events in mass bin {massBinIndex} at {massBinCenter:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit} by intensity function")
@@ -413,7 +418,7 @@ if __name__ == "__main__":
                 inputDataDef         = (inputDataDef[0], f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex/{inputDataDef[1]}") \
                                        if isinstance(inputDataDef, tuple) else inputDataDef,
                 massBinIndex         = massBinIndex,
-                momentResults        = momentResultsInBin,
+                momentResults        = momentResultsForBin,
                 weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndex}.root",
                 cfg                  = cfg,
                 seed                 = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
@@ -421,7 +426,7 @@ if __name__ == "__main__":
               )
               if makeIntensityFcnPlots:
                 plotIntensityFcn(
-                  momentResults = momentResultsInBin,
+                  momentResults = momentResultsForBin,
                   massBinIndex  = massBinIndex,
                   beamPolInfo   = BEAM_POL_INFOS[dataPeriod][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
                   outputDirName = weightedDataDirName,
@@ -438,11 +443,11 @@ if __name__ == "__main__":
             if reweightMassDistribution:
               # reweight mass distribution of merged file
               #TODO does not work for more than 1 data sample; call of RootUtilities.declareInCpp(weightsHist = weightsHist) crashes in ROOT
-              reweightedFileName = f"{cfg.outFileDirName}/data_reweighted_flat.root"
+              reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
-                data = ROOT.RDataFrame(cfg.treeName, mergedFileName)
+                dataToWeight = ROOT.RDataFrame(cfg.treeName, mergedFileName)  # load merged data file created in step above
                 reweightKinDistribution(
-                  dataToWeight  = data,
+                  dataToWeight  = dataToWeight,
                   treeName      = cfg.treeName,
                   binning       = cfg.massBinning,
                   momentResults = momentResults,
