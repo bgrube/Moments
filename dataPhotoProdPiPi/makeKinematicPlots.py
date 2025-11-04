@@ -22,6 +22,7 @@ from makeMomentsInputTree import (
   BEAM_POL_INFOS,
   CPP_CODE_BEAM_POL_PHI,
   CPP_CODE_FLIPYAXIS,
+  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_MASSPAIR,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_TRACKDISTFDC,
@@ -73,7 +74,7 @@ def defineColumnsForPlots(
     )
     # define additional columns for subsystem
     dfResult = (
-      dfResult.Define(f"PsiDeg{frame.name}{subSystem.pairLabel}", f"(Double32_t)(PhiDeg{subSystem.pairLabel} - phiDeg{frame.name}{subSystem.pairLabel})")
+      dfResult.Define(f"PsiDeg{frame.name}{subSystem.pairLabel}", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subSystem.pairLabel} - phi{frame.name}{subSystem.pairLabel}) * TMath::RadToDeg())")
     )
   # define additional columns that are independent of subsystem
   dfResult = (
@@ -277,6 +278,7 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
   # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
