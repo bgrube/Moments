@@ -122,6 +122,22 @@ mandelstamT(
 }
 """
 
+# C++ function to limit range of azimuthal angle to [-pi, +pi]
+CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE = """
+double
+fixAzimuthalAngleRange(double angle)
+{
+	// ensure [-pi, +pi] range
+	while (angle > TMath::Pi()) {
+		angle -= TMath::TwoPi();
+	}
+	while (angle < -TMath::Pi()) {
+		angle += TMath::TwoPi();
+	}
+	return angle;
+}
+"""
+
 # C++ function to calculate azimuthal angle of photon polarization vector
 CPP_CODE_BEAM_POL_PHI = """
 // returns azimuthal angle of photon polarization vector in lab frame [rad]
@@ -139,14 +155,7 @@ beamPolPhi(
 	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
 	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
 	double Phi = beamPolPhiLab * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
-	// ensure [-pi, +pi] range
-	while (Phi > TMath::Pi()) {
-		Phi -= TMath::TwoPi();
-	}
-	while (Phi < -TMath::Pi()) {
-		Phi += TMath::TwoPi();
-	}
-	return Phi;
+	return fixAzimuthalAngleRange(Phi);
 }
 """
 
@@ -161,15 +170,9 @@ flipYAxis(
 	if (not flip) {
 		return phi;
 	}
+  //TODO is this correct? or should it be phi -> -phi?
 	phi += TMath::Pi();
-	// ensure [-pi, +pi] range
-	while (phi > TMath::Pi()) {
-		phi -= TMath::TwoPi();
-	}
-	while (phi < -TMath::Pi()) {
-		phi += TMath::TwoPi();
-	}
-	return phi;
+	return fixAzimuthalAngleRange(phi);
 }
 """
 
@@ -411,6 +414,7 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
 
   # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
