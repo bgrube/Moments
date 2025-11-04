@@ -67,7 +67,7 @@ if __name__ == "__main__":
   hist.Add(hists["Bkg"], -1)
   hist.SetLineColor  (ROOT.kRed + 1)
   hist.SetMarkerColor(ROOT.kRed + 1)
-  hist.SetTitle("Sig #minus Bkg")
+  hist.SetTitle("Sig#minus Bkg")
   histStack.Add(hist)
   histStack.Draw("E NOSTACK")
   canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
