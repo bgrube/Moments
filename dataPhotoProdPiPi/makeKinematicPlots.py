@@ -71,17 +71,33 @@ def defineColumnsForPlots(
       additionalFilterDefs = additionalFilterDefs,
       colNameSuffix        = subSystem.pairLabel,
     )
+    # define additional columns for subsystem
+    dfResult = (
+      dfResult.Define(f"PsiDeg{frame.name}{subSystem.pairLabel}", f"(Double32_t)(PhiDeg{subSystem.pairLabel} - phiDeg{frame.name}{subSystem.pairLabel})")
+    )
   # define additional columns that are independent of subsystem
   dfResult = (
-    dfResult.Define(f"mass{subSystem.pairLabel}Sq", f"std::pow(mass{subSystem.pairLabel}, 2)")
-            .Define("Ebeam",                        f"TLorentzVector({lvs['beam']}).E()")
+    dfResult.Define(f"mass{subSystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subSystem.pairLabel}, 2)")
+            .Define("Ebeam",                        f"(Double32_t)TLorentzVector({lvs['beam']}).E()")
             # track kinematics
-            .Define("momLabP",        f"TLorentzVector({lvs['recoil']}).P()")
-            .Define("momLabPip",      f"TLorentzVector({lvs['pip'   ]}).P()")
-            .Define("momLabPim",      f"TLorentzVector({lvs['pim'   ]}).P()")
-            .Define("thetaDegLabP",   f"TLorentzVector({lvs['recoil']}).Theta() * TMath::RadToDeg()")
-            .Define("thetaDegLabPip", f"TLorentzVector({lvs['pip'   ]}).Theta() * TMath::RadToDeg()")
-            .Define("thetaDegLabPim", f"TLorentzVector({lvs['pim'   ]}).Theta() * TMath::RadToDeg()")
+            .Define("momLabP",        f"(Double32_t)TLorentzVector({lvs['recoil']}).P()")
+            .Define("momLabXP",       f"(Double32_t)TLorentzVector({lvs['recoil']}).X()")
+            .Define("momLabYP",       f"(Double32_t)TLorentzVector({lvs['recoil']}).Y()")
+            .Define("momLabZP",       f"(Double32_t)TLorentzVector({lvs['recoil']}).Z()")
+            .Define("momLabPip",      f"(Double32_t)TLorentzVector({lvs['pip'   ]}).P()")
+            .Define("momLabXPip",     f"(Double32_t)TLorentzVector({lvs['pip'   ]}).X()")
+            .Define("momLabYPip",     f"(Double32_t)TLorentzVector({lvs['pip'   ]}).Y()")
+            .Define("momLabZPip",     f"(Double32_t)TLorentzVector({lvs['pip'   ]}).Z()")
+            .Define("momLabPim",      f"(Double32_t)TLorentzVector({lvs['pim'   ]}).P()")
+            .Define("momLabXPim",     f"(Double32_t)TLorentzVector({lvs['pim'   ]}).X()")
+            .Define("momLabYPim",     f"(Double32_t)TLorentzVector({lvs['pim'   ]}).Y()")
+            .Define("momLabZPim",     f"(Double32_t)TLorentzVector({lvs['pim'   ]}).Z()")
+            .Define("thetaDegLabP",   f"(Double32_t)(TLorentzVector({lvs['recoil']}).Theta() * TMath::RadToDeg())")
+            .Define("thetaDegLabPip", f"(Double32_t)(TLorentzVector({lvs['pip'   ]}).Theta() * TMath::RadToDeg())")
+            .Define("thetaDegLabPim", f"(Double32_t)(TLorentzVector({lvs['pim'   ]}).Theta() * TMath::RadToDeg())")
+            .Define("phiDegLabP",     f"(Double32_t)(TLorentzVector({lvs['recoil']}).Phi()   * TMath::RadToDeg())")
+            .Define("phiDegLabPip",   f"(Double32_t)(TLorentzVector({lvs['pip'   ]}).Phi()   * TMath::RadToDeg())")
+            .Define("phiDegLabPim",   f"(Double32_t)(TLorentzVector({lvs['pim'   ]}).Phi()   * TMath::RadToDeg())")
   )
   # print(f"!!! {df.GetDefinedColumnNames()=}")
   # print(f"!!! {dfResult.GetDefinedColumnNames()=}")
@@ -320,8 +336,10 @@ if __name__ == "__main__":
               friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
             )
           elif inputDataType == InputDataType.ACCEPTED_PHASE_SPACE:
+            print(f"Loading accepted phase space data from '{inputDataDirName}/amptools_tree_accepted*.root'")
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_accepted*.root")
           elif inputDataType == InputDataType.GENERATED_PHASE_SPACE:
+            print(f"Loading generated phase space data from '{inputDataDirName}/amptools_tree_thrown*.root'")
             df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_thrown*.root")
           else:
             raise RuntimeError(f"Unsupported input data type '{inputDataType}'")
