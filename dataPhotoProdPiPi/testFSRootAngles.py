@@ -74,6 +74,58 @@ helphideg_Alex(
 """
 
 
+# C++ function to calculate angles for moment analysis
+CPP_CODE_GLUEX_AMPTOOLS = """
+// calculates helicity angles and azimuthal angle between photon polarization and production plane in lab frame
+// for reaction beam + target -> resonance + recoil with resonance -> A + B
+// angles are returned as vector (cos(theta_HF), phi_HF [rad], Phi [rad])
+// code taken from GlueX AmpTools: https://github.com/JeffersonLab/halld_sim/blob/39b18bdbab88192275fed57fda161f9a52d04422/src/libraries/AMPTOOLS_AMPS/TwoPiAngles.cc#L94
+std::vector<Double32_t>
+twoBodyHelicityFrameAngles(
+	const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam,    // 4-momentum of beam [GeV]
+	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,  // 4-momentum of recoil [GeV]
+	const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,      // 4-momentum of particle A (analyzer) [GeV]
+	const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,      // 4-momentum of particle B [GeV]
+	const double beamPolPhiLab = 0  // azimuthal angle of photon beam polarization in lab [deg]
+) {
+	// 4-vectors in lab frame
+	const TLorentzVector beam  (PxBeam,   PyBeam,   PzBeam,   EBeam);
+	const TLorentzVector recoil(PxRecoil, PyRecoil, PzRecoil, ERecoil);
+	const TLorentzVector pA    (PxPA,     PyPA,     PzPA,     EPA);
+	const TLorentzVector pB    (PxPB,     PyPB,     PzPB,     EPB);
+	// boost 4-vectors to resonance rest frame
+	const TLorentzVector resonance = pA + pB;
+	// const TVector3 boost = -resonance.BoostVector();
+	// beam  (boost);
+	// recoil(boost);
+	// pA    (boost);
+	const TLorentzRotation resonanceBoost(-resonance.BoostVector());
+	const TLorentzVector beamRF   = resonanceBoost * beam;
+	const TLorentzVector recoilRF = resonanceBoost * recoil;
+	const TLorentzVector pARF     = resonanceBoost * pA;
+	// define axes of coordinate system
+	// const TVector3 y = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal to the production plane from lab momenta
+	const TVector3 y = beam.Vect().Cross(-recoil.Vect()).Unit();  // normal to the production plane from lab momenta
+	const TVector3 z = -recoilRF.Vect().Unit();  // helicity frame: z axis opposite to recoil proton in resonance rest frame
+	const TVector3 x = y.Cross(z).Unit();  // right-handed coordinate system
+	// calculate helicity-frame angles of particle A and angle between polarization and production plane
+	const TVector3 pAHF(pARF.Vect() * x, pARF.Vect() * y, pARF.Vect() * z);  // vector of particle A (analyzer) in helicity frame
+	const Double32_t cosThetaHF = pAHF.CosTheta();  // polar angle of particle A
+	const Double32_t phiHF      = pAHF.Phi();  // azimuthal angle of particle A [rad]
+	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
+	Double32_t Phi = beamPolPhiLab * TMath::DegToRad() + atan2(y * eps, beam.Vect().Unit() * (eps.Cross(y)));  // angle between photon polarization and production plane in lab frame [rad]
+	// ensure [-pi, +pi] range
+	while (Phi > TMath::Pi()) {
+		Phi -= TMath::TwoPi();
+	}
+	while (Phi < -TMath::Pi()) {
+		Phi += TMath::TwoPi();
+	}
+	return std::vector<Double32_t>{cosThetaHF, phiHF, Phi};
+}
+"""
+
+
 def lambdaKaellen(
   alpha: float,
   beta:  float,
@@ -98,6 +150,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   ROOT.gInterpreter.Declare(CPP_CODE_ALEX)
+  ROOT.gInterpreter.Declare(CPP_CODE_GLUEX_AMPTOOLS)
 
   E_beam_lab   = 9.0  # [GeV]
   m_X          = 1.0  # [GeV]
@@ -194,18 +247,35 @@ if __name__ == "__main__":
     beam_lab.X(),   beam_lab.Y(),   beam_lab.Z(),   beam_lab.E(),
   )
   print(f"Alex' functions: {pip_theta_Hf_Alex=} deg, {pip_phi_Hf_Alex=} deg")
+  # use AmpTools function to recover input values
+  angles = ROOT.twoBodyHelicityFrameAngles(
+    beam_lab.X(),   beam_lab.Y(),   beam_lab.Z(),   beam_lab.E(),
+    recoil_lab.X(), recoil_lab.Y(), recoil_lab.Z(), recoil_lab.E(),
+    pip_lab.X(),    pip_lab.Y(),    pip_lab.Z(),    pip_lab.E(),
+    pim_lab.X(),    pim_lab.Y(),    pim_lab.Z(),    pim_lab.E(),
+  )
+  pip_theta_Hf_AmpTools = np.degrees(np.arccos(angles[0]))
+  pip_phi_Hf_AmpTools = np.degrees(angles[1])
+  print(f"AmpTools function: {pip_theta_Hf_AmpTools=} deg, {pip_phi_Hf_AmpTools=} deg")
   # use FSRoot functions to recover input values
+  # There seems to be a bug in the way FSRoot calculates phi (at least for the HF frame)
+  # when using the same analyzer as for cosTheta, i.e. pi+, phi is flipped by 180 deg
+  # this difference is seen when comparing to Alex' function and also when comparing to the PWA result
+  # flipping the y-axis, i.e. switching the analyzer to pi- cures this problem
+  # switching between pi+ and pi- analyzer flips sign of moments with odd M
   pip_theta_Hf_FSRoot = np.degrees(np.arccos(ROOT.FSMath.helcostheta(
     pip_lab.X(),    pip_lab.Y(),    pip_lab.Z(),    pip_lab.E(),
     pim_lab.X(),    pim_lab.Y(),    pim_lab.Z(),    pim_lab.E(),
     recoil_lab.X(), recoil_lab.Y(), recoil_lab.Z(), recoil_lab.E(),
   )))
+  # use pi+ as analyzer and y_HF/GJ = p_beam x p_recoil
   pip_phi_Hf_FSRoot = np.degrees(ROOT.FSMath.helphi(
     pip_lab.X(),    pip_lab.Y(),    pip_lab.Z(),    pip_lab.E(),
     pim_lab.X(),    pim_lab.Y(),    pim_lab.Z(),    pim_lab.E(),
     recoil_lab.X(), recoil_lab.Y(), recoil_lab.Z(), recoil_lab.E(),
     beam_lab.X(),   beam_lab.Y(),   beam_lab.Z(),   beam_lab.E(),
   ))
+  #WORKAROUND use pi- as analyzer and y_HF/GJ = p_beam x p_recoil
   pip_phi_Hf_FSRoot_Flipped = np.degrees(ROOT.FSMath.helphi(
     pim_lab.X(),    pim_lab.Y(),    pim_lab.Z(),    pim_lab.E(),
     pip_lab.X(),    pip_lab.Y(),    pip_lab.Z(),    pip_lab.E(),

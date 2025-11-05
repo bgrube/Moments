@@ -125,7 +125,7 @@ mandelstamT(
 # C++ function to limit range of azimuthal angle to [-pi, +pi]
 CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE = """
 double
-fixAzimuthalAngleRange(double angle)
+fixAzimuthalAngleRange(double angle)  // [rad]
 {
 	// ensure [-pi, +pi] range
 	while (angle > TMath::Pi()) {
@@ -154,7 +154,7 @@ beamPolPhi(
 	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
 	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
 	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-	double Phi = beamPolPhiLab * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
+	const double Phi = beamPolPhiLab * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
 	return fixAzimuthalAngleRange(Phi);
 }
 """
