@@ -497,7 +497,7 @@ def getStdVectorFromRdfColumn(
   columnType = data.GetColumnType(columnName)
   assert columnType in ("double", "Double_t"), \
     f"Data column '{columnName}' must be of type 'double', 'Double_t', or 'Double32_t' but is of type '{columnType}'"
-  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName, ])[columnName])
+  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName, ])[columnName])  #TODO check whether the conversion to std::vector could be made zero-copy
 
 
 def readInputData(
@@ -673,7 +673,7 @@ class AcceptanceIntegralMatrix:
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
     for flatIndexMeas in self.indicesMeas.flatIndices:
       qnIndexMeas = self.indicesMeas[flatIndexMeas]
-      fMeas[flatIndexMeas] = np.asarray(ROOT.f_meas(
+      fMeas[flatIndexMeas] = np.asarray(ROOT.f_meas(  #TODO if ROOT.f_meas would be an RVec, np.asarray would be zero copy; not sure this is also true for std::vector
         qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
         thetas,
         phis,

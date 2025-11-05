@@ -271,27 +271,22 @@ def defineDataFrameColumns(
   """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
+  if frame == CoordSysType.HF:
+    df = (
+      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})")
+        # use z_HF = -p_recoil, A as analyzer and y_HF = (p_beam x p_recoil), if flipYAxis is False else -yHF
+        .Define(f"phi{angColNameSuffix}",      f"(Double32_t)flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")
+    )
+  elif frame == CoordSysType.GJ:
+    df = (
+      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature different from FSMath::helcostheta (see FSBasic/FSMath.h)
+        # use z_GJ = p_beam, A as analyzer and y_GJ = (p_beam x p_recoil), if flipYAxis is False else -y_GJ
+        .Define(f"phi{angColNameSuffix}",      f"(Double32_t)flipYAxis(FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")
+    )
+  else:
+    raise ValueError(f"Unsupported coordinate system type '{frame}'")
   df = (
-    df.Define(f"cosTheta{angColNameSuffix}", "(Double32_t)" + (f"FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})" if frame == CoordSysType.HF else  #TODO fix if statements for frame
-                                                               f"FSMath::gjcostheta ({lvA}, {lvB}, {lvBeam})"))  #!NOTE! frames have different signatures (see FSBasic/FSMath.h)
-      .Define(f"theta{angColNameSuffix}", f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
-      #TODO there seems to be a bug in the way FSRoot calculates phi (at least for the HF frame)
-      #     when using the same analyzer as for cosTheta, i.e. pi+, phi is flipped by 180 deg
-      #     this difference is seen when comparing to Alex' function and also when comparing to the PWA result
-      #     flipping the y-axis, i.e. switching the analyzer to pi- cures this problem
-      # switching between pi+ and pi- analyzer flips sign of moments with odd M
-      # # use pi+ as analyzer and y_HF/GJ = p_beam x p_recoil
-      # .Define("phi",      "(Double32_t)" + (f"FSMath::helphi({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})" if frame == CoordSysType.Hf else
-      #                                       f"FSMath::gjphi ({lvPip}, {lvPim}, {lvRecoil}, {lvBeam})"))
-      # #WORKAROUND use pi- as analyzer and y_HF/GJ = p_beam x p_recoil
-      # .Define("phi",      "(Double32_t)" + (f"FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})" if frame == CoordSysType.Hf else
-      #                                       f"FSMath::gjphi ({lvB}, {lvA}, {lvRecoil}, {lvBeam})"))
-      .Define(f"phi{angColNameSuffix}",
-        # use A as analyzer and y_HF/GJ = (p_beam x p_recoil), if flipYAxis is False else -yHF
-        "(Double32_t)" +
-        (      f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == CoordSysType.HF  # use z_HF = -p_recoil
-          else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")                             # use z_GJ = p_beam
-      )
+    df.Define(f"theta{angColNameSuffix}",  f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
       .Define(f"phiDeg{angColNameSuffix}", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
   )
   # allow for redefinition of already existing columns with identical formula if function is called for several frames

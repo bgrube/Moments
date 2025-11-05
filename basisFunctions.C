@@ -239,7 +239,7 @@ ReYlm(
 	const double theta,  // [rad]
 	const double phi     // [rad]
 ) {
-  return ylm(l, m, theta) * std::cos(m * phi);
+	return ylm(l, m, theta) * std::cos(m * phi);
 }
 
 // imaginary part of spherical harmonics
@@ -250,7 +250,7 @@ ImYlm(
 	const double theta,  // [rad]
 	const double phi     // [rad]
 ) {
-  return ylm(l, m, theta) * std::sin(m * phi);
+	return ylm(l, m, theta) * std::sin(m * phi);
 }
 
 
