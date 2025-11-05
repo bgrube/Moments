@@ -328,7 +328,7 @@ def defineDataFrameColumns(
     #TODO use local C++ code instead FSRoot functions
     df = (
       # use z_GJ = p_beam, A as analyzer, and y_GJ = (p_beam x p_recoil), if flipYAxis is False else -y_GJ
-      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, )")  #!NOTE! signature different from FSMath::helcostheta (see FSBasic/FSMath.h)
+      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature is different from FSMath::helcostheta (see FSBasic/FSMath.h)
         .Define(f"phi{angColNameSuffix}",      f"(Double32_t)flipYAxis(FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")
     )
   else:
