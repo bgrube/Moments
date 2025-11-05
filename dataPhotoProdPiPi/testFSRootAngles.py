@@ -10,7 +10,7 @@ import ROOT
 
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_GLUEX_AMPTOOLS,
+  CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
 )
 
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   ROOT.gInterpreter.Declare(CPP_CODE_ALEX)
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_GLUEX_AMPTOOLS)
+  ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
 
   E_beam_lab   = 9.0  # [GeV]
   m_X          = 1.0  # [GeV]

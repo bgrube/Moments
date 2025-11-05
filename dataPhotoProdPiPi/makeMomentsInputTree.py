@@ -139,7 +139,7 @@ fixAzimuthalAngleRange(double angle)  // [rad]
 """
 
 # C++ function to calculate angles for moment analysis
-CPP_CODE_GLUEX_AMPTOOLS = """
+CPP_CODE_ANGLES_GLUEX_AMPTOOLS = """
 // calculates helicity angles and azimuthal angle between photon polarization and production plane in lab frame
 // for reaction beam + target -> resonance + recoil with resonance -> A + B
 // angles are returned as vector (cos(theta_HF), phi_HF [rad], Phi [rad])
@@ -319,26 +319,29 @@ def defineDataFrameColumns(
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   if frame == CoordSysType.HF:
     df = (
-      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})")
-        # use z_HF = -p_recoil, A as analyzer and y_HF = (p_beam x p_recoil), if flipYAxis is False else -yHF
-        .Define(f"phi{angColNameSuffix}",      f"(Double32_t)flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")
+      # use z_HF = -p_recoil, A as analyzer, and y_HF = (p_beam x p_recoil)
+      df.Define(f"angles{angColNameSuffix}",   f"twoBodyHelicityFrameAngles({lvBeam}, {lvRecoil}, {lvA}, {lvB}, {'0' if beamPolInfo is None else beamPolInfo.PhiLab})")
+        .Define(f"cosTheta{angColNameSuffix}", f"angles{angColNameSuffix}[0]")
+        .Define(f"phi{angColNameSuffix}",      f"angles{angColNameSuffix}[1]")
     )
   elif frame == CoordSysType.GJ:
+    #TODO use local C++ code instead FSRoot functions
     df = (
-      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature different from FSMath::helcostheta (see FSBasic/FSMath.h)
-        # use z_GJ = p_beam, A as analyzer and y_GJ = (p_beam x p_recoil), if flipYAxis is False else -y_GJ
+      # use z_GJ = p_beam, A as analyzer, and y_GJ = (p_beam x p_recoil), if flipYAxis is False else -y_GJ
+      df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, )")  #!NOTE! signature different from FSMath::helcostheta (see FSBasic/FSMath.h)
         .Define(f"phi{angColNameSuffix}",      f"(Double32_t)flipYAxis(FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")
     )
   else:
     raise ValueError(f"Unsupported coordinate system type '{frame}'")
   df = (
     df.Define(f"theta{angColNameSuffix}",  f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
-      .Define(f"phiDeg{angColNameSuffix}", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
+      .Define(f"phiDeg{angColNameSuffix}", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")  #TODO only write out columns actually needed for moment calculation; move everything else to plotting module
   )
   # allow for redefinition of already existing columns with identical formula if function is called for several frames
   df = DefineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
   df = DefineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
+    #TODO Use Phi from `angles` column`
     df = DefineOverwrite(df, f"beamPol{colNameSuffix}",       f"(Double32_t){beamPolInfo.pol}")
     df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}", f"(Double32_t){beamPolInfo.PhiLab}")
     df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix})")
@@ -456,7 +459,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_GLUEX_AMPTOOLS)
+  ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
