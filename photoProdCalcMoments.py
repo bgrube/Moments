@@ -97,8 +97,8 @@ def calculateAllMoments(
             dataPsGenInBin = dataPsGen.Filter(massBinFilter)
             nmbPsGenEvents = dataPsGenInBin.Count().GetValue()
             print(f"Loaded phase-space events: number generated = {nmbPsGenEvents}; "
-                  f"number accepted = {nmbPsAccEvents}, "
-                  f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
+                  f"number accepted = {nmbPsAccEvents} "
+                  f"-> efficiency = {nmbPsAccEvents / nmbPsGenEvents:.3f}")
           else:
             print(f"Loaded phase-space events: number accepted = {nmbPsAccEvents}")
         # setup moment calculators for data

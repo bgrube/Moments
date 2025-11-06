@@ -287,7 +287,7 @@ def makeAllPlots(
         if HMeas is not None:
           print(f"Measured moments of real data for kinematic bin {binTitle}:\n{HMeas}")
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
-        HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]
+        HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]  #TODO don't look up by mass bin index but by bin center
         if cfg.plotMomentsInBins:
           chi2ValuesInMassBins[massBinIndex] = plotMomentsInBin(
             HData             = HPhys,
@@ -648,19 +648,57 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  # compareTo = ComparisonMomentsType.PWA
+  #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  # compareTo = ComparisonMomentsType.JPAC
+  # compareTo = ComparisonMomentsType.PWA
+  #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # compareTo = ComparisonMomentsType.JPAC
+  #
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   compareTo = None
   # compareTo = ComparisonMomentsType.PWA
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+
+  dataBaseDirName = "./dataPhotoProdPiPi/polarized"
+  dataPeriods = (
+    # "2017_01",
+    "2018_08",
+  )
+  tBinLabels = (
+    "tbin_0.1_0.2",
+    "tbin_0.2_0.3",
+    "tbin_0.3_0.4",
+    "tbin_0.4_0.5",
+  )
+  beamPolLabels = (
+    "PARA_0",
+    "PARA_135",
+    "PERP_45",
+    "PERP_90",
+    # "Unpol",
+  )
+  maxLs = (
+    4,
+    # (4, 6),
+    # (4, 8),
+    # (4, 12),
+    # (4, 16),
+    # (4, 20),
+    # 6,
+    8,
+    # (8, 16),
+    # (8, 20),
+    # 12,
+    # 16,
+    # 20,
+  )
   # plotCompareUncert = True
   plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0
@@ -673,61 +711,36 @@ if __name__ == "__main__":
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
 
-  tBinLabels = (
-    "tbin_0.1_0.2",
-    # "tbin_0.1_0.2.Hf.pi+",
-    # "tbin_0.1_0.2.trackDistFdc",
-    # "tbin_0.2_0.3",
-    # "tbin_0.1_0.5",
-    # "tbin_0.4_0.5",
-  )
-  beamPolLabels = (
-    "PARA_0",
-    # "PARA_0", "PARA_135", "PERP_45", "PERP_90",
-    # "allOrient",
-    # "Unpol",
-  )
-  maxLs = (
-    # 4,
-    (4, 16),
-    (4, 20),
-    # 5,
-    # 6,
-    # 7,
-    # 8,
-    (8, 16),
-    (8, 20),
-  )
-
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
-  for tBinLabel in tBinLabels:
-    for beamPolLabel in beamPolLabels:
-      cfg.dataFileName       = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
-      cfg.psAccFileName      = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
-      cfg.psGenFileName      = f"./dataPhotoProdPiPi/polarized/2017_01/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
-      cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}.{tBinLabel}/{beamPolLabel}"
-      for maxL in maxLs:
-        print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-        cfg.maxL = maxL
-        cfg.init()
-        thisSourceFileName = os.path.basename(__file__)
-        logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-        print(f"Writing output to log file '{logFileName}'")
-        with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
-          Utilities.printGitInfo()
-          timer = Utilities.Timer()
-          ROOT.gROOT.SetBatch(True)
-          setupPlotStyle()
-          print(f"Using configuration:\n{cfg}")
-          timer.start("Total execution time")
-          makeAllPlots(
-            cfg                         = cfg,
-            timer                       = timer,
-            scaleFactorPhysicalMoments  = scaleFactorPhysicalMoments,
-            compareTo                   = compareTo,
-            normalizeComparisonMoments  = normalizeComparisonMoments,
-            plotComparisonMomentsUncert = plotCompareUncert,
-            yAxisUnit                   = yAxisUnit,
-          )
-          timer.stop("Total execution time")
-          print(timer.summary)
+  for dataPeriod in dataPeriods:
+    for tBinLabel in tBinLabels:
+      for beamPolLabel in beamPolLabels:
+        cfg.dataFileName       = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
+        cfg.psAccFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
+        cfg.psGenFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
+        cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
+        for maxL in maxLs:
+          print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+          cfg.maxL = maxL
+          cfg.init()
+          thisSourceFileName = os.path.basename(__file__)
+          logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          print(f"Writing output to log file '{logFileName}'")
+          with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+            Utilities.printGitInfo()
+            timer = Utilities.Timer()
+            ROOT.gROOT.SetBatch(True)
+            setupPlotStyle()
+            print(f"Using configuration:\n{cfg}")
+            timer.start("Total execution time")
+            makeAllPlots(
+              cfg                         = cfg,
+              timer                       = timer,
+              scaleFactorPhysicalMoments  = scaleFactorPhysicalMoments,
+              compareTo                   = compareTo,
+              normalizeComparisonMoments  = normalizeComparisonMoments,
+              plotComparisonMomentsUncert = plotCompareUncert,
+              yAxisUnit                   = yAxisUnit,
+            )
+            timer.stop("Total execution time")
+            print(timer.summary)
