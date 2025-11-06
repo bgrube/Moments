@@ -33,7 +33,9 @@ from AnalysisConfig import (
 from dataPhotoProdPiPi.makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+  CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
   CPP_CODE_BEAM_POL_PHI,
+  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_FLIPYAXIS,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
@@ -236,21 +238,27 @@ def reweightData(
 
 
 def reweightKinDistribution(
-  dataToWeight:  ROOT.RDataFrame,  # data to reweight
-  treeName:      str,              # name of TTree holding the data
-  binning:       HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
-  momentResults: MomentResultsKinematicBinning,  # moment values
-  outFileName:   str,  # name of file to write data into
+  dataToWeight:     ROOT.RDataFrame,  # data to reweight
+  treeName:         str,              # name of TTree holding the data
+  binning:          HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
+  realDataFileName: str,              # name of file holding real data to construct target distribution from
+  # momentResults:    MomentResultsKinematicBinning,  # moment values
+  outFileName:      str,  # name of file to write data into
 ) -> None:
   """Reweight mass distribution of given data according to the mass dependence of H_0(0, 0)"""
-  #TODO reweight so that it matches data distribution instead of H_0(0, 0)
   print(f"Reweighting {binning.var.name} dependence")
-  # construct target distribution from H_0(0, 0) values in kinematic bins
-  targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple)
-  H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-  for momentResultsForBin in momentResults:
-    massBinCenter = momentResultsForBin.binCenters[binning.var]
-    targetDistr.SetBinContent(targetDistr.FindBin(massBinCenter), momentResultsForBin[H000Index].real[0])
+  # construct target distribution real data
+  realData = ROOT.RDataFrame(treeName, realDataFileName)
+  targetDistr = realData.Histo1D(
+    ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple),
+    binning.var.name,
+  ).GetValue()
+  # # construct target distribution from H_0(0, 0) values in kinematic bins
+  # targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple)
+  # H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+  # for momentResultsForBin in momentResults:
+  #   massBinCenter = momentResultsForBin.binCenters[binning.var]
+  #   targetDistr.SetBinContent(targetDistr.FindBin(massBinCenter), momentResultsForBin[H000Index].real[0])
   # reweight data
   originalColumns = list(dataToWeight.GetColumnNames())
   reweightedData = reweightData(
@@ -323,6 +331,8 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
 
   # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
+  ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
@@ -447,11 +457,12 @@ if __name__ == "__main__":
               with timer.timeThis(f"Time to reweight mass distribution"):
                 dataToWeight = ROOT.RDataFrame(cfg.treeName, mergedFileName)  # load merged data file created in step above
                 reweightKinDistribution(
-                  dataToWeight  = dataToWeight,
-                  treeName      = cfg.treeName,
-                  binning       = cfg.massBinning,
-                  momentResults = momentResults,
-                  outFileName   = reweightedFileName,
+                  dataToWeight     = dataToWeight,
+                  treeName         = cfg.treeName,
+                  binning          = cfg.massBinning,
+                  realDataFileName = cfg.dataFileName,
+                  # momentResults    = momentResults,
+                  outFileName      = reweightedFileName,
                 )
 
             timer.stop("Total execution time")
