@@ -102,8 +102,10 @@ def genDataFromWaves(
         .Define("phi",      "TMath::DegToRad() * phiDeg")
         .Define("PhiDeg",   "point[2]")
         .Define("Phi",      "TMath::DegToRad() * PhiDeg")
-        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')  # noop filter that logs when event loop is running
-        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+        # add no-op filter that logs when event loop is running
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')
+        # need to snapshot or else the `point` column would be regenerated for every triggered loop
+        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
   )  #!NOTE! for some reason, this is very slow
   nmbBins = 25
   hist = df.Histo3D(ROOT.RDF.TH3DModel("hSignalSim", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180), "cosTheta", "phiDeg", "PhiDeg")

@@ -111,7 +111,8 @@ def loadInputData(
           .Define("phiDeg",   "(Double32_t)gRandom->Uniform(-180, +180)")
           .Define("phi",      "(Double32_t)phiDeg * TMath::DegToRad()")
           .Define("mass",    f"(Double32_t)gRandom->Uniform({kinematicBinRange[0]}, {kinematicBinRange[1]})")
-          .Filter('if (rdfentry_ == 0) { cout << "Running event loop in weightAccPhaseSpaceWithIntensity()" << endl; } return true;')  # noop filter that just prints a log message when event loop is running
+          # add no-op filter that just prints a log message when event loop is running
+          .Filter('if (rdfentry_ == 0) { cout << "Running event loop in weightAccPhaseSpaceWithIntensity()" << endl; } return true;')
     )
     if cfg.polarization is not None:
       # polarized case: add Phi and polarization columns

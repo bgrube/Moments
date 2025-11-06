@@ -97,8 +97,10 @@ def genAccepted2BodyPs(
         .Define("theta",    "std::acos(cosTheta)")
         .Define("phi",      "point[1]")
         .Define("Phi",      "point[2]")
-        .Filter('if (rdfentry_ == 0) { std::cout << "Running event loop in genData2BodyPs()" << std::endl; } return true;')  # noop filter that logs when event loop is running
-        .Snapshot(treeName, outFileNamePs, ROOT.std.vector[ROOT.std.string](columnsToWrite))  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+        # add no-op filter that logs when event loop is running
+        .Filter('if (rdfentry_ == 0) { std::cout << "Running event loop in genData2BodyPs()" << std::endl; } return true;')
+        # need to snapshot or else the `point` column would be regenerated for every triggered loop
+        .Snapshot(treeName, outFileNamePs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
   )
 
   print(f"Weighting phase-space events with efficiency function '{efficiencyFormula}'")

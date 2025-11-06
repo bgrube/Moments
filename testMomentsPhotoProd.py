@@ -125,7 +125,8 @@ def genDataFromWaves(
         .Define("phi",       "TMath::DegToRad() * phiDeg")
         .Define("PhiDeg",    "dataPoint[2]")
         .Define("Phi",       "TMath::DegToRad() * PhiDeg")
-        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')  # the noop filter that logs when event loop is running
+        # add no-op filter that logs when event loop is running
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')
   )  #!NOTE! for some reason, this is very slow
   columnsToWrite = ["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]
   for colName, colDefinitions in additionalColDefs:
@@ -174,9 +175,11 @@ def genAccepted2BodyPsPhotoProd(
         .Define("phi",      "TMath::DegToRad() * phiDeg")
         .Define("PhiDeg",   "point[2]")
         .Define("Phi",      "TMath::DegToRad() * PhiDeg")
-        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPsPhotoProd()" << endl; } return true;')  # noop filter that logs when event loop is running
+        # add no-op filter that logs when event loop is running
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPsPhotoProd()" << endl; } return true;')
+        # need to snapshot or else the `point` column would be regenerated for every triggered loop
         # .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))
-        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))  # snapshot is needed or else the `point` column would be regenerated for every triggered loop
+        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
   )
   return df
 
