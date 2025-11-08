@@ -1244,7 +1244,7 @@ class MomentResult:
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
-    intensityComponentTerms: tuple[list[str], list[str], list[str]] = ([], [], [])  # summands in Eqs. (150) to (152) separated by intensity component
+    intensityComponentTerms: list[list[str]] = [[], [], []]  # lists of summands for each intensity component, I_0, I_1, and I_2  #TODO create only [[]] for unpolarized case
     for qnIndex in self.indices.qnIndices:
       momentIndex = qnIndex.momentIndex
       L = qnIndex.L
@@ -1253,21 +1253,21 @@ class MomentResult:
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
       if includeParityViolatingTerms:
-        term += "* complexT("  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
+        # summand as in Eqs. (174) and (175)
+        term += "* std::real(complexT("  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
         term += (f"[Re{qnIndex.label}], [Im{qnIndex.label}]" if useMomentSymbols else f"({HLM.real}), ({HLM.imag})")
-        term +=  ")"
-        term += f"* {YLM}"
+        term +=  ") "
+        term += f"* {YLM})"
+        intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign
       else:
-        term += "* " + (f"[{qnIndex.label}] " if useMomentSymbols else f"({HLM.imag if momentIndex == 2 else HLM.real}) ")  # real or imaginary part of moment value
-        term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # real or imaginary part of spherical harmonic
-      intensityComponentTerms[momentIndex].append(term)
-    #TODO better distinguish polarized and unpolarized cases, i.e. don't set only the first component for the unpolarized case
+        # summands as in Eqs. (187) to (189)
+        term += "* " + (f"[{qnIndex.label}] " if useMomentSymbols else f"({HLM.imag if momentIndex == 2 else HLM.real}) ")  # pick correct real or imaginary part of moment value
+        term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # pick correct real or imaginary part of spherical harmonic
+        intensityComponentTerms[momentIndex].append(term if momentIndex in (0, 2) else f"(-{term})")  # only summands of I_1 have a minus sign; the -i factor in Eq. (189) cancels because H_2 is purely imaginary
     # sum all terms for each intensity component
-    intensityComponentsFormula = [""] * 3
+    intensityComponentsFormula = [""] * 3  #TODO better distinguish polarized and unpolarized cases
     for momentIndex, terms in enumerate(intensityComponentTerms):
       intensityComponentsFormula[momentIndex] = f"({' + '.join(filter(None, terms))})"
-    if self.indices.polarized:
-      intensityComponentsFormula[1] = f"(-{intensityComponentsFormula[1]})"
     # sum intensity components
     intensityFormula = f"{intensityComponentsFormula[0]}"
     if self.indices.polarized:  # Eq. (120)
@@ -1276,8 +1276,6 @@ class MomentResult:
       intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
     else:
       assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`"
-    if includeParityViolatingTerms:
-      intensityFormula = f"std::real({intensityFormula})"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
@@ -1855,7 +1853,7 @@ class MomentCalculator:
         nonPositiveIntensities = intensities[intensities <= 0]
         nonPositiveIndices     = np.where(intensities <= 0)[0]
         if nonPositiveIntensities.size > 0:
-          print(f"Warning: ignoring non-positive intensities: {nonPositiveIntensities} with event weights {self._eventWeights[nonPositiveIndices]}")
+          print(f"Warning: non-positive intensities: {nonPositiveIntensities} with event weights {self._eventWeights[nonPositiveIndices]}")
       weightedLogIntensities = self._eventWeights * np.log(intensities + np.finfo(dtype = float).tiny)  # protect against 0 intensities
       return -(np.sum(np.sort(weightedLogIntensities)).item() - integral)  # sorting summands reduces rounding errors; use item() to ensure that sum is scalar quantity
 
@@ -1889,7 +1887,7 @@ class MomentCalculator:
       minuit = im.Minuit(negativeLogLikelihoodFcn, startValues, name = momentLabels)
       minuit.errordef = im.Minuit.LIKELIHOOD
     if fixMomentsToZero:
-      # fix parameters corresponding to moment indices to 0
+      # fix parameters corresponding to given moment indices to 0
       momentLabelsToFix = [
         index.label if isinstance(index, QnMomentIndex) else indices[index].label
         for index in fixMomentsToZero
@@ -1976,11 +1974,11 @@ class MomentCalculator:
     else:
       # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
       reIndexRange = (
-        QnMomentIndex(momentIndex = 0, L = 0,                 M = 0),
+        QnMomentIndex(momentIndex = 0, L = 0,                     M = 0),
         QnMomentIndex(momentIndex = 1, L = self.indicesPhys.maxL, M = self.indicesPhys.maxL),
       )  # all H_0 and H_1 moments are real-valued
       imIndexRange = (
-        QnMomentIndex(momentIndex = 2, L = 1,                 M = 1),
+        QnMomentIndex(momentIndex = 2, L = 1,                     M = 1),
         QnMomentIndex(momentIndex = 2, L = self.indicesPhys.maxL, M = self.indicesPhys.maxL)
       )  # all H_2 moments are purely imaginary; all H_2(L, 0) are 0
       # convert to flat-index ranges
