@@ -1249,21 +1249,21 @@ class MomentResult:
       momentIndex = qnIndex.momentIndex
       L = qnIndex.L
       M = qnIndex.M
-      HLM = self[QnMomentIndex(momentIndex, L, M)].val
-      YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"
+      HLMReLabel = "Re" if includeParityViolatingTerms else ""  # use "Re" label for moment parameters only if parity-violating terms are included
+      HLMImLabel = "Im" if includeParityViolatingTerms else ""  # use "Im" label for moment parameters only if parity-violating terms are included
+      HLMreal = f"[{HLMReLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"  # real part of moment either as symbol or value
+      HLMimag = f"[{HLMImLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"  # real part of moment either as symbol or value
+      YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"  # spherical harmonic
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
       if includeParityViolatingTerms:
         # summand as in Eqs. (174) and (175)
-        term += "* std::real(complexT("  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
-        term += (f"[Re{qnIndex.label}], [Im{qnIndex.label}]" if useMomentSymbols else f"({HLM.real}), ({HLM.imag})")
-        term +=  ") "
-        term += f"* {YLM})"
-        intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign
+        term += f"* std::real(complexT({HLMreal}, {HLMimag}) * {YLM})"  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
+        intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign in Eq. (175)
       else:
-        # summands as in Eqs. (187) to (189)
-        term += "* " + (f"[{qnIndex.label}] " if useMomentSymbols else f"({HLM.imag if momentIndex == 2 else HLM.real}) ")  # pick correct real or imaginary part of moment value
-        term += f"* {'Im' if momentIndex == 2 else 'Re'}{YLM}"  # pick correct real or imaginary part of spherical harmonic
-        intensityComponentTerms[momentIndex].append(term if momentIndex in (0, 2) else f"(-{term})")  # only summands of I_1 have a minus sign; the -i factor in Eq. (189) cancels because H_2 is purely imaginary
+        # # summands as in Eqs. (187) to (189)
+        term += f"* {HLMimag if momentIndex == 2 else HLMreal} "   # pick correct real or imaginary part of moment value
+        term += f"* {'Im'    if momentIndex == 2 else 'Re'}{YLM}"  # pick correct real or imaginary part of spherical harmonic
+        intensityComponentTerms[momentIndex].append(term if momentIndex in (0, 2) else f"(-{term})")  # only summands of I_1 have a minus sign in Eq. (188); in Eq. (189), the -i factor cancels because H_2 is purely imaginary
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * 3  #TODO better distinguish polarized and unpolarized cases
     for momentIndex, terms in enumerate(intensityComponentTerms):
