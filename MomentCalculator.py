@@ -1244,7 +1244,7 @@ class MomentResult:
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
-    intensityComponentTerms: list[list[str]] = [[], [], []]  # lists of summands for each intensity component, I_0, I_1, and I_2  #TODO create only [[]] for unpolarized case
+    intensityComponentTerms: list[list[str]] = [[], [], []] if self.indices.polarized else [[]]  # lists of summands for each intensity component, i.e. I_0, I_1, and I_2 if polarized, else only I_0
     for qnIndex in self.indices.qnIndices:
       momentIndex = qnIndex.momentIndex
       L = qnIndex.L
@@ -1265,17 +1265,18 @@ class MomentResult:
         term += f"* {'Im'    if momentIndex == 2 else 'Re'}{YLM}"  # pick correct real or imaginary part of spherical harmonic
         intensityComponentTerms[momentIndex].append(term if momentIndex in (0, 2) else f"(-{term})")  # only summands of I_1 have a minus sign in Eq. (188); in Eq. (189), the -i factor cancels because H_2 is purely imaginary
     # sum all terms for each intensity component
-    intensityComponentsFormula = [""] * 3  #TODO better distinguish polarized and unpolarized cases
+    intensityComponentsFormula = [""] * len(intensityComponentTerms)
     for momentIndex, terms in enumerate(intensityComponentTerms):
       intensityComponentsFormula[momentIndex] = f"({' + '.join(filter(None, terms))})"
     # sum intensity components
-    intensityFormula = f"{intensityComponentsFormula[0]}"
+    intensityFormula = f"{intensityComponentsFormula[0]}"  # I_0 term
     if self.indices.polarized:  # Eq. (120)
-      assert polarization is not None, f"For polarized photoproduction, `polarization` must not be `None`"
-      intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"
-      intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"
+      assert len(intensityComponentsFormula) == 3, f"Need three intensity components for polarized photoproduction, but got {len(intensityComponentsFormula)=}"
+      assert polarization is not None, "For polarized photoproduction, `polarization` must not be `None`"
+      intensityFormula += f" - {intensityComponentsFormula[1]} * {polarization} * std::cos(2 * {PhiFormula})"  # I_1 term
+      intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"  # I_2 term
     else:
-      assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`"
+      assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`, but got {polarization=}"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
