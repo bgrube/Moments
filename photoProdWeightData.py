@@ -215,7 +215,7 @@ def reweightData(
   weightsHist = targetDistr.Clone("weightsHist")
   weightsHist.Divide(currentDistr)
   # add columns for rejection sampling to input data
-  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++
+  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
   dataToWeight = (
     dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
                 .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
@@ -249,6 +249,7 @@ def reweightKinDistribution(
   """Reweight mass distribution of given data according to the mass dependence of H_0(0, 0)"""
   print(f"Reweighting {binning.var.name} dependence")
   # construct target distribution real data
+  print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{realDataFileName}'")
   realData = ROOT.RDataFrame(treeName, realDataFileName)
   targetDistr = realData.Histo1D(
     ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple),
@@ -453,7 +454,6 @@ if __name__ == "__main__":
 
             if reweightMassDistribution:
               # reweight mass distribution of merged file
-              #TODO does not work for more than 1 data sample; call of RootUtilities.declareInCpp(weightsHist = weightsHist) crashes in ROOT
               reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
                 dataToWeight = ROOT.RDataFrame(cfg.treeName, mergedFileName)  # load merged data file created in step above
