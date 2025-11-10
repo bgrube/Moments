@@ -21,6 +21,7 @@ from makeKinematicPlots import (
 )
 from makeMomentsInputTree import (
   BEAM_POL_INFOS,
+  CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
   CPP_CODE_BEAM_POL_PHI,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_FLIPYAXIS,
@@ -224,6 +225,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
+  ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
   ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
