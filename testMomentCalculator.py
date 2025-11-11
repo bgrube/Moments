@@ -161,14 +161,15 @@ if __name__ == "__main__":
       PhiFormula                  = "Phi",
       printFormula                = True,
       useMomentSymbols            = True,
-      includeParityViolatingTerms = True,
-      # includeParityViolatingTerms = False,
+      includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
+      # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.FALSE,
+      # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.ONLY,
     )
 
     # test whether intensity formula and intensity function for likelihood fit give identical values
     # generate 3D grid for angular variables
     # define bin edges
-    nmbBinsPerAxis = 3
+    nmbBinsPerAxis = 25
     thetaBinEdges = np.linspace(0,       np.pi, nmbBinsPerAxis + 1)  # theta from 0 to pi
     phiBinEdges   = np.linspace(-np.pi, +np.pi, nmbBinsPerAxis + 1)  # phi from -pi to pi
     PhiBinEdges   = np.linspace(-np.pi, +np.pi, nmbBinsPerAxis + 1)  # Phi from -pi to pi
@@ -236,7 +237,9 @@ if __name__ == "__main__":
         thetaFormula                = "x",
         phiFormula                  = "y",
         PhiFormula                  = "z",
-        includeParityViolatingTerms = False,
+        # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
+        includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.FALSE,
+        # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.ONLY,
       ),
       0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi
     )
@@ -244,11 +247,14 @@ if __name__ == "__main__":
       theta = gridData["theta"][index]
       phi   = gridData["phi"]  [index]
       Phi   = gridData["Phi"]  [index]
-      print(
-        f"{index=}: (theta={np.degrees(theta):.0f}, phi={np.degrees(phi):.0f}, Phi={np.degrees(Phi):.0f}) deg: "
-        f"intensityFcn={intensityFcn.Eval(theta, phi, Phi)} vs. {intensities[index]} "
-        f"-> delta = {intensityFcn.Eval(theta, phi, Phi) - intensities[index]}"
-      )
+      intensityFormulaVal = intensityFcn.Eval(theta, phi, Phi)
+      delta = intensityFormulaVal - intensities[index]
+      if abs(delta) > 1e-14:
+        print(
+          f"Warning: {index=}: (theta={np.degrees(theta):.0f}, phi={np.degrees(phi):.0f}, Phi={np.degrees(Phi):.0f}) deg: "
+          f"{intensityFormulaVal=} vs. {intensities[index]} "
+          f"-> delta = {delta}"
+        )
 
 
 # polarized case:

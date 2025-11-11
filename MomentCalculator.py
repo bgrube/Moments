@@ -1232,6 +1232,11 @@ class MomentResult:
     """Returns JSON string with moment values for all moments in kinematic bin"""
     return json.dumps([momentValue.toJsonDict() for momentValue in self.values], indent = 2)
 
+  class ParityViolatingTermsType(Enum):
+    TRUE  = "True"
+    FALSE = "False"
+    ONLY  = "Only"
+
   def intensityFormula(
     self,
     polarization:                float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
@@ -1240,7 +1245,10 @@ class MomentResult:
     PhiFormula:                  str,  # formula for angle Phi between photon polarization and production plane[rad]
     printFormula:                bool = False,  # if True, formula for calculation of intensity is printed
     useMomentSymbols:            bool = False,  # if True, insert TFormula parameter names "[Hi_L_M]" instead of moment values into formula
-    includeParityViolatingTerms: bool = True,   # if True, include parity-violating terms into formula
+    includeParityViolatingTerms: ParityViolatingTermsType = ParityViolatingTermsType.TRUE,
+    # if TRUE, include parity-conserving and parity-violating terms into formula
+    # if FALSE, include only parity-conserving terms
+    # if ONLY, include only parity-violating terms
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
@@ -1250,21 +1258,38 @@ class MomentResult:
       L = qnIndex.L
       M = qnIndex.M
       # define real and imaginary parts of moments
-      HLMReLabel = "Re" if includeParityViolatingTerms else ""  # use "Re" label for moment parameters only if parity-violating terms are included
-      HLMImLabel = "Im" if includeParityViolatingTerms else ""  # use "Im" label for moment parameters only if parity-violating terms are included
-      HLMreal = f"[{HLMReLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"  # real part of moment either as symbol or value
-      HLMimag = f"[{HLMImLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"  # imaginary part of moment either as symbol or value
+      if includeParityViolatingTerms is MomentResult.ParityViolatingTermsType.TRUE:
+        HLMreal = f"[Re{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"  # real part of moment either as symbol or value
+        HLMimag = f"[Im{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"  # imaginary part of moment either as symbol or value
+      elif includeParityViolatingTerms is MomentResult.ParityViolatingTermsType.FALSE:
+        # set real and imaginary parts, respectively, of moment values that represent parity-violating terms to zero
+        # since either real or imaginary part of moments is zero, we skip the "Re" and "Im" prefixes of the moment symbols
+        if momentIndex in (0, 1):
+          HLMreal = f"[{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"
+          HLMimag = "(0.0)"  # parity-violating
+        elif momentIndex == 2:
+          HLMreal = "(0.0)"  # parity-violating
+          HLMimag = f"[{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"
+        else:
+          raise ValueError(f"Moment index must be either 0, 1, or 2; but got {momentIndex=}")
+      elif includeParityViolatingTerms is MomentResult.ParityViolatingTermsType.ONLY:
+        # set real and imaginary parts, respectively, of moment values that represent parity-conserving terms to zero
+        # since either real or imaginary part of moments is zero, we skip the "Re" and "Im" prefixes of the moment symbols
+        if momentIndex in (0, 1):
+          HLMreal = "(0.0)"  # parity-conserving
+          HLMimag = f"[{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"
+        elif momentIndex == 2:
+          HLMreal = f"[{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"
+          HLMimag = "(0.0)"  # parity-conserving
+        else:
+          raise ValueError(f"Moment index must be either 0, 1, or 2; but got {momentIndex=}")
+      else:
+        raise ValueError(f"Unknown value {includeParityViolatingTerms=}")
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"  # spherical harmonic
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
-      if includeParityViolatingTerms:
-        # summand as in Eqs. (174) and (175)
-        term += f"* std::real(complexT({HLMreal}, {HLMimag}) * {YLM})"  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
-        intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign in Eq. (175)
-      else:
-        # summands as in Eqs. (187) to (189)
-        term += f"* {HLMimag if momentIndex == 2 else HLMreal} "   # pick correct real or imaginary part of moment value
-        term += f"* {'Im'    if momentIndex == 2 else 'Re'}{YLM}"  # pick correct real or imaginary part of spherical harmonic
-        intensityComponentTerms[momentIndex].append(term if momentIndex in (0, 2) else f"(-{term})")  # only summands of I_1 have a minus sign in Eq. (188); in Eq. (189), the -i factor cancels because H_2 is purely imaginary
+      # summand as in Eqs. (174) and (175)
+      term += f"* std::real(complexT({HLMreal}, {HLMimag}) * {YLM})"  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
+      intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign in Eq. (175)
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * len(intensityComponentTerms)
     for momentIndex, terms in enumerate(intensityComponentTerms):

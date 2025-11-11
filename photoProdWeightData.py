@@ -155,7 +155,7 @@ def weightDataWithIntensity(
     thetaFormula                = "theta",
     phiFormula                  = "phi",
     PhiFormula                  = "Phi",
-    includeParityViolatingTerms = True,
+    includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
   )
   print(f"Calculating weights using formula '{intensityFormula}'")
   # add columns for intensity weight and random number in [0, 1]
@@ -308,7 +308,7 @@ def plotIntensityFcn(
       thetaFormula                = "std::acos(x)",
       phiFormula                  = "TMath::DegToRad() * y",
       PhiFormula                  = "TMath::DegToRad() * z",
-      includeParityViolatingTerms = True,
+      includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
     )
     intensityFcn = ROOT.TF3(f"intensityFcn_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
     intensityFcn.SetMinimum(0)
@@ -331,7 +331,7 @@ def plotIntensityFcn(
       thetaFormula                = f"std::acos({cosTheta})",
       phiFormula                  = "TMath::DegToRad() * x",
       PhiFormula                  = "TMath::DegToRad() * y",
-      includeParityViolatingTerms = True,
+      includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
     )
     intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcnFixedCosTheta_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
     intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{HF}} = {cosTheta};#phi_{{HF}} [deg];#Phi [deg]")
