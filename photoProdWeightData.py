@@ -247,12 +247,13 @@ def reweightKinDistribution(
 ) -> None:
   """Reweight mass distribution of given data according to the mass dependence of H_0(0, 0)"""
   print(f"Reweighting {binning.var.name} dependence")
-  # construct target distribution real data
+  # construct target distribution from real data
   print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{realDataFileName}'")
   realData = ROOT.RDataFrame(treeName, realDataFileName)
   targetDistr = realData.Histo1D(
-    ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple),
+    ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", "Real data", *binning.astuple),
     binning.var.name,
+    "eventWeight",
   ).GetValue()
   # # construct target distribution from H_0(0, 0) values in kinematic bins
   # targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple)
@@ -270,6 +271,24 @@ def reweightKinDistribution(
   )
   print(f"Writing reweighted data to file '{outFileName}'")
   reweightedData.Snapshot(treeName, outFileName, originalColumns)
+  if True:
+    # overlay target distribution and distribution after reweighting
+    reweightedDistr = reweightedData.Histo1D(
+      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrReweighted", "Weighted MC", *binning.astuple),
+      binning.var.name,
+    ).GetValue()
+    reweightedDistr.Scale(targetDistr.Integral() / reweightedDistr.Integral())
+    histStack = ROOT.THStack(f"{binning.var.name}DataAndMc", f";{binning.axisTitle};Count")
+    histStack.Add(targetDistr)
+    histStack.Add(reweightedDistr)
+    targetDistr.SetLineColor  (ROOT.kRed + 1)
+    targetDistr.SetMarkerColor(ROOT.kRed + 1)
+    reweightedDistr.SetLineColor  (ROOT.kBlue + 1)
+    reweightedDistr.SetMarkerColor(ROOT.kBlue + 1)
+    canv = ROOT.TCanvas()
+    histStack.Draw("NOSTACK")
+    canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
+    canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
 
 
 def plotIntensityFcn(
@@ -454,9 +473,8 @@ if __name__ == "__main__":
               # reweight mass distribution of merged file
               reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
-                dataToWeight = ROOT.RDataFrame(cfg.treeName, mergedFileName)  # load merged data file created in step above
                 reweightKinDistribution(
-                  dataToWeight     = dataToWeight,
+                  dataToWeight     = ROOT.RDataFrame(cfg.treeName, mergedFileName),  # load merged data file created in step above
                   treeName         = cfg.treeName,
                   binning          = cfg.massBinning,
                   realDataFileName = cfg.dataFileName,
