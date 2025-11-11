@@ -5,16 +5,28 @@ from __future__ import annotations
 import bidict as bd
 import copy
 import functools
+import numpy as np
 from typing import TYPE_CHECKING
 
+import ROOT
+
+from dataPhotoProdPiPi.makeMomentsInputTree import (
+  CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
+  CPP_CODE_BEAM_POL_PHI,
+  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
+)
 from MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
+  DataSet,
+  KinematicBinningVariable,
+  MomentCalculator,
   MomentIndices,
   MomentResult,
   QnMomentIndex,
   QnWaveIndex,
 )
+import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -22,7 +34,7 @@ print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
-  if True:
+  if False:
     for polarized in (True, False):
       print(f"MomentIndices for {'' if polarized else 'un'}polarized moments:")
       momentIndices = MomentIndices(maxL = 5, polarized = polarized)
@@ -152,6 +164,92 @@ if __name__ == "__main__":
       includeParityViolatingTerms = True,
       # includeParityViolatingTerms = False,
     )
+
+    # test whether intensity formula and intensity function for likelihood fit give identical values
+    # generate 3D grid for angular variables
+    # define bin edges
+    nmbBinsPerAxis = 3
+    thetaBinEdges = np.linspace(0,       np.pi, nmbBinsPerAxis + 1)  # theta from 0 to pi
+    phiBinEdges   = np.linspace(-np.pi, +np.pi, nmbBinsPerAxis + 1)  # phi from -pi to pi
+    PhiBinEdges   = np.linspace(-np.pi, +np.pi, nmbBinsPerAxis + 1)  # Phi from -pi to pi
+    # define bin centers
+    thetaBinCenters = (thetaBinEdges[:-1] + thetaBinEdges[1:]) / 2
+    phiBinCenters   = (phiBinEdges  [:-1] + phiBinEdges  [1:]) / 2
+    PhiBinCenters   = (PhiBinEdges  [:-1] + PhiBinEdges  [1:]) / 2
+    # create the full grid (Cartesian product) in a memory-efficient manner
+    thetas, phis, Phis = np.meshgrid(thetaBinCenters, phiBinCenters, PhiBinCenters, indexing = "ij", copy=False)
+    # dictionary of NumPy arrays with all grid values
+    gridData = {
+      "theta" : thetas.ravel(),
+      "phi"   : phis.ravel(),
+      "Phi"   : Phis.ravel(),
+    }
+    # convert to ROOT data frame
+    rdf = ROOT.RDF.FromNumpy(gridData)
+    # rdf.Describe().Print()
+    momentCalculator = MomentCalculator(
+      indicesMeas = H.indices,  # dummy, not used in this test
+      indicesPhys = H.indices,
+      dataSet     = DataSet(
+        data           = rdf,
+        phaseSpaceData = None,
+        nmbGenEvents   = 0,
+        polarization   = 1.0,
+      ),
+      binCenters  = {
+        KinematicBinningVariable(
+          name      = "mass",
+          label     = "#it{m}_{#it{#pi}^{#plus}#it{p}}",
+          unit      = "GeV/#it{c}^{2}",
+          nmbDigits = 3,
+        ) : 0.74,
+      },  # dummy bin
+    )
+    negativeLogLikelihoodFcn = momentCalculator.negativeLogLikelihoodFcn()
+    reIndexRange = (
+      QnMomentIndex(momentIndex = 0, L = 0,              M = 0),
+      QnMomentIndex(momentIndex = 1, L = H.indices.maxL, M = H.indices.maxL),
+    )  # all H_0 and H_1 moments are real-valued
+    imIndexRange = (
+      QnMomentIndex(momentIndex = 2, L = 1,              M = 1),
+      QnMomentIndex(momentIndex = 2, L = H.indices.maxL, M = H.indices.maxL)
+    )  # all H_2 moments are purely imaginary; all H_2(L, 0) are 0
+    # convert to flat-index ranges
+    reSlice = slice(H.indices[reIndexRange[0]], H.indices[reIndexRange[1]] + 1)
+    imSlice = slice(H.indices[imIndexRange[0]], H.indices[imIndexRange[1]] + 1)
+    # print(f"{reSlice=}, {imSlice=}")
+    print(f"{H._valsFlatIndex=}")
+    momentValues = np.concatenate((np.real(H._valsFlatIndex[reSlice]), np.imag(H._valsFlatIndex[imSlice])))
+    print(f"{momentValues.dtype=}\n{momentValues=}")
+    _, intensities = negativeLogLikelihoodFcn._intensityFcn(momentValues)
+    print(f"{intensities.dtype=}\n{intensities=}")
+
+    # compare with intensity formula
+    # declare C++ functions
+    ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
+    ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
+    ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
+    intensityFcn = ROOT.TF3(
+      f"intensityFcn",
+      H.intensityFormula(
+        polarization                = 1.0,
+        thetaFormula                = "x",
+        phiFormula                  = "y",
+        PhiFormula                  = "z",
+        includeParityViolatingTerms = False,
+      ),
+      0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi
+    )
+    for index in range(len(gridData["theta"])):
+      theta = gridData["theta"][index]
+      phi   = gridData["phi"]  [index]
+      Phi   = gridData["Phi"]  [index]
+      print(
+        f"{index=}: (theta={np.degrees(theta):.0f}, phi={np.degrees(phi):.0f}, Phi={np.degrees(Phi):.0f}) deg: "
+        f"intensityFcn={intensityFcn.Eval(theta, phi, Phi)} vs. {intensities[index]} "
+        f"-> delta = {intensityFcn.Eval(theta, phi, Phi) - intensities[index]}"
+      )
+
 
 # polarized case:
 
