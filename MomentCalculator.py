@@ -1249,10 +1249,11 @@ class MomentResult:
       momentIndex = qnIndex.momentIndex
       L = qnIndex.L
       M = qnIndex.M
+      # define real and imaginary parts of moments
       HLMReLabel = "Re" if includeParityViolatingTerms else ""  # use "Re" label for moment parameters only if parity-violating terms are included
       HLMImLabel = "Im" if includeParityViolatingTerms else ""  # use "Im" label for moment parameters only if parity-violating terms are included
       HLMreal = f"[{HLMReLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"  # real part of moment either as symbol or value
-      HLMimag = f"[{HLMImLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"  # real part of moment either as symbol or value
+      HLMimag = f"[{HLMImLabel}{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"  # imaginary part of moment either as symbol or value
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"  # spherical harmonic
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
       if includeParityViolatingTerms:
@@ -1260,7 +1261,7 @@ class MomentResult:
         term += f"* std::real(complexT({HLMreal}, {HLMimag}) * {YLM})"  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
         intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign in Eq. (175)
       else:
-        # # summands as in Eqs. (187) to (189)
+        # summands as in Eqs. (187) to (189)
         term += f"* {HLMimag if momentIndex == 2 else HLMreal} "   # pick correct real or imaginary part of moment value
         term += f"* {'Im'    if momentIndex == 2 else 'Re'}{YLM}"  # pick correct real or imaginary part of spherical harmonic
         intensityComponentTerms[momentIndex].append(term if momentIndex in (0, 2) else f"(-{term})")  # only summands of I_1 have a minus sign in Eq. (188); in Eq. (189), the -i factor cancels because H_2 is purely imaginary
