@@ -231,11 +231,11 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 
-  dataPeriods   = (
+  dataPeriods = (
     # "2017_01",
     "2018_08",
   )
-  tBinLabels    = (
+  tBinLabels = (
     "tbin_0.1_0.2",
     # "tbin_0.2_0.3",
     # "tbin_0.3_0.4",
@@ -247,10 +247,15 @@ if __name__ == "__main__":
     # "PERP_45",
     # "PERP_90",
   )
-  massMin      = 0.28  # [GeV]
-  massBinWidth = 0.04  # [GeV]
-  nmbBins      = 50
-  subSystem    = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
+  maxL              = 4
+  # maxL              = 8
+  massMin           = 0.28  # [GeV]
+  massBinWidth      = 0.04  # [GeV]
+  nmbBins           = 50
+  subSystem         = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
+  # useIntensityTerms = "allTerms"
+  useIntensityTerms = "parityConserving"
+  # useIntensityTerms = "parityViolating"
 
   for dataPeriod in dataPeriods:
     print(f"Generating plots for data period '{dataPeriod}':")
@@ -262,8 +267,8 @@ if __name__ == "__main__":
               + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
         # load data in AMPTOOLS format
         dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
-        weightedDataDirName  = f"{dataDirName}/{subSystem.pairLabel}/weighted.maxL_4/{beamPolLabel}"
-        weightedDataFileName = f"{weightedDataDirName}/phaseSpace_acc_weighted_raw.root"
+        weightedDataDirName  = f"{dataDirName}/{subSystem.pairLabel}/weighted.maxL_{maxL}/{beamPolLabel}"
+        weightedDataFileName = f"{weightedDataDirName}/phaseSpace_acc_weighted_raw_{useIntensityTerms}.root"
         dataToOverlay = DataToOverlay(
           realData   = getDataFrameWithCorrectEventWeights(
             dataSigRegionFileNames  = (f"{dataDirName}/Alex/amptools_tree_signal_{beamPolLabel}.root", ),
@@ -286,10 +291,12 @@ if __name__ == "__main__":
           )
           setattr(dataToOverlay, member.name, df)
         # plot overlays for full mass range and for individual mass bins
-        print(f"Overlaying histograms for full mass range and writing plots into '{weightedDataDirName}'")
+        plotDirName = f"{weightedDataDirName}/{useIntensityTerms}"
+        print(f"Overlaying histograms for full mass range and writing plots into '{plotDirName}'")
+        os.makedirs(plotDirName, exist_ok = True)
         makePlots(
           dataToOverlay = dataToOverlay,
-          outputDirName = weightedDataDirName,
+          outputDirName = plotDirName,
           colNameSuffix = subSystem.pairLabel,
         )
         for massBinIndex in range(nmbBins):
@@ -299,7 +306,7 @@ if __name__ == "__main__":
           massRangeFilter = f"(({massBinMin} < mass{subSystem.pairLabel}) && (mass{subSystem.pairLabel} < {massBinMax}))"
           makePlots(
             dataToOverlay     = dataToOverlay.Filter(massRangeFilter),
-            outputDirName     = weightedDataDirName,
+            outputDirName     = plotDirName,
             pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
             colNameSuffix     = subSystem.pairLabel,
           )
