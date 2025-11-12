@@ -365,17 +365,20 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
 
-  dataBaseDirName = "./dataPhotoProdPiPi/polarized"
-  # useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
-  useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  dataBaseDirName          = "./dataPhotoProdPiPi/polarized"
+  useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
   # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
-  inputDataDef = ("kin", "amptools_tree_accepted*.root")
+  inputDataDef             = ("kin", "amptools_tree_accepted*.root")
   weightedDataFileBaseName = f"phaseSpace_acc_weighted_raw_{useIntensityTerms.value}"
-  # inputDataDef = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  reweightMassDistribution = False
+  # inputDataDef             = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
   # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
-  # inputDataDef = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-  # inputDataDef = 100000  # generate phase-space distribution in angles with given number of events
+  # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
+  # inputDataDef             = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
+  # inputDataDef             = 100000  # generate phase-space distribution in angles with given number of events
   # weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
+  # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
   dataPeriods = (
     # "2017_01",
     "2018_08",
@@ -408,8 +411,6 @@ if __name__ == "__main__":
     # 16,
     # 20,
   )
-  # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
-  reweightMassDistribution = False
   # makeIntensityFcnPlots    = True  # draw intensity function in each mass bin
   makeIntensityFcnPlots    = False
 
