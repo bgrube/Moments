@@ -1234,9 +1234,9 @@ class MomentResult:
 
   class IntensityTermsType(Enum):
     """Enumerates, which terms to use in intensity formula"""
-    ALL               = "all_terms"          # use parity-conserving and parity-violating terms
-    PARITY_CONSERVING = "parity_conserving"  # use only parity-conserving terms
-    PARITY_VIOLATING  = "parity_violating"   # use only parity-violating terms
+    ALL               = "allTerms"          # use parity-conserving and parity-violating terms
+    PARITY_CONSERVING = "parityConserving"  # use only parity-conserving terms
+    PARITY_VIOLATING  = "parityViolating"   # use only parity-violating terms
 
   def intensityFormula(
     self,
