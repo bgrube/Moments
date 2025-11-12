@@ -1232,23 +1232,21 @@ class MomentResult:
     """Returns JSON string with moment values for all moments in kinematic bin"""
     return json.dumps([momentValue.toJsonDict() for momentValue in self.values], indent = 2)
 
-  class ParityViolatingTermsType(Enum):
-    TRUE  = "True"
-    FALSE = "False"
-    ONLY  = "Only"
+  class IntensityTermsType(Enum):
+    """Enumerates, which terms to use in intensity formula"""
+    ALL               = "all_terms"          # use parity-conserving and parity-violating terms
+    PARITY_CONSERVING = "parity_conserving"  # use only parity-conserving terms
+    PARITY_VIOLATING  = "parity_violating"   # use only parity-violating terms
 
   def intensityFormula(
     self,
-    polarization:                float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
-    thetaFormula:                str,  # formula for polar angle theta [rad]
-    phiFormula:                  str,  # formula for azimuthal angle phi [rad]
-    PhiFormula:                  str,  # formula for angle Phi between photon polarization and production plane[rad]
-    printFormula:                bool = False,  # if True, formula for calculation of intensity is printed
-    useMomentSymbols:            bool = False,  # if True, insert TFormula parameter names "[Hi_L_M]" instead of moment values into formula
-    includeParityViolatingTerms: ParityViolatingTermsType = ParityViolatingTermsType.TRUE,
-    # if TRUE, include parity-conserving and parity-violating terms into formula
-    # if FALSE, include only parity-conserving terms
-    # if ONLY, include only parity-violating terms
+    polarization:      float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
+    thetaFormula:      str,  # formula for polar angle theta [rad]
+    phiFormula:        str,  # formula for azimuthal angle phi [rad]
+    PhiFormula:        str,  # formula for angle Phi between photon polarization and production plane[rad]
+    printFormula:      bool = False,  # if True, formula for calculation of intensity is printed
+    useMomentSymbols:  bool = False,  # if True, insert TFormula parameter names "{Re,Im,}[Hi_L_M]" instead of moment values into formula
+    useIntensityTerms: IntensityTermsType = IntensityTermsType.ALL,
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
     # constructed formula uses functions defined in `basisFunctions.C`
@@ -1258,10 +1256,10 @@ class MomentResult:
       L = qnIndex.L
       M = qnIndex.M
       # define real and imaginary parts of moments
-      if includeParityViolatingTerms is MomentResult.ParityViolatingTermsType.TRUE:
+      if useIntensityTerms is MomentResult.IntensityTermsType.ALL:
         HLMreal = f"[Re{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.real})"  # real part of moment either as symbol or value
         HLMimag = f"[Im{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"  # imaginary part of moment either as symbol or value
-      elif includeParityViolatingTerms is MomentResult.ParityViolatingTermsType.FALSE:
+      elif useIntensityTerms is MomentResult.IntensityTermsType.PARITY_CONSERVING:
         # set real and imaginary parts, respectively, of moment values that represent parity-violating terms to zero
         # since either real or imaginary part of moments is zero, we skip the "Re" and "Im" prefixes of the moment symbols
         if momentIndex in (0, 1):
@@ -1272,7 +1270,7 @@ class MomentResult:
           HLMimag = f"[{qnIndex.label}]" if useMomentSymbols else f"({self[QnMomentIndex(momentIndex, L, M)].val.imag})"
         else:
           raise ValueError(f"Moment index must be either 0, 1, or 2; but got {momentIndex=}")
-      elif includeParityViolatingTerms is MomentResult.ParityViolatingTermsType.ONLY:
+      elif useIntensityTerms is MomentResult.IntensityTermsType.PARITY_VIOLATING:
         # set real and imaginary parts, respectively, of moment values that represent parity-conserving terms to zero
         # since either real or imaginary part of moments is zero, we skip the "Re" and "Im" prefixes of the moment symbols
         if momentIndex in (0, 1):
@@ -1284,7 +1282,7 @@ class MomentResult:
         else:
           raise ValueError(f"Moment index must be either 0, 1, or 2; but got {momentIndex=}")
       else:
-        raise ValueError(f"Unknown value {includeParityViolatingTerms=}")
+        raise ValueError(f"Unknown value {useIntensityTerms=}")
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"  # spherical harmonic
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
       # summand as in Eqs. (174) and (175)

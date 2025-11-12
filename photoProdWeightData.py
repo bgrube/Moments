@@ -137,8 +137,9 @@ def weightDataWithIntensity(
   momentResults:        MomentResult,  # moment values in the mass bin defined by `massBinIndex`
   weightedDataFileName: str,           # ROOT file to which weighted events are written
   cfg:                  AnalysisConfig,
-  seed:                 int                = 123456789,  # seed for rejection sampling and for generating phase-space events
-  beamPolInfo:          BeamPolInfo | None = None,       # beam polarization information needed for raw data files
+  seed:                 int                             = 123456789,  # seed for rejection sampling and for generating phase-space events
+  beamPolInfo:          BeamPolInfo | None              = None,       # beam polarization information needed for raw data files
+  useIntensityTerms:    MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
 ) -> None:
   """Weight input data specified by `inputDataDef` and `massBinIndex` with intensity formula from `momentResults` and write data to `outFileName`"""
   ROOT.gRandom.SetSeed(seed)
@@ -151,11 +152,11 @@ def weightDataWithIntensity(
   )
   # construct intensity formula
   intensityFormula = momentResults.intensityFormula(
-    polarization                = "beamPol",  # read polarization from tree column
-    thetaFormula                = "theta",
-    phiFormula                  = "phi",
-    PhiFormula                  = "Phi",
-    includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
+    polarization      = "beamPol",  # read polarization from tree column
+    thetaFormula      = "theta",
+    phiFormula        = "phi",
+    PhiFormula        = "Phi",
+    useIntensityTerms = useIntensityTerms,
   )
   print(f"Calculating weights using formula '{intensityFormula}'")
   # add columns for intensity weight and random number in [0, 1]
@@ -292,23 +293,24 @@ def reweightKinDistribution(
 
 
 def plotIntensityFcn(
-  momentResults:  MomentResult,
-  massBinIndex:   int,
-  beamPolInfo:    BeamPolInfo,
-  outputDirName:  str,
-  nmbBinsPerAxis: int = 25,
+  momentResults:     MomentResult,
+  massBinIndex:      int,
+  beamPolInfo:       BeamPolInfo,
+  outputDirName:     str,
+  nmbBinsPerAxis:    int                             = 25,
+  useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
 ) -> None:
   """Draw intensity function in given mass bin and save PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex}")
-  if False:
+  if True:
     # draw intensity function as 3D plot
     # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     intensityFormula = momentResults.intensityFormula(
-      polarization                = beamPolInfo.pol,
-      thetaFormula                = "std::acos(x)",
-      phiFormula                  = "TMath::DegToRad() * y",
-      PhiFormula                  = "TMath::DegToRad() * z",
-      includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
+      polarization      = beamPolInfo.pol,
+      thetaFormula      = "std::acos(x)",
+      phiFormula        = "TMath::DegToRad() * y",
+      PhiFormula        = "TMath::DegToRad() * z",
+      useIntensityTerms = useIntensityTerms,
     )
     intensityFcn = ROOT.TF3(f"intensityFcn_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
     intensityFcn.SetMinimum(0)
@@ -327,11 +329,11 @@ def plotIntensityFcn(
     cosTheta = 0.0  # fixed value of cos(theta)_HF
     # formula uses variables: x = phi in [-180, +180] deg; y = Phi in [-180, +180] deg
     intensityFormulaFixedCosTheta = momentResults.intensityFormula(
-      polarization                = beamPolInfo.pol,
-      thetaFormula                = f"std::acos({cosTheta})",
-      phiFormula                  = "TMath::DegToRad() * x",
-      PhiFormula                  = "TMath::DegToRad() * y",
-      includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
+      polarization      = beamPolInfo.pol,
+      thetaFormula      = f"std::acos({cosTheta})",
+      phiFormula        = "TMath::DegToRad() * x",
+      PhiFormula        = "TMath::DegToRad() * y",
+      useIntensityTerms = useIntensityTerms,
     )
     intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcnFixedCosTheta_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
     intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{HF}} = {cosTheta};#phi_{{HF}} [deg];#Phi [deg]")
@@ -403,10 +405,14 @@ if __name__ == "__main__":
     # 16,
     # 20,
   )
-  reweightMassDistribution = True  # whether to reweight mass distribution after weighting with intensity function
+  reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
   # reweightMassDistribution = False
-  # makeIntensityFcnPlots    = True  # whether to draw intensity function in each mass bin
+  # makeIntensityFcnPlots    = True  # draw intensity function in each mass bin
   makeIntensityFcnPlots    = False
+  useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
+
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
@@ -452,13 +458,15 @@ if __name__ == "__main__":
                 cfg                  = cfg,
                 seed                 = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
+                useIntensityTerms    = useIntensityTerms,
               )
               if makeIntensityFcnPlots:
                 plotIntensityFcn(
-                  momentResults = momentResultsForBin,
-                  massBinIndex  = massBinIndex,
-                  beamPolInfo   = BEAM_POL_INFOS[dataPeriod][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
-                  outputDirName = weightedDataDirName,
+                  momentResults     = momentResultsForBin,
+                  massBinIndex      = massBinIndex,
+                  beamPolInfo       = BEAM_POL_INFOS[dataPeriod][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
+                  outputDirName     = weightedDataDirName,
+                  useIntensityTerms = useIntensityTerms,
                 )
 
             # merge trees with weighted MC data for individual mass bins into single file

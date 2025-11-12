@@ -154,16 +154,16 @@ if __name__ == "__main__":
     # H.indices.setPolarized(False)
     print(f"H =\n{H}")
     intensityFormula = H.intensityFormula(
-      polarization                = "beamPol",
-      # polarization                = None,
-      thetaFormula                = "theta",
-      phiFormula                  = "phi",
-      PhiFormula                  = "Phi",
-      printFormula                = True,
-      useMomentSymbols            = True,
-      includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
-      # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.FALSE,
-      # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.ONLY,
+      polarization      = "beamPol",
+      # polarization      = None,
+      thetaFormula      = "theta",
+      phiFormula        = "phi",
+      PhiFormula        = "Phi",
+      printFormula      = True,
+      useMomentSymbols  = True,
+      useIntensityTerms = MomentResult.IntensityTermsType.ALL,
+      # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+      # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING,
     )
 
     # test whether intensity formula and intensity function for likelihood fit give identical values
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     phiBinCenters   = (phiBinEdges  [:-1] + phiBinEdges  [1:]) / 2
     PhiBinCenters   = (PhiBinEdges  [:-1] + PhiBinEdges  [1:]) / 2
     # create the full grid (Cartesian product) in a memory-efficient manner
-    thetas, phis, Phis = np.meshgrid(thetaBinCenters, phiBinCenters, PhiBinCenters, indexing = "ij", copy=False)
+    thetas, phis, Phis = np.meshgrid(thetaBinCenters, phiBinCenters, PhiBinCenters, indexing = "ij", copy = False)
     # dictionary of NumPy arrays with all grid values
     gridData = {
       "theta" : thetas.ravel(),
@@ -233,13 +233,13 @@ if __name__ == "__main__":
     intensityFcn = ROOT.TF3(
       f"intensityFcn",
       H.intensityFormula(
-        polarization                = 1.0,
-        thetaFormula                = "x",
-        phiFormula                  = "y",
-        PhiFormula                  = "z",
-        # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.TRUE,
-        includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.FALSE,
-        # includeParityViolatingTerms = MomentResult.ParityViolatingTermsType.ONLY,
+        polarization      = 1.0,
+        thetaFormula      = "x",
+        phiFormula        = "y",
+        PhiFormula        = "z",
+        # useIntensityTerms = MomentResult.IntensityTermsType.ALL,
+        useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+        # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING,
       ),
       0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi
     )
