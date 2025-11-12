@@ -312,7 +312,7 @@ def plotIntensityFcn(
       PhiFormula        = "TMath::DegToRad() * z",
       useIntensityTerms = useIntensityTerms,
     )
-    intensityFcn = ROOT.TF3(f"intensityFcn_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
+    intensityFcn = ROOT.TF3(f"intensityFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
     intensityFcn.SetMinimum(0)
     drawTF3(
       fcn         = intensityFcn,
@@ -335,7 +335,7 @@ def plotIntensityFcn(
       PhiFormula        = "TMath::DegToRad() * y",
       useIntensityTerms = useIntensityTerms,
     )
-    intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcnFixedCosTheta_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
+    intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcn_fixedCosTheta_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
     intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{HF}} = {cosTheta};#phi_{{HF}} [deg];#Phi [deg]")
     intensityFcnFixedCosTheta.SetNpx(100)
     intensityFcnFixedCosTheta.SetNpy(100)
@@ -366,13 +366,16 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
 
   dataBaseDirName = "./dataPhotoProdPiPi/polarized"
-  # inputDataDef = ("kin", "amptools_tree_accepted*.root")
-  # weightedDataFileBaseName = "phaseSpace_acc_weighted_raw"
-  inputDataDef = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
-  weightedDataFileBaseName = "phaseSpace_acc_weighted_flat"
+  # useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
+  inputDataDef = ("kin", "amptools_tree_accepted*.root")
+  weightedDataFileBaseName = f"phaseSpace_acc_weighted_raw_{useIntensityTerms.value}"
+  # inputDataDef = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
   # inputDataDef = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
   # inputDataDef = 100000  # generate phase-space distribution in angles with given number of events
-  # weightedDataFileBaseName = "phaseSpace_gen_weighted_flat"
+  # weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
   dataPeriods = (
     # "2017_01",
     "2018_08",
@@ -405,13 +408,10 @@ if __name__ == "__main__":
     # 16,
     # 20,
   )
-  reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
-  # reweightMassDistribution = False
+  # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
+  reweightMassDistribution = False
   # makeIntensityFcnPlots    = True  # draw intensity function in each mass bin
   makeIntensityFcnPlots    = False
-  useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
-  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
-  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
 
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
