@@ -57,8 +57,8 @@ class AnalysisConfig:
   calcAccPsMoments:         bool                      = False
   # plotAccPsMoments:         bool                      = True
   plotAccPsMoments:         bool                      = False
-  plotMomentsInBins:        bool                      = True
-  # plotMomentsInBins:        bool                      = False
+  # plotMomentsInBins:        bool                      = True
+  plotMomentsInBins:        bool                      = False
   # plotMeasuredMoments:      bool                      = True
   plotMeasuredMoments:      bool                      = False
   # plotCovarianceMatrices:   bool                      = True
