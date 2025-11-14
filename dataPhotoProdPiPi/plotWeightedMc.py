@@ -127,19 +127,18 @@ def makePlots(
       bookHistogram(df, HistogramDefinition(f"thetaDegLabPimVsMomLabPim_{histNameSuffix}", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100,  0,   10),   (100,  0,   30  )), ("momLabPim",  "thetaDegLabPim")), applyWeights),
     ]
     setattr(histsToOverlay, member.name, hists)
-  for histIndex, histRealData in enumerate(histsToOverlay.realData):
-    histWeightedMc = histsToOverlay.weightedMc[histIndex]
+  for histRealData, histWeightedMc in zip(histsToOverlay.realData, histsToOverlay.weightedMc):
     print(f"Comparing histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
-    histWeightedMc.SetMinimum(0)
-    histRealData.SetMinimum  (0)
-    histWeightedMc.SetTitle("Weighted MC")
     histRealData.SetTitle  ("Real data")
+    histWeightedMc.SetTitle("Weighted MC")
     # normalize weighted MC to integral of real data
     weightedMcIntegral = histWeightedMc.Integral()
     if weightedMcIntegral != 0:
       histWeightedMc.Scale(histRealData.Integral() / weightedMcIntegral)
     else:
       print(f"??? Warning: weighted-MC histogram '{histWeightedMc.GetName()}' has zero integral, cannot normalize to real data!")
+    histRealData.SetMinimum  (0)
+    histWeightedMc.SetMinimum(0)  # needs to be set after Scale()
     # generate plots
     ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
     if "TH1" in histRealData.ClassName():
@@ -208,7 +207,7 @@ def makePlots(
       ROOT.gStyle.SetPalette(ROOT.kLightTemperature)
       zRange = max(abs(histPulls.GetMinimum()), abs(histPulls.GetMaximum()))
       histPulls.SetMinimum(-zRange)
-      histPulls.SetMaximum(zRange)
+      histPulls.SetMaximum(+zRange)
       histPulls.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
       ROOT.gStyle.SetPalette(ROOT.kBird)  # restore previous color palette
@@ -253,8 +252,8 @@ if __name__ == "__main__":
   massBinWidth      = 0.04  # [GeV]
   nmbBins           = 50
   subSystem         = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
-  # useIntensityTerms = "allTerms"
-  useIntensityTerms = "parityConserving"
+  useIntensityTerms = "allTerms"
+  # useIntensityTerms = "parityConserving"
   # useIntensityTerms = "parityViolating"
 
   for dataPeriod in dataPeriods:
