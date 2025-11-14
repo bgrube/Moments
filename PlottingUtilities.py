@@ -486,16 +486,19 @@ def plotMoments(
       histStack.SetMaximum(forceYaxisRange[1])
     # histStack.SetMinimum(-0.1)
     # histStack.SetMaximum(+0.1)
-    # adjust style of automatic zero line
-    histStack.GetHistogram().SetLineColor(ROOT.kBlack)
-    histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
+    # enable automatic zero line
+    # histStack.GetHistogram().SetLineColor(ROOT.kBlack)
+    # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
-    # if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-    #   zeroLine = ROOT.TLine()
-    #   zeroLine.SetLineColor(ROOT.kBlack)
-    #   zeroLine.SetLineStyle(ROOT.kDashed)
-    #   xAxis = histStack.GetXaxis()
-    #   zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    #TODO automatic zero line does not work; workaround:
+    canv.Modified()
+    canv.Update()
+    if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
+      zeroLine = ROOT.TLine()
+      zeroLine.SetLineColor(ROOT.kBlack)
+      zeroLine.SetLineStyle(ROOT.kDashed)
+      xAxis = histStack.GetXaxis()
+      zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
     canv.SaveAs(f"{histStack.GetName()}.{outFileType}")
 
     if not trueValues:
