@@ -647,14 +647,17 @@ def plotMoments1D(
 ) -> dict[str, tuple[float, float] | tuple[None, None]]:  # key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
   """Plots moment H_i(L, M) extracted from data as function of kinematical variable and overlays the corresponding true values if given"""
   # filter out specific moment given by qnIndex
-  HVals = tuple(
-    MomentValueAndTruth(
-      *HPhys[qnIndex],
-      truth         = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val,
-      truthUncertRe = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertRe,
-      truthUncertIm = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertIm,
-    ) for binIndex, HPhys in enumerate(momentResults)
-  )
+  HVals: list[MomentValueAndTruth] = []
+  for binIndex, HPhys in enumerate(momentResults):
+    HVals.append(
+      MomentValueAndTruth(
+        *HPhys[qnIndex],
+        #TODO the `qnIndex` check needs to be added in other plot functions as well
+        truth         = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].val      if qnIndex in momentResultsTrue[binIndex] else 0,
+        truthUncertRe = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertRe if qnIndex in momentResultsTrue[binIndex] else 0,
+        truthUncertIm = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertIm if qnIndex in momentResultsTrue[binIndex] else 0,
+      )
+    )
   return plotMoments(
     HVals             = HVals,
     binning           = binning,

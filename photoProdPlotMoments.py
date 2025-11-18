@@ -264,8 +264,8 @@ def makeAllPlots(
     momentResultsCompare.savePickle(f"{momentResultsFileBaseName}_JPAC.pkl")  # save copy of JPAC moments
   momentResultsJpac = None
   if compareTo == ComparisonMomentsType.CLAS and momentResultsCompare is not None and not cfg.normalizeMoments:
+    # overlay also JPAC moments, if moments are compared to CLAS values
     momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
-
   # normalize or scale moments
   if momentResultsCompare is not None and not cfg.normalizeMoments:
     if normalizeComparisonMoments:
