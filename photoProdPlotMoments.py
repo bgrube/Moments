@@ -12,7 +12,7 @@ Usage: Run this module as a script to generate the output files.
 from __future__ import annotations
 
 from copy import deepcopy
-from enum import Enum, auto
+from enum import Enum
 import functools
 import glob
 from io import StringIO
@@ -192,20 +192,23 @@ def readMomentResultsJpac(
 
 
 class ComparisonMomentsType(Enum):
-  """Enumerates moment data to compare to"""
+  """Enumerates predefined moment data to compare to"""
   CLAS = 0
   JPAC = 1
   PWA  = 2
 
 def makeAllPlots(
   cfg:                         AnalysisConfig,
-  timer:                       Utilities.Timer              = Utilities.Timer(),
-  scaleFactorPhysicalMoments:  float                        = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
-  compareTo:                   ComparisonMomentsType | None = None,   # `None` means no comparison moments are plotted
-  normalizeComparisonMoments:  bool                         = False,  # whether to scale comparison moments
-  plotComparisonMomentsUncert: bool                         = False,  # whether to plot uncertainties of comparison moments
-  outFileType:                 str                          = "pdf",  # "pdf" or "root"
-  yAxisUnit:                   str                          = "",  # optional unit for moment values
+  timer:                       Utilities.Timer = Utilities.Timer(),
+  scaleFactorPhysicalMoments:  float           = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
+  compareTo:                   ComparisonMomentsType | tuple[str, str] | None = None,
+  # if `ComparisonMomentsType`, comparison moments are read from predefined sources
+  # if `tuple[str, str]`, moment file is loaded from path given by first element, legend label is given by second element
+  # if `None`, no comparison moments are plotted
+  normalizeComparisonMoments:  bool            = False,  # whether to scale comparison moments
+  plotComparisonMomentsUncert: bool            = False,  # whether to plot uncertainties of comparison moments
+  outFileType:                 str             = "pdf",  # "pdf" or "root"
+  yAxisUnit:                   str             = "",     # optional unit for moment values
 ) -> None:
   """Generates all plots for the given analysis configuration and writes them to output files"""
   # load moments from files
@@ -221,6 +224,8 @@ def makeAllPlots(
   momentResultsPhys.scaleBy(scaleFactorPhysicalMoments)  # apply optional scale factor to physical moments
   if compareTo == ComparisonMomentsType.PWA:
     print(f"Reading PWA moments from file '{momentResultsFileBaseName}_pwa_SPD.pkl'")
+  elif isinstance(compareTo, tuple):
+    print(f"Reading comparison moments from file '{compareTo[0]}'")
   momentResultsCompare, momentResultsCompareLabel, momentResultsCompareColor = (
     (
       MomentResultsKinematicBinning.loadPickle(f"{momentResultsFileBaseName}_pwa_SPD.pkl"),
@@ -243,6 +248,12 @@ def makeAllPlots(
     ) if compareTo == ComparisonMomentsType.JPAC
     else
     (
+      MomentResultsKinematicBinning.loadPickle(compareTo[0]),
+      compareTo[1],
+      ROOT.kBlue + 1,
+    ) if isinstance(compareTo, tuple)
+    else
+    (
       None,
       "",
       ROOT.kBlack,
@@ -252,27 +263,24 @@ def makeAllPlots(
     print(f"Writing JPAC moments to '{momentResultsFileBaseName}_JPAC.pkl'")
     momentResultsCompare.savePickle(f"{momentResultsFileBaseName}_JPAC.pkl")  # save copy of JPAC moments
   momentResultsJpac = None
+  if compareTo == ComparisonMomentsType.CLAS and momentResultsCompare is not None and not cfg.normalizeMoments:
+    momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
+
+  # normalize or scale moments
   if momentResultsCompare is not None and not cfg.normalizeMoments:
-    if compareTo == ComparisonMomentsType.CLAS:
-      momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
-      if normalizeComparisonMoments:
-        normalizationFactorClas = momentResultsCompare.normalizeTo(
+    if normalizeComparisonMoments:
+      normalizationFactor = 1.0
+      if compareTo in (ComparisonMomentsType.CLAS, ComparisonMomentsType.JPAC) or isinstance(compareTo, tuple):
+        normalizationFactor = momentResultsCompare.normalizeTo(
           momentResultsPhys,
           normBinIndex = None,  # normalize to integral over mass bins
           # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
         )
-        momentResultsJpac.scaleBy(normalizationFactorClas)  # use same factor as for CLAS moments
-        print(f"Scaled CLAS and JPAC moments by factor {normalizationFactorClas}")
-    if compareTo == ComparisonMomentsType.JPAC:
-      if normalizeComparisonMoments:
-        normalizationFactorJpac = momentResultsCompare.normalizeTo(
-          momentResultsPhys,
-          normBinIndex = None,  # normalize to integral over mass bins
-          # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
-        )
-        print(f"Scaled JPAC moments by factor {normalizationFactorJpac}")
-    elif compareTo == ComparisonMomentsType.PWA:
-      # scale moments from PWA result
+        print(f"Scaled comparison moments by factor {normalizationFactor}")
+      if compareTo == ComparisonMomentsType.CLAS and momentResultsJpac is not None:
+        momentResultsJpac.scaleBy(normalizationFactor)  # scale JPAC moments by same factor as CLAS moments
+        print(f"Scaled JPAC moments by factor {normalizationFactor}")
+    if compareTo == ComparisonMomentsType.PWA:  # scale moments from PWA result
       momentResultsCompare.scaleBy(1 / (8 * math.pi))  #TODO unclear where this factor comes from; could it be the kappa term in the intensity function?
 
   H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
@@ -661,6 +669,7 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   compareTo = None
   # compareTo = ComparisonMomentsType.PWA
+  # compareTo = ("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
   #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
@@ -701,7 +710,7 @@ if __name__ == "__main__":
   )
   # plotCompareUncert = True
   plotCompareUncert = False
-  scaleFactorPhysicalMoments = 1.0
+  scaleFactorPhysicalMoments = 1.0  # no scaling
   # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
   normalizeComparisonMoments = True  # whether to scale comparison moments to GlueX moments
   # normalizeComparisonMoments = False
