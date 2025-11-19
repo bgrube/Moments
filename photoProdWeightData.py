@@ -61,12 +61,13 @@ print = functools.partial(print, flush = True)
 
 
 def loadInputData(
-  inputDataDef: AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-                                                                  # if `tuple[str, str]`, a tuple (<tree name>, <file name>) for raw data is expected
-                                                                  # if `int`, phase-space distribution in angles is generated with given number of events
-  cfg:          AnalysisConfig,
-  massBinIndex: int,  # index of mass bin to load/generate data for
-  beamPolInfo:  BeamPolInfo | None = None,  # beam polarization information needed for raw data files
+  inputDataDef:     AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
+                                                                      # if `tuple[str, str]`, a tuple (<tree name>, <file name>) for raw data is expected
+                                                                      # if `int`, phase-space distribution in angles is generated with given number of events
+  cfg:              AnalysisConfig,
+  massBinIndex:     int,  # index of mass bin to load/generate data for
+  beamPolInfo:      BeamPolInfo | None = None,  # beam polarization information needed for raw data files
+  limitNmbEventsTo: int | None         = None,  # if `int`, limits number of events to read from tree
 ) -> tuple[ROOT.RDataFrame, int, list[str]]:
   """Loads data specified by `inputDataDef` and returns them as RDataFrame and the number of input events."""
   if isinstance(inputDataDef, AnalysisConfig.DataType) or (isinstance(inputDataDef, tuple) and len(inputDataDef) == 2):
@@ -78,6 +79,9 @@ def loadInputData(
       print(f"Loading raw data in tree '{inputDataDef[0]}' from file '{inputDataDef[1]}'")
       dataToWeight = ROOT.RDataFrame(inputDataDef[0], inputDataDef[1])
     assert dataToWeight is not None, f"Could not load data of type '{inputDataDef}'"
+    if limitNmbEventsTo is not None:
+      print(f"Limiting total number of input events (before binning) to {limitNmbEventsTo}")
+      dataToWeight = dataToWeight.Range(0, limitNmbEventsTo)  # works only in single-thread mode
     originalColumns = list(dataToWeight.GetColumnNames())
     if isinstance(inputDataDef, tuple):
       # define columns needed to calculate intensity
@@ -140,15 +144,17 @@ def weightDataWithIntensity(
   seed:                 int                             = 123456789,  # seed for rejection sampling and for generating phase-space events
   beamPolInfo:          BeamPolInfo | None              = None,       # beam polarization information needed for raw data files
   useIntensityTerms:    MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
+  limitNmbEventsTo:     int | None                      = None,       # if `int`, limits number of events to read from tree
 ) -> None:
   """Weight input data specified by `inputDataDef` and `massBinIndex` with intensity formula from `momentResults` and write data to `outFileName`"""
   ROOT.gRandom.SetSeed(seed)
   # load input data
   dataToWeight, nmbInputEvents, originalColumns = loadInputData(
-    inputDataDef = inputDataDef,
-    cfg          = cfg,
-    massBinIndex = massBinIndex,
-    beamPolInfo  = beamPolInfo,
+    inputDataDef     = inputDataDef,
+    cfg              = cfg,
+    massBinIndex     = massBinIndex,
+    beamPolInfo      = beamPolInfo,
+    limitNmbEventsTo = limitNmbEventsTo,
   )
   # construct intensity formula
   intensityFormula = momentResults.intensityFormula(
@@ -369,16 +375,23 @@ if __name__ == "__main__":
   useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
   # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
   # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
+  # accepted phase-space data for generating kinematic plots in mass bins
   inputDataDef             = ("kin", "amptools_tree_accepted*.root")
   weightedDataFileBaseName = f"phaseSpace_acc_weighted_raw_{useIntensityTerms.value}"
   reweightMassDistribution = False
+  limitNmbEventsTo         = None  # limit number of events to read from input tree
+  # # accepted phase-space data for input-output studies with acceptance correction
   # inputDataDef             = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
   # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
   # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
+  # limitNmbEventsTo         = None  # limit number of events to read from input tree
+  # # generated phase-space data for input-output studies without acceptance correction
+  # # inputDataDef             = 100000  # generate phase-space distribution in angles with given number of events
   # inputDataDef             = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-  # inputDataDef             = 100000  # generate phase-space distribution in angles with given number of events
   # weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
   # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
+  # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
+  #
   dataPeriods = (
     # "2017_01",
     "2018_08",
@@ -460,6 +473,7 @@ if __name__ == "__main__":
                 seed                 = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
                 useIntensityTerms    = useIntensityTerms,
+                limitNmbEventsTo     = limitNmbEventsTo,
               )
               if makeIntensityFcnPlots:
                 plotIntensityFcn(
