@@ -309,7 +309,7 @@ def defineDataFrameColumns(
   lvB:                  str,  # function-argument list with Lorentz-vector components of daughter B
   beamPolInfo:          BeamPolInfo | None = None,  # photon beam polarization
   frame:                CoordSysType       = CoordSysType.HF,  # reference frame for angle definitions
-  flipYAxis:            bool               = True,  # if set y-axis of reference frame is inverted
+  flipYAxis:            bool               = False,  # if set y-axis of reference frame is inverted
   additionalColumnDefs: dict[str, str]     = {},  # additional columns to define
   additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
   colNameSuffix:        str                = "",  # suffix appended to column names
@@ -461,7 +461,7 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
   ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
   ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
-  ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
+  # ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
@@ -651,7 +651,6 @@ if __name__ == "__main__":
       lvB                  = lvs[dataSet.subsystem.lvBLabel],
       beamPolInfo          = dataSet.beamPolInfo,
       frame                = frame,
-      flipYAxis            = (frame == CoordSysType.HF) and subsystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
