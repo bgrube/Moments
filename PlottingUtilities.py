@@ -227,7 +227,7 @@ class HistAxisBinning:
     if (value < self.minVal) or (value > self.maxVal):
       return None
     else:
-      return int(self.nmbBins * (value - self.minVal) / self.valueIntervalLength)
+      return int((value - self.minVal) / self.binWidth)
 
   def binValueRange(
     self,
