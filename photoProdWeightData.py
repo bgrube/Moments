@@ -174,7 +174,7 @@ def weightDataWithIntensity(
                 .Define("intensityWeightRndNmb", "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
   )
   # write unweighted data to file and read data back to ensure that random columns are filled only once
-  tmpFileName = f"{weightedDataFileName}.tmp.root"
+  tmpFileName = f"{weightedDataFileName}.tmp"
   dataToWeight.Snapshot(cfg.treeName, tmpFileName)
   dataToWeight = ROOT.RDataFrame(cfg.treeName, tmpFileName)
   # determine maximum weight
