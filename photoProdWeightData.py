@@ -65,7 +65,8 @@ def loadInputData(
                                                                       # if `tuple[str, str]`, a tuple (<tree name>, <file name>) for raw data is expected
                                                                       # if `int`, phase-space distribution in angles is generated with given number of events
   cfg:              AnalysisConfig,
-  massBinIndex:     int,  # index of mass bin to load/generate data for
+  massBinning:      HistAxisBinning,  # mass binning used for weighting
+  massBinIndex:     int,              # index of mass bin to load/generate data for
   beamPolInfo:      BeamPolInfo | None = None,  # beam polarization information needed for raw data files
   limitNmbEventsTo: int | None         = None,  # if `int`, limits number of events to read from tree
 ) -> tuple[ROOT.RDataFrame, int, list[str]]:
@@ -98,7 +99,7 @@ def loadInputData(
         frame       = CoordSysType.HF,
         flipYAxis   = True,
       )
-    kinematicBinFilter: str = cfg.massBinning.binFilter(massBinIndex)
+    kinematicBinFilter: str = massBinning.binFilter(massBinIndex)
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
     nmbInputEvents = dataToWeight.Count().GetValue()
     print(f"Input data contain {nmbInputEvents} events in bin '{kinematicBinFilter}'")
@@ -106,7 +107,7 @@ def loadInputData(
   elif isinstance(inputDataDef, int):
     nmbGenPsEvents = inputDataDef
     print(f"Generating phase-space distribution with {nmbGenPsEvents} events")
-    kinematicBinRange: tuple[float, float] = cfg.massBinning.binValueRange(massBinIndex)
+    kinematicBinRange: tuple[float, float] = massBinning.binValueRange(massBinIndex)
     dataToWeight = (
       ROOT.RDataFrame(nmbGenPsEvents)
           .Define("cosTheta", "(Double32_t)gRandom->Uniform(-1, +1)")
@@ -137,9 +138,10 @@ def weightDataWithIntensity(
   inputDataDef:         AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
                                                                           # if `tuple[str, str]`, a tuple (<tree name>, <file name>) is expected
                                                                           # if `int`, phase-space distribution in angles is generated with given number of events
-  massBinIndex:         int,           # index of mass bin to generate data for
-  momentResults:        MomentResult,  # moment values in the mass bin defined by `massBinIndex`
-  weightedDataFileName: str,           # ROOT file to which weighted events are written
+  massBinning:          HistAxisBinning,  # mass binning used for weighting
+  massBinIndex:         int,              # index of mass bin to generate data for
+  momentResults:        MomentResult,     # moment values used to construct intensity formula
+  weightedDataFileName: str,              # ROOT file to which weighted events are written
   cfg:                  AnalysisConfig,
   seed:                 int                             = 123456789,  # seed for rejection sampling and for generating phase-space events
   beamPolInfo:          BeamPolInfo | None              = None,       # beam polarization information needed for raw data files
@@ -152,6 +154,7 @@ def weightDataWithIntensity(
   dataToWeight, nmbInputEvents, originalColumns = loadInputData(
     inputDataDef     = inputDataDef,
     cfg              = cfg,
+    massBinning      = massBinning,
     massBinIndex     = massBinIndex,
     beamPolInfo      = beamPolInfo,
     limitNmbEventsTo = limitNmbEventsTo,
@@ -424,8 +427,11 @@ if __name__ == "__main__":
     # 16,
     # 20,
   )
-  # makeIntensityFcnPlots    = True  # draw intensity function in each mass bin
-  makeIntensityFcnPlots    = False
+  # makeIntensityFcnPlots   = True  # draw intensity function in each mass bin
+  makeIntensityFcnPlots   = False
+  massBinningForWeighting = deepcopy(cfg.massBinning)  # same binning as for moment values
+  # massBinningForWeighting = HistAxisBinning(nmbBins = 250, minVal = 0.28, maxVal = 2.28)  # finer binning than for moment values
+  massBinningForWeighting.var = cfg.binVarMass
 
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
@@ -458,19 +464,22 @@ if __name__ == "__main__":
             # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_JPAC.pkl"
             print(f"Reading moments from file '{momentResultsFileName}'")
             momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
-            for momentResultsForBin in momentResults:
-              massBinCenter = momentResultsForBin.binCenters[cfg.massBinning.var]
-              massBinIndex  = cfg.massBinning.findBin(massBinCenter)
-              assert massBinIndex is not None, f"Could not find bin for mass value of {massBinCenter} {cfg.massBinning.var.unit}"
-              print(f"Weighting events in mass bin {massBinIndex} at {massBinCenter:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit} by intensity function")
+            for massBinIndexForWeighting, massBinCenterForWeighting in enumerate(massBinningForWeighting):
+              print(f"Weighting events at mass {massBinCenterForWeighting:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
+              # find moment result corresponding to mass-bin center
+              massBinIndexForMoments = cfg.massBinning.findBin(massBinCenterForWeighting)
+              assert massBinIndexForMoments is not None, f"Could not find bin for mass value of {massBinCenterForWeighting} {cfg.massBinning.var.unit}"
+              momentResultsForBin = momentResults[massBinIndexForMoments]
+              print(f"Weighting events with intensity function using moment values in mass bin {massBinIndexForMoments} at {momentResultsForBin.binCenters[cfg.massBinning.var]:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
               weightDataWithIntensity(
                 inputDataDef         = (inputDataDef[0], f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex/{inputDataDef[1]}") \
                                        if isinstance(inputDataDef, tuple) else inputDataDef,
-                massBinIndex         = massBinIndex,
+                massBinning          = massBinningForWeighting,
+                massBinIndex         = massBinIndexForWeighting,
                 momentResults        = momentResultsForBin,
-                weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndex}.root",
+                weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndexForWeighting}.root",
                 cfg                  = cfg,
-                seed                 = 12345 + massBinIndex,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
+                seed                 = 12345 + massBinIndexForWeighting ,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
                 useIntensityTerms    = useIntensityTerms,
                 limitNmbEventsTo     = limitNmbEventsTo,
@@ -478,7 +487,7 @@ if __name__ == "__main__":
               if makeIntensityFcnPlots:
                 plotIntensityFcn(
                   momentResults     = momentResultsForBin,
-                  massBinIndex      = massBinIndex,
+                  massBinIndex      = massBinIndexForWeighting,
                   beamPolInfo       = BEAM_POL_INFOS[dataPeriod][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
                   outputDirName     = weightedDataDirName,
                   useIntensityTerms = useIntensityTerms,
@@ -499,7 +508,7 @@ if __name__ == "__main__":
                 reweightKinDistribution(
                   dataToWeight     = ROOT.RDataFrame(cfg.treeName, mergedFileName),  # load merged data file created in step above
                   treeName         = cfg.treeName,
-                  binning          = cfg.massBinning,
+                  binning          = massBinningForWeighting,
                   realDataFileName = cfg.dataFileName,
                   # momentResults    = momentResults,
                   outFileName      = reweightedFileName,
