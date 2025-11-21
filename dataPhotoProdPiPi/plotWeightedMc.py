@@ -266,7 +266,7 @@ if __name__ == "__main__":
               + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
         # load data in AMPTOOLS format
         dataDirName          = f"./polarized/{dataPeriod}/{tBinLabel}"
-        weightedDataDirName  = f"{dataDirName}/{subSystem.pairLabel}/weighted.maxL_{maxL}/{beamPolLabel}"
+        weightedDataDirName  = f"{dataDirName}/{subSystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
         weightedDataFileName = f"{weightedDataDirName}/phaseSpace_acc_weighted_raw_{useIntensityTerms}.root"
         dataToOverlay = DataToOverlay(
           realData   = getDataFrameWithCorrectEventWeights(

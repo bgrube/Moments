@@ -448,7 +448,7 @@ if __name__ == "__main__":
           cfg.init()
           thisSourceFileName = os.path.basename(__file__)
           # create directory, into which weighted data will be written
-          weightedDataDirName = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/weighted.maxL_{maxL}/{beamPolLabel}"
+          weightedDataDirName = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/weightedMc.maxL_{maxL}/{beamPolLabel}"
           Utilities.makeDirPath(weightedDataDirName)
           logFileName = f"{weightedDataDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
