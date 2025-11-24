@@ -76,7 +76,7 @@ def genDataFromWaves(
   efficiencyFcn.SetNpy(100)
   efficiencyFcn.SetNpz(100)
   drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, maxVal = 1.0,
-    pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
+    outFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
 
   # construct TF3 for intensity distribution in Eq. (171)
   # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
@@ -95,7 +95,7 @@ def genDataFromWaves(
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   intensityFcn.SetMinimum(0)
-  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.pdf")
+  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.pdf")
   #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
   # if file with generated data already exists, read it and return RDataFrame
@@ -149,7 +149,7 @@ def genAccepted2BodyPsPhotoProd(
   efficiencyFcn.SetNpx(100)
   efficiencyFcn.SetNpy(100)
   efficiencyFcn.SetNpz(100)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", maxVal = 1.0)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", maxVal = 1.0)
 
   # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
   treeName = "data"
@@ -243,7 +243,7 @@ if __name__ == "__main__":
       efficiencyFcnDetune.SetNpx(100)
       efficiencyFcnDetune.SetNpy(100)
       efficiencyFcnDetune.SetNpz(100)
-      drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
+      drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
       efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
     else:
       efficiencyFormulaReco = efficiencyFormulaGen

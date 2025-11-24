@@ -122,7 +122,7 @@ def setup(useRDataFrame: bool) -> None:
   # ROOT.FSTree.addFriendTree("Chi2Rank")  # ranking trees have already been applied
   # ROOT.FSTree.showFriendTrees()
   if useRDataFrame:
-    ROOT.FSHistogram.enableRDataFrame(False)  # false = delay filling of histograms until FSHistogram::executeRDataFrame() is called
+    ROOT.FSHistogram.enableRDataFrame(False)  # False = delay filling of histograms until FSHistogram::executeRDataFrame() is called
 
   # define macros for azimuthal angle of photon polarization vector
   ROOT.gInterpreter.Declare(CPP_CODE_POLPHI)

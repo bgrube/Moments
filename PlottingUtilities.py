@@ -336,11 +336,11 @@ def drawTF3(
   fcn:                ROOT.TF3,  # function to plot
   #TODO read binning ranges from fcn and just define number of points
   binnings:           tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
-  outFileName:        str,                   # name of output file to write
-  histTitle:          str          = "",     # histogram title
-  minVal:             float | None = None,   # set minimum function value to plot
-  maxVal:             float | None = None,   # set maximum function value to plot
-  showNegativeValues: bool         = False,  # whether to limit minimum function value to zero
+  outFileName:        str,                  # name of output file to write
+  histTitle:          str          = "",    # histogram title
+  minVal:             float | None = None,  # set minimum function value to plot
+  maxVal:             float | None = None,  # set maximum function value to plot
+  showNegativeValues: bool         = True,  # whether to limit minimum function value to zero
 ) -> tuple[ROOT.TH3F,float, float]:
   """Plots given TF3 into PDF file with given name using the binning defined by `binnings`; returns minimum and maximum function values found in the bins"""
   canv = ROOT.TCanvas()
@@ -369,10 +369,10 @@ def drawTF3(
         for zBin in range(1, binnings[2].nmbBins + 1):
           if histFcn.GetBinContent(xBin, yBin, zBin) < 0:
             histFcn.SetBinContent(xBin, yBin, zBin, 0)
+    histFcn.SetMinimum(0)
     # ROOT does not deal well with all zero bin content
     # fix plot range in case all bins are zero
     if histFcn.Integral() == 0:
-      histFcn.SetMinimum(0)
       histFcn.SetMaximum(1)
   if minVal:
     histFcn.SetMinimum(minVal)

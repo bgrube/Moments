@@ -330,9 +330,9 @@ def plotIntensityFcn(
         HistAxisBinning(nmbBinsPerAxis, -180, +180),
         HistAxisBinning(nmbBinsPerAxis, -180, +180),
       ),
-      pdfFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf",
+      outFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf",
       histTitle   = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
-      )
+    )
   if True:
     # draw intensity as function of phi_HF and Phi for fixed cos(theta)_HF value
     cosTheta = 0.0  # fixed value of cos(theta)_HF

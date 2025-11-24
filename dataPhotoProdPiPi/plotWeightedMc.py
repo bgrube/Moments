@@ -203,14 +203,14 @@ def makePlots(
             histPulls.SetBinContent(xBin, yBin, 0)
       histPulls.SetTitle("(Real data#minusWeighted MC)/#sigma_{Real data}")
       canv = ROOT.TCanvas()
-      # draw pull plot with different color palette and symmetric z axis
+      # draw pull plot with pos/neg color palette and symmetric z axis
       ROOT.gStyle.SetPalette(ROOT.kLightTemperature)
       zRange = max(abs(histPulls.GetMinimum()), abs(histPulls.GetMaximum()))
       histPulls.SetMinimum(-zRange)
       histPulls.SetMaximum(+zRange)
       histPulls.Draw("COLZ")
       canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
-      ROOT.gStyle.SetPalette(ROOT.kBird)  # restore previous color palette
+      ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
     else:
       raise RuntimeError(f"Unsupported histogram type '{histRealData.ClassName()}'")
 

@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
   setup()
   if useRDataFrame:
-    ROOT.FSHistogram.enableRDataFrame(False)  # false = delay filling of histograms until FSHistogram::executeRDataFrame() is called
+    ROOT.FSHistogram.enableRDataFrame(False)  # False = delay filling of histograms until FSHistogram::executeRDataFrame() is called
 
   # ROOT.FSCut.defineCut("cutSet", "")
   # ROOT.FSCut.defineCut("cutSet", "CUT(beamEnergy, rf, chi2Rank)")

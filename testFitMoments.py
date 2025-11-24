@@ -70,7 +70,7 @@ def genAccepted2BodyPs(
   efficiencyFcn.SetNpx(100)
   efficiencyFcn.SetNpy(100)
   efficiencyFcn.SetNpz(100)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", maxVal = 1.0)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", maxVal = 1.0)
 
   # don't regenerate data if file already exists
   treeName = "data"
@@ -558,7 +558,7 @@ if __name__ == "__main__":
         intensityTF3.SetNpy(100)
         intensityTF3.SetNpz(100)
         intensityTF3.SetMinimum(0)
-        drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, pdfFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
+        drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
         intensityTF3s[label] = intensityTF3
 
       timer.start("Time to construct model functions")
