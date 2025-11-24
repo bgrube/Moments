@@ -57,14 +57,14 @@ def plotIntensityFcn(
       PhiFormula        = "TMath::DegToRad() * z",
       useIntensityTerms = useIntensityTerms,
     )
+    ROOT.gStyle.SetCanvasDefH(2400)  # temporarily increase resolution to generate bitmap images
+    ROOT.gStyle.SetCanvasDefW(2400)
     intensityFcn = ROOT.TF3(f"intensityFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
     binnings = (
       HistAxisBinning(nmbBinsPerAxis,   -1,   +1),  # cos(theta)
       HistAxisBinning(nmbBinsPerAxis, -180, +180),  # phi
       HistAxisBinning(nmbBinsPerAxis, -180, +180),  # Phi
     )
-    ROOT.gStyle.SetCanvasDefH(2400)  # increase resolution temporarily
-    ROOT.gStyle.SetCanvasDefW(2400)
     histFcn, minVal, maxVal = drawTF3(
       fcn                = intensityFcn,
       binnings           = binnings,
@@ -72,8 +72,6 @@ def plotIntensityFcn(
       histTitle          = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
       showNegativeValues = True,
     )
-    ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
-    ROOT.gStyle.SetCanvasDefW(600)
     if minVal < 0:
       print(f"WARNING: Intensity function for mass bin {massBinIndex} has negative values: minimum = {minVal}, maximum = {maxVal}")
     # draw negative part of intensity function (if any)
@@ -82,10 +80,12 @@ def plotIntensityFcn(
     histFcnNeg, _, _ = drawTF3(
       fcn                = intensityFcnNeg,
       binnings           = binnings,
-      outFileName        = f"{outputDirName}/{intensityFcnNeg.GetName()}.pdf",
+      outFileName        = f"{outputDirName}/{intensityFcnNeg.GetName()}.png",
       histTitle          = "Intensity Function, Negative Part;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
       showNegativeValues = False,
     )
+    ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
+    ROOT.gStyle.SetCanvasDefW(600)
     # draw projections of intensity function onto (cos(theta), phi) plane
     histProj = histFcn.Project3D("yx")  # NOTE: "yx" gives y = phi vs. x = cos(theta)
     canv = ROOT.TCanvas()
@@ -100,6 +100,7 @@ def plotIntensityFcn(
     histProjNeg = histFcnNeg.Project3D("yx")  # NOTE: "yx" gives y = phi vs. x = cos(theta)
     canv = ROOT.TCanvas()
     histProjNeg.SetTitle(f"Intensity Function Projection, Negative Part;{histFcnNeg.GetXaxis().GetTitle()};{histFcnNeg.GetYaxis().GetTitle()}")
+    histProjNeg.SetMinimum(0)
     histProjNeg.Draw("COLZ")
     canv.SaveAs(f"{outputDirName}/{histProjNeg.GetName()}.pdf")
   if False:
