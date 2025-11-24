@@ -333,38 +333,57 @@ def plotComplexMatrix(
 
 
 def drawTF3(
-  fcn:         ROOT.TF3,  # function to plot
+  fcn:                ROOT.TF3,  # function to plot
   #TODO read binning ranges from fcn and just define number of points
-  binnings:    tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
-  pdfFileName: str,                  # name of PDF file to write
-  histTitle:   str          = "",    # histogram title
-  maxVal:      float | None = None,  # maximum plot range
-) -> None:
-  """Plots given TF3 into PDF file with given name using the binning defined by `binnings`"""
+  binnings:           tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
+  outFileName:        str,                   # name of output file to write
+  histTitle:          str          = "",     # histogram title
+  minVal:             float | None = None,   # set minimum function value to plot
+  maxVal:             float | None = None,   # set maximum function value to plot
+  showNegativeValues: bool         = False,  # whether to limit minimum function value to zero
+) -> tuple[ROOT.TH3F,float, float]:
+  """Plots given TF3 into PDF file with given name using the binning defined by `binnings`; returns minimum and maximum function values found in the bins"""
   canv = ROOT.TCanvas()
   # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead
-  histName = os.path.splitext(os.path.basename(pdfFileName))[0]
-  fistFcn = ROOT.TH3F(histName, histTitle if histTitle else fcn.GetTitle(), *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
-  xAxis = fistFcn.GetXaxis()
-  yAxis = fistFcn.GetYaxis()
-  zAxis = fistFcn.GetZaxis()
+  histName = os.path.splitext(os.path.basename(outFileName))[0]
+  histFcn = ROOT.TH3F(histName, histTitle if histTitle else fcn.GetTitle(), *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
+  xAxis = histFcn.GetXaxis()
+  yAxis = histFcn.GetYaxis()
+  zAxis = histFcn.GetZaxis()
   for xBin in range(1, binnings[0].nmbBins + 1):
     for yBin in range(1, binnings[1].nmbBins + 1):
       for zBin in range(1, binnings[2].nmbBins + 1):
         x = xAxis.GetBinCenter(xBin)
         y = yAxis.GetBinCenter(yBin)
         z = zAxis.GetBinCenter(zBin)
-        fistFcn.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
-  print(f"Drawing histogram '{histName}' for function '{fcn.GetName()}': minimum value = {fistFcn.GetMinimum()}, maximum value = {fistFcn.GetMaximum()}")
-  fistFcn.SetMinimum(0)
+        histFcn.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
+  histMin = histFcn.GetMinimum()
+  histMax = histFcn.GetMaximum()
+  print(f"Drawing histogram '{histName}' for function '{fcn.GetName()}': minimum value = {histMin}, maximum value = {histMax}")
+  if not showNegativeValues:
+    # by default negative values are drawn as crossed-out boxes
+    # hide these boxes by setting the bin content of negative bins to zero
+    for xBin in range(1, binnings[0].nmbBins + 1):
+      for yBin in range(1, binnings[1].nmbBins + 1):
+        for zBin in range(1, binnings[2].nmbBins + 1):
+          if histFcn.GetBinContent(xBin, yBin, zBin) < 0:
+            histFcn.SetBinContent(xBin, yBin, zBin, 0)
+    # ROOT does not deal well with all zero bin content
+    # fix plot range in case all bins are zero
+    if histFcn.Integral() == 0:
+      histFcn.SetMinimum(0)
+      histFcn.SetMaximum(1)
+  if minVal:
+    histFcn.SetMinimum(minVal)
   if maxVal:
-    fistFcn.SetMaximum(maxVal)
-  fistFcn.GetXaxis().SetTitleOffset(1.5)
-  fistFcn.GetYaxis().SetTitleOffset(2)
-  fistFcn.GetZaxis().SetTitleOffset(1.5)
-  fistFcn.Draw("BOX2Z")
-  canv.Print(pdfFileName, "pdf")
+    histFcn.SetMaximum(maxVal)
+  histFcn.GetXaxis().SetTitleOffset(1.5)
+  histFcn.GetYaxis().SetTitleOffset(2)
+  histFcn.GetZaxis().SetTitleOffset(1.5)
+  histFcn.Draw("BOX2Z")
+  canv.SaveAs(outFileName)
+  return (histFcn, histMin, histMax)
 
 
 def makeMomentHistogram(
