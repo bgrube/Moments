@@ -745,7 +745,7 @@ class AcceptanceIntegralMatrix:
     try:
       self.load(fileName)
     except Exception as e:
-      print(f"Could not load acceptance integral matrix from file '{fileName}': {e} Calculating matrix instead.")
+      print(f"Could not load acceptance integral matrix from file '{fileName}': {e}. Calculating matrix instead.")
       self.calculate()
 
 

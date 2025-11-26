@@ -20,7 +20,7 @@ from PlottingUtilities import setupPlotStyle
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 from testMomentsPhotoProd import (
   genAccepted2BodyPsPhotoProd,
-  genDataFromWaves,
+  genData,
 )
 from Utilities import (
   makeDirPath,
@@ -175,10 +175,10 @@ if __name__ == "__main__":
       HTruthDicts.append(HTruthDict)
     with open(HTruthJsonFileName, "w") as HTruthJsonFile:
       json.dump(HTruthDicts, HTruthJsonFile, indent = 4, default = str)
-    dataPwaModel = genDataFromWaves(
+    dataPwaModel = genData(
       nmbEvents         = nmbPwaMcEvents,
       polarization      = beamPolarization,
-      amplitudeSet      = amplitudeSetSig,
+      inputData         = amplitudeSetSig,
       efficiencyFormula = None,
       outFileNamePrefix = f"{outFileDirName}/",
       regenerateData    = True,

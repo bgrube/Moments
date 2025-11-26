@@ -57,49 +57,17 @@ class Th3PlotKwargsType(TypedDict):
 TH3_ANG_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_ANG_TITLE, "binnings" : TH3_ANG_BINNINGS}
 
 
-def genDataFromWaves(
-  nmbEvents:         int,           # number of events to generate
-  polarization:      float | None,  # photon-beam polarization
-  amplitudeSet:      AmplitudeSet,  # partial-wave amplitudes
-  efficiencyFormula: str | None                = None,    # detection efficiency used to generate data
+def genDataFromIntensityFormula(
+  nmbEvents:         int,  # number of events to generate
+  intensityFormula:  str,  # intensity formula as function of x = cos(theta), y = phi [deg], z = Phi [deg] that defines distribution of events
   regenerateData:    bool                      = False,   # if set data are regenerated although .root file exists
   outFileNamePrefix: str                       = "./",    # name prefix for output files
   nameSuffix:        str                       = "",      # suffix for functions and file names
   treeName:          str                       = "data",  # name of the tree with generated data
   additionalColDefs: Iterable[tuple[str, str]] = (),      # additional column definitions to be added to the returned RDataFrame
 ) -> ROOT.RDataFrame:
-  """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
-  print(f"Generating {nmbEvents} events distributed according to PWA model {amplitudeSet} with photon-beam polarization {polarization} weighted by efficiency {efficiencyFormula}")
-
-  # construct and draw efficiency function
-  efficiencyFcn = ROOT.TF3(f"efficiencyGen{nameSuffix}", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  efficiencyFcn.SetNpx(100)
-  efficiencyFcn.SetNpy(100)
-  efficiencyFcn.SetNpz(100)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, maxVal = 1.0,
-    outFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
-
-  # construct TF3 for intensity distribution in Eq. (171)
-  # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-  intensityFormula = amplitudeSet.intensityFormula(
-    polarization = polarization,
-    thetaFormula = "std::acos(x)",
-    phiFormula   = "TMath::DegToRad() * y",
-    PhiFormula   = "TMath::DegToRad() * z",
-    printFormula = False,
-  )
-  # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL = 2 * amplitudeSet.maxSpin, normalize = False)
-  # print(f"!!! True moment values\n{HTruth}")
-  # intensityFormula = HTruth.intensityFormula(  # this must yield the same intensity function
-  #   polarization = polarization,
-  #   thetaFormula = "std::acos(x)",
-  #   phiFormula   = "TMath::DegToRad() * y",
-  #   PhiFormula   = "TMath::DegToRad() * z",
-  #   printFormula = False,
-  # )
-  if efficiencyFormula:
-    intensityFormula = f"{intensityFormula} * ({efficiencyFormula})"
-  print(f"Intensity formula:\n{intensityFormula}")
+  """Generate data according to the given intensity formula"""
+  print(f"Generating events distributed according to intensity formula:\n{intensityFormula}")
   intensityFcn = ROOT.TF3(f"intensity{nameSuffix}", intensityFormula, -1, +1, -180, +180, -180, +180)
   # intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
@@ -112,15 +80,14 @@ def genDataFromWaves(
   # if file with generated data already exists, read it and return RDataFrame
   fileName = f"{outFileNamePrefix}data{nameSuffix}.root"
   if not regenerateData and os.path.exists(fileName):
-    print(f"Reading partial-wave MC data from '{fileName}'")
+    print(f"Reading generated MC data from '{fileName}'")
     df = ROOT.RDataFrame(treeName, fileName)
     nmbEvents = df.Count().GetValue()
     print(f"File '{fileName}' contains {nmbEvents} events")
     return df
 
-  # generate random data that follow intensity given by partial-wave amplitudes
-  print(f"Generating MC events according to partial-wave model and writing them to '{fileName}'")
-  RootUtilities.declareInCpp(**{intensityFcn.GetName() : intensityFcn})  # use Python object in C++
+  print(f"Generating {nmbEvents} events and writing them to '{fileName}'")
+  RootUtilities.declareInCpp(**{intensityFcn.GetName(): intensityFcn})  # use Python object in C++
   dataPointFcn = f"""
     double cosTheta, phiDeg, PhiDeg;
     PyVars::{intensityFcn.GetName()}.GetRandom3(cosTheta, phiDeg, PhiDeg);
@@ -145,6 +112,53 @@ def genDataFromWaves(
     df = df.Define(colName, colDefinitions)
     columnsToWrite.append(colName)
   return df.Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](columnsToWrite))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
+
+
+def genData(
+  nmbEvents:         int,           # number of events to generate
+  polarization:      float | None,  # photon-beam polarization
+  inputData:         AmplitudeSet | MomentResult,         # generate data either from set of partial-wave amplitudes or from moment result
+  efficiencyFormula: str | None                = None,    # detection efficiency used to generate data
+  regenerateData:    bool                      = False,   # if set data are regenerated although .root file exists
+  outFileNamePrefix: str                       = "./",    # name prefix for output files
+  nameSuffix:        str                       = "",      # suffix for functions and file names
+  treeName:          str                       = "data",  # name of the tree with generated data
+  additionalColDefs: Iterable[tuple[str, str]] = (),      # additional column definitions to be added to the returned RDataFrame
+) -> ROOT.RDataFrame:
+  """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
+  print(f"Generating {nmbEvents} events distributed according to PWA model {inputData} with photon-beam polarization {polarization} weighted by efficiency {efficiencyFormula}")
+
+  # construct and draw efficiency function
+  efficiencyFcn = ROOT.TF3(f"efficiencyGen{nameSuffix}", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
+  efficiencyFcn.SetNpx(100)
+  efficiencyFcn.SetNpy(100)
+  efficiencyFcn.SetNpz(100)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, maxVal = 1.0,
+    outFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
+
+  # construct TF3 for intensity distribution in Eq. (171)
+  # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
+  intensityFormula = inputData.intensityFormula(
+    polarization = polarization,
+    thetaFormula = "std::acos(x)",
+    phiFormula   = "TMath::DegToRad() * y",
+    PhiFormula   = "TMath::DegToRad() * z",
+    printFormula = False,
+  )
+
+  # apply efficiency weighting to intensity formula
+  if efficiencyFormula:
+    intensityFormula = f"{intensityFormula} * ({efficiencyFormula})"
+
+  return genDataFromIntensityFormula(
+    nmbEvents         = nmbEvents,
+    intensityFormula  = intensityFormula,
+    regenerateData    = regenerateData,
+    outFileNamePrefix = outFileNamePrefix,
+    nameSuffix        = nameSuffix,
+    treeName          = treeName,
+    additionalColDefs = additionalColDefs,
+  )
 
 
 def genAccepted2BodyPsPhotoProd(
@@ -273,10 +287,11 @@ if __name__ == "__main__":
     t = timer.start("Time to generate MC data from partial waves")
     HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
     print(f"True moment values\n{HTruth}")
-    dataPwaModel = genDataFromWaves(
+    dataPwaModel = genData(
       nmbEvents         = nmbPwaMcEvents,
       polarization      = beamPolarization,
-      amplitudeSet      = amplitudeSet,
+      inputData         = amplitudeSet,
+      # inputData         = HTruth,  # must yield the same intensity distribution as amplitudeSet
       efficiencyFormula = efficiencyFormulaGen,
       regenerateData    = False,
       outFileNamePrefix = f"{outputDirName}/",

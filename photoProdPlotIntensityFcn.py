@@ -136,10 +136,10 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
 
-  dataPeriod        = "2018_08"
-  tBinLabel         = "tbin_0.1_0.2"
-  beamPolLabel      = "PARA_0"
-  maxL              = 4
+  dataPeriod   = "2018_08"
+  tBinLabel    = "tbin_0.1_0.2"
+  beamPolLabel = "PARA_0"
+  maxL         = 4
 
   timer.start("Total execution time")
   momentResultsFileName = f"./plotsPhotoProdPiPiPol/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL}/unnorm_moments_phys.pkl"

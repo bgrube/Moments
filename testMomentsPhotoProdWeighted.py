@@ -34,7 +34,7 @@ from PlottingUtilities import (
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 from testMomentsPhotoProd import (
   genAccepted2BodyPsPhotoProd,
-  genDataFromWaves,
+  genData,
   TH3_ANG_NMB_BINS,
   TH3_ANG_TITLE,
 )
@@ -57,10 +57,10 @@ def genSigAndBkgDataFromWaves(
   treeName = "data"
 
   print("Generating signal distribution")
-  dataPwaModelSig: ROOT.RDataFrame = genDataFromWaves(
+  dataPwaModelSig: ROOT.RDataFrame = genData(
     nmbEvents         = nmbEventsSig,
     polarization      = polarization,
-    amplitudeSet      = amplitudeSetSig,
+    inputData         = amplitudeSetSig,
     efficiencyFormula = efficiencyFormula,
     outFileNamePrefix = f"{outputDirName}/",
     nameSuffix        = "Sig",
@@ -69,10 +69,10 @@ def genSigAndBkgDataFromWaves(
   )
 
   print("Generating background distribution")
-  dataPwaModelBkg: ROOT.RDataFrame = genDataFromWaves(
+  dataPwaModelBkg: ROOT.RDataFrame = genData(
     nmbEvents         = nmbEventsBkg,
     polarization      = polarization,
-    amplitudeSet      = amplitudeSetBkg,
+    inputData         = amplitudeSetBkg,
     efficiencyFormula = efficiencyFormula,
     outFileNamePrefix = f"{outputDirName}/",
     nameSuffix        = "Bkg",
