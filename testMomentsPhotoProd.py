@@ -24,6 +24,7 @@ from MomentCalculator import (
   MomentCalculatorsKinematicBinning,
   MomentIndices,
   MomentResult,
+  MomentResultsKinematicBinning,
   QnWaveIndex,
 )
 from PlottingUtilities import (
@@ -202,7 +203,7 @@ if __name__ == "__main__":
     nmbPwaMcEvents   = 1000
     nmbPsMcEvents    = 1000000
     beamPolarization = 1.0
-    maxL             = 5  # define maximum L quantum number of moments
+    maxL             = 4  # define maximum L quantum number of moments
     partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
       AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
@@ -251,9 +252,16 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     t = timer.start("Time to generate MC data from partial waves")
-    HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL)
+    HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
     print(f"True moment values\n{HTruth}")
-    dataPwaModel = genDataFromWaves(nmbPwaMcEvents, beamPolarization, amplitudeSet, efficiencyFormulaGen, outFileNamePrefix = f"{outputDirName}/", regenerateData = True)
+    dataPwaModel = genDataFromWaves(
+      nmbEvents         = nmbPwaMcEvents,
+      polarization      = beamPolarization,
+      amplitudeSet      = amplitudeSet,
+      efficiencyFormula = efficiencyFormulaGen,
+      regenerateData    = False,
+      outFileNamePrefix = f"{outputDirName}/",
+    )
     t.stop()
 
     # plot data generated from partial-wave amplitudes
@@ -271,27 +279,42 @@ if __name__ == "__main__":
 
     # generate accepted phase-space data
     t = timer.start("Time to generate phase-space MC data")
-    dataAcceptedPs = genAccepted2BodyPsPhotoProd(nmbPsMcEvents, efficiencyFormulaReco, outFileNamePrefix = f"{outputDirName}/", regenerateData = True)
+    dataAcceptedPs = genAccepted2BodyPsPhotoProd(
+      nmbEvents         = nmbPsMcEvents,
+      efficiencyFormula = efficiencyFormulaReco,
+      regenerateData    = False,
+      outFileNamePrefix = f"{outputDirName}/",
+    )
     t.stop()
 
     # setup moment calculator
     momentIndices = MomentIndices(maxL)
     binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning   = HistAxisBinning(nmbBins = 2, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
+    massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
     momentsInBins:      list[MomentCalculator] = []
     momentsInBinsTruth: list[MomentCalculator] = []
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
-      dataSet = DataSet(dataPwaModel, phaseSpaceData = dataAcceptedPs, nmbGenEvents = nmbPsMcEvents, polarization = beamPolarization)  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
-      momentsInBins.append(MomentCalculator(momentIndices, dataSet, integralFileBaseName = f"{outputDirName}/integralMatrix", binCenters = {binVarMass : massBinCenter}))
-      # dummy truth values; identical for all bins
-      momentsInBinsTruth.append(MomentCalculator(momentIndices, dataSet, binCenters = {binVarMass : massBinCenter}, HPhys = HTruth))
-    moments      = MomentCalculatorsKinematicBinning(momentsInBins)
-    momentsTruth = MomentCalculatorsKinematicBinning(momentsInBinsTruth)
+      dataSet = DataSet(
+        data           = dataPwaModel,
+        phaseSpaceData = dataAcceptedPs,
+        nmbGenEvents   = nmbPsMcEvents,
+        polarization   = beamPolarization
+      )  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
+      momentsInBins.append(
+        MomentCalculator(
+          indicesMeas          = momentIndices,
+          indicesPhys          = momentIndices,
+          dataSet              = dataSet,
+          integralFileBaseName = f"{outputDirName}/integralMatrix",
+          binCenters           = {binVarMass : massBinCenter},
+        )
+      )
+    moments = MomentCalculatorsKinematicBinning(momentsInBins)
 
     # calculate integral matrices
     t = timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
-    moments.calculateIntegralMatrices(forceCalculation = True)
+    moments.calculateIntegralMatrices(forceCalculation = False)
     # print acceptance integral matrix for first kinematic bin
     print(f"Acceptance integral matrix for first bin\n{moments[0].integralMatrix}")
     eigenVals, _ = moments[0].integralMatrix.eigenDecomp
@@ -305,25 +328,34 @@ if __name__ == "__main__":
 
     # calculate moments of data generated from partial-wave amplitudes
     t = timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
-    moments.calculateMoments()
+    moments.calculateMoments(normalize = False)
     # print all moments for first kinematic bin
     print(f"Measured moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HMeas}")
     print(f"Physical moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HPhys}")
+
     # plot moments in each kinematic bin
-    for HData in moments:
-      label = binLabel(HData)
-      plotMomentsInBin(HData = moments[0].HPhys, HTruth = HTruth, outFileNamePrefix = f"{outputDirName}/h{label}_")
-    # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
-    for qnIndex in momentIndices.qnIndices:
-      plotMoments1D(
-        momentResults     = moments.momentResultsPhys,
-        qnIndex           = qnIndex,
-        binning           = massBinning,
-        normalizedMoments = True,
-        momentResultsTrue = momentsTruth.momentResultsPhys,
-        outFileNamePrefix = f"{outputDirName}/h",
-        histTitle         = qnIndex.title,
+    momentResultsPhys  = moments.momentResultsPhys
+    momentResultsTruth = MomentResultsKinematicBinning([HTruth] * len(moments))  # dummy truth values; identical for all bins
+    normalizationFactor = momentResultsTruth.normalizeTo(momentResultsPhys)  # normalize true moments to data
+    for massBinIndex, HPhys in enumerate(momentResultsPhys):
+      plotMomentsInBin(
+        HData             = HPhys,
+        normalizedMoments = False,
+        HTruth            = momentResultsTruth[massBinIndex],
+        outFileNamePrefix = f"{outputDirName}/h{binLabel(HPhys)}_",
       )
+    if False:
+      # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
+      for qnIndex in momentIndices.qnIndices:
+        plotMoments1D(
+          momentResults     = momentResultsPhys,
+          qnIndex           = qnIndex,
+          binning           = massBinning,
+          normalizedMoments = False,
+          momentResultsTrue = momentResultsTruth,
+          outFileNamePrefix = f"{outputDirName}/h",
+          histTitle         = qnIndex.title,
+        )
     t.stop()
 
     timer.stop("Total execution time")
