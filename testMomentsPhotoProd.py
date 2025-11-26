@@ -86,10 +86,20 @@ def genDataFromWaves(
     thetaFormula = "std::acos(x)",
     phiFormula   = "TMath::DegToRad() * y",
     PhiFormula   = "TMath::DegToRad() * z",
-    printFormula = True,
+    printFormula = False,
   )
+  # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL = 2 * amplitudeSet.maxSpin, normalize = False)
+  # print(f"!!! True moment values\n{HTruth}")
+  # intensityFormula = HTruth.intensityFormula(  # this must yield the same intensity function
+  #   polarization = polarization,
+  #   thetaFormula = "std::acos(x)",
+  #   phiFormula   = "TMath::DegToRad() * y",
+  #   PhiFormula   = "TMath::DegToRad() * z",
+  #   printFormula = False,
+  # )
   if efficiencyFormula:
     intensityFormula = f"{intensityFormula} * ({efficiencyFormula})"
+  print(f"Intensity formula:\n{intensityFormula}")
   intensityFcn = ROOT.TF3(f"intensity{nameSuffix}", intensityFormula, -1, +1, -180, +180, -180, +180)
   # intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
   intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
@@ -194,16 +204,19 @@ if __name__ == "__main__":
   setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
-  with threadController.limit(limits = 5):
+  with threadController.limit(limits = 4):
     print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
     timer.start("Total execution time")
 
     # set parameters of test case
-    outputDirName    = Utilities.makeDirPath("./plotsTestPhotoProd")
-    nmbPwaMcEvents   = 1000
-    nmbPsMcEvents    = 1000000
-    beamPolarization = 1.0
-    maxL             = 4  # define maximum L quantum number of moments
+    # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
+    # nmbPwaMcEvents        = 1000
+    # nmbPsMcEvents         = 1000000
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.intMoments")
+    nmbPwaMcEvents        = 1000000
+    nmbPsMcEvents         = 10000000
+    beamPolarization      = 1.0
+    maxL                  = 4  # define maximum L quantum number of moments
     partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
       AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
@@ -227,6 +240,7 @@ if __name__ == "__main__":
       AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
     ]
     amplitudeSet = AmplitudeSet(partialWaveAmplitudes)
+
     # formulas for detection efficiency
     # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     # efficiencyFormulaGen = "1"  # acc_perfect
@@ -239,6 +253,11 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = "0.1 * (1.5 - y * y / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
     # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - z * z / (180 * 180)) / (1.5**2)"  # detune_even; detune by even terms in cos(theta) and Phi
     # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
+    punchAccHole = ""
+    # punchAccHole = "!((0.4 < x && x < 0.6) && (-180 < y && y < -140))"  # punch hole in acceptance for 0.4 < cos(theta) < 0.6 and -180 deg < phi < -140 deg
+    if punchAccHole:
+      efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({punchAccHole}))"
+    efficiencyFormulaReco = ""
     if efficiencyFormulaDetune:
       efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
       efficiencyFcnDetune.SetNpx(100)

@@ -254,9 +254,9 @@ if __name__ == "__main__":
         thetaFormula      = "x",
         phiFormula        = "y",
         PhiFormula        = "z",
-        useIntensityTerms = MomentResult.IntensityTermsType.ALL,
-        # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING,
-        # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING,
+        useIntensityTerms = MomentResult.IntensityTermsType.ALL,  # must agree with other intensity values
+        # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING,  # must agree with other intensity values
+        # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING,  # will not agree with other intensity values
       ),
       0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi,
     )
