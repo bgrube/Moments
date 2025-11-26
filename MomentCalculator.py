@@ -1293,7 +1293,7 @@ class MomentResult:
     for momentIndex, terms in enumerate(intensityComponentTerms):
       intensityComponentsFormula[momentIndex] = f"({' + '.join(filter(None, terms))})"
     # sum intensity components
-    intensityFormula = f"{intensityComponentsFormula[0]}"  # I_0 term
+    intensityFormula = f"({intensityComponentsFormula[0]}"  # I_0 term
     if self.indices.polarized:  # Eq. (120)
       assert len(intensityComponentsFormula) == 3, f"Need three intensity components for polarized photoproduction, but got {len(intensityComponentsFormula)=}"
       assert polarization is not None, "For polarized photoproduction, `polarization` must not be `None`"
@@ -1301,6 +1301,7 @@ class MomentResult:
       intensityFormula += f" - {intensityComponentsFormula[2]} * {polarization} * std::sin(2 * {PhiFormula})"  # I_2 term
     else:
       assert polarization is None, f"For unpolarized photoproduction, `polarization` must be `None`, but got {polarization=}"
+    intensityFormula += ")"
     if printFormula:
       print(f"Intensity formula = {intensityFormula}")
     return intensityFormula
