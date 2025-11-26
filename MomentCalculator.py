@@ -596,8 +596,19 @@ class AcceptanceIntegralMatrix:
     """Returns (pseudo-)inverse of acceptance integral matrix"""
     dim = self.matrix.shape
     if dim[0] == dim[1]:
-      print(f"Calculating inverse of square integral matrix")
-      return np.linalg.inv(self.matrix)
+      # check condition number to detect near-singular matrices
+      conditionNmb = np.linalg.cond(self.matrix)
+      eps          = np.finfo(self.matrix.dtype).eps
+      if conditionNmb < 1.0 / eps:
+        try:
+          print(f"Calculating inverse of square integral matrix")
+          return np.linalg.inv(self.matrix)
+        except np.linalg.LinAlgError as e:
+          print(f"Warning: Direct inversion failed ({e}); falling back to pseudo-inverse")
+          return np.linalg.pinv(self.matrix)
+      else:
+        print(f"Warning: Square integral matrix is ill-conditioned (condition number = {conditionNmb:.3e}), using pseudo-inverse instead of direct inversion")
+        return np.linalg.pinv(self.matrix)
     else:
       print(f"Calculating pseudo-inverse of ({dim[0]} times {dim[1]}) integral matrix")
       return np.linalg.pinv(self.matrix)
@@ -1088,7 +1099,7 @@ class MomentResult:
     if not self:
       raise ValueError("MomentResult is not valid; cannot access covariance values")
     assert len(momentIndexPair) == 2, f"Expect exactly two moment indices; got {len(momentIndexPair)} instead"
-    assert len(realParts) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
+    assert len(realParts      ) == 2, f"Expect exactly two flags for real/imag part; got {len(realParts)} instead"
     flatIndexPair: tuple[int, int] = tuple(
       self.indices[momentIndex] if isinstance(momentIndex, QnMomentIndex) else momentIndex
       for momentIndex in momentIndexPair
