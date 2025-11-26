@@ -7,6 +7,7 @@ import copy
 import functools
 import numpy as np
 from typing import TYPE_CHECKING
+import sys
 
 import ROOT
 
@@ -163,7 +164,7 @@ if __name__ == "__main__":
   if True:
     # test intensity formula from moments
     ampSet = AmplitudeSet(amplitudes[True], tolerance = 1e-13)
-    H: MomentResult = ampSet.photoProdMomentResult(maxL = 1, normalize = False, printMomentFormulas = False)
+    H: MomentResult = ampSet.photoProdMomentResult(maxL = 4, normalize = False, printMomentFormulas = False)
     # H.indices.setPolarized(False)
     print(f"H =\n{H}")
     intensityFormula = H.intensityFormula(
@@ -201,6 +202,7 @@ if __name__ == "__main__":
     # convert to ROOT data frame
     rdf = ROOT.RDF.FromNumpy(gridData)
     # rdf.Describe().Print()
+    # setup a moment calculator and construct negative log-likelihood function using data generated above
     momentCalculator = MomentCalculator(
       indicesMeas = H.indices,  # dummy, not used in this test
       indicesPhys = H.indices,
@@ -220,6 +222,7 @@ if __name__ == "__main__":
       },  # dummy bin
     )
     negativeLogLikelihoodFcn = momentCalculator.negativeLogLikelihoodFcn()
+    # prepare moment values vector for intensity function
     reIndexRange = (
       QnMomentIndex(momentIndex = 0, L = 0,              M = 0),
       QnMomentIndex(momentIndex = 1, L = H.indices.maxL, M = H.indices.maxL),
@@ -232,43 +235,54 @@ if __name__ == "__main__":
     reSlice = slice(H.indices[reIndexRange[0]], H.indices[reIndexRange[1]] + 1)
     imSlice = slice(H.indices[imIndexRange[0]], H.indices[imIndexRange[1]] + 1)
     # print(f"{reSlice=}, {imSlice=}")
-    print(f"{H._valsFlatIndex=}")
+    print(f"!!! {H._valsFlatIndex=}")
     momentValues = np.concatenate((np.real(H._valsFlatIndex[reSlice]), np.imag(H._valsFlatIndex[imSlice])))
-    print(f"{momentValues.dtype=}\n{momentValues=}")
-    _, intensities = negativeLogLikelihoodFcn._intensityFcn(momentValues)
-    print(f"{intensities.dtype=}\n{intensities=}")
+    print(f"!!! {momentValues.dtype=}\n{momentValues=}")
+    # get intensities evaluated at data points
+    _, intensitiesFcnNll = negativeLogLikelihoodFcn._intensityFcn(momentValues)
+    print(f"!!! {intensitiesFcnNll.dtype=}\n{intensitiesFcnNll=}")
 
-    # compare with intensity formula
+    # compare with intensity formula from `MomentResult`
     # declare C++ functions
     ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
     ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
     ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
-    intensityFcn = ROOT.TF3(
-      f"intensityFcn",
+    intensityFcnMoments = ROOT.TF3(
+      f"intensityFcnMoments",
       H.intensityFormula(
         polarization      = 1.0,
         thetaFormula      = "x",
         phiFormula        = "y",
         PhiFormula        = "z",
-        # useIntensityTerms = MomentResult.IntensityTermsType.ALL,
-        useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+        useIntensityTerms = MomentResult.IntensityTermsType.ALL,
+        # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING,
         # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING,
       ),
-      0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi
+      0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi,
     )
-    for index in range(len(gridData["theta"])):
-      theta = gridData["theta"][index]
-      phi   = gridData["phi"]  [index]
-      Phi   = gridData["Phi"]  [index]
-      intensityFormulaVal = intensityFcn.Eval(theta, phi, Phi)
-      delta = intensityFormulaVal - intensities[index]
-      if abs(delta) > 1e-14:
-        print(
-          f"Warning: {index=}: (theta={np.degrees(theta):.0f}, phi={np.degrees(phi):.0f}, Phi={np.degrees(Phi):.0f}) deg: "
-          f"{intensityFormulaVal=} vs. {intensities[index]} "
-          f"-> delta = {delta}"
-        )
+    intensityFcnMomentsVect = np.vectorize(intensityFcnMoments.Eval)
+    intensitiesFcnMoments = intensityFcnMomentsVect(gridData["theta"], gridData["phi"], gridData["Phi"])
+    deltaFcnNll = intensitiesFcnMoments - intensitiesFcnNll
+    print(f"Maximum deviation between intensity formula from MomentResult and intensity function from negative log-likelihood: {np.max(np.abs(deltaFcnNll))}")
 
+    # compare with intensity formula from `AmplitudeSet`
+    intensityFcnAmpSet = ROOT.TF3(
+      f"intensityFcnAmpSet",
+      ampSet.intensityFormula(
+        polarization = 1.0,
+        thetaFormula = "x",
+        phiFormula   = "y",
+        PhiFormula   = "z",
+        printFormula = True,
+      ),
+      0, np.pi, -np.pi, +np.pi, -np.pi, +np.pi,
+    )
+    intensityFcnAmpSetVect = np.vectorize(intensityFcnAmpSet.Eval)
+    intensitiesFcnAmpSet = intensityFcnAmpSetVect(gridData["theta"], gridData["phi"], gridData["Phi"])
+    deltaFcnAmpSet = intensitiesFcnMoments - intensitiesFcnAmpSet
+    print(f"Maximum deviation between intensity formula from MomentResult and from amplitude set: {np.max(np.abs(deltaFcnAmpSet))}")
+    # with np.printoptions(threshold = sys.maxsize):
+    #   print(f"!!! {deltaFcnAmpSet=}")
 
 # polarized case:
 
