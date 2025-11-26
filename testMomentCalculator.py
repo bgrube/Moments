@@ -16,6 +16,7 @@ from dataPhotoProdPiPi.makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
 )
 from MomentCalculator import (
+  AcceptanceIntegralMatrix,
   AmplitudeSet,
   AmplitudeValue,
   DataSet,
@@ -58,7 +59,19 @@ if __name__ == "__main__":
       except KeyError as e:
         print(f"KeyError: {e}: {qnIndex} does not exist in momentIndices")
 
-    print(f"MomentResult for polarized moments:")
+    print("Integral matrix:")
+    integralMatrix = AcceptanceIntegralMatrix(
+      indicesMeas = MomentIndices(maxL = 4, polarized = True),
+      indicesPhys = MomentIndices(maxL = 4, polarized = True),
+      dataSet     = DataSet(data = None, phaseSpaceData = None, nmbGenEvents = 0, polarization = 1.0),  # dummy data set
+    )
+    # integralMatrix.load("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/integralMatrix_mass_0.460.npy")
+    integralMatrix.load("./plotsPhotoProdPiPiPol.allH2/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/integralMatrix_mass_0.460.npy")
+    indexMeas = QnMomentIndex(momentIndex = 2, L = 0, M = 0)
+    for indexPhys in integralMatrix.indicesPhys.qnIndices:
+      print(f"Integral[{indexMeas=}, {indexPhys=}] = {integralMatrix[indexMeas, indexPhys]}")
+
+    print("MomentResult for polarized moments:")
     momentResult = MomentResult(MomentIndices(maxL = 5, polarized = True))
     momentResult.valid = True
     print(f"{momentResult=}")
