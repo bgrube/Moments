@@ -60,43 +60,46 @@ TH3_ANG_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_ANG_TITLE, "binnings
 def genDataFromIntensityFormula(
   nmbEvents:         int,  # number of events to generate
   intensityFormula:  str,  # intensity formula as function of x = cos(theta), y = phi [deg], z = Phi [deg] that defines distribution of events
+  outFileBasePath:   str,  # path and base name of output files, i.e. .root and .pdf file
   regenerateData:    bool                      = False,   # if set data are regenerated although .root file exists
-  outFileNamePrefix: str                       = "./",    # name prefix for output files
-  nameSuffix:        str                       = "",      # suffix for functions and file names
   treeName:          str                       = "data",  # name of the tree with generated data
   additionalColDefs: Iterable[tuple[str, str]] = (),      # additional column definitions to be added to the returned RDataFrame
 ) -> ROOT.RDataFrame:
-  """Generate data according to the given intensity formula"""
+  """Generates MC events according to the given intensity formula"""
   print(f"Generating events distributed according to intensity formula:\n{intensityFormula}")
-  intensityFcn = ROOT.TF3(f"intensity{nameSuffix}", intensityFormula, -1, +1, -180, +180, -180, +180)
-  # intensityFcn.SetTitle(";cos#theta;#phi [deg];#Phi [deg]")
-  intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom()
+
+  # construct and plot TF3 for intensity distribution
+  baseName = os.path.basename(outFileBasePath)
+  intensityFcn = ROOT.TF3(f"{baseName}_intensity", intensityFormula, -1, +1, -180, +180, -180, +180)
+  intensityFcn.SetNpx(100)  # used in numeric integration performed by GetRandom3() used below
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
-  intensityFcn.SetMinimum(0)
-  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.pdf")
+  # intensityFcn.SetMinimum(0)  # may be negative in pathological cases
+  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileBasePath}_intensity.pdf")
   #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
   # if file with generated data already exists, read it and return RDataFrame
-  fileName = f"{outFileNamePrefix}data{nameSuffix}.root"
+  fileName = f"{outFileBasePath}.root"
   if not regenerateData and os.path.exists(fileName):
-    print(f"Reading generated MC data from '{fileName}'")
+    print(f"Reading generated MC data from existing file at '{fileName}'")
     df = ROOT.RDataFrame(treeName, fileName)
     nmbEvents = df.Count().GetValue()
     print(f"File '{fileName}' contains {nmbEvents} events")
     return df
 
+  # else generate data and write to file
   print(f"Generating {nmbEvents} events and writing them to '{fileName}'")
+  # Use TF3.GetRandom3() to generate random data points in angular space
   RootUtilities.declareInCpp(**{intensityFcn.GetName(): intensityFcn})  # use Python object in C++
-  dataPointFcn = f"""
+  randomPointFcn = f"""
     double cosTheta, phiDeg, PhiDeg;
     PyVars::{intensityFcn.GetName()}.GetRandom3(cosTheta, phiDeg, PhiDeg);
-    std::vector<double> dataPoint = {{cosTheta, phiDeg, PhiDeg}};
+    const std::vector<double> dataPoint = {{cosTheta, phiDeg, PhiDeg}};
     return dataPoint;
   """  # C++ code that throws random point in angular space
   df = (
     ROOT.RDataFrame(nmbEvents)
-        .Define("dataPoint", dataPointFcn)
+        .Define("dataPoint", randomPointFcn)
         .Define("cosTheta",  "dataPoint[0]")
         .Define("theta",     "std::acos(cosTheta)")
         .Define("phiDeg",    "dataPoint[1]")
@@ -104,7 +107,7 @@ def genDataFromIntensityFormula(
         .Define("PhiDeg",    "dataPoint[2]")
         .Define("Phi",       "TMath::DegToRad() * PhiDeg")
         # add no-op filter that logs when event loop is running
-        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genDataFromWaves()" << endl; } return true;')
+        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in `genDataFromIntensityFormula()`" << endl; } return true;')
   )  #!NOTE! for some reason, this is very slow
   columnsToWrite = ["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]
   for colName, colDefinitions in additionalColDefs:
@@ -117,24 +120,24 @@ def genDataFromIntensityFormula(
 def genData(
   nmbEvents:         int,           # number of events to generate
   polarization:      float | None,  # photon-beam polarization
-  inputData:         AmplitudeSet | MomentResult,         # generate data either from set of partial-wave amplitudes or from moment result
+  inputData:         AmplitudeSet | MomentResult,  # generate data either from set of partial-wave amplitudes or from moment result
+  outFileBasePath:   str,  # path and base name of output files, i.e. .root and .pdf file
   efficiencyFormula: str | None                = None,    # detection efficiency used to generate data
   regenerateData:    bool                      = False,   # if set data are regenerated although .root file exists
-  outFileNamePrefix: str                       = "./",    # name prefix for output files
-  nameSuffix:        str                       = "",      # suffix for functions and file names
   treeName:          str                       = "data",  # name of the tree with generated data
   additionalColDefs: Iterable[tuple[str, str]] = (),      # additional column definitions to be added to the returned RDataFrame
 ) -> ROOT.RDataFrame:
-  """Generates data according to set of partial-wave amplitudes (assuming rank 1) and given detection efficiency"""
-  print(f"Generating {nmbEvents} events distributed according to PWA model {inputData} with photon-beam polarization {polarization} weighted by efficiency {efficiencyFormula}")
+  """Generates data according to given set of partial-wave amplitudes (assuming rank 1) or moment result and the given detection efficiency"""
+  print(f"Generating {nmbEvents} events for photon-beam polarization {polarization} and efficiency {efficiencyFormula}")
+  print(f"Events will be distributed according to intensity defined by\n{inputData}")
 
   # construct and draw efficiency function
-  efficiencyFcn = ROOT.TF3(f"efficiencyGen{nameSuffix}", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
+  efficiencyFcn = ROOT.TF3(f"efficiencyGen", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
   efficiencyFcn.SetNpx(100)
   efficiencyFcn.SetNpy(100)
   efficiencyFcn.SetNpz(100)
   drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, maxVal = 1.0,
-    outFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.pdf")
+    outFileName = f"{outFileBasePath}_efficiency.pdf")
 
   # construct TF3 for intensity distribution in Eq. (171)
   # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
@@ -148,65 +151,16 @@ def genData(
 
   # apply efficiency weighting to intensity formula
   if efficiencyFormula:
-    intensityFormula = f"{intensityFormula} * ({efficiencyFormula})"
+    intensityFormula = f"({intensityFormula}) * ({efficiencyFormula})"
 
   return genDataFromIntensityFormula(
     nmbEvents         = nmbEvents,
     intensityFormula  = intensityFormula,
+    outFileBasePath   = outFileBasePath,
     regenerateData    = regenerateData,
-    outFileNamePrefix = outFileNamePrefix,
-    nameSuffix        = nameSuffix,
     treeName          = treeName,
     additionalColDefs = additionalColDefs,
   )
-
-
-def genAccepted2BodyPsPhotoProd(
-  nmbEvents:         int,                 # number of events to generate
-  efficiencyFormula: str | None = None,   # detection efficiency used for acceptance correction
-  regenerateData:    bool       = False,  # if set data are regenerated although .root file exists
-  outFileNamePrefix: str        = "./",   # name prefix for output files
-) -> ROOT.RDataFrame:
-  """Generates RDataFrame with two-body phase-space distribution weighted by given detection efficiency"""
-  print(f"Generating {nmbEvents} events distributed according to two-body phase-space weighted by efficiency {efficiencyFormula}")
-  # construct and draw efficiency function
-  efficiencyFcn = ROOT.TF3("efficiencyReco", efficiencyFormula if efficiencyFormula else "1", -1, +1, -180, +180, -180, +180)
-  efficiencyFcn.SetNpx(100)
-  efficiencyFcn.SetNpy(100)
-  efficiencyFcn.SetNpz(100)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileNamePrefix}hEfficiencyReco.pdf", maxVal = 1.0)
-
-  # generate isotropic distributions in cos theta, phi, and Phi and weight with efficiency function
-  treeName = "data"
-  fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
-  if os.path.exists(fileName) and not regenerateData:
-    print(f"Reading accepted phase-space MC data from '{fileName}'")
-    return ROOT.RDataFrame(treeName, fileName)
-  print(f"Generating accepted phase-space MC data and writing them to '{fileName}'")
-  #TODO avoid code doubling with genDataFromWaves() and corresponding function in testMomentsAlex
-  RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)  # use Python object in C++
-  pointFcn = """
-    double cosTheta, phiDeg, PhiDeg;
-    PyVars::efficiencyFcn.GetRandom3(cosTheta, phiDeg, PhiDeg);
-    std::vector<double> point = {cosTheta, phiDeg, PhiDeg};
-    return point;
-  """  # C++ code that throws random point in angular space
-  df = (
-    ROOT.RDataFrame(nmbEvents)
-        .Define("point",    pointFcn)
-        .Define("cosTheta", "point[0]")
-        .Define("theta",    "std::acos(cosTheta)")
-        .Define("phiDeg",   "point[1]")
-        .Define("phi",      "TMath::DegToRad() * phiDeg")
-        .Define("PhiDeg",   "point[2]")
-        .Define("Phi",      "TMath::DegToRad() * PhiDeg")
-        # add no-op filter that logs when event loop is running
-        .Filter('if (rdfentry_ == 0) { cout << "Running event loop in genData2BodyPsPhotoProd()" << endl; } return true;')
-        # need to snapshot or else the `point` column would be regenerated for every triggered loop
-        # .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["theta", "phi", "Phi"]))
-        .Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"]))
-  )
-  return df
 
 
 if __name__ == "__main__":
@@ -226,10 +180,11 @@ if __name__ == "__main__":
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
     # nmbPwaMcEvents        = 1000
     # nmbPsMcEvents         = 1000000
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.intMoments")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd")
     nmbPwaMcEvents        = 1000000
     nmbPsMcEvents         = 10000000
-    beamPolarization      = 1.0
+    # beamPolarization      = 1.0
+    beamPolarization      = 0.3563  # Fall 2018, PARA_0
     maxL                  = 4  # define maximum L quantum number of moments
     partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
@@ -285,16 +240,19 @@ if __name__ == "__main__":
 
     # calculate true moment values and generate data from partial-wave amplitudes
     t = timer.start("Time to generate MC data from partial waves")
-    HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
-    print(f"True moment values\n{HTruth}")
+    # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
+    momentResultsFileName = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl"
+    print(f"Reading moments from file '{momentResultsFileName}'")
+    HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)[11]  # pick [0.72, 0.76] GeV bin
+    # print(f"True moment values\n{HTruth}")
     dataPwaModel = genData(
       nmbEvents         = nmbPwaMcEvents,
       polarization      = beamPolarization,
-      inputData         = amplitudeSet,
-      # inputData         = HTruth,  # must yield the same intensity distribution as amplitudeSet
+      # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
+      inputData         = HTruth,
+      outFileBasePath   = f"{outputDirName}/data",
       efficiencyFormula = efficiencyFormulaGen,
       regenerateData    = False,
-      outFileNamePrefix = f"{outputDirName}/",
     )
     t.stop()
 
@@ -302,7 +260,7 @@ if __name__ == "__main__":
     canv = ROOT.TCanvas()
     nmbBins = 25
     hist = dataPwaModel.Histo3D(
-      ROOT.RDF.TH3DModel("hData", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+      ROOT.RDF.TH3DModel("data", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
       "cosTheta", "phiDeg", "PhiDeg")
     hist.SetMinimum(0)
     hist.GetXaxis().SetTitleOffset(1.5)
@@ -313,11 +271,11 @@ if __name__ == "__main__":
 
     # generate accepted phase-space data
     t = timer.start("Time to generate phase-space MC data")
-    dataAcceptedPs = genAccepted2BodyPsPhotoProd(
-      nmbEvents         = nmbPsMcEvents,
-      efficiencyFormula = efficiencyFormulaReco,
-      regenerateData    = False,
-      outFileNamePrefix = f"{outputDirName}/",
+    dataAcceptedPs = genDataFromIntensityFormula(
+      nmbEvents        = nmbPsMcEvents,
+      intensityFormula = efficiencyFormulaReco,
+      outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
+      regenerateData   = False,
     )
     t.stop()
 

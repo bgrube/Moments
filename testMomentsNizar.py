@@ -19,8 +19,8 @@ from MomentCalculator import (
 from PlottingUtilities import setupPlotStyle
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 from testMomentsPhotoProd import (
-  genAccepted2BodyPsPhotoProd,
   genData,
+  genDataFromIntensityFormula,
 )
 from Utilities import (
   makeDirPath,
@@ -199,11 +199,11 @@ if __name__ == "__main__":
 
     # generate phase-space data for perfect acceptance
     t = timer.start("Time to generate phase-space MC data")
-    dataAcceptedPs = genAccepted2BodyPsPhotoProd(
-      nmbEvents         = nmbPsMcEvents,
-      efficiencyFormula = None,
-      outFileNamePrefix = f"{outFileDirName}/",
-      regenerateData    = True
+    dataAcceptedPs = genDataFromIntensityFormula(
+      nmbEvents        = nmbPsMcEvents,
+      intensityFormula = "(1)",
+      outFileBasePath  = f"{outFileDirName}/acceptedPhaseSpace",
+      regenerateData   = True,
     )
     t.stop()
 

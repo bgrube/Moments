@@ -33,8 +33,8 @@ from PlottingUtilities import (
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 from testMomentsPhotoProd import (
-  genAccepted2BodyPsPhotoProd,
   genData,
+  genDataFromIntensityFormula,
   TH3_ANG_NMB_BINS,
   TH3_ANG_TITLE,
 )
@@ -257,11 +257,11 @@ if __name__ == "__main__":
 
     # generate accepted phase-space data
     with timer.timeThis("Time to generate phase-space MC data"):
-      dataAcceptedPs = genAccepted2BodyPsPhotoProd(
-        nmbEvents         = nmbAcceptedPsMcEvents,
-        efficiencyFormula = efficiencyFormula,
-        outFileNamePrefix = f"{outputDirName}/",
-        regenerateData    = True,
+      dataAcceptedPs = genDataFromIntensityFormula(
+        nmbEvents        = nmbAcceptedPsMcEvents,
+        intensityFormula = efficiencyFormula,
+        outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
+        regenerateData   = True,
       )
 
     # define input data
