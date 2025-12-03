@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     # set parameters of test case
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.hole.tooSmall")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.holeBig")
     # nmbDataEvents         = 1000
     # nmbAccPsEvents        = 1000000
     nmbDataEvents         = 1000000
@@ -233,18 +233,18 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detune_even; detune by even terms in cos(theta) and Phi
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detune_even; detune by even terms in all variables
     # efficiencyHoleGen = ""  # do not punch hole in acceptance when generating data
-    efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # punch hole in acceptance when generating data
+    # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # hole in acceptance when generating data
+    efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in acceptance when generating data
     # efficiencyHoleReco = ""  # do not punch hole in acceptance when analyzing data
-    efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # punch hole in acceptance when analyzing data
+    efficiencyHoleReco = efficiencyHoleGen  # hole in acceptance when analyzing data chosen to be same as hole used when generating data
+    # efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # hole in acceptance when analyzing data chosen to be smaller than hole used when generating data
+    # efficiencyHoleReco = f"!((0.25 < {xVar} && {xVar} < 0.75) && (-180 < {yVar} && {yVar} < -100))"  # hole in acceptance when analyzing data chosen to be bigger than hole used when generating data
     efficiencyFormulaGen = efficiencyFormula
     if efficiencyHoleGen:
       efficiencyFormulaGen = f"(({efficiencyFormula}) * ({efficiencyHoleGen}))"
     efficiencyFormulaReco = ""
     if efficiencyFormulaDetune:
       # efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-      # efficiencyFcnDetune.SetNpx(100)
-      # efficiencyFcnDetune.SetNpy(100)
-      # efficiencyFcnDetune.SetNpz(100)
       # drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
       efficiencyFormulaReco = f"(({efficiencyFormula}) + ({efficiencyFormulaDetune}))"
     else:
@@ -260,6 +260,7 @@ if __name__ == "__main__":
     print(f"Reading moments from file '{momentResultsFileName}'")
     HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)[11]  # pick [0.72, 0.76] GeV bin
     if True:
+    # if False:
       # set all unphysical parts of moment values to zero
       for flatIndex in range(len(HTruth._valsFlatIndex)):
         qnIndex = HTruth.indices[flatIndex]
