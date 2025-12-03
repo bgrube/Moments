@@ -113,21 +113,22 @@ def loadInputData(
           .Define("cosTheta", "(Double32_t)gRandom->Uniform(-1, +1)")
           .Define("theta",    "(Double32_t)std::acos(cosTheta)")
           .Define("phiDeg",   "(Double32_t)gRandom->Uniform(-180, +180)")
-          .Define("phi",      "(Double32_t)phiDeg * TMath::DegToRad()")
+          .Define("phi",      "(Double32_t)(phiDeg * TMath::DegToRad())")
           .Define("mass",    f"(Double32_t)gRandom->Uniform({kinematicBinRange[0]}, {kinematicBinRange[1]})")
           # add no-op filter that just prints a log message when event loop is running
-          .Filter('if (rdfentry_ == 0) { cout << "Running event loop in weightAccPhaseSpaceWithIntensity()" << endl; } return true;')
+          .Filter('if (rdfentry_ == 0) { cout << "Running event loop in `loadInputData()`" << endl; } return true;')
     )
     if cfg.polarization is not None:
       # polarized case: add Phi and polarization columns
       dataToWeight = (
         dataToWeight.Define("PhiDeg", "(Double32_t)gRandom->Uniform(-180, +180)")
-                    .Define("Phi",    "(Double32_t)PhiDeg * TMath::DegToRad()")
+                    .Define("Phi",    "(Double32_t)(PhiDeg * TMath::DegToRad())")
       )
       if isinstance(cfg.polarization, float):
         dataToWeight = dataToWeight.Define("beamPol", f"(Double32_t){cfg.polarization}")
       elif isinstance(cfg.polarization, str):
-        raise ValueError(f"Cannot read polarization from column '{cfg.polarization}'")
+        assert beamPolInfo is not None, f"Beam polarization information must be provided when generating phase-space data with {cfg.polarization=}"
+        dataToWeight = dataToWeight.Define(cfg.polarization, f"(Double32_t){beamPolInfo.pol}")
     #TODO is a snapshot necessary here to fill random columns only once?
     return dataToWeight, nmbGenPsEvents, list(dataToWeight.GetColumnNames())
   else:
@@ -136,7 +137,7 @@ def loadInputData(
 
 def weightDataWithIntensity(
   inputDataDef:         AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-                                                                          # if `tuple[str, str]`, a tuple (<tree name>, <file name>) is expected
+                                                                          # if `tuple[str, str]`, a tuple (<tree name>, <file name>) for raw data is expected
                                                                           # if `int`, phase-space distribution in angles is generated with given number of events
   massBinning:          HistAxisBinning,  # mass binning used for weighting
   massBinIndex:         int,              # index of mass bin to generate data for
@@ -200,7 +201,7 @@ def reweightData(
   variableName: str,              # column name corresponding to kinematic variable whose distribution is to be reweighted
   targetDistr:  ROOT.TH1D,        # histogram with target distribution
 ) -> ROOT.RDataFrame:
-  """Generic function to reweight the data in an RDataFrame such that the distribution of the given variable matches the target distribution in the given histogram"""
+  """Generic function that reweights data in given RDataFrame such that the distribution of the given variable matches the target distribution in the given histogram"""
   # get histogram of current distribution using same binning as targetDistribution
   currentDistr = dataToWeight.Histo1D(
     ROOT.RDF.TH1DModel(
@@ -255,7 +256,7 @@ def reweightKinDistribution(
   # momentResults:    MomentResultsKinematicBinning,  # moment values
   outFileName:      str,  # name of file to write data into
 ) -> None:
-  """Reweight mass distribution of given data according to the mass dependence of H_0(0, 0)"""
+  """Reweights mass distribution of given data according to the mass dependence of H_0(0, 0)"""
   print(f"Reweighting {binning.var.name} dependence")
   # construct target distribution from real data
   print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{realDataFileName}'")
@@ -301,6 +302,7 @@ def reweightKinDistribution(
     canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
 
 
+#TODO ist this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
 def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
@@ -309,7 +311,7 @@ def plotIntensityFcn(
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
 ) -> None:
-  """Draw intensity function in given mass bin and save PDF to output directory"""
+  """Draws intensity function in given mass bin and writes PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex}")
   if True:
     # draw intensity function as 3D plot
