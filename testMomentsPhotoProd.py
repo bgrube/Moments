@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     # set parameters of test case
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.hole")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.hole.tooSmall")
     # nmbDataEvents         = 1000
     # nmbAccPsEvents        = 1000000
     nmbDataEvents         = 1000000
@@ -222,30 +222,35 @@ if __name__ == "__main__":
     xVar = "cosTheta"
     yVar = "phiDeg"
     zVar = "PhiDeg"
-    # efficiencyFormulaGen = "1"  # acc_perfect
-    efficiencyFormulaGen = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
-    # efficiencyFormulaGen = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
-    # efficiencyFormulaGen = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
+    # efficiencyFormula = "1"  # acc_perfect
+    efficiencyFormula = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
+    # efficiencyFormula = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
+    # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
     # detune efficiency used to correct acceptance w.r.t. the one used to generate the data
     efficiencyFormulaDetune = ""
     # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detune_odd; detune by odd terms
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {yVar} * {yVar} / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detune_even; detune by even terms in cos(theta) and Phi
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detune_even; detune by even terms in all variables
-    # efficiencyHoleGen = ""
+    # efficiencyHoleGen = ""  # do not punch hole in acceptance when generating data
     efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # punch hole in acceptance when generating data
+    # efficiencyHoleReco = ""  # do not punch hole in acceptance when analyzing data
+    efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # punch hole in acceptance when analyzing data
+    efficiencyFormulaGen = efficiencyFormula
     if efficiencyHoleGen:
-      efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({efficiencyHoleGen}))"
+      efficiencyFormulaGen = f"(({efficiencyFormula}) * ({efficiencyHoleGen}))"
     efficiencyFormulaReco = ""
     if efficiencyFormulaDetune:
-      efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-      efficiencyFcnDetune.SetNpx(100)
-      efficiencyFcnDetune.SetNpy(100)
-      efficiencyFcnDetune.SetNpz(100)
-      drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
-      efficiencyFormulaReco = f"{efficiencyFormulaGen} + {efficiencyFormulaDetune}"
+      # efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
+      # efficiencyFcnDetune.SetNpx(100)
+      # efficiencyFcnDetune.SetNpy(100)
+      # efficiencyFcnDetune.SetNpz(100)
+      # drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
+      efficiencyFormulaReco = f"(({efficiencyFormula}) + ({efficiencyFormulaDetune}))"
     else:
-      efficiencyFormulaReco = efficiencyFormulaGen
+      efficiencyFormulaReco = efficiencyFormula
+    if efficiencyHoleReco:
+      efficiencyFormulaReco = f"(({efficiencyFormulaReco}) * ({efficiencyHoleReco}))"
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # calculate true moment values and generate data from partial-wave amplitudes
