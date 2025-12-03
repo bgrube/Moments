@@ -180,7 +180,7 @@ if __name__ == "__main__":
 
     # set parameters of test case
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.hole")
     # nmbDataEvents         = 1000
     # nmbAccPsEvents        = 1000000
     nmbDataEvents         = 1000000
@@ -232,10 +232,10 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {yVar} * {yVar} / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detune_even; detune by even terms in cos(theta) and Phi
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detune_even; detune by even terms in all variables
-    punchAccHole = ""
-    # punchAccHole = f"!((0.4 < {xVar} && {xVar} < 0.6) && (-180 < {yVar} && {yVar} < -140))"  # punch hole in acceptance for 0.4 < cos(theta) < 0.6 and -180 deg < phi < -140 deg
-    if punchAccHole:
-      efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({punchAccHole}))"
+    # efficiencyHoleGen = ""
+    efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # punch hole in acceptance when generating data
+    if efficiencyHoleGen:
+      efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({efficiencyHoleGen}))"
     efficiencyFormulaReco = ""
     if efficiencyFormulaDetune:
       efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
