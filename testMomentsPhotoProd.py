@@ -254,7 +254,17 @@ if __name__ == "__main__":
     momentResultsFileName = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl"
     print(f"Reading moments from file '{momentResultsFileName}'")
     HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)[11]  # pick [0.72, 0.76] GeV bin
-    # print(f"True moment values\n{HTruth}")
+    if True:
+      # set all unphysical parts of moment values to zero
+      for flatIndex in range(len(HTruth._valsFlatIndex)):
+        qnIndex = HTruth.indices[flatIndex]
+        if qnIndex.momentIndex in (0, 1):
+          HTruth._valsFlatIndex[flatIndex] = HTruth._valsFlatIndex[flatIndex].real
+        elif qnIndex.momentIndex == 2:
+          HTruth._valsFlatIndex[flatIndex] = 1j * HTruth._valsFlatIndex[flatIndex].imag
+        else:
+          raise ValueError(f"Unexpected moment index in {qnIndex=}")
+    print(f"True moment values\n{HTruth}")
     if False:
       dataPwaModel = genData(
         nmbEvents         = nmbDataEvents,

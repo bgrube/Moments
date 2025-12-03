@@ -1031,7 +1031,7 @@ class MomentResult:
     self,
     subscript: int | QnMomentIndex | slice,
   ) -> MomentValue | list[MomentValue]:
-    """Returns moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
+    """Returns copies of moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
     if not self:
       raise ValueError("MomentResult is not valid; cannot access moment values")
     # turn quantum-number index to flat index

@@ -169,8 +169,10 @@ def weightDataWithIntensityFormula(
   tmpFileName = f"{weightedDataFileName}.tmp"
   dataToWeight.Snapshot(cfg.treeName, tmpFileName)
   dataToWeight = ROOT.RDataFrame(cfg.treeName, tmpFileName)
-  # determine maximum weight
+  # determine range of weight values
+  minIntensityWeight = dataToWeight.Min("intensityWeight").GetValue()
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
+  print(f"Minimum intensity is {minIntensityWeight}")
   print(f"Maximum intensity is {maxIntensityWeight}")
   # apply weights by accepting each event with probability intensityWeight / maxIntensityWeight
   weightedData = (
