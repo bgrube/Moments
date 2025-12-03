@@ -14,6 +14,7 @@ from typing import TypedDict
 
 import ROOT
 
+from AnalysisConfig import AnalysisConfig
 from MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
@@ -27,6 +28,7 @@ from MomentCalculator import (
   MomentResultsKinematicBinning,
   QnWaveIndex,
 )
+from photoProdWeightData import weightDataWithIntensityFormula
 from PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
@@ -100,12 +102,12 @@ def genDataFromIntensityFormula(
   df = (
     ROOT.RDataFrame(nmbEvents)
         .Define("dataPoint", randomPointFcn)
-        .Define("cosTheta",  "dataPoint[0]")
-        .Define("theta",     "std::acos(cosTheta)")
-        .Define("phiDeg",    "dataPoint[1]")
-        .Define("phi",       "TMath::DegToRad() * phiDeg")
-        .Define("PhiDeg",    "dataPoint[2]")
-        .Define("Phi",       "TMath::DegToRad() * PhiDeg")
+        .Define("cosTheta",  "(Double32_t)dataPoint[0]")
+        .Define("theta",     "(Double32_t)std::acos(cosTheta)")
+        .Define("phiDeg",    "(Double32_t)dataPoint[1]")
+        .Define("phi",       "(Double32_t)(TMath::DegToRad() * phiDeg)")
+        .Define("PhiDeg",    "(Double32_t)dataPoint[2]")
+        .Define("Phi",       "(Double32_t)(TMath::DegToRad() * PhiDeg)")
         # add no-op filter that logs when event loop is running
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in `genDataFromIntensityFormula()`" << endl; } return true;')
   )  #!NOTE! for some reason, this is very slow
@@ -178,13 +180,15 @@ if __name__ == "__main__":
 
     # set parameters of test case
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-    # nmbPwaMcEvents        = 1000
-    # nmbPsMcEvents         = 1000000
     outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd")
-    nmbPwaMcEvents        = 1000000
-    nmbPsMcEvents         = 10000000
+    # nmbDataEvents         = 1000
+    # nmbAccPsEvents        = 1000000
+    nmbDataEvents         = 1000000
+    nmbAccPsEvents        = 10000000
     # beamPolarization      = 1.0
     beamPolarization      = 0.3563  # Fall 2018, PARA_0
+    binVarMass            = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+    massBinning           = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
     maxL                  = 4  # define maximum L quantum number of moments
     partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
@@ -212,18 +216,24 @@ if __name__ == "__main__":
 
     # formulas for detection efficiency
     # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
+    # xVar = "x"
+    # yVar = "y"
+    # zVar = "z"
+    xVar = "cosTheta"
+    yVar = "phiDeg"
+    zVar = "PhiDeg"
     # efficiencyFormulaGen = "1"  # acc_perfect
-    efficiencyFormulaGen = "(1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / 1.5**3"  # acc_1; even in all variables
-    # efficiencyFormulaGen = "(0.75 + 0.25 * x) * (0.75 + 0.25 * (y / 180)) * (0.75 + 0.25 * (z / 180))"  # acc_2; odd in all variables
-    # efficiencyFormulaGen = "(0.6 + 0.4 * x) * (0.6 + 0.4 * (y / 180)) * (0.6 + 0.4 * (z / 180))"  # acc_3; odd in all variables
+    efficiencyFormulaGen = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
+    # efficiencyFormulaGen = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
+    # efficiencyFormulaGen = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
     # detune efficiency used to correct acceptance w.r.t. the one used to generate the data
     efficiencyFormulaDetune = ""
-    # efficiencyFormulaDetune = "(0.35 + 0.15 * x) * (0.35 + 0.15 * (y / 180)) * (0.35 + 0.15 * (z / 180))"  # detune_odd; detune by odd terms
-    # efficiencyFormulaDetune = "0.1 * (1.5 - y * y / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
-    # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - z * z / (180 * 180)) / (1.5**2)"  # detune_even; detune by even terms in cos(theta) and Phi
-    # efficiencyFormulaDetune = "0.1 * (1.5 - x * x) * (1.5 - y * y / (180 * 180)) * (1.5 - z * z / (180 * 180)) / (1.5**3)"  # detune_even; detune by even terms in all variables
+    # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detune_odd; detune by odd terms
+    # efficiencyFormulaDetune = f"0.1 * (1.5 - {yVar} * {yVar} / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
+    # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detune_even; detune by even terms in cos(theta) and Phi
+    # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detune_even; detune by even terms in all variables
     punchAccHole = ""
-    # punchAccHole = "!((0.4 < x && x < 0.6) && (-180 < y && y < -140))"  # punch hole in acceptance for 0.4 < cos(theta) < 0.6 and -180 deg < phi < -140 deg
+    # punchAccHole = f"!((0.4 < {xVar} && {xVar} < 0.6) && (-180 < {yVar} && {yVar} < -140))"  # punch hole in acceptance for 0.4 < cos(theta) < 0.6 and -180 deg < phi < -140 deg
     if punchAccHole:
       efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({punchAccHole}))"
     efficiencyFormulaReco = ""
@@ -245,15 +255,33 @@ if __name__ == "__main__":
     print(f"Reading moments from file '{momentResultsFileName}'")
     HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)[11]  # pick [0.72, 0.76] GeV bin
     # print(f"True moment values\n{HTruth}")
-    dataPwaModel = genData(
-      nmbEvents         = nmbPwaMcEvents,
-      polarization      = beamPolarization,
-      # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
-      inputData         = HTruth,
-      outFileBasePath   = f"{outputDirName}/data",
-      efficiencyFormula = efficiencyFormulaGen,
-      regenerateData    = False,
-    )
+    if False:
+      dataPwaModel = genData(
+        nmbEvents         = nmbDataEvents,
+        polarization      = beamPolarization,
+        # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
+        inputData         = HTruth,
+        outFileBasePath   = f"{outputDirName}/data",
+        efficiencyFormula = efficiencyFormulaGen,
+        regenerateData    = False,
+      )
+    else:
+      intensityFormula = HTruth.intensityFormula(
+        polarization      = "beamPol",  # read polarization from tree column
+        thetaFormula      = "theta",
+        phiFormula        = "phi",
+        PhiFormula        = "Phi",
+        useIntensityTerms = MomentResult.IntensityTermsType.ALL,
+      )
+      dataPwaModel = weightDataWithIntensityFormula(
+        inputDataDef         = nmbDataEvents,
+        massBinning          = massBinning,
+        massBinIndex         = 0,
+        intensityFormula     = f"({intensityFormula}) * ({efficiencyFormulaGen})",
+        weightedDataFileName = f"{outputDirName}/data.root",
+        cfg                  = AnalysisConfig(treeName = "data", polarization = beamPolarization),
+        seed                 = 1234567890,
+      )
     t.stop()
 
     # plot data generated from partial-wave amplitudes
@@ -271,18 +299,27 @@ if __name__ == "__main__":
 
     # generate accepted phase-space data
     t = timer.start("Time to generate phase-space MC data")
-    dataAcceptedPs = genDataFromIntensityFormula(
-      nmbEvents        = nmbPsMcEvents,
-      intensityFormula = efficiencyFormulaReco,
-      outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
-      regenerateData   = False,
-    )
+    if False:
+      dataAcceptedPs = genDataFromIntensityFormula(
+        nmbEvents        = nmbAccPsEvents,
+        intensityFormula = efficiencyFormulaReco,
+        outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
+        regenerateData   = False,
+      )
+    else:
+      dataAcceptedPs = weightDataWithIntensityFormula(
+        inputDataDef         = nmbAccPsEvents,
+        massBinning          = massBinning,
+        massBinIndex         = 0,
+        intensityFormula     = efficiencyFormulaReco,
+        weightedDataFileName = f"{outputDirName}/acceptedPhaseSpace.root",
+        cfg                  = AnalysisConfig(treeName = "data", polarization = beamPolarization),
+        seed                 = 1234567890,
+      )
     t.stop()
 
     # setup moment calculator
     momentIndices = MomentIndices(maxL)
-    binVarMass    = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning   = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
     momentsInBins:      list[MomentCalculator] = []
     momentsInBinsTruth: list[MomentCalculator] = []
     for massBinCenter in massBinning:
@@ -290,7 +327,7 @@ if __name__ == "__main__":
       dataSet = DataSet(
         data           = dataPwaModel,
         phaseSpaceData = dataAcceptedPs,
-        nmbGenEvents   = nmbPsMcEvents,
+        nmbGenEvents   = nmbAccPsEvents,
         polarization   = beamPolarization
       )  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
       momentsInBins.append(
