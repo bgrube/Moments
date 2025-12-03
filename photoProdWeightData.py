@@ -135,21 +135,20 @@ def loadInputData(
     raise ValueError(f"Invalid {inputDataDef=}")
 
 
-def weightDataWithIntensity(
+def weightDataWithIntensityFormula(
   inputDataDef:         AnalysisConfig.DataType | tuple[str, str] | int,  # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
                                                                           # if `tuple[str, str]`, a tuple (<tree name>, <file name>) for raw data is expected
                                                                           # if `int`, phase-space distribution in angles is generated with given number of events
   massBinning:          HistAxisBinning,  # mass binning used for weighting
-  massBinIndex:         int,              # index of mass bin to generate data for
-  momentResults:        MomentResult,     # moment values used to construct intensity formula
-  weightedDataFileName: str,              # ROOT file to which weighted events are written
+  massBinIndex:         int,  # index of mass bin to generate data for
+  intensityFormula:     str,  # intensity formula as function of theta [rad] phi [rad], and Phi [rad] that defines distribution of events
+  weightedDataFileName: str,  # ROOT file to which weighted events are written
   cfg:                  AnalysisConfig,
-  seed:                 int                             = 123456789,  # seed for rejection sampling and for generating phase-space events
-  beamPolInfo:          BeamPolInfo | None              = None,       # beam polarization information needed for raw data files
-  useIntensityTerms:    MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
-  limitNmbEventsTo:     int | None                      = None,       # if `int`, limits number of events to read from tree
-) -> None:
-  """Weight input data specified by `inputDataDef` and `massBinIndex` with intensity formula from `momentResults` and write data to `outFileName`"""
+  seed:                 int                = 123456789,  # seed for rejection sampling and for generating phase-space events
+  beamPolInfo:          BeamPolInfo | None = None,       # beam polarization information needed for raw data files
+  limitNmbEventsTo:     int | None         = None,       # if `int`, limits number of events to read from tree
+) -> ROOT.RDataFrame:
+  """Weights input data specified by `inputDataDef` and `massBinIndex` with given intensity formula and writes data to `outFileName`"""
   ROOT.gRandom.SetSeed(seed)
   # load input data
   dataToWeight, nmbInputEvents, originalColumns = loadInputData(
@@ -160,15 +159,7 @@ def weightDataWithIntensity(
     beamPolInfo      = beamPolInfo,
     limitNmbEventsTo = limitNmbEventsTo,
   )
-  # construct intensity formula
-  intensityFormula = momentResults.intensityFormula(
-    polarization      = "beamPol",  # read polarization from tree column
-    thetaFormula      = "theta",
-    phiFormula        = "phi",
-    PhiFormula        = "Phi",
-    useIntensityTerms = useIntensityTerms,
-  )
-  print(f"Calculating weights using formula '{intensityFormula}'")
+  print(f"Calculating event weights using formula\n{intensityFormula}")
   # add columns for intensity weight and random number in [0, 1]
   dataToWeight = (
     dataToWeight.Define("intensityWeight",      f"(Double32_t){intensityFormula}")
@@ -193,6 +184,7 @@ def weightDataWithIntensity(
   print(f"Writing data weighted with intensity function to file '{weightedDataFileName}'")
   weightedData.Snapshot(cfg.treeName, weightedDataFileName, originalColumns)
   subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  # remove temporary file
+  return ROOT.RDataFrame(cfg.treeName, weightedDataFileName)
 
 
 def reweightData(
@@ -473,15 +465,21 @@ if __name__ == "__main__":
               assert massBinIndexForMoments is not None, f"Could not find bin for mass value of {massBinCenterForWeighting} {cfg.massBinning.var.unit}"
               momentResultsForBin = momentResults[massBinIndexForMoments]
               print(f"Weighting events with intensity function using moment values in mass bin {massBinIndexForMoments} at {momentResultsForBin.binCenters[cfg.massBinning.var]:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
-              weightDataWithIntensity(
+              weightDataWithIntensityFormula(
                 inputDataDef         = (inputDataDef[0], f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex/{inputDataDef[1]}") \
                                        if isinstance(inputDataDef, tuple) else inputDataDef,
                 massBinning          = massBinningForWeighting,
                 massBinIndex         = massBinIndexForWeighting,
-                momentResults        = momentResultsForBin,
+                intensityFormula     = momentResultsForBin.intensityFormula(
+                  polarization      = "beamPol",  # read polarization from tree column
+                  thetaFormula      = "theta",
+                  phiFormula        = "phi",
+                  PhiFormula        = "Phi",
+                  useIntensityTerms = useIntensityTerms,
+                ),
                 weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndexForWeighting}.root",
                 cfg                  = cfg,
-                seed                 = 12345 + massBinIndexForWeighting ,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
+                seed                 = 12345 + massBinIndexForWeighting,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
                 useIntensityTerms    = useIntensityTerms,
                 limitNmbEventsTo     = limitNmbEventsTo,
