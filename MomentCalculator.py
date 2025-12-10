@@ -1396,7 +1396,7 @@ class MomentResultsKinematicBinning:
     other:        MomentResultsKinematicBinning,
     normBinIndex: int | None = None,  # if `None` moments are normalized to the integral of H_0(0, 0) over all bins, otherwise the given bin is used
   ) -> float:
-    """Normalizes these moments in all bins such that H_0(0, 0) is equal to H_0(0, 0) in the other moments either in the given bin or integrated over all bins; returns normalization factor"""
+    """Normalizes these moments in all bins such that H_0(0, 0) in self is equal to H_0(0, 0) in the other moments either in the given bin or integrated over all bins; returns normalization factor"""
     H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
     normalizationFactor = 1.0
     if normBinIndex is None:
