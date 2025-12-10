@@ -9,6 +9,7 @@ from dataclasses import (
   field,
 )
 from enum import Enum, auto
+from typing import Iterable
 
 import ROOT
 
@@ -138,46 +139,53 @@ class AnalysisConfig:
 
   def loadData(
     self,
-    dataType: AnalysisConfig.DataType,
+    dataType:       AnalysisConfig.DataType,
+    additionalCuts: Iterable[str] | None = None,
   ) -> ROOT.RDataFrame | None:
-    """Returns a ROOT RDataFrame with given data type"""
+    """Returns a ROOT RDataFrame with given data type and applies optional additional cuts"""
+    df = None
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       print(f"Loading real data from tree '{self.treeName}' in file '{self.dataFileName}'")
-      return ROOT.RDataFrame(self.treeName, self.dataFileName)
+      df = ROOT.RDataFrame(self.treeName, self.dataFileName)
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIGNAL:
       print(f"Loading real-data signal events with weight = 1 from tree '{self.treeName}' in file '{self.dataFileName}'")
       df = ROOT.RDataFrame(self.treeName, self.dataFileName)
       if "eventWeight" in df.GetColumnNames():
-        return df.Filter("eventWeight == 1")
-      else:
-        return df  # if there is no `eventWeight` column all events have weight 1
+        df = df.Filter("eventWeight == 1")
+      # if there is no `eventWeight` column assume all events have weight 1
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
       df = ROOT.RDataFrame(self.treeName, self.dataFileName)
       if "eventWeight" in df.GetColumnNames():
         df = df.Filter("eventWeight < 0")
         if df.Count().GetValue() > 0:
           print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
-          return df
         else:
-          return None  # no events with weight < 0
+          df = None  # no events with weight < 0
       else:
-        return None  # if there is no `eventWeight` column all events have weight 1
+        # if there is no `eventWeight` column assume all events have weight 1 and hence there are no sideband events
+        df = None
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
       if self.psGenFileName is None:
         print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
-        return None
+        df = None
       else:
         print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
-        return ROOT.RDataFrame(self.treeName, self.psGenFileName)
+        df = ROOT.RDataFrame(self.treeName, self.psGenFileName)
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
       if self.psAccFileName is None:
         print("??? Warning: File name for accepted phase-space data was not provided. Assuming perfect acceptance.")
-        return None
+        df = None
       else:
         print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
-        return ROOT.RDataFrame(self.treeName, self.psAccFileName)
+        df = ROOT.RDataFrame(self.treeName, self.psAccFileName)
     else:
       raise ValueError(f"Unknown data type: {dataType}")
+    # apply additional cuts
+    if df is not None and additionalCuts is not None:
+      for cut in additionalCuts:
+        print(f"Applying additional cut: '{cut}'")
+        df = df.Filter(cut)
+    return df
 
 
 # configurations for unpolarized pi+ pi- data in CLAS kinematic range
