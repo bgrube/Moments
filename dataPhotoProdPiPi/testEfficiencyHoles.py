@@ -38,6 +38,37 @@ if __name__ == "__main__":
   canv.RedrawAxis()
   canv.SaveAs(f"./{hist.GetName()}.pdf")
 
+  # decompose acceptance histogram into phi-odd and phi-even parts
+  histOdd  = hist.Clone(f"{hist.GetName()}_odd")
+  histEven = hist.Clone(f"{hist.GetName()}_even")
+  assert hist.GetNbinsY() % 2 == 0, "Number of phi bins is odd!"
+  for cosThetaBin in range(1, hist.GetNbinsX() + 1):
+    for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):
+      phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
+      valPhiPos = hist.GetBinContent(cosThetaBin, phiBinPos)
+      valPhiNeg = hist.GetBinContent(cosThetaBin, phiBinNeg)
+      valPhiOdd  = (valPhiPos - valPhiNeg) / 2
+      valPhiEven = (valPhiPos + valPhiNeg) / 2
+      histOdd.SetBinContent (cosThetaBin, phiBinPos, +valPhiOdd)
+      histOdd.SetBinContent (cosThetaBin, phiBinNeg, -valPhiOdd)
+      histEven.SetBinContent(cosThetaBin, phiBinPos, valPhiEven)
+      histEven.SetBinContent(cosThetaBin, phiBinNeg, valPhiEven)
+  histSum = hist.Clone(f"{hist.GetName()}_sum")
+  histSum.Add(histOdd, histEven)
+  for hist in (histEven, histSum):
+    canv = ROOT.TCanvas()
+    hist.Draw("COLZ")
+    canv.SaveAs(f"./{hist.GetName()}.pdf")
+    canv.SaveAs(f"./{hist.GetName()}.root")
+  zRange = max(abs(histOdd.GetMaximum()), abs(histOdd.GetMinimum()))
+  histOdd.SetMaximum(+zRange)
+  histOdd.SetMinimum(-zRange)
+  ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
+  histOdd.Draw("COLZ")
+  canv.SaveAs(f"./{histOdd.GetName()}.pdf")
+  canv.SaveAs(f"./{histOdd.GetName()}.root")
+  ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+
   accPsData = ROOT.RDataFrame("PiPi", "./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root")
   CUT_CPP_CODE = """
     bool
