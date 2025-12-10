@@ -234,7 +234,14 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detune_even; detune by even terms in all variables
     # efficiencyHoleGen = ""  # do not punch hole in acceptance when generating data
     # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # hole in acceptance when generating data
+    # efficiencyHoleGen = "!(" \
+    #   f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
+    #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
+    #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
+    # ")"  # 3 holes in acceptance similar to 0.72-0.76 mass bin when generating data
     efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in acceptance when generating data
+    # efficiencyHoleGen = f"({yVar} > 0)"  # accept only upper half plane
+    # efficiencyHoleGen = f"({yVar} < 0)"  # accept only lower half plane
     # efficiencyHoleReco = ""  # do not punch hole in acceptance when analyzing data
     efficiencyHoleReco = efficiencyHoleGen  # hole in acceptance when analyzing data chosen to be same as hole used when generating data
     # efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # hole in acceptance when analyzing data chosen to be smaller than hole used when generating data
@@ -244,8 +251,6 @@ if __name__ == "__main__":
       efficiencyFormulaGen = f"(({efficiencyFormula}) * ({efficiencyHoleGen}))"
     efficiencyFormulaReco = ""
     if efficiencyFormulaDetune:
-      # efficiencyFcnDetune = ROOT.TF3("efficiencyDetune", efficiencyFormulaDetune, -1, +1, -180, +180, -180, +180)
-      # drawTF3(efficiencyFcnDetune, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/hEfficiencyDetune.pdf", maxVal = 1.0)
       efficiencyFormulaReco = f"(({efficiencyFormula}) + ({efficiencyFormulaDetune}))"
     else:
       efficiencyFormulaReco = efficiencyFormula
@@ -272,7 +277,7 @@ if __name__ == "__main__":
           raise ValueError(f"Unexpected moment index in {qnIndex=}")
     print(f"True moment values\n{HTruth}")
     if False:
-      dataPwaModel = genData(
+      dataIntensity = genData(
         nmbEvents         = nmbDataEvents,
         polarization      = beamPolarization,
         # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
@@ -283,13 +288,16 @@ if __name__ == "__main__":
       )
     else:
       intensityFormula = HTruth.intensityFormula(
-        polarization      = "beamPol",  # read polarization from tree column
+        polarization      = beamPolarization,
+        # thetaFormula      = "std::acos(x)",
+        # phiFormula        = "TMath::DegToRad() * y",
+        # PhiFormula        = "TMath::DegToRad() * z",
         thetaFormula      = "theta",
         phiFormula        = "phi",
         PhiFormula        = "Phi",
         useIntensityTerms = MomentResult.IntensityTermsType.ALL,
       )
-      dataPwaModel = weightDataWithIntensityFormula(
+      dataIntensity = weightDataWithIntensityFormula(
         inputDataDef         = nmbDataEvents,
         massBinning          = massBinning,
         massBinIndex         = 0,
@@ -300,10 +308,24 @@ if __name__ == "__main__":
       )
     t.stop()
 
+    # if True:
+    if False:
+      # plot intensity and efficiency functions used to generate data
+      for label, formula in {
+        "efficiencyFormulaGen"     : efficiencyFormulaGen,
+        "efficiencyFormulaReco"    : efficiencyFormulaReco,
+        # "efficiencyFormulaDetune"  : efficiencyFormulaDetune,
+        "intensityFormula"         : intensityFormula,
+        "intensityFormulaAccepted" : f"({intensityFormula}) * ({efficiencyFormulaGen})",
+      }.items():
+        fcn = ROOT.TF3(label, formula, -1, +1, -180, +180, -180, +180)
+        drawTF3(fcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/{label}.pdf")
+    # raise SystemExit("STOP")
+
     # plot data generated from partial-wave amplitudes
     canv = ROOT.TCanvas()
     nmbBins = 25
-    hist = dataPwaModel.Histo3D(
+    hist = dataIntensity.Histo3D(
       ROOT.RDF.TH3DModel("data", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
       "cosTheta", "phiDeg", "PhiDeg")
     hist.SetMinimum(0)
@@ -316,14 +338,14 @@ if __name__ == "__main__":
     # generate accepted phase-space data
     t = timer.start("Time to generate phase-space MC data")
     if False:
-      dataAcceptedPs = genDataFromIntensityFormula(
+      dataAccPs = genDataFromIntensityFormula(
         nmbEvents        = nmbAccPsEvents,
         intensityFormula = efficiencyFormulaReco,
         outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
         regenerateData   = False,
       )
     else:
-      dataAcceptedPs = weightDataWithIntensityFormula(
+      dataAccPs = weightDataWithIntensityFormula(
         inputDataDef         = nmbAccPsEvents,
         massBinning          = massBinning,
         massBinIndex         = 0,
@@ -341,8 +363,8 @@ if __name__ == "__main__":
     for massBinCenter in massBinning:
       # dummy bins with identical data sets
       dataSet = DataSet(
-        data           = dataPwaModel,
-        phaseSpaceData = dataAcceptedPs,
+        data           = dataIntensity,
+        phaseSpaceData = dataAccPs,
         nmbGenEvents   = nmbAccPsEvents,
         polarization   = beamPolarization
       )  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
