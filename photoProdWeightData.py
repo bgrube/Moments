@@ -174,6 +174,9 @@ def weightDataWithIntensityFormula(
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
   print(f"Minimum intensity is {minIntensityWeight}")
   print(f"Maximum intensity is {maxIntensityWeight}")
+  if minIntensityWeight < 0:
+    print("WARNING: Intensity function is negative in some regions of phase space; "
+          "this may lead to incorrect results during weighting!")
   # apply weights by accepting each event with probability intensityWeight / maxIntensityWeight
   weightedData = (
     dataToWeight.Define("acceptEventIntensityWeight", f"(bool)(intensityWeightRndNmb < (intensityWeight / {maxIntensityWeight}))")

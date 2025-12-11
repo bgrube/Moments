@@ -264,6 +264,7 @@ def setupPlotStyle(rootlogonPath: str = "./rootlogon.C") -> None:
   ROOT.gStyle.SetCanvasDefW(600)
   ROOT.gStyle.SetCanvasDefH(600)
   ROOT.gStyle.SetLegendBorderSize(1)
+  ROOT.gStyle.SetLegendFillColor(ROOT.kWhite)
   # ROOT.gStyle.SetOptStat("ni")  # show only name and integral
   # ROOT.gStyle.SetOptStat("i")  # show only integral
   ROOT.gStyle.SetOptStat("")
@@ -570,6 +571,8 @@ def plotMoments(
     # see https://root-forum.cern.ch/t/histogram-drawing-options-e-do-not-clip-errorbars/41857
     histPulls.SetMinimum(-3)
     histPulls.SetMaximum(+3)
+    # histPulls.SetMinimum(-7)
+    # histPulls.SetMaximum(+7)
     canv = ROOT.TCanvas()
     histPulls.Draw("PE")
     # draw zero line

@@ -93,7 +93,7 @@ def genDataFromIntensityFormula(
   print(f"Generating {nmbEvents} events and writing them to '{fileName}'")
   # Use TF3.GetRandom3() to generate random data points in angular space
   RootUtilities.declareInCpp(**{intensityFcn.GetName(): intensityFcn})  # use Python object in C++
-  randomPointFcn = f"""
+  randomPointFcnCpp = f"""
     double cosTheta, phiDeg, PhiDeg;
     PyVars::{intensityFcn.GetName()}.GetRandom3(cosTheta, phiDeg, PhiDeg);
     const std::vector<double> dataPoint = {{cosTheta, phiDeg, PhiDeg}};
@@ -101,7 +101,7 @@ def genDataFromIntensityFormula(
   """  # C++ code that throws random point in angular space
   df = (
     ROOT.RDataFrame(nmbEvents)
-        .Define("dataPoint", randomPointFcn)
+        .Define("dataPoint", randomPointFcnCpp)
         .Define("cosTheta",  "(Double32_t)dataPoint[0]")
         .Define("theta",     "(Double32_t)std::acos(cosTheta)")
         .Define("phiDeg",    "(Double32_t)dataPoint[1]")
