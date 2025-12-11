@@ -57,8 +57,9 @@ def plotIntensityFcn(
       PhiFormula        = "TMath::DegToRad() * z",
       useIntensityTerms = useIntensityTerms,
     )
-    ROOT.gStyle.SetCanvasDefH(2400)  # temporarily increase resolution to generate bitmap images
-    ROOT.gStyle.SetCanvasDefW(2400)
+    # ROOT.gStyle.SetCanvasDefH(2400)  # temporarily increase resolution to generate bitmap images
+    # ROOT.gStyle.SetCanvasDefW(2400)
+    ROOT.gStyle.SetImageScaling(3)  # improve bitmap rendering quality by tripling the resolution; default is 1
     intensityFcn = ROOT.TF3(f"intensityFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
     binnings = (
       HistAxisBinning(nmbBinsPerAxis,   -1,   +1),  # cos(theta)
@@ -84,8 +85,8 @@ def plotIntensityFcn(
       histTitle          = "Intensity Function, Negative Part;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
       showNegativeValues = False,
     )
-    ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
-    ROOT.gStyle.SetCanvasDefW(600)
+    # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
+    # ROOT.gStyle.SetCanvasDefW(600)
     # draw projections of intensity function onto (cos(theta), phi) plane
     histProj = histFcn.Project3D("yx")  # NOTE: "yx" gives y = phi vs. x = cos(theta)
     canv = ROOT.TCanvas()
@@ -133,7 +134,6 @@ if __name__ == "__main__":
 
   Utilities.printGitInfo()
   timer = Utilities.Timer()
-  ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
 
   dataPeriod   = "2018_08"
