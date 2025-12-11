@@ -59,14 +59,16 @@ if __name__ == "__main__":
     canv = ROOT.TCanvas()
     hist.Draw("COLZ")
     canv.SaveAs(f"./{hist.GetName()}.pdf")
-    canv.SaveAs(f"./{hist.GetName()}.root")
+    with ROOT.TFile.Open(f"./{hist.GetName()}.root", "RECREATE") as outFile:
+      hist.Write()
   zRange = max(abs(histOdd.GetMaximum()), abs(histOdd.GetMinimum()))
   histOdd.SetMaximum(+zRange)
   histOdd.SetMinimum(-zRange)
   ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
   histOdd.Draw("COLZ")
   canv.SaveAs(f"./{histOdd.GetName()}.pdf")
-  canv.SaveAs(f"./{histOdd.GetName()}.root")
+  with ROOT.TFile.Open(f"./{histOdd.GetName()}.root", "RECREATE") as outFile:
+    histOdd.Write()
   ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
   accPsData = ROOT.RDataFrame("PiPi", "./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root")
