@@ -291,7 +291,7 @@ if __name__ == "__main__":
     accPSHistFunctor = ROOT.BinContent2DFunctor(accPSHist)
     RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
     accPSHistRange = max(abs(accPSHist.GetMaximum()), abs(accPSHist.GetMinimum()))
-    efficiencyFormulaDetune = f"(0.25 / {accPSHistRange}) * PyVars::accPSHistFunctor({xVar}, {yVar})"  # detuneOdd4; detune by odd terms in phi only
+    efficiencyFormulaDetune = f"(0.15 / {accPSHistRange}) * PyVars::accPSHistFunctor({xVar}, {yVar})"  # detuneOdd4; detune by odd terms in phi only
     # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
 
     efficiencyFormulaGen = efficiencyFormula
@@ -393,19 +393,36 @@ if __name__ == "__main__":
 
     # plot data generated from partial-wave amplitudes and accepted phase-space data generated using `efficiencyFormulaReco`
     for data in (dataIntensity, dataAccPs):
-      canv = ROOT.TCanvas()
       nmbBins = 25
-      hist = data.Histo3D(
-        ROOT.RDF.TH3DModel("data" if data is dataIntensity else "accPs", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
-        "cosTheta", "phiDeg", "PhiDeg")
-      hist.SetMinimum(0)
-      hist.SetStats(False)
-      hist.GetXaxis().SetTitleOffset(1.5)
-      hist.GetYaxis().SetTitleOffset(2)
-      hist.GetZaxis().SetTitleOffset(1.5)
-      hist.Draw("BOX2Z")
-      canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
-      canv.SaveAs(f"{outputDirName}/{hist.GetName()}.root")
+      hists = (
+        data.Histo2D(
+          ROOT.RDF.TH2DModel(
+            "data2D" if data is dataIntensity else "accPs2D", ";cos#theta;#phi [deg]",
+            100, -1, +1, 72, -180, +180,
+          ),
+          "cosTheta", "phiDeg",
+        ),
+        data.Histo3D(
+          ROOT.RDF.TH3DModel(
+            "data3D" if data is dataIntensity else "accPs3D", ";cos#theta;#phi [deg];#Phi [deg]",
+            nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180,
+          ),
+          "cosTheta", "phiDeg", "PhiDeg",
+        ),
+      )
+      for hist in hists:
+        canv = ROOT.TCanvas()
+        hist.SetMinimum(0)
+        hist.SetStats(False)
+        if hist.GetDimension() == 2:
+          hist.Draw("COLZ")
+        elif hist.GetDimension() == 3:
+          hist.GetXaxis().SetTitleOffset(1.5)
+          hist.GetYaxis().SetTitleOffset(2)
+          hist.GetZaxis().SetTitleOffset(1.5)
+          hist.Draw("BOX2Z")
+        canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+        canv.SaveAs(f"{outputDirName}/{hist.GetName()}.root")
 
     # setup moment calculator
     momentIndices = MomentIndices(maxL)
