@@ -165,13 +165,47 @@ def genData(
   )
 
 
+BIN_CONTENT_2D_FUNCTOR_CPP = """
+// Functor that returns the bin content of a 2D histogram at the given (x, y) point
+class BinContent2DFunctor {
+public:
+
+  BinContent2DFunctor(TH2* hist)
+  : _hist(hist)
+  { }
+
+  double
+  operator () (
+    const double x,
+    const double y
+  ) {
+    if (
+          (x < _hist->GetXaxis()->GetBinLowEdge(1) or x > _hist->GetXaxis()->GetBinUpEdge(_hist->GetNbinsX()))
+      or (y < _hist->GetYaxis()->GetBinLowEdge(1) or y > _hist->GetYaxis()->GetBinUpEdge(_hist->GetNbinsY()))
+    ) {
+      return 0;
+    }
+    return _hist->GetBinContent(_hist->FindBin(x, y));
+  }
+
+  protected:
+  TH2* _hist;
+};
+"""
+
+
 if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
+  setupPlotStyle()
+  ROOT.gStyle.SetOptStat(False)
+
   Utilities.printGitInfo()
   timer = Utilities.Timer()
-  ROOT.gROOT.SetBatch(True)
+  ROOT.gInterpreter.Declare(BIN_CONTENT_2D_FUNCTOR_CPP)
   ROOT.gRandom.SetSeed(1234567890)
-  # ROOT.EnableImplicitMT(10)
-  setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
   with threadController.limit(limits = 4):
@@ -180,7 +214,7 @@ if __name__ == "__main__":
 
     # set parameters of test case
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.holeBig")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.holesRho.detuneOdd4")
     # nmbDataEvents         = 1000
     # nmbAccPsEvents        = 1000000
     nmbDataEvents         = 1000000
@@ -214,38 +248,52 @@ if __name__ == "__main__":
     ]
     amplitudeSet = AmplitudeSet(partialWaveAmplitudes)
 
-    # formulas for detection efficiency
-    # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     # xVar = "x"
     # yVar = "y"
     # zVar = "z"
     xVar = "cosTheta"
     yVar = "phiDeg"
     zVar = "PhiDeg"
+    # formulas for detection efficiency
+    # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     # efficiencyFormula = "1"  # acc_perfect
     efficiencyFormula = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
     # efficiencyFormula = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
     # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
-    # detune efficiency used to correct acceptance w.r.t. the one used to generate the data
-    efficiencyFormulaDetune = ""
-    # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detune_odd; detune by odd terms
-    # efficiencyFormulaDetune = f"0.1 * (1.5 - {yVar} * {yVar} / (180 * 180)) / 1.5"  # detune_even; detune by even terms in phi only
-    # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detune_even; detune by even terms in cos(theta) and Phi
-    # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detune_even; detune by even terms in all variables
-    # efficiencyHoleGen = ""  # do not punch hole in acceptance when generating data
-    # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # hole in acceptance when generating data
-    # efficiencyHoleGen = "!(" \
-    #   f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
-    #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
-    #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
-    # ")"  # 3 holes in acceptance similar to 0.72-0.76 mass bin when generating data
-    efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in acceptance when generating data
+
+    # define holes in efficiency
+    efficiencyHoleGen = ""  # do not punch hole in efficiency when generating data
+    # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # hole in efficiency when generating data
+    efficiencyHoleGen = "!(" \
+      f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
+      f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
+      f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
+    ")"  # 3 holes in efficiency similar to 0.72-0.76 mass bin when generating data
+    # efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in efficiency when generating data
     # efficiencyHoleGen = f"({yVar} > 0)"  # accept only upper half plane
     # efficiencyHoleGen = f"({yVar} < 0)"  # accept only lower half plane
-    # efficiencyHoleReco = ""  # do not punch hole in acceptance when analyzing data
-    efficiencyHoleReco = efficiencyHoleGen  # hole in acceptance when analyzing data chosen to be same as hole used when generating data
-    # efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # hole in acceptance when analyzing data chosen to be smaller than hole used when generating data
-    # efficiencyHoleReco = f"!((0.25 < {xVar} && {xVar} < 0.75) && (-180 < {yVar} && {yVar} < -100))"  # hole in acceptance when analyzing data chosen to be bigger than hole used when generating data
+    # efficiencyHoleReco = ""  # do not punch hole in efficiency when analyzing data
+    efficiencyHoleReco = efficiencyHoleGen  # hole in efficiency when analyzing data chosen to be same as hole used when generating data
+    # efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # hole in efficiency when analyzing data chosen to be smaller than hole used when generating data
+    # efficiencyHoleReco = f"!((0.25 < {xVar} && {xVar} < 0.75) && (-180 < {yVar} && {yVar} < -100))"  # hole in efficiency when analyzing data chosen to be bigger than hole used when generating data
+
+    # detune efficiency used to correct efficiency w.r.t. the one used to generate the data
+    # efficiencyFormulaDetune = ""
+    # efficiencyFormulaDetune = f"0.1 * (1.5 - {yVar} * {yVar} / (180 * 180)) / 1.5"  # detuneEven1; detune by even terms in phi only
+    # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detuneEven2; detune by even terms in cos(theta) and Phi
+    # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detuneEven3; detune by even terms in all variables
+    # efficiencyFormulaDetune = f"0.1 * sin({yVar} * TMath::DegToRad())"  # detuneOdd1; detune by odd terms in phi only
+    # efficiencyFormulaDetune = f"0.1 * (1 + sin({yVar} * TMath::DegToRad()))"  # detuneOdd2; detune by odd terms in phi only
+    # efficiencyFormulaDetune = f"0.1 * (1 + {yVar} / 180)"  # detuneOdd3; detune by odd terms in phi only
+    # use 2D histogram in (cos theta, phi) plane to detune efficiency
+    accPsFile = ROOT.TFile.Open("./dataPhotoProdPiPi/anglesHFPiPi_0.72_0.76_odd.root", "READ")
+    accPSHist = accPsFile["anglesHFPiPi_0.72_0.76_odd"]
+    accPSHistFunctor = ROOT.BinContent2DFunctor(accPSHist)
+    RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
+    accPSHistRange = max(abs(accPSHist.GetMaximum()), abs(accPSHist.GetMinimum()))
+    efficiencyFormulaDetune = f"(0.25 / {accPSHistRange}) * PyVars::accPSHistFunctor({xVar}, {yVar})"  # detuneOdd4; detune by odd terms in phi only
+    # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
+
     efficiencyFormulaGen = efficiencyFormula
     if efficiencyHoleGen:
       efficiencyFormulaGen = f"(({efficiencyFormula}) * ({efficiencyHoleGen}))"
@@ -314,26 +362,13 @@ if __name__ == "__main__":
       for label, formula in {
         "efficiencyFormulaGen"     : efficiencyFormulaGen,
         "efficiencyFormulaReco"    : efficiencyFormulaReco,
-        # "efficiencyFormulaDetune"  : efficiencyFormulaDetune,
+        "efficiencyFormulaDetune"  : efficiencyFormulaDetune,
         "intensityFormula"         : intensityFormula,
         "intensityFormulaAccepted" : f"({intensityFormula}) * ({efficiencyFormulaGen})",
       }.items():
         fcn = ROOT.TF3(label, formula, -1, +1, -180, +180, -180, +180)
         drawTF3(fcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/{label}.pdf")
     # raise SystemExit("STOP")
-
-    # plot data generated from partial-wave amplitudes
-    canv = ROOT.TCanvas()
-    nmbBins = 25
-    hist = dataIntensity.Histo3D(
-      ROOT.RDF.TH3DModel("data", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
-      "cosTheta", "phiDeg", "PhiDeg")
-    hist.SetMinimum(0)
-    hist.GetXaxis().SetTitleOffset(1.5)
-    hist.GetYaxis().SetTitleOffset(2)
-    hist.GetZaxis().SetTitleOffset(1.5)
-    hist.Draw("BOX2Z")
-    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
     # generate accepted phase-space data
     t = timer.start("Time to generate phase-space MC data")
@@ -355,6 +390,22 @@ if __name__ == "__main__":
         seed                 = 1234567890,
       )
     t.stop()
+
+    # plot data generated from partial-wave amplitudes and accepted phase-space data generated using `efficiencyFormulaReco`
+    for data in (dataIntensity, dataAccPs):
+      canv = ROOT.TCanvas()
+      nmbBins = 25
+      hist = data.Histo3D(
+        ROOT.RDF.TH3DModel("data" if data is dataIntensity else "accPs", ";cos#theta;#phi [deg];#Phi [deg]", nmbBins, -1, +1, nmbBins, -180, +180, nmbBins, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg")
+      hist.SetMinimum(0)
+      hist.SetStats(False)
+      hist.GetXaxis().SetTitleOffset(1.5)
+      hist.GetYaxis().SetTitleOffset(2)
+      hist.GetZaxis().SetTitleOffset(1.5)
+      hist.Draw("BOX2Z")
+      canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+      canv.SaveAs(f"{outputDirName}/{hist.GetName()}.root")
 
     # setup moment calculator
     momentIndices = MomentIndices(maxL)
