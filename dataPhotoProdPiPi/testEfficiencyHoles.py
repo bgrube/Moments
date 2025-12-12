@@ -17,6 +17,7 @@ if __name__ == "__main__":
   ROOT.gStyle.SetOptStat(False)
 
   if True:
+  # if False:
     plotsFile = ROOT.TFile.Open("./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_ACCEPTED_PHASE_SPACE/PARA_0/plots.root", "READ")
     hist = plotsFile.Get("anglesHFPiPi_0.72_0.76")
     canv = ROOT.TCanvas()
@@ -80,6 +81,7 @@ if __name__ == "__main__":
 
   df = ROOT.RDataFrame("PiPi", "./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root")
   if True:
+  # if False:
     # decompose acceptance histogram into phi-odd and phi-even parts
     histAccPs = df.Histo3D(
       ("accPs3D", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 100, -1, +1, 72, -180, +180, 72, -180, +180),
@@ -102,13 +104,24 @@ if __name__ == "__main__":
           histAccPsEven.SetBinContent(cosThetaBin, phiBinNeg, PhiBin, valPhiEven)
     histAccPsSum = histAccPs.Clone(f"{histAccPs.GetName()}_sum")
     histAccPsSum.Add(histAccPsOdd, histAccPsEven)
+    # plot slices in Phi
+    PhiDegSliceWidth = 4
+    for PhiDegBinIndex in range(1, histAccPs.GetNbinsZ() + 1, PhiDegSliceWidth):
+      for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
+        hist.GetYaxis().SetRange(PhiDegBinIndex,PhiDegBinIndex + PhiDegSliceWidth - 1)
+        hist2D = hist.Project3D("yx")
+        hist2D.SetName(f"{hist.GetName()}_{hist.GetZaxis().GetBinLowEdge(PhiDegBinIndex):.0f}_{hist.GetZaxis().GetBinUpEdge(PhiDegBinIndex + PhiDegSliceWidth - 1):.0f}")
+        canv = ROOT.TCanvas()
+        hist2D.Draw("COLZ")
+        canv.SaveAs(f"./{hist2D.GetName()}.pdf")
+    # plot 3D distributions
     for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
       hist.GetXaxis().SetTitleOffset(1.5)
       hist.GetYaxis().SetTitleOffset(2)
       hist.GetZaxis().SetTitleOffset(1.5)
       with ROOT.TFile.Open(f"./{hist.GetName()}.root", "RECREATE") as outFile:
         hist.Write()
-      hist.Rebin3D(2, 2, 2)
+      hist.Rebin3D(2, 2, 2)  # reduce number of bins for better visibility
     for hist in (histAccPsEven, histAccPsSum):
       canv = ROOT.TCanvas()
       hist.Draw("COLZ")
@@ -124,7 +137,8 @@ if __name__ == "__main__":
     ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
   if True:
-    PhiDegNmbBins = 24
+  # if False:
+    PhiDegNmbBins = 18
     PhiDegBinWidth = 360 / PhiDegNmbBins
     hists = []
     for binIndex in range(0, PhiDegNmbBins):
