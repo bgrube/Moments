@@ -94,26 +94,47 @@ if __name__ == "__main__":
       for PhiBin in range(1, histAccPs.GetNbinsZ() + 1):
         for phiBinNeg in range(1, histAccPs.GetNbinsY() // 2 + 1):
           phiBinPos = histAccPs.GetYaxis().FindBin(-histAccPs.GetYaxis().GetBinCenter(phiBinNeg))
-          valPhiPos = histAccPs.GetBinContent(cosThetaBin, phiBinPos, PhiBin)
-          valPhiNeg = histAccPs.GetBinContent(cosThetaBin, phiBinNeg, PhiBin)
-          valPhiOdd  = (valPhiPos - valPhiNeg) / 2
-          valPhiEven = (valPhiPos + valPhiNeg) / 2
-          histAccPsOdd.SetBinContent (cosThetaBin, phiBinPos, PhiBin, +valPhiOdd)
-          histAccPsOdd.SetBinContent (cosThetaBin, phiBinNeg, PhiBin, -valPhiOdd)
-          histAccPsEven.SetBinContent(cosThetaBin, phiBinPos, PhiBin, valPhiEven)
-          histAccPsEven.SetBinContent(cosThetaBin, phiBinNeg, PhiBin, valPhiEven)
+          phiPosVal = histAccPs.GetBinContent(cosThetaBin, phiBinPos, PhiBin)
+          phiNegVal = histAccPs.GetBinContent(cosThetaBin, phiBinNeg, PhiBin)
+          phiOddVal  = (phiPosVal - phiNegVal) / 2
+          phiEvenVal = (phiPosVal + phiNegVal) / 2
+          histAccPsOdd.SetBinContent (cosThetaBin, phiBinPos, PhiBin, +phiOddVal)
+          histAccPsOdd.SetBinContent (cosThetaBin, phiBinNeg, PhiBin, -phiOddVal)
+          histAccPsEven.SetBinContent(cosThetaBin, phiBinPos, PhiBin, phiEvenVal)
+          histAccPsEven.SetBinContent(cosThetaBin, phiBinNeg, PhiBin, phiEvenVal)
     histAccPsSum = histAccPs.Clone(f"{histAccPs.GetName()}_sum")
     histAccPsSum.Add(histAccPsOdd, histAccPsEven)
     # plot slices in Phi
-    PhiDegSliceWidth = 4
-    for PhiDegBinIndex in range(1, histAccPs.GetNbinsZ() + 1, PhiDegSliceWidth):
-      for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
-        hist.GetYaxis().SetRange(PhiDegBinIndex,PhiDegBinIndex + PhiDegSliceWidth - 1)
+    PhiSliceWidth = 4  # number of Phi bins to combine
+    for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
+      for PhiBinIndex in range(1, histAccPs.GetNbinsZ() + 1, PhiSliceWidth):
+        hist.GetZaxis().SetRange(PhiBinIndex,PhiBinIndex + PhiSliceWidth - 1)
         hist2D = hist.Project3D("yx")
-        hist2D.SetName(f"{hist.GetName()}_{hist.GetZaxis().GetBinLowEdge(PhiDegBinIndex):.0f}_{hist.GetZaxis().GetBinUpEdge(PhiDegBinIndex + PhiDegSliceWidth - 1):.0f}")
+        hist2D.SetName(f"{str(hist.GetName()).replace('3D', '2D')}_{hist.GetZaxis().GetBinLowEdge(PhiBinIndex):.0f}_{hist.GetZaxis().GetBinUpEdge(PhiBinIndex + PhiSliceWidth - 1):.0f}")
+        hist2D.SetTitle("")
         canv = ROOT.TCanvas()
+        if hist is histAccPsOdd:
+          # for some unknown reason this hist2D is not drawn
+          # workaround is to copy content into a new histogram
+          hist2DCopy = ROOT.TH2D(
+            f"{hist2D.GetName()}_new", hist2D.GetTitle(),
+            hist2D.GetNbinsX(), hist2D.GetXaxis().GetXmin(), hist2D.GetXaxis().GetXmax(),
+            hist2D.GetNbinsY(), hist2D.GetYaxis().GetXmin(), hist2D.GetYaxis().GetXmax(),
+          )
+          for xBin in range(1, hist2D.GetNbinsX() + 1):
+            for yBin in range(1, hist2D.GetNbinsY() + 1):
+              hist2DCopy.SetBinContent(xBin, yBin, hist2D.GetBinContent(xBin, yBin))
+              hist2DCopy.SetBinError(xBin, yBin, hist2D.GetBinError(xBin, yBin))
+          hist2D = hist2DCopy
+          valRange = max(abs(hist2D.GetMaximum()), abs(hist2D.GetMinimum()))
+          hist2D.SetMaximum(+valRange)
+          hist2D.SetMinimum(-valRange)
+          ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
         hist2D.Draw("COLZ")
         canv.SaveAs(f"./{hist2D.GetName()}.pdf")
+        if hist is histAccPsOdd:
+          ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+      hist.GetZaxis().SetRange(0, 0)  # reset z-axis range
     # plot 3D distributions
     for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
       hist.GetXaxis().SetTitleOffset(1.5)
@@ -121,7 +142,7 @@ if __name__ == "__main__":
       hist.GetZaxis().SetTitleOffset(1.5)
       with ROOT.TFile.Open(f"./{hist.GetName()}.root", "RECREATE") as outFile:
         hist.Write()
-      hist.Rebin3D(2, 2, 2)  # reduce number of bins for better visibility
+      hist.Rebin3D(4, 3, 3)  # reduce number of bins for better visibility
     for hist in (histAccPsEven, histAccPsSum):
       canv = ROOT.TCanvas()
       hist.Draw("COLZ")
