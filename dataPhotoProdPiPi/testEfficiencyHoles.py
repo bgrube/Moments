@@ -116,11 +116,15 @@ if __name__ == "__main__":
         if hist is histAccPsOdd:
           # for some unknown reason this hist2D is not drawn
           # workaround is to copy content into a new histogram
+          histName = hist2D.GetName()
+          hist2D.SetName(f"{histName}_old")
           hist2DCopy = ROOT.TH2D(
-            f"{hist2D.GetName()}_new", hist2D.GetTitle(),
+            histName, hist2D.GetTitle(),
             hist2D.GetNbinsX(), hist2D.GetXaxis().GetXmin(), hist2D.GetXaxis().GetXmax(),
             hist2D.GetNbinsY(), hist2D.GetYaxis().GetXmin(), hist2D.GetYaxis().GetXmax(),
           )
+          hist2DCopy.SetXTitle(hist2D.GetXaxis().GetTitle())
+          hist2DCopy.SetYTitle(hist2D.GetYaxis().GetTitle())
           for xBin in range(1, hist2D.GetNbinsX() + 1):
             for yBin in range(1, hist2D.GetNbinsY() + 1):
               hist2DCopy.SetBinContent(xBin, yBin, hist2D.GetBinContent(xBin, yBin))
@@ -136,26 +140,23 @@ if __name__ == "__main__":
           ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
       hist.GetZaxis().SetRange(0, 0)  # reset z-axis range
     # plot 3D distributions
-    for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
+    for hist in (histAccPsEven, histAccPsOdd, histAccPsSum, histAccPs):
       hist.GetXaxis().SetTitleOffset(1.5)
       hist.GetYaxis().SetTitleOffset(2)
       hist.GetZaxis().SetTitleOffset(1.5)
       with ROOT.TFile.Open(f"./{hist.GetName()}.root", "RECREATE") as outFile:
         hist.Write()
       hist.Rebin3D(4, 3, 3)  # reduce number of bins for better visibility
-    for hist in (histAccPsEven, histAccPsSum):
       canv = ROOT.TCanvas()
+      if hist is histAccPsOdd:
+        valRange = max(abs(hist.GetMaximum()), abs(hist.GetMinimum()))
+        hist.SetMaximum(+valRange)
+        hist.SetMinimum(-valRange)
+        ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
       hist.Draw("COLZ")
       canv.SaveAs(f"./{hist.GetName()}.pdf")
-    print(f"{histAccPsOdd.GetName()}: {histAccPsOdd.GetMinimum()=}, {histAccPsOdd.GetMaximum()=}")
-    valRange = max(abs(histAccPsOdd.GetMaximum()), abs(histAccPsOdd.GetMinimum()))
-    histAccPsOdd.SetMaximum(+valRange)
-    histAccPsOdd.SetMinimum(-valRange)
-    canv = ROOT.TCanvas()
-    ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
-    histAccPsOdd.Draw("COLZ")
-    canv.SaveAs(f"./{histAccPsOdd.GetName()}.pdf")
-    ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+      if hist is histAccPsOdd:
+        ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
   if True:
   # if False:
