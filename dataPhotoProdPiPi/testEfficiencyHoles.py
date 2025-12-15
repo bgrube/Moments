@@ -3,9 +3,30 @@
 
 from __future__ import annotations
 
+import itertools
 import os
 
 import ROOT
+
+
+def copyTH2(histSrc: ROOT.TH2) -> ROOT.TH2:
+  """Copies content of a TH2 into a new TH2 of the same name"""
+  histName = histSrc.GetName()
+  histSrc.SetName(f"{histName}_old")
+  xAxis = histSrc.GetXaxis()
+  yAxis = histSrc.GetYaxis()
+  histCopy = ROOT.TH2D(
+    histName, histSrc.GetTitle(),
+    histSrc.GetNbinsX(), xAxis.GetXmin(), xAxis.GetXmax(),
+    histSrc.GetNbinsY(), yAxis.GetXmin(), yAxis.GetXmax(),
+  )
+  histCopy.SetXTitle(xAxis.GetTitle())
+  histCopy.SetYTitle(yAxis.GetTitle())
+  for xBin in range(1, histSrc.GetNbinsX() + 1):
+    for yBin in range(1, histSrc.GetNbinsY() + 1):
+      histCopy.SetBinContent(xBin, yBin, histSrc.GetBinContent(xBin, yBin))
+      histCopy.SetBinError  (xBin, yBin, histSrc.GetBinError  (xBin, yBin))
+  return histCopy
 
 
 if __name__ == "__main__":
@@ -79,7 +100,9 @@ if __name__ == "__main__":
     canv.RedrawAxis()
     canv.SaveAs(f"./{hist.GetName()}.pdf")
 
-  df = ROOT.RDataFrame("PiPi", "./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root")
+  accPsFileName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root"
+  accPsTreeName = "PiPi"
+  df = ROOT.RDataFrame(accPsTreeName, accPsFileName).Filter("(0.72 < mass and mass < 0.76)")
   if True:
   # if False:
     # decompose acceptance histogram into phi-odd and phi-even parts
@@ -107,29 +130,21 @@ if __name__ == "__main__":
     # plot slices in Phi
     PhiSliceWidth = 4  # number of Phi bins to combine
     for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
-      for PhiBinIndex in range(1, histAccPs.GetNbinsZ() + 1, PhiSliceWidth):
-        hist.GetZaxis().SetRange(PhiBinIndex,PhiBinIndex + PhiSliceWidth - 1)
+      for PhiBinIndex in itertools.chain([0], range(1, histAccPs.GetNbinsZ() + 1, PhiSliceWidth)):
+        # index 0 means to project over all Phi bins
+        if PhiBinIndex > 0:
+          hist.GetZaxis().SetRange(PhiBinIndex,PhiBinIndex + PhiSliceWidth - 1)
         hist2D = hist.Project3D("yx")
-        hist2D.SetName(f"{str(hist.GetName()).replace('3D', '2D')}_{hist.GetZaxis().GetBinLowEdge(PhiBinIndex):.0f}_{hist.GetZaxis().GetBinUpEdge(PhiBinIndex + PhiSliceWidth - 1):.0f}")
+        hist2D.SetName(f"{str(hist.GetName()).replace('3D', '2D')}")
+        if PhiBinIndex > 0:
+          hist2D.SetName(f"{hist2D.GetName()}_{hist.GetZaxis().GetBinLowEdge(PhiBinIndex):.0f}_{hist.GetZaxis().GetBinUpEdge(PhiBinIndex + PhiSliceWidth - 1):.0f}")
         hist2D.SetTitle("")
         canv = ROOT.TCanvas()
+        hist2D.Rebin2D(4, 3)  # reduce number of bins for better visibility
         if hist is histAccPsOdd:
           # for some unknown reason this hist2D is not drawn
           # workaround is to copy content into a new histogram
-          histName = hist2D.GetName()
-          hist2D.SetName(f"{histName}_old")
-          hist2DCopy = ROOT.TH2D(
-            histName, hist2D.GetTitle(),
-            hist2D.GetNbinsX(), hist2D.GetXaxis().GetXmin(), hist2D.GetXaxis().GetXmax(),
-            hist2D.GetNbinsY(), hist2D.GetYaxis().GetXmin(), hist2D.GetYaxis().GetXmax(),
-          )
-          hist2DCopy.SetXTitle(hist2D.GetXaxis().GetTitle())
-          hist2DCopy.SetYTitle(hist2D.GetYaxis().GetTitle())
-          for xBin in range(1, hist2D.GetNbinsX() + 1):
-            for yBin in range(1, hist2D.GetNbinsY() + 1):
-              hist2DCopy.SetBinContent(xBin, yBin, hist2D.GetBinContent(xBin, yBin))
-              hist2DCopy.SetBinError(xBin, yBin, hist2D.GetBinError(xBin, yBin))
-          hist2D = hist2DCopy
+          hist2D = copyTH2(hist2D)
           valRange = max(abs(hist2D.GetMaximum()), abs(hist2D.GetMinimum()))
           hist2D.SetMaximum(+valRange)
           hist2D.SetMinimum(-valRange)
@@ -148,21 +163,26 @@ if __name__ == "__main__":
         hist.Write()
       hist.Rebin3D(4, 3, 3)  # reduce number of bins for better visibility
       canv = ROOT.TCanvas()
-      if hist is histAccPsOdd:
-        valRange = max(abs(hist.GetMaximum()), abs(hist.GetMinimum()))
-        hist.SetMaximum(+valRange)
-        hist.SetMinimum(-valRange)
-        ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
+      # if hist is histAccPsOdd:
+      #   valRange = max(abs(hist.GetMaximum()), abs(hist.GetMinimum()))
+      #   hist.SetMaximum(+valRange)
+      #   hist.SetMinimum(-valRange)
+      #   ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
       hist.Draw("COLZ")
       canv.SaveAs(f"./{hist.GetName()}.pdf")
-      if hist is histAccPsOdd:
-        ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+      # if hist is histAccPsOdd:
+      #   ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
   if True:
   # if False:
+    hists = [
+      df.Histo2D(
+          (f"accPs2D", ";cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180),
+          "cosTheta", "phiDeg",
+        ),
+    ]
     PhiDegNmbBins = 18
     PhiDegBinWidth = 360 / PhiDegNmbBins
-    hists = []
     for binIndex in range(0, PhiDegNmbBins):
       PhiDegBinMin    = -180 + binIndex * PhiDegBinWidth
       PhiDegBinMax    = PhiDegBinMin + PhiDegBinWidth
