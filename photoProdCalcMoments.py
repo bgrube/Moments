@@ -268,6 +268,29 @@ if __name__ == "__main__":
   )
   forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
   # forceIntegralMatrixCalculation = False
+  # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
+  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
+
+  CUT_CPP_CODE = """
+    bool
+    isInHoles(
+      const double cosTheta,
+      const double phi
+    ) {
+      static std::vector<TEllipse*> holes = {
+        new TEllipse(-0.55,    0, 0.35, 30),
+        new TEllipse( 0.55, -180, 0.35, 30),
+        new TEllipse( 0.55, +180, 0.35, 30)
+      };
+      for (const auto& hole : holes) {
+        if (hole->IsInside(cosTheta, phi)) {
+          return true;
+        }
+      }
+      return false;
+    }
+  """
+  ROOT.gInterpreter.Declare(CUT_CPP_CODE)
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
@@ -299,6 +322,29 @@ if __name__ == "__main__":
                 timer                          = timer,
                 forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
                 additionalCuts                 = None,
+                # additionalCuts                 = (
+                #   "not isInHoles(cosTheta, phiDeg)",
+                #   # "not ((cosTheta > 0.8) and (-100 < phiDeg and phiDeg < +100))",
+                #   # "(-180 < phiDeg and phiDeg < -108)",  # phi slice 0
+                #   # "(-108 < phiDeg and phiDeg <  -36)",  # phi slice 1
+                #   # "( -36 < phiDeg and phiDeg <  +36)",  # phi slice 2
+                #   # "( +36 < phiDeg and phiDeg < +108)",  # phi slice 3
+                #   # "(+108 < phiDeg and phiDeg < +180)",  # phi slice 4
+                #   # "(-1.0 < cosTheta and cosTheta < -0.6)",  # cos theta slice 0
+                #   # "(-0.6 < cosTheta and cosTheta < -0.2)",  # cos theta slice 1
+                #   # "(-0.2 < cosTheta and cosTheta < +0.2)",  # cos theta slice 2
+                #   # "(+0.2 < cosTheta and cosTheta < +0.6)",  # cos theta slice 3
+                #   # "(+0.6 < cosTheta and cosTheta < +1.0)",  # cos theta slice 4
+                #   # "((-0.8 < cosTheta and cosTheta < +0.8) and (-150 < phiDeg and phiDeg < +150))",  # border
+                #   # "((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border1
+                #   # "not ((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border3
+                #   # "(phiDeg > 0)",  # phiPos
+                #   # "(phiDeg < 0)",  # phiNeg
+                #   # "(cosTheta > 0)",  # cosThetaPos
+                #   # "(cosTheta < 0)",  # cosThetaNeg
+                #   # "(-90 < phiDeg and phiDeg < +90)",  # phi slice 5
+                #   # "not (-90 < phiDeg and phiDeg < +90)",  # phi slice 6
+                # ),
               )
               timer.stop("Total execution time")
               print(timer.summary)
