@@ -170,26 +170,26 @@ BIN_CONTENT_2D_FUNCTOR_CPP = """
 class BinContent2DFunctor {
 public:
 
-  BinContent2DFunctor(TH2* hist)
-  : _hist(hist)
-  { }
+	BinContent2DFunctor(TH2* hist)
+	: _hist(hist)
+	{ }
 
-  double
-  operator () (
-    const double x,
-    const double y
-  ) {
-    if (
-          (x < _hist->GetXaxis()->GetBinLowEdge(1) or x > _hist->GetXaxis()->GetBinUpEdge(_hist->GetNbinsX()))
-      or (y < _hist->GetYaxis()->GetBinLowEdge(1) or y > _hist->GetYaxis()->GetBinUpEdge(_hist->GetNbinsY()))
-    ) {
-      return 0;
-    }
-    return _hist->GetBinContent(_hist->FindBin(x, y));
-  }
+	double
+	operator () (
+		const double x,
+		const double y
+	) {
+		if (
+			   (x < _hist->GetXaxis()->GetBinLowEdge(1) or x > _hist->GetXaxis()->GetBinUpEdge(_hist->GetNbinsX()))
+			or (y < _hist->GetYaxis()->GetBinLowEdge(1) or y > _hist->GetYaxis()->GetBinUpEdge(_hist->GetNbinsY()))
+		) {
+			return 0;
+		}
+		return _hist->GetBinContent(_hist->FindBin(x, y));
+	}
 
-  protected:
-  TH2* _hist;
+	protected:
+	TH2* _hist;
 };
 """
 
