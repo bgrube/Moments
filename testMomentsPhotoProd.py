@@ -5,12 +5,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 import functools
 import numpy as np
 import os
 import threadpoolctl
-from typing import TypedDict
+from typing import (
+  Callable,
+  Iterable,
+  TypedDict,
+)
 
 import ROOT
 
@@ -165,31 +168,33 @@ def genData(
   )
 
 
-BIN_CONTENT_2D_FUNCTOR_CPP = """
-// Functor that returns the bin content of a 2D histogram at the given (x, y) point
-class BinContent2DFunctor {
+BIN_CONTENT_3D_FUNCTOR_CPP = """
+// Functor that returns the bin content of a 3D histogram at the given (x, y, z) point
+class BinContent3DFunctor {
 public:
 
-	BinContent2DFunctor(TH2* hist)
+	BinContent3DFunctor(TH3* hist)
 	: _hist(hist)
 	{ }
 
 	double
 	operator () (
 		const double x,
-		const double y
+		const double y,
+		const double z
 	) {
 		if (
 			   (x < _hist->GetXaxis()->GetBinLowEdge(1) or x > _hist->GetXaxis()->GetBinUpEdge(_hist->GetNbinsX()))
 			or (y < _hist->GetYaxis()->GetBinLowEdge(1) or y > _hist->GetYaxis()->GetBinUpEdge(_hist->GetNbinsY()))
+			or (z < _hist->GetZaxis()->GetBinLowEdge(1) or z > _hist->GetZaxis()->GetBinUpEdge(_hist->GetNbinsZ()))
 		) {
 			return 0;
 		}
-		return _hist->GetBinContent(_hist->FindBin(x, y));
+		return _hist->GetBinContent(_hist->FindBin(x, y, z));
 	}
 
 	protected:
-	TH2* _hist;
+	TH3* _hist;
 };
 """
 
@@ -204,7 +209,7 @@ if __name__ == "__main__":
 
   Utilities.printGitInfo()
   timer = Utilities.Timer()
-  ROOT.gInterpreter.Declare(BIN_CONTENT_2D_FUNCTOR_CPP)
+  ROOT.gInterpreter.Declare(BIN_CONTENT_3D_FUNCTOR_CPP)
   ROOT.gRandom.SetSeed(1234567890)
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
@@ -214,7 +219,7 @@ if __name__ == "__main__":
 
     # set parameters of test case
     # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.acc_1.phys.holesRho.detuneOdd4")
+    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.accEven.phys.detuneAccFull")
     # nmbDataEvents         = 1000
     # nmbAccPsEvents        = 1000000
     nmbDataEvents         = 1000000
@@ -256,19 +261,28 @@ if __name__ == "__main__":
     zVar = "PhiDeg"
     # formulas for detection efficiency
     # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-    # efficiencyFormula = "1"  # acc_perfect
-    efficiencyFormula = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
+    # efficiencyFormula = "1"  # no_acc; perfect efficiency
+    # efficiencyFormula = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
     # efficiencyFormula = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
     # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
+    # accPsHistName = "accPs3D"  # accFull
+    accPsHistName = "accPs3D_even"  # accEven
+    accPsFileName = f"./dataPhotoProdPiPi/{accPsHistName}.root"
+    accPsFile = ROOT.TFile.Open(accPsFileName, "READ")
+    accPSHist = accPsFile[accPsHistName]
+    print(f"Using 3D acceptance histogram '{accPSHist.GetName()}' in file '{accPsFileName}' to generate events: min = {accPSHist.GetMinimum()}, max = {accPSHist.GetMaximum()}")
+    accPSHistFunctor = ROOT.BinContent3DFunctor(accPSHist)
+    RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
+    efficiencyFormula = f"(1 / {accPSHist.GetMaximum()}) * PyVars::accPSHistFunctor({xVar}, {yVar}, {zVar})"
 
     # define holes in efficiency
     efficiencyHoleGen = ""  # do not punch hole in efficiency when generating data
     # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # hole in efficiency when generating data
-    efficiencyHoleGen = "!(" \
-      f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
-      f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
-      f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
-    ")"  # 3 holes in efficiency similar to 0.72-0.76 mass bin when generating data
+    # efficiencyHoleGen = "!(" \
+    #   f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
+    #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
+    #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
+    # ")"  # 3 holes in efficiency similar to 0.72-0.76 mass bin when generating data
     # efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in efficiency when generating data
     # efficiencyHoleGen = f"({yVar} > 0)"  # accept only upper half plane
     # efficiencyHoleGen = f"({yVar} < 0)"  # accept only lower half plane
@@ -278,32 +292,42 @@ if __name__ == "__main__":
     # efficiencyHoleReco = f"!((0.25 < {xVar} && {xVar} < 0.75) && (-180 < {yVar} && {yVar} < -100))"  # hole in efficiency when analyzing data chosen to be bigger than hole used when generating data
 
     # detune efficiency used to correct efficiency w.r.t. the one used to generate the data
-    # efficiencyFormulaDetune = ""
+    efficiencyFormulaDetune = ""
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {yVar} * {yVar} / (180 * 180)) / 1.5"  # detuneEven1; detune by even terms in phi only
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 2)"  # detuneEven2; detune by even terms in cos(theta) and Phi
     # efficiencyFormulaDetune = f"0.1 * (1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # detuneEven3; detune by even terms in all variables
     # efficiencyFormulaDetune = f"0.1 * sin({yVar} * TMath::DegToRad())"  # detuneOdd1; detune by odd terms in phi only
     # efficiencyFormulaDetune = f"0.1 * (1 + sin({yVar} * TMath::DegToRad()))"  # detuneOdd2; detune by odd terms in phi only
     # efficiencyFormulaDetune = f"0.1 * (1 + {yVar} / 180)"  # detuneOdd3; detune by odd terms in phi only
-    # use 2D histogram in (cos theta, phi) plane to detune efficiency
-    accPsFile = ROOT.TFile.Open("./dataPhotoProdPiPi/anglesHFPiPi_0.72_0.76_odd.root", "READ")
-    accPSHist = accPsFile["anglesHFPiPi_0.72_0.76_odd"]
-    accPSHistFunctor = ROOT.BinContent2DFunctor(accPSHist)
-    RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
-    accPSHistRange = max(abs(accPSHist.GetMaximum()), abs(accPSHist.GetMinimum()))
-    efficiencyFormulaDetune = f"(0.15 / {accPSHistRange}) * PyVars::accPSHistFunctor({xVar}, {yVar})"  # detuneOdd4; detune by odd terms in phi only
-    # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
+    # # use 2D histogram in (cos theta, phi) plane to detune efficiency
 
+    # accPsFile = ROOT.TFile.Open("./dataPhotoProdPiPi/anglesHFPiPi_0.72_0.76_odd.root", "READ")
+    # accPSHist = accPsFile["anglesHFPiPi_0.72_0.76_odd"]
+    # accPSHistFunctor = ROOT.BinContent2DFunctor(accPSHist)
+    # RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
+    # accPSHistRange = max(abs(accPSHist.GetMaximum()), abs(accPSHist.GetMinimum()))
+    # efficiencyFormulaDetune = f"(0.15 / {accPSHistRange}) * PyVars::accPSHistFunctor({xVar}, {yVar})"  # detuneOdd4; detune by odd terms in phi only
+    # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
+    accPsHistName = "accPs3D"  # detuneAccFull
+    # accPsHistName = "accPs3D_even"  # detuneAccEven
+    accPsFileName = f"./dataPhotoProdPiPi/{accPsHistName}.root"
+    accPsFile = ROOT.TFile.Open(accPsFileName, "READ")
+    accPSHistReco = accPsFile[accPsHistName]
+    print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFileName}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
+    accPSHistRecoFunctor = ROOT.BinContent3DFunctor(accPSHistReco)
+    RootUtilities.declareInCpp(accPSHistRecoFunctor = accPSHistRecoFunctor)  # make Python object available to use in C++
+    efficiencyFormulaReco = f"(1 / {accPSHistReco.GetMaximum()}) * PyVars::accPSHistRecoFunctor({xVar}, {yVar}, {zVar})"
+
+    # efficiencyFormulaGen = efficiencyFormulaReco = efficiencyFormula
     efficiencyFormulaGen = efficiencyFormula
+    # insert efficiency holes
     if efficiencyHoleGen:
-      efficiencyFormulaGen = f"(({efficiencyFormula}) * ({efficiencyHoleGen}))"
-    efficiencyFormulaReco = ""
-    if efficiencyFormulaDetune:
-      efficiencyFormulaReco = f"(({efficiencyFormula}) + ({efficiencyFormulaDetune}))"
-    else:
-      efficiencyFormulaReco = efficiencyFormula
+      efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({efficiencyHoleGen}))"
     if efficiencyHoleReco:
       efficiencyFormulaReco = f"(({efficiencyFormulaReco}) * ({efficiencyHoleReco}))"
+    # apply detuning to efficiency used when analyzing data
+    if efficiencyFormulaDetune:
+      efficiencyFormulaReco = f"(({efficiencyFormulaReco}) + ({efficiencyFormulaDetune}))"
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
     # calculate true moment values and generate data from partial-wave amplitudes
