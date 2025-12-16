@@ -272,6 +272,28 @@ def makePlots(
   outRootFile.Close()
 
 
+def decomposeHistEvenOdd(hist: ROOT.TH3) -> tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
+  """Decomposes a 3D histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis; returns (odd, even, odd + even)"""
+  histOdd  = hist.Clone(f"{hist.GetName()}_odd")
+  histEven = hist.Clone(f"{hist.GetName()}_even")
+  assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
+  for thetaBin in range(1, hist.GetNbinsX() + 1):
+    for PhiBin in range(1, hist.GetNbinsZ() + 1):
+      for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
+        phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
+        phiPosVal = hist.GetBinContent(thetaBin, phiBinPos, PhiBin)
+        phiNegVal = hist.GetBinContent(thetaBin, phiBinNeg, PhiBin)
+        phiOddVal  = (phiPosVal - phiNegVal) / 2
+        phiEvenVal = (phiPosVal + phiNegVal) / 2
+        histOdd.SetBinContent (thetaBin, phiBinPos, PhiBin, +phiOddVal)
+        histOdd.SetBinContent (thetaBin, phiBinNeg, PhiBin, -phiOddVal)
+        histEven.SetBinContent(thetaBin, phiBinPos, PhiBin, phiEvenVal)
+        histEven.SetBinContent(thetaBin, phiBinNeg, PhiBin, phiEvenVal)
+  histSum = hist.Clone(f"{hist.GetName()}_sum")
+  histSum.Add(histOdd, histEven)
+  return histOdd, histEven, histSum
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")

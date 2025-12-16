@@ -8,6 +8,8 @@ import os
 
 import ROOT
 
+from makeKinematicPlots import decomposeHistEvenOdd
+
 
 def copyTH2(histSrc: ROOT.TH2) -> ROOT.TH2:
   """Copies content of a TH2 into a new TH2 of the same name"""
@@ -110,23 +112,7 @@ if __name__ == "__main__":
       ("accPs3D", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 100, -1, +1, 72, -180, +180, 72, -180, +180),
       "cosTheta", "phiDeg", "PhiDeg",
     ).GetValue()
-    histAccPsOdd  = histAccPs.Clone(f"{histAccPs.GetName()}_odd")
-    histAccPsEven = histAccPs.Clone(f"{histAccPs.GetName()}_even")
-    assert histAccPs.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
-    for cosThetaBin in range(1, histAccPs.GetNbinsX() + 1):
-      for PhiBin in range(1, histAccPs.GetNbinsZ() + 1):
-        for phiBinNeg in range(1, histAccPs.GetNbinsY() // 2 + 1):
-          phiBinPos = histAccPs.GetYaxis().FindBin(-histAccPs.GetYaxis().GetBinCenter(phiBinNeg))
-          phiPosVal = histAccPs.GetBinContent(cosThetaBin, phiBinPos, PhiBin)
-          phiNegVal = histAccPs.GetBinContent(cosThetaBin, phiBinNeg, PhiBin)
-          phiOddVal  = (phiPosVal - phiNegVal) / 2
-          phiEvenVal = (phiPosVal + phiNegVal) / 2
-          histAccPsOdd.SetBinContent (cosThetaBin, phiBinPos, PhiBin, +phiOddVal)
-          histAccPsOdd.SetBinContent (cosThetaBin, phiBinNeg, PhiBin, -phiOddVal)
-          histAccPsEven.SetBinContent(cosThetaBin, phiBinPos, PhiBin, phiEvenVal)
-          histAccPsEven.SetBinContent(cosThetaBin, phiBinNeg, PhiBin, phiEvenVal)
-    histAccPsSum = histAccPs.Clone(f"{histAccPs.GetName()}_sum")
-    histAccPsSum.Add(histAccPsOdd, histAccPsEven)
+    histAccPsOdd, histAccPsEven, histAccPsSum = decomposeHistEvenOdd(histAccPs)
     # plot slices in Phi
     PhiSliceWidth = 4  # number of Phi bins to combine
     for hist in (histAccPsEven, histAccPsOdd, histAccPsSum):
