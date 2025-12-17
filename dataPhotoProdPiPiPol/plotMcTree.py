@@ -151,9 +151,9 @@ if __name__ == "__main__":
     print(f"Plotting histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
     hist.SetMinimum(0)
-    if "TH2" in hist.ClassName() and str(hist.GetName()) =="hMcMassPiPiVsMinusT":
+    if hist.GetDimension() == 2 and str(hist.GetName()) =="hMcMassPiPiVsMinusT":
       canv.SetLogz(1)
-    if "TH3" in hist.ClassName():
+    if hist.GetDimension() == 3:
       hist.GetXaxis().SetTitleOffset(1.5)
       hist.GetYaxis().SetTitleOffset(2)
       hist.GetZaxis().SetTitleOffset(1.5)

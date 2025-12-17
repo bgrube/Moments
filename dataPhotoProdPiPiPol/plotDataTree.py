@@ -209,10 +209,10 @@ if __name__ == "__main__":
   for hist in hists:
     print(f"Generating histogram '{hist.GetName()}'")
     canv = ROOT.TCanvas()
-    if "TH2" in hist.ClassName() and str(hist.GetName()).startswith("hDataMass"):
+    if hist.GetDimension() == 2 and str(hist.GetName()).startswith("hDataMass"):
       canv.SetLogz(1)
     hist.SetMinimum(0)
-    if "TH3" in hist.ClassName():
+    if hist.GetDimension() == 3:
       hist.GetXaxis().SetTitleOffset(1.5)
       hist.GetYaxis().SetTitleOffset(2)
       hist.GetZaxis().SetTitleOffset(1.5)

@@ -141,7 +141,7 @@ def makePlots(
     histWeightedMc.SetMinimum(0)  # needs to be set after Scale()
     # generate plots
     ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
-    if "TH1" in histRealData.ClassName():
+    if histRealData.GetDimension() == 1:
       # generate 1D overlay plots
       print(f"Overlaying 1D histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
       print("(under-, overflow) fractions: "
@@ -175,7 +175,7 @@ def makePlots(
       label.SetTextAlign(ROOT.kHAlignLeft + ROOT.kVAlignTop)
       label.DrawLatex(0.15, 0.89, f"#it{{#chi}}^{{2}}/bin = {chi2PerBin:.2f}")
       canv.SaveAs(f"{outputDirName}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
-    elif "TH2" in histRealData.ClassName():
+    elif histRealData.GetDimension() == 2:
       # generate 2D comparison plots
       print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
       ROOT.gStyle.SetOptStat("i")

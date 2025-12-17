@@ -257,10 +257,10 @@ def makePlots(
     # ROOT.gStyle.SetOptStat(1111111)
     ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
     canv = ROOT.TCanvas()
-    if "TH2" in hist.ClassName() and str(hist.GetName()).startswith("mass"):
+    if hist.GetDimension() == 2 and str(hist.GetName()).startswith("mass"):
       canv.SetLogz(1)
     hist.SetMinimum(0)
-    if "TH3" in hist.ClassName():
+    if hist.GetDimension() == 3:
       hist.GetXaxis().SetTitleOffset(1.5)
       hist.GetYaxis().SetTitleOffset(2)
       hist.GetZaxis().SetTitleOffset(1.5)

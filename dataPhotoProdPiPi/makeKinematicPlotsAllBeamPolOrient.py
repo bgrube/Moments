@@ -22,14 +22,14 @@ def plotHistogram(
   ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
   canv = ROOT.TCanvas()
   hist.SetMinimum(0)
-  if "TH3" in hist.ClassName():
+  if hist.GetDimension() == 3:
     hist.GetXaxis().SetTitleOffset(1.5)
     hist.GetYaxis().SetTitleOffset(2)
     hist.GetZaxis().SetTitleOffset(1.5)
     hist.Draw("BOX2Z")
   else:
     hist.Draw("COLZ")
-  if logZ and "TH2" in hist.ClassName():
+  if logZ and hist.GetDimension() == 2:
     canv.SetLogz()
   canv.SaveAs(f"{plotDir}/{histName}.pdf")
 
