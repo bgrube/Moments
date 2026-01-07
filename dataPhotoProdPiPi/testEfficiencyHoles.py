@@ -105,6 +105,7 @@ if __name__ == "__main__":
   accPsFileName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root"
   accPsTreeName = "PiPi"
   df = ROOT.RDataFrame(accPsTreeName, accPsFileName).Filter("(0.72 < mass and mass < 0.76)")
+  histAccPs2DComp = None
   if True:
   # if False:
     # decompose acceptance histogram into phi-odd and phi-even parts
@@ -139,6 +140,8 @@ if __name__ == "__main__":
         canv.SaveAs(f"./{hist2D.GetName()}.pdf")
         if hist is histAccPsOdd:
           ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+        if PhiBinIndex == 0 and hist is histAccPsSum:
+          histAccPs2DComp = hist2D
       hist.GetZaxis().SetRange(0, 0)  # reset z-axis range
     # plot 3D distributions
     for hist in (histAccPsEven, histAccPsOdd, histAccPsSum, histAccPs):
@@ -185,3 +188,28 @@ if __name__ == "__main__":
       canv = ROOT.TCanvas()
       hist.Draw("COLZ")
       canv.SaveAs(f"./{hist.GetName()}.pdf")
+
+  # plot regenerated accepted phase space
+  accPsFileName = "../plotsTestPhotoProd.momentsRd.accEven.phys.detuneAccFull/acceptedPhaseSpace.root"
+  accPsTreeName = "data"
+  df = ROOT.RDataFrame(accPsTreeName, accPsFileName)
+  if True:
+  # if False:
+    hist = df.Histo3D(
+      ("accPs3D", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 100, -1, +1, 72, -180, +180, 72, -180, +180),
+      "cosTheta", "phiDeg", "PhiDeg",
+    ).GetValue()
+    hist2D = hist.Project3D("yx")
+    hist2D.SetName(f"{str(hist.GetName()).replace('3D', '2D')}")
+    hist2D.SetTitle("")
+    canv = ROOT.TCanvas()
+    hist2D.Rebin2D(4, 3)  # reduce number of bins for better visibility
+    hist2D.Draw("COLZ")
+    canv.SaveAs(f"./{hist2D.GetName()}_regenerated.pdf")
+    if histAccPs2DComp is not None:
+      canv = ROOT.TCanvas()
+      histAccPs2DComp.Divide(hist2D)
+      histAccPs2DComp.SetMinimum(0.2)
+      histAccPs2DComp.SetMaximum(0.4)
+      histAccPs2DComp.Draw("COLZ")
+      canv.SaveAs(f"./{hist2D.GetName()}_regenerated_ratio.pdf")
