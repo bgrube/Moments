@@ -227,7 +227,7 @@ if __name__ == "__main__":
     # beamPolarization      = 1.0
     beamPolarization      = 0.3563  # Fall 2018, PARA_0
     binVarMass            = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-    massBinning           = HistAxisBinning(nmbBins = 1, minVal = 1.0, maxVal = 2.0, _var = binVarMass)
+    massBinning           = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)
     maxL                  = 4  # define maximum L quantum number of moments
     partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
       # negative-reflectivity waves
