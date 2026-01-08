@@ -253,9 +253,6 @@ if __name__ == "__main__":
     ]
     amplitudeSet = AmplitudeSet(partialWaveAmplitudes)
 
-    # xVar = "x"
-    # yVar = "y"
-    # zVar = "z"
     xVar = "cosTheta"
     yVar = "phiDeg"
     zVar = "PhiDeg"
@@ -275,21 +272,30 @@ if __name__ == "__main__":
     RootUtilities.declareInCpp(accPSHistGenFunctor = accPSHistGenFunctor)  # make Python object available to use in C++
     efficiencyFormula = f"(1 / {accPSHistGen.GetMaximum()}) * PyVars::accPSHistGenFunctor({xVar}, {yVar}, {zVar})"
 
-    # define holes in efficiency
-    efficiencyHoleGen = ""  # do not punch hole in efficiency when generating data
-    # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # hole in efficiency when generating data
+    # define holes in efficiency when generating data
+    efficiencyHoleGen = ""  # do not punch hole
+    # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # small hole
     # efficiencyHoleGen = "!(" \
     #   f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
     #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
     #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
     # ")"  # 3 holes in efficiency similar to 0.72-0.76 mass bin when generating data
     # efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in efficiency when generating data
-    # efficiencyHoleGen = f"({yVar} > 0)"  # accept only upper half plane
-    # efficiencyHoleGen = f"({yVar} < 0)"  # accept only lower half plane
-    # efficiencyHoleReco = ""  # do not punch hole in efficiency when analyzing data
-    efficiencyHoleReco = efficiencyHoleGen  # hole in efficiency when analyzing data chosen to be same as hole used when generating data
-    # efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # hole in efficiency when analyzing data chosen to be smaller than hole used when generating data
-    # efficiencyHoleReco = f"!((0.25 < {xVar} && {xVar} < 0.75) && (-180 < {yVar} && {yVar} < -100))"  # hole in efficiency when analyzing data chosen to be bigger than hole used when generating data
+    # half-plane holes
+    # efficiencyHoleGen = f"({xVar} < 0)"  # cosThetaNeg
+    # efficiencyHoleGen = f"({xVar} > 0)"  # cosThetaPos
+    # efficiencyHoleGen = f"({yVar} < 0)"  # phiNeg
+    # efficiencyHoleGen = f"({yVar} > 0)"  # phiPos
+    # efficiencyHoleGen = f"({zVar} < 0)"  # PhiNeg
+    # efficiencyHoleGen = f"({zVar} > 0)"  # PhiPos
+    # cut out spike regions in phi-odd component of efficiency
+    # efficiencyHoleGen = f"(-0.75 < {xVar} && {xVar} < +0.75)"  # cosThetaNoSpikeOdd
+    # efficiencyHoleGen = f"((-150 < {yVar} && {yVar} < -30) || (+30 < {yVar} && {yVar} < +150))"  # phiNoSpikeOdd
+    # define holes in efficiency when analyzing data
+    # efficiencyHoleReco = ""  # do not punch hole
+    efficiencyHoleReco = efficiencyHoleGen  # same as hole as used when generating data
+    # efficiencyHoleReco = f"!((0.35 < {xVar} && {xVar} < 0.65) && (-180 < {yVar} && {yVar} < -140))"  # 1 hole smaller than the one used when generating data
+    # efficiencyHoleReco = f"!((0.25 < {xVar} && {xVar} < 0.75) && (-180 < {yVar} && {yVar} < -100))"  # 1 hole bigger than the one used when generating data
 
     # detune efficiency used to correct efficiency w.r.t. the one used to generate the data
     efficiencyFormulaDetune = ""
@@ -300,7 +306,6 @@ if __name__ == "__main__":
     # efficiencyFormulaDetune = f"0.1 * (1 + sin({yVar} * TMath::DegToRad()))"  # detuneOdd2; detune by odd terms in phi only
     # efficiencyFormulaDetune = f"0.1 * (1 + {yVar} / 180)"  # detuneOdd3; detune by odd terms in phi only
     # # use 2D histogram in (cos theta, phi) plane to detune efficiency
-
     # accPsFile = ROOT.TFile.Open("./dataPhotoProdPiPi/anglesHFPiPi_0.72_0.76_odd.root", "READ")
     # accPSHist = accPsFile["anglesHFPiPi_0.72_0.76_odd"]
     # accPSHistFunctor = ROOT.BinContent2DFunctor(accPSHist)
@@ -348,22 +353,24 @@ if __name__ == "__main__":
         else:
           raise ValueError(f"Unexpected moment index in {qnIndex=}")
     print(f"True moment values\n{HTruth}")
+    # if True:
     if False:
+      # generate data by randomly drawing from the product of the intensity
+      # function defined by MomentResult and the efficiency function
       dataIntensity = genData(
         nmbEvents         = nmbDataEvents,
         polarization      = beamPolarization,
         # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
         inputData         = HTruth,
         outFileBasePath   = f"{outputDirName}/data",
-        efficiencyFormula = efficiencyFormulaGen,
+        efficiencyFormula = efficiencyFormulaGen,  #TODO transform variables to (x, y, z)
         regenerateData    = False,
       )
     else:
+      # generate data using rejection sampling from a phase-space
+      # sample with weights given by intensity and efficiency formula
       intensityFormula = HTruth.intensityFormula(
         polarization      = beamPolarization,
-        # thetaFormula      = "std::acos(x)",
-        # phiFormula        = "TMath::DegToRad() * y",
-        # PhiFormula        = "TMath::DegToRad() * z",
         thetaFormula      = "theta",
         phiFormula        = "phi",
         PhiFormula        = "Phi",
@@ -380,16 +387,20 @@ if __name__ == "__main__":
       )
     t.stop()
 
-    # if True:
-    if False:
+    if True:
+    # if False:
       # plot intensity and efficiency functions used to generate data
       for label, formula in {
         "efficiencyFormulaGen"     : efficiencyFormulaGen,
         "efficiencyFormulaReco"    : efficiencyFormulaReco,
-        "efficiencyFormulaDetune"  : efficiencyFormulaDetune,
+        # "efficiencyFormulaDetune"  : efficiencyFormulaDetune,
         "intensityFormula"         : intensityFormula,
         "intensityFormulaAccepted" : f"({intensityFormula}) * ({efficiencyFormulaGen})",
       }.items():
+        # transform variables to (x, y, z) so that formula can be used to construct a TF3
+        for old, new in (("cosTheta", "x"), ("phiDeg", "y"), ("PhiDeg", "z"),
+                         ("theta", "std::acos(x)"), ("phi", "TMath::DegToRad() * y"), ("Phi", "TMath::DegToRad() * z")):
+          formula = formula.replace(old, new)
         fcn = ROOT.TF3(label, formula, -1, +1, -180, +180, -180, +180)
         drawTF3(fcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/{label}.pdf")
     # raise SystemExit("STOP")
@@ -493,6 +504,7 @@ if __name__ == "__main__":
     print(f"Physical moments:\n{moments[0].HPhys}")
 
     # plot moments in each kinematic bin
+    ROOT.gStyle.SetOptStat(False)
     momentResultsPhys  = moments.momentResultsPhys
     momentResultsTruth = MomentResultsKinematicBinning([HTruth] * len(moments))  # dummy truth values; identical for all bins
     normalizationFactor = momentResultsTruth.normalizeTo(momentResultsPhys)  # normalize true moments to data
