@@ -330,8 +330,8 @@ if __name__ == "__main__":
       efficiencyFormulaReco = f"(({efficiencyFormulaReco}) + ({efficiencyFormulaDetune}))"
     nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
 
-    # calculate true moment values and generate data from partial-wave amplitudes
-    t = timer.start("Time to generate MC data from partial waves")
+    # calculate true moment values and generate data
+    t = timer.start("Time to generate MC data")
     # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
     momentResultsFileName = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl"
     print(f"Reading moments from file '{momentResultsFileName}'")
@@ -415,7 +415,7 @@ if __name__ == "__main__":
       )
     t.stop()
 
-    # plot data generated from partial-wave amplitudes and accepted phase-space data generated using `efficiencyFormulaReco`
+    # plot data and accepted phase-space data
     for data in (dataIntensity, dataAccPs):
       nmbBins = 25
       hists = (
@@ -485,12 +485,12 @@ if __name__ == "__main__":
       plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirName}/I_inv_{label}")
     t.stop()
 
-    # calculate moments of data generated from partial-wave amplitudes
+    # calculate moments from data
     t = timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
     moments.calculateMoments(normalize = False)
     # print all moments for first kinematic bin
-    print(f"Measured moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HMeas}")
-    print(f"Physical moments of data generated according to partial-wave amplitudes for first kinematic bin\n{moments[0].HPhys}")
+    print(f"Measured moments:\n{moments[0].HMeas}")
+    print(f"Physical moments:\n{moments[0].HPhys}")
 
     # plot moments in each kinematic bin
     momentResultsPhys  = moments.momentResultsPhys
