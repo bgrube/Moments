@@ -268,12 +268,12 @@ if __name__ == "__main__":
     # accPsHistName = "accPs3D"  # accFull
     accPsHistName = "accPs3D_even"  # accEven
     accPsFileName = f"./dataPhotoProdPiPi/{accPsHistName}.root"
-    accPsFile = ROOT.TFile.Open(accPsFileName, "READ")
-    accPSHist = accPsFile[accPsHistName]
-    print(f"Using 3D acceptance histogram '{accPSHist.GetName()}' in file '{accPsFileName}' to generate events: min = {accPSHist.GetMinimum()}, max = {accPSHist.GetMaximum()}")
-    accPSHistFunctor = ROOT.BinContent3DFunctor(accPSHist)
-    RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
-    efficiencyFormula = f"(1 / {accPSHist.GetMaximum()}) * PyVars::accPSHistFunctor({xVar}, {yVar}, {zVar})"
+    accPsFileGen = ROOT.TFile.Open(accPsFileName, "READ")
+    accPSHistGen = accPsFileGen[accPsHistName]
+    print(f"Using 3D acceptance histogram '{accPSHistGen.GetName()}' in file '{accPsFileName}' to generate events: min = {accPSHistGen.GetMinimum()}, max = {accPSHistGen.GetMaximum()}")
+    accPSHistGenFunctor = ROOT.BinContent3DFunctor(accPSHistGen)
+    RootUtilities.declareInCpp(accPSHistGenFunctor = accPSHistGenFunctor)  # make Python object available to use in C++
+    efficiencyFormula = f"(1 / {accPSHistGen.GetMaximum()}) * PyVars::accPSHistGenFunctor({xVar}, {yVar}, {zVar})"
 
     # define holes in efficiency
     efficiencyHoleGen = ""  # do not punch hole in efficiency when generating data
@@ -311,8 +311,8 @@ if __name__ == "__main__":
     accPsHistName = "accPs3D"  # detuneAccFull
     # accPsHistName = "accPs3D_even"  # detuneAccEven
     accPsFileName = f"./dataPhotoProdPiPi/{accPsHistName}.root"
-    accPsFile = ROOT.TFile.Open(accPsFileName, "READ")
-    accPSHistReco = accPsFile[accPsHistName]
+    accPsFileReco = ROOT.TFile.Open(accPsFileName, "READ")
+    accPSHistReco = accPsFileReco[accPsHistName]
     print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFileName}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
     accPSHistRecoFunctor = ROOT.BinContent3DFunctor(accPSHistReco)
     RootUtilities.declareInCpp(accPSHistRecoFunctor = accPSHistRecoFunctor)  # make Python object available to use in C++
