@@ -121,7 +121,7 @@ class HistogramDefinition:
 
 HistType:           TypeAlias = Union[ROOT.TH1D, ROOT.TH2D, ROOT.TH3D]
 HistRResultPtrType: TypeAlias = Union[ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D]]
-HistListType:       TypeAlias = Union[list[HistType], list[HistRResultPtrType]]
+HistListType:       TypeAlias = list[Union[HistType, HistRResultPtrType]]
 
 def bookHistogram(
   df:           ROOT.RDataFrame,
@@ -149,58 +149,104 @@ def bookHistogram(
     return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames)
 
 
+def decomposeHistEvenOdd(hist: ROOT.TH2 | ROOT.TH3) -> tuple[ROOT.TH2, ROOT.TH2, ROOT.TH2] | tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
+  """Decomposes a 2D or 3D histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis; returns (odd, even, odd + even)"""
+  histOdd  = hist.Clone(f"{hist.GetName()}_odd")
+  histEven = hist.Clone(f"{hist.GetName()}_even")
+  assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
+  if hist.GetDimension() == 2:
+    for thetaBin in range(1, hist.GetNbinsX() + 1):
+      for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
+        phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
+        phiPosVal = hist.GetBinContent(thetaBin, phiBinPos)
+        phiNegVal = hist.GetBinContent(thetaBin, phiBinNeg)
+        phiOddVal  = (phiPosVal - phiNegVal) / 2
+        phiEvenVal = (phiPosVal + phiNegVal) / 2
+        histOdd.SetBinContent (thetaBin, phiBinPos, +phiOddVal)
+        histOdd.SetBinContent (thetaBin, phiBinNeg, -phiOddVal)
+        histEven.SetBinContent(thetaBin, phiBinPos, phiEvenVal)
+        histEven.SetBinContent(thetaBin, phiBinNeg, phiEvenVal)
+  elif hist.GetDimension() == 3:
+    for thetaBin in range(1, hist.GetNbinsX() + 1):
+      for PhiBin in range(1, hist.GetNbinsZ() + 1):
+        for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
+          phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
+          phiPosVal = hist.GetBinContent(thetaBin, phiBinPos, PhiBin)
+          phiNegVal = hist.GetBinContent(thetaBin, phiBinNeg, PhiBin)
+          phiOddVal  = (phiPosVal - phiNegVal) / 2
+          phiEvenVal = (phiPosVal + phiNegVal) / 2
+          histOdd.SetBinContent (thetaBin, phiBinPos, PhiBin, +phiOddVal)
+          histOdd.SetBinContent (thetaBin, phiBinNeg, PhiBin, -phiOddVal)
+          histEven.SetBinContent(thetaBin, phiBinPos, PhiBin, phiEvenVal)
+          histEven.SetBinContent(thetaBin, phiBinNeg, PhiBin, phiEvenVal)
+  else:
+    raise NotImplementedError(f"Decomposition of {hist.GetDimension()}D histograms is not implemented")
+  histSum = hist.Clone(f"{hist.GetName()}_sum")
+  histSum.Add(histOdd, histEven)
+  return histOdd, histEven, histSum
+
+
 def bookHistograms(
   df:            ROOT.RDataFrame,
   inputDataType: InputDataType,
   subSystem:     SubSystemInfo,
-) -> HistListType:
-  """Books histograms for kinematic plots and returns the list of histograms"""
+) -> tuple[HistListType, list[str]]:
+  """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
   applyWeights = (inputDataType == InputDataType.REAL_DATA and df.HasColumn("eventWeight"))
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
+  histNamesEvenOdd: list[str] = []
+  histDefs: list[HistogramDefinition] = []
   # define histograms that are independent of subsystem
-  histDefs: list[HistogramDefinition] = [
-    HistogramDefinition("Ebeam",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100, 8,  9), ), ("Ebeam",          )),
-    HistogramDefinition("momLabP",        ";p_{p} [GeV];"                       + yAxisLabel, ((100, 0,  1), ), ("momLabP",        )),
-    HistogramDefinition("momLabPip",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100, 0, 10), ), ("momLabPip",      )),
-    HistogramDefinition("momLabPim",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100, 0, 10), ), ("momLabPim",      )),
-    HistogramDefinition("thetaDegLabP",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabP",   )),
-    HistogramDefinition("thetaDegLabPip", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPip", )),
-    HistogramDefinition("thetaDegLabPim", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPim", )),
-    HistogramDefinition("thetaDegLabPVsMomLabP",     ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                       ((100, 0,  1), (100, 60, 80)), ("momLabP",   "thetaDegLabP"  )),
-    HistogramDefinition("thetaDegLabPipVsMomLabPip", ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",   ((100, 0, 10), (100,  0, 30)), ("momLabPip", "thetaDegLabPip")),
-    HistogramDefinition("thetaDegLabPimVsMomLabPim", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100, 0, 10), (100,  0, 30)), ("momLabPim", "thetaDegLabPim")),
-  ]
+  if True:
+  # if False:
+    histDefs += [
+      HistogramDefinition("Ebeam",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100, 8,  9), ), ("Ebeam",          )),
+      HistogramDefinition("momLabP",        ";p_{p} [GeV];"                       + yAxisLabel, ((100, 0,  1), ), ("momLabP",        )),
+      HistogramDefinition("momLabPip",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100, 0, 10), ), ("momLabPip",      )),
+      HistogramDefinition("momLabPim",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100, 0, 10), ), ("momLabPim",      )),
+      HistogramDefinition("thetaDegLabP",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabP",   )),
+      HistogramDefinition("thetaDegLabPip", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPip", )),
+      HistogramDefinition("thetaDegLabPim", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100, 0, 80), ), ("thetaDegLabPim", )),
+      HistogramDefinition("thetaDegLabPVsMomLabP",     ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                       ((100, 0,  1), (100, 60, 80)), ("momLabP",   "thetaDegLabP"  )),
+      HistogramDefinition("thetaDegLabPipVsMomLabPip", ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",   ((100, 0, 10), (100,  0, 30)), ("momLabPip", "thetaDegLabPip")),
+      HistogramDefinition("thetaDegLabPimVsMomLabPim", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100, 0, 10), (100,  0, 30)), ("momLabPim", "thetaDegLabPim")),
+    ]
   # define subsystem-dependent histograms
   pairLabel = subSystem.pairLabel
   pairTLatexLabel = subSystem.pairTLatexLabel
-  histDefs += [
-    HistogramDefinition(f"cosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaHF{pairLabel}", )),
-    HistogramDefinition(f"cosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaGJ{pairLabel}", )),
-    HistogramDefinition(f"phiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegHF{pairLabel}",   )),
-    HistogramDefinition(f"phiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegGJ{pairLabel}",   )),
-    HistogramDefinition(f"PhiDeg{pairLabel}",     f"{pairTLatexLabel};#Phi [deg];"        + yAxisLabel, (( 72, -180, +180), ), (f"PhiDeg{pairLabel}",     )),
-    HistogramDefinition(f"anglesHF{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}")),
-    HistogramDefinition(f"anglesGJ{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}")),
-    HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  )),
-    HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  )),
-    HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  )),
-    HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  )),
-    HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGJ{pairLabel}VsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}", f"PhiDeg{pairLabel}")),
-    HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{pairLabel}VsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}", f"PhiDeg{pairLabel}")),
-  ]
-  if pairLabel == "PiPi":
+  if True:
+  # if False:
     histDefs += [
-      HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 0.28, 2.28), ), (f"mass{pairLabel}",   )),
-      HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0,    1),    ), (f"minusT{pairLabel}", )),
-      HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
-      HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
-      HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
-      HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
-      HistogramDefinition(f"PhiDegVsMass{pairLabel}",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
-      HistogramDefinition(f"MinusT{pairLabel}VsMass{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 0.28, 2.28), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
+      HistogramDefinition(f"cosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaHF{pairLabel}", )),
+      HistogramDefinition(f"cosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaGJ{pairLabel}", )),
+      HistogramDefinition(f"phiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegHF{pairLabel}",   )),
+      HistogramDefinition(f"phiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegGJ{pairLabel}",   )),
+      HistogramDefinition(f"PhiDeg{pairLabel}",     f"{pairTLatexLabel};#Phi [deg];"        + yAxisLabel, (( 72, -180, +180), ), (f"PhiDeg{pairLabel}",     )),
+      HistogramDefinition(f"anglesHF{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}")),
+      HistogramDefinition(f"anglesGJ{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}")),
+      HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  )),
+      HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  )),
+      HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  )),
+      HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  )),
+      HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGJ{pairLabel}VsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}", f"PhiDeg{pairLabel}")),
+      HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{pairLabel}VsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}", f"PhiDeg{pairLabel}")),
     ]
+  if pairLabel == "PiPi":
+    if True:
+    # if False:
+      histDefs += [
+        HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 0.28, 2.28), ), (f"mass{pairLabel}",   )),
+        HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0,    1),    ), (f"minusT{pairLabel}", )),
+        HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
+        HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
+        HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
+        HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
+        HistogramDefinition(f"PhiDegVsMass{pairLabel}",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
+        HistogramDefinition(f"MinusT{pairLabel}VsMass{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 0.28, 2.28), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
+      ]
     # create histograms in m_pipi bins
     if True:
+    # if False:
       massPiPiRange = (0.28, 2.28)  # [GeV]
       massPiPiNmbBins = 50
       massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
@@ -217,17 +263,23 @@ def bookHistograms(
           HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
           HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
         ]
+        histNamesEvenOdd += [
+          f"anglesGJ{pairLabel}{histNameSuffix}",
+          f"anglesHF{pairLabel}{histNameSuffix}",
+        ]
   else:
-    histDefs += [
-      HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 1, 5 ), ), (f"mass{pairLabel}",   )),
-      HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0, 15), ), (f"minusT{pairLabel}", )),
-      HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
-      HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
-      HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
-      HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
-      HistogramDefinition(f"PhiDegVsMass{pairLabel}",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
-      HistogramDefinition(f"MinusT{pairLabel}VsMass{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 1, 5), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
-    ]
+    if True:
+    # if False:
+      histDefs += [
+        HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 1, 5 ), ), (f"mass{pairLabel}",   )),
+        HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0, 15), ), (f"minusT{pairLabel}", )),
+        HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
+        HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
+        HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
+        HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
+        HistogramDefinition(f"PhiDegVsMass{pairLabel}",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
+        HistogramDefinition(f"MinusT{pairLabel}VsMass{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 1, 5), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
+      ]
   # book histograms
   hists = []
   for histDef in histDefs:
@@ -238,60 +290,70 @@ def bookHistograms(
       HistogramDefinition("eventWeight", ";Event weight;Combos", ((100, -1, +2), ), ("eventWeight", )),
       applyWeights = False,
     ))
-  return hists
+  return hists, histNamesEvenOdd
+
+
+def makePlot(
+  hist:          HistType | HistRResultPtrType,
+  outputDirName: str,
+) -> None:
+  """Plots given histogram into PDF file in the given output directory"""
+  print(f"Plotting histogram '{hist.GetName()}'")
+  ROOT.gStyle.SetOptStat("i")
+  # ROOT.gStyle.SetOptStat(1111111)
+  ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+  canv = ROOT.TCanvas()
+  if hist.GetDimension() == 2 and str(hist.GetName()).startswith("mass"):
+    canv.SetLogz(1)
+  if hist.GetDimension() == 3:
+    hist.GetXaxis().SetTitleOffset(1.5)
+    hist.GetYaxis().SetTitleOffset(2)
+    hist.GetZaxis().SetTitleOffset(1.5)
+    hist.Draw("BOX2Z")
+  else:
+    hist.Draw("COLZ")
+  canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
 
 def makePlots(
-  hists:         HistListType,
-  outputDirName: str,
+  hists:            HistListType,
+  histNamesEvenOdd: list[str],
+  outputDirName:    str,
 ) -> None:
   """Writes histograms to ROOT file and generates PDF plots"""
+  for hist in hists:
+    hist.SetMinimum(0)
+  # add phi-even and phi-odd histograms to list of histograms to plot
+  histsEvenOdd = []
+  histsOdd     = []  # need to keep track of odd histograms to set color palette
+  for histName in histNamesEvenOdd:
+    histEvenOdd = [hist for hist in hists if hist.GetName() == histName]
+    assert len(histEvenOdd) == 1, f"Expected exactly one histogram with name '{histName}', but found {len(histEvenOdd)}"
+    histOdd, histEven, histSum = decomposeHistEvenOdd(histEvenOdd[0])
+    for hist in (histOdd, histEven, histSum):
+      hist.Rebin2D(4, 3)  # reduce number of bins for better visibility
+    histOddValRange = max(abs(histOdd.GetMaximum()), abs(histOdd.GetMinimum()))
+    histOdd.SetMaximum(+histOddValRange)
+    histOdd.SetMinimum(-histOddValRange)
+    histEven.SetMinimum(0)
+    histSum.SetMinimum(0)
+    histsEvenOdd += [histOdd, histEven, histSum]
+    histsOdd.append(histOdd)
+  hists += histsEvenOdd
+  # plot all histograms
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/plots.root"
   outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
   outRootFile.cd()
   print(f"Writing histograms to '{outRootFileName}'")
   for hist in hists:
-    print(f"Generating histogram '{hist.GetName()}'")
-    ROOT.gStyle.SetOptStat("i")
-    # ROOT.gStyle.SetOptStat(1111111)
-    ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
-    canv = ROOT.TCanvas()
-    if hist.GetDimension() == 2 and str(hist.GetName()).startswith("mass"):
-      canv.SetLogz(1)
-    hist.SetMinimum(0)
-    if hist.GetDimension() == 3:
-      hist.GetXaxis().SetTitleOffset(1.5)
-      hist.GetYaxis().SetTitleOffset(2)
-      hist.GetZaxis().SetTitleOffset(1.5)
-      hist.Draw("BOX2Z")
-    else:
-      hist.Draw("COLZ")
+    if    (isinstance(hist, (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D))                                                                and hist            in histsOdd) \
+       or (isinstance(hist, (ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D])) and hist.GetValue() in histsOdd):
+      ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
+    makePlot(hist, outputDirName)
     hist.Write()
-    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+    ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
   outRootFile.Close()
-
-
-def decomposeHistEvenOdd(hist: ROOT.TH3) -> tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
-  """Decomposes a 3D histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis; returns (odd, even, odd + even)"""
-  histOdd  = hist.Clone(f"{hist.GetName()}_odd")
-  histEven = hist.Clone(f"{hist.GetName()}_even")
-  assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
-  for thetaBin in range(1, hist.GetNbinsX() + 1):
-    for PhiBin in range(1, hist.GetNbinsZ() + 1):
-      for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
-        phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
-        phiPosVal = hist.GetBinContent(thetaBin, phiBinPos, PhiBin)
-        phiNegVal = hist.GetBinContent(thetaBin, phiBinNeg, PhiBin)
-        phiOddVal  = (phiPosVal - phiNegVal) / 2
-        phiEvenVal = (phiPosVal + phiNegVal) / 2
-        histOdd.SetBinContent (thetaBin, phiBinPos, PhiBin, +phiOddVal)
-        histOdd.SetBinContent (thetaBin, phiBinNeg, PhiBin, -phiOddVal)
-        histEven.SetBinContent(thetaBin, phiBinPos, PhiBin, phiEvenVal)
-        histEven.SetBinContent(thetaBin, phiBinNeg, PhiBin, phiEvenVal)
-  histSum = hist.Clone(f"{hist.GetName()}_sum")
-  histSum.Add(histOdd, histEven)
-  return histOdd, histEven, histSum
 
 
 if __name__ == "__main__":
@@ -381,7 +443,7 @@ if __name__ == "__main__":
               additionalFilterDefs = additionalFilterDefs,
             )
             makePlots(
-              hists = bookHistograms(
+              *bookHistograms(
                 df            = dfSubSystem,
                 inputDataType = inputDataType,
                 subSystem     = subSystem,
