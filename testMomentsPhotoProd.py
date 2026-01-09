@@ -291,6 +291,11 @@ if __name__ == "__main__":
     # cut out spike regions in phi-odd component of efficiency
     # efficiencyHoleGen = f"(-0.75 < {xVar} && {xVar} < +0.75)"  # cosThetaNoSpikeOdd
     # efficiencyHoleGen = f"((-150 < {yVar} && {yVar} < -30) || (+30 < {yVar} && {yVar} < +150))"  # phiNoSpikeOdd
+    # efficiencyHoleGen = "!(" \
+    #   f"   ((-1 < {xVar} && {xVar} < -0.75) && (-180 < {yVar} && {yVar} < -150))" \
+    #   f"|| ((-1 < {xVar} && {xVar} < -0.75) && (+150 < {yVar} && {yVar} < +180))" \
+    #   f"|| ((+0.75 < {xVar} && {xVar} < +1) && ( -30 < {yVar} && {yVar} <  +30))" \
+    # ")"  # noSpikeOdd
     # define holes in efficiency when analyzing data
     # efficiencyHoleReco = ""  # do not punch hole
     efficiencyHoleReco = efficiencyHoleGen  # same as hole as used when generating data
@@ -390,6 +395,7 @@ if __name__ == "__main__":
     if True:
     # if False:
       # plot intensity and efficiency functions used to generate data
+      #NOTE this does not work well for histogram-based efficiencies because binning used in plotting is coarser than histogram binning; to fix this plotting should use the same binning and then a Rebin3D has to be applied
       for label, formula in {
         "efficiencyFormulaGen"     : efficiencyFormulaGen,
         "efficiencyFormulaReco"    : efficiencyFormulaReco,
