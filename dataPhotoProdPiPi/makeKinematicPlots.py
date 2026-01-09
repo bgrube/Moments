@@ -226,8 +226,8 @@ def bookHistograms(
       HistogramDefinition(f"anglesGJ{pairLabel}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}")),
       HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  )),
       HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  )),
-      HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  )),
-      HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  )),
+      HistogramDefinition(f"phiDegHFVsPhiDeg{pairLabel}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{HF}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegHF{pairLabel}")),
+      HistogramDefinition(f"phiDegGJVsPhiDeg{pairLabel}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{GJ}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegGJ{pairLabel}")),
       HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGJ{pairLabel}VsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}", f"PhiDeg{pairLabel}")),
       HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{pairLabel}VsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}", f"PhiDeg{pairLabel}")),
     ]
@@ -260,12 +260,14 @@ def bookHistograms(
           HistogramDefinition(f"anglesHF{pairLabel}{histNameSuffix}",           f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}"), massPiPiBinFilter),
           HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
           HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
-          HistogramDefinition(f"PhiDegVsPhiDegHF{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#phi_{{HF}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegHF{pairLabel}",   f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
-          HistogramDefinition(f"PhiDegVsPhiDegGJ{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#phi_{{GJ}} [deg];#Phi [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"phiDegGJ{pairLabel}",   f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
+          HistogramDefinition(f"phiDegHFVsPhiDeg{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{HF}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegHF{pairLabel}"), massPiPiBinFilter),
+          HistogramDefinition(f"phiDegGJVsPhiDeg{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{GJ}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegGJ{pairLabel}"), massPiPiBinFilter),
         ]
         histNamesEvenOdd += [
           f"anglesGJ{pairLabel}{histNameSuffix}",
           f"anglesHF{pairLabel}{histNameSuffix}",
+          f"phiDegHFVsPhiDeg{pairLabel}{histNameSuffix}",
+          f"phiDegGJVsPhiDeg{pairLabel}{histNameSuffix}",
         ]
   else:
     if True:
