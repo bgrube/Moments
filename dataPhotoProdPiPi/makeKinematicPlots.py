@@ -155,30 +155,30 @@ def decomposeHistEvenOdd(hist: ROOT.TH2 | ROOT.TH3) -> tuple[ROOT.TH2, ROOT.TH2,
   histEven = hist.Clone(f"{hist.GetName()}_even")
   assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
   if hist.GetDimension() == 2:
-    for thetaBin in range(1, hist.GetNbinsX() + 1):
-      for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
-        phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
-        phiPosVal = hist.GetBinContent(thetaBin, phiBinPos)
-        phiNegVal = hist.GetBinContent(thetaBin, phiBinNeg)
+    for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
+      for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
+        phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
+        phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPos)
+        phiNegVal = hist.GetBinContent(thetaBinIndex, phiBinNegIndex)
         phiOddVal  = (phiPosVal - phiNegVal) / 2
         phiEvenVal = (phiPosVal + phiNegVal) / 2
-        histOdd.SetBinContent (thetaBin, phiBinPos, +phiOddVal)
-        histOdd.SetBinContent (thetaBin, phiBinNeg, -phiOddVal)
-        histEven.SetBinContent(thetaBin, phiBinPos, phiEvenVal)
-        histEven.SetBinContent(thetaBin, phiBinNeg, phiEvenVal)
+        histOdd.SetBinContent (thetaBinIndex, phiBinPos, +phiOddVal)
+        histOdd.SetBinContent (thetaBinIndex, phiBinNegIndex, -phiOddVal)
+        histEven.SetBinContent(thetaBinIndex, phiBinPos, phiEvenVal)
+        histEven.SetBinContent(thetaBinIndex, phiBinNegIndex, phiEvenVal)
   elif hist.GetDimension() == 3:
-    for thetaBin in range(1, hist.GetNbinsX() + 1):
-      for PhiBin in range(1, hist.GetNbinsZ() + 1):
-        for phiBinNeg in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
-          phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNeg))
-          phiPosVal = hist.GetBinContent(thetaBin, phiBinPos, PhiBin)
-          phiNegVal = hist.GetBinContent(thetaBin, phiBinNeg, PhiBin)
+    for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
+      for PhiBinIndex in range(1, hist.GetNbinsZ() + 1):
+        for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
+          phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
+          phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPos, PhiBinIndex)
+          phiNegVal = hist.GetBinContent(thetaBinIndex, phiBinNegIndex, PhiBinIndex)
           phiOddVal  = (phiPosVal - phiNegVal) / 2
           phiEvenVal = (phiPosVal + phiNegVal) / 2
-          histOdd.SetBinContent (thetaBin, phiBinPos, PhiBin, +phiOddVal)
-          histOdd.SetBinContent (thetaBin, phiBinNeg, PhiBin, -phiOddVal)
-          histEven.SetBinContent(thetaBin, phiBinPos, PhiBin, phiEvenVal)
-          histEven.SetBinContent(thetaBin, phiBinNeg, PhiBin, phiEvenVal)
+          histOdd.SetBinContent (thetaBinIndex, phiBinPos, PhiBinIndex, +phiOddVal)
+          histOdd.SetBinContent (thetaBinIndex, phiBinNegIndex, PhiBinIndex, -phiOddVal)
+          histEven.SetBinContent(thetaBinIndex, phiBinPos, PhiBinIndex, phiEvenVal)
+          histEven.SetBinContent(thetaBinIndex, phiBinNegIndex, PhiBinIndex, phiEvenVal)
   else:
     raise NotImplementedError(f"Decomposition of {hist.GetDimension()}D histograms is not implemented")
   histSum = hist.Clone(f"{hist.GetName()}_sum")
@@ -345,17 +345,15 @@ def makePlots(
   # plot all histograms
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/plots.root"
-  outRootFile = ROOT.TFile(outRootFileName, "RECREATE")
-  outRootFile.cd()
-  print(f"Writing histograms to '{outRootFileName}'")
-  for hist in hists:
-    if    (isinstance(hist, (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D))                                                                and hist            in histsOdd) \
-       or (isinstance(hist, (ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D])) and hist.GetValue() in histsOdd):
-      ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
-    makePlot(hist, outputDirName)
-    hist.Write()
-    ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
-  outRootFile.Close()
+  with ROOT.TFile.Open(outRootFileName, "RECREATE") as outRootFile:
+    print(f"Writing histograms to '{outRootFileName}'")
+    for hist in hists:
+      if   (isinstance(hist, (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D))                                                                and hist            in histsOdd) \
+        or (isinstance(hist, (ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D])) and hist.GetValue() in histsOdd):
+        ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
+      makePlot(hist, outputDirName)
+      hist.Write()
+      ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
 
 if __name__ == "__main__":
