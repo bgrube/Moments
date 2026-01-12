@@ -357,16 +357,19 @@ def makePlots(
 
 
 def makeAnglesHFCorrelationPlot(
-  df:                  ROOT.RDataFrame,
-  subSystem:           SubSystemInfo,
-  columnsNameCorr:     str,  # column name to correlate with
-  histNameSuffix:      str = "",
-  additionalFilterDef: str = "",
+  df:                   ROOT.RDataFrame,
+  subSystem:            SubSystemInfo,
+  kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
+  histNameSuffix:       str = "",
+  additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
 ) -> None:
   """Produces 2D correlation plot of helicity-frame angles with given RDataFrame column"""
-  print(f"Generating correlation plot of helicity-frame angles with '{columnsNameCorr}' for {subSystem.pairLabel} subsystem and applying additional filter '{additionalFilterDef}'")
-  dfFiltered = df.Filter(additionalFilterDef) if additionalFilterDef else df
-  applyWeights = dfFiltered.HasColumn("eventWeight")
+  print(f"Generating correlation plot of helicity-frame angles with '{kinVarNameCorr}' for {subSystem.pairLabel} subsystem")
+  if additionalFilterDefs:
+    for filterDef in additionalFilterDefs:
+      print(f"Applying additional filter '{filterDef}'")
+      df = df.Filter(filterDef)
+  applyWeights = df.HasColumn("eventWeight")
   if applyWeights:
     print("Applying event weights")
   pairLabel = subSystem.pairLabel
@@ -374,27 +377,25 @@ def makeAnglesHFCorrelationPlot(
   xColName = f"cosThetaHF{pairLabel}"
   yColName = f"phiDegHF{pairLabel}"
   histCorr = ROOT.TH2D(
-    f"anglesHF{pairLabel}Corr{columnsNameCorr}{histNameSuffix}",
+    f"anglesHF{pairLabel}Corr{kinVarNameCorr}{histNameSuffix}",
     f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]",
-    6, -1, +1,
-    6, -180, +180,
-    # 100, -1, +1,
-    # 72, -180, +180,
+    20,   -1,   +1,
+    18, -180, +180,
   )
   for xBinIndex in range(1, histCorr.GetNbinsX() + 1):
     for yBinIndex in range(1, histCorr.GetNbinsY() + 1):
       xBinRange = (histCorr.GetXaxis().GetBinLowEdge(xBinIndex), histCorr.GetXaxis().GetBinUpEdge(xBinIndex))
       yBinRange = (histCorr.GetYaxis().GetBinLowEdge(yBinIndex), histCorr.GetYaxis().GetBinUpEdge(yBinIndex))
       cellFilter = f"(({xBinRange[0]} < {xColName} and {xColName} < {xBinRange[1]}) and ({yBinRange[0]} < {yColName} and {yColName} < {yBinRange[1]}))"
-      dfCell = dfFiltered.Filter(cellFilter)  # select events in current 2D cell
+      dfCell = df.Filter(cellFilter)  # select events in current 2D cell
       if applyWeights:
         # calculate weighted average
         assert not dfCell.HasColumn("weightedKinVar"), "RDataFrame already has 'weightedKinVar' column. This should not happen."
-        dfCell = dfCell.Define("weightedKinVar", f"{columnsNameCorr} * eventWeight")
+        dfCell = dfCell.Define("weightedKinVar", f"(Double32_t)({kinVarNameCorr} * eventWeight)")
         average = dfCell.Sum("weightedKinVar").GetValue() / dfCell.Sum("eventWeight").GetValue()
       else:
-        average = dfCell.Sum(columnsNameCorr).GetValue() / dfCell.Count().GetValue()
-      print(f"Average value for column `{columnsNameCorr}` in cell ({xBinIndex} = {xBinRange}, {yBinIndex} = {yBinRange}): {average}")
+        average = dfCell.Sum(kinVarNameCorr).GetValue() / dfCell.Count().GetValue()
+      print(f"Average value for column '{kinVarNameCorr}' in cell ({xBinIndex} = {xBinRange}, {yBinIndex} = {yBinRange}): {average}")
       histCorr.SetBinContent(xBinIndex, yBinIndex, average)
   makePlot(histCorr, ".")
   with ROOT.TFile.Open(f"{histCorr.GetName()}.root", "RECREATE"):
@@ -447,6 +448,7 @@ if __name__ == "__main__":
   )
   additionalColumnDefs = {}
   additionalFilterDefs = []
+  # additionalFilterDefs = ["(0.72 < massPiPi and massPiPi < 0.76)", ]
   treeName             = "kin"
 
   for dataPeriod in dataPeriods:
@@ -496,9 +498,18 @@ if __name__ == "__main__":
               ),
               outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}",
             )
-            # makeCorrelationPlot(
-            #   df                  = dfSubSystem,
-            #   subSystem           = subSystem,
-            #   columnsNameCorr     = "thetaDegLabPip",
-            #   additionalFilterDef = "(0.72 < massPiPi and massPiPi < 0.76)",
-            # )
+            # for kinVarNameCorr in [
+            #   "Ebeam",
+            #   "momLabP",
+            #   "momLabPip",
+            #   "momLabPim",
+            #   "thetaDegLabP",
+            #   "thetaDegLabPip",
+            #   "thetaDegLabPim",
+            # ]:
+            #   makeAnglesHFCorrelationPlot(
+            #     df                   = dfSubSystem,
+            #     subSystem            = subSystem,
+            #     kinVarNameCorr       = kinVarNameCorr,
+            #     additionalFilterDefs = additionalFilterDefs,
+            #   )
