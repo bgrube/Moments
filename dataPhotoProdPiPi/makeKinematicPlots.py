@@ -356,8 +356,65 @@ def makePlots(
       ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
 
+def makeCorrelationPlot(
+  df:                  ROOT.RDataFrame,
+  subSystem:           SubSystemInfo,
+  columnsNameCorr:     str,  # column name to correlate with
+  histNameSuffix:      str = "",
+  additionalFilterDef: str = "",
+) -> None:
+  """Produces 2D correlation plot of helicity-frame angles with given RDataFrame column"""
+  print(f"Generating correlation plot of helicity-frame angles with '{columnsNameCorr}'")
+  applyWeights = df.HasColumn("eventWeight")
+  pairLabel = subSystem.pairLabel
+  pairTLatexLabel = subSystem.pairTLatexLabel
+  xColName = f"cosThetaHF{pairLabel}"
+  yColName = f"phiDegHF{pairLabel}"
+  # create 2D histogram of helicity-frame angles
+  histAngles = bookHistogram(
+    df,
+    HistogramDefinition(
+      f"anglesHF{pairLabel}{histNameSuffix}",
+      f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]",
+      # ((100, -1, +1), (72, -180, +180)),
+      ((4, -1, +1), (4, -180, +180)),
+      (xColName, yColName), additionalFilterDef
+    ),
+    applyWeights,
+  )
+  makePlot(histAngles, ".")
+  # create histogram with coarser binning to hold average values given column variable to correlate with
+  histCorr = histAngles.Clone(f"{histAngles.GetName()}_{columnsNameCorr}")
+  # histCorr.Rebin2D(4, 4)  # coarser binning for correlation plot
+  for xBinIndex in range(1, histCorr.GetNbinsX() + 1):
+    for yBinIndex in range(1, histCorr.GetNbinsY() + 1):
+      xBinRange = (histCorr.GetXaxis().GetBinLowEdge(xBinIndex), histCorr.GetXaxis().GetBinUpEdge(xBinIndex))
+      yBinRange = (histCorr.GetYaxis().GetBinLowEdge(yBinIndex), histCorr.GetYaxis().GetBinUpEdge(yBinIndex))
+      cellFilter = f"(({xBinRange[0]} < {xColName} and {xColName} < {xBinRange[1]}) and ({yBinRange[0]} < {yColName} and {yColName} < {yBinRange[1]}))"
+      dfCell = df.Filter(cellFilter)  # select events in current 2D cell
+      # ROOT.RDF.Experimental.AddProgressBar(dfCell)
+      if applyWeights:
+        raise NotImplementedError("Correlation plot with event weights is not yet implemented")
+      else:
+        average = dfCell.Sum(columnsNameCorr).GetValue() / dfCell.Count().GetValue()
+      print(f"!!! {type(dfCell)}; ({xBinIndex=}, {yBinIndex=}): {average=}")
+      histCorr.SetBinContent(xBinIndex, yBinIndex, average)
+  makePlot(histCorr, ".")
+  with ROOT.TFile.Open(f"{histCorr.GetName()}.root", "RECREATE") as outRootFile:
+    histCorr.Write()
+  # yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
+  # hist = bookHistogram(
+  #   df,
+  #   HistogramDefinition("thetaDegLabPip_test", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((1000, 0, 80), ), ("thetaDegLabPip", )),
+  #   applyWeights,
+  # )
+  # makePlot(hist, ".")
+  # print(f"!!! {hist.GetMean()=} vs. {average=}: {hist.GetMean() - average=}")
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  # ROOT.EnableImplicitMT()
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
@@ -450,3 +507,9 @@ if __name__ == "__main__":
               ),
               outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}",
             )
+            # makeCorrelationPlot(
+            #   df                  = dfSubSystem,
+            #   subSystem           = subSystem,
+            #   columnsNameCorr     = "thetaDegLabPip",
+            #   additionalFilterDef = "(0.72 < massPiPi and massPiPi < 0.76)",
+            # )
