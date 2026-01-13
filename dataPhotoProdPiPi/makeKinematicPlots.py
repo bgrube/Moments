@@ -366,6 +366,7 @@ def makeAnglesHFCorrelationPlot(
   df:                   ROOT.RDataFrame,
   subSystem:            SubSystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
+  outputDirName:        str,
   histNameSuffix:       str = "",
   additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
 ) -> None:
@@ -382,8 +383,9 @@ def makeAnglesHFCorrelationPlot(
   pairTLatexLabel = subSystem.pairTLatexLabel
   xColName = f"cosThetaHF{pairLabel}"
   yColName = f"phiDegHF{pairLabel}"
+  # fill 2D histogram in helicity-frame angles with average values of kinVarNameCorr
   histCorr = ROOT.TH2D(
-    f"anglesHF{pairLabel}Corr{kinVarNameCorr}{histNameSuffix}",
+    f"anglesHF{pairLabel}Corr_{kinVarNameCorr}{histNameSuffix}",
     f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]",
     20,   -1,   +1,
     18, -180, +180,
@@ -403,8 +405,10 @@ def makeAnglesHFCorrelationPlot(
         average = dfCell.Sum(kinVarNameCorr).GetValue() / dfCell.Count().GetValue()
       print(f"Average value for column '{kinVarNameCorr}' in cell ({xBinIndex} = {xBinRange}, {yBinIndex} = {yBinRange}): {average}")
       histCorr.SetBinContent(xBinIndex, yBinIndex, average)
-  makePlot(histCorr, ".")
-  with ROOT.TFile.Open(f"{histCorr.GetName()}.root", "RECREATE"):
+  # write plot PDF and ROOT file
+  os.makedirs(outputDirName, exist_ok = True)
+  makePlot(histCorr, outputDirName)
+  with ROOT.TFile.Open(f"{outputDirName}/{histCorr.GetName()}.root", "RECREATE"):
     histCorr.Write()
 
 
@@ -496,14 +500,20 @@ if __name__ == "__main__":
               additionalColumnDefs = additionalColumnDefs,
               additionalFilterDefs = additionalFilterDefs,
             )
+            outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
             makePlots(
               *bookHistograms(
                 df            = dfSubSystem,
                 inputDataType = inputDataType,
                 subSystem     = subSystem,
               ),
-              outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}",
+              outputDirName = outputDirName,
             )
+            # outputDirName = f"{outputDirName}/anglesHFcorrelations"
+            # print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
+            # lvs = lorentzVectors(dataFormat = inputDataFormat)
+            # dfSubSystem = dfSubSystem.Define(f"massPipP", f"(Double32_t)massPair({lvs['pip']}, {lvs['recoil']})")
+            # dfSubSystem = dfSubSystem.Define(f"massPimP", f"(Double32_t)massPair({lvs['pim']}, {lvs['recoil']})")
             # for kinVarNameCorr in [
             #   "Ebeam",
             #   "momLabP",
@@ -512,10 +522,18 @@ if __name__ == "__main__":
             #   "thetaDegLabP",
             #   "thetaDegLabPip",
             #   "thetaDegLabPim",
+            #   "phiDegLabP",
+            #   "phiDegLabPip",
+            #   "phiDegLabPim",
+            #   f"PhiDeg{subSystem.pairLabel}",
+            #   f"PsiDegHF{subSystem.pairLabel}",
+            #   "massPipP",
+            #   "massPimP",
             # ]:
             #   makeAnglesHFCorrelationPlot(
             #     df                   = dfSubSystem,
             #     subSystem            = subSystem,
             #     kinVarNameCorr       = kinVarNameCorr,
+            #     outputDirName        = outputDirName,
             #     additionalFilterDefs = additionalFilterDefs,
             #   )
