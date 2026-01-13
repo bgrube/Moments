@@ -4,17 +4,25 @@
 from __future__ import annotations
 
 import array
+from dataclasses import dataclass
 import os
-from turtle import title
 from typing import Sequence
 
 import ROOT
 
 
+@dataclass
+class ContourPlotDef:
+  histName:    str  # name of histogram to get contours from
+  levels:      int | Sequence[float]  # number of contours or explicit list of contour levels
+  title:       str | None = None  # title of overlay plot
+  labelFormat: str = ".0f"  # format string to use for contour level labels
+
+
 def makeContourOverlayPlot(
   histBase:           ROOT.TH2,  # 2D histogram to draw as base
   histContours:       ROOT.TH2,  # 2D histogram to generate contours from
-  contourLevels:      int | Sequence[float],  # give number of contours or explicit list of contour levels
+  contourLevels:      int | Sequence[float],  # number of contours or explicit list of contour levels
   contourLineColor:   int | None = ROOT.kWhite,  # color to use for contour lines
   contourTextColor:   int | None = ROOT.kWhite,  # color to use for contour level labels
   contourLabelFormat: str = ".0f",  # format string to use for contour level labels
@@ -71,27 +79,37 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
-  # func = ROOT.TF2("Func", "x", -1, 1, -1, 1)
-  # histContours = func.GetHistogram()
-  # histBase = histContours
-  # contourLevels = 5
   # plotsBaseFile = ROOT.TFile.Open("./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/PARA_0/plots.root", "READ")
   plotsBaseFile = ROOT.TFile.Open("./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_ACCEPTED_PHASE_SPACE/PARA_0/plots.root", "READ")
   histBase = plotsBaseFile.Get("anglesHFPiPi_0.72_0.76")
-  # plotsContoursFile = ROOT.TFile.Open("./anglesHFPiPiCorrEbeam.root", "READ")
-  # histContours = plotsContoursFile.Get("anglesHFPiPiCorrEbeam")
-  # contourLevels = [8.30, 8.35, 8.40, 8.45, 8.50, 8.55]
-  # title = "Correlation with E_{beam}"
-  plotsContoursFile = ROOT.TFile.Open("./anglesHFPiPiCorrmomLabP.root", "READ")
-  histContours = plotsContoursFile.Get("anglesHFPiPiCorrmomLabP")
-  contourLevels = [0.34, 0.36, 0.38, 0.40, 0.42, 0.44]
-  title = "Correlation with p_{p}"
-  makeContourOverlayPlot(
-    histBase           = histBase,
-    histContours       = histContours,
-    contourLevels      = contourLevels,
-    contourLineColor   = ROOT.kWhite,
-    contourTextColor   = ROOT.kWhite,
-    contourLabelFormat = ".2f",
-    title              = title,
-  )
+  contourPlotDefs = [
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrEbeam",
+      levels = [8.30, 8.35, 8.40, 8.45, 8.50, 8.55],
+      title = "Correlation with E_{beam}",
+      labelFormat = ".2f",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrmomLabP",
+      levels = [0.34, 0.36, 0.38, 0.40, 0.42, 0.44],
+      title = "Correlation with p_{p}",
+      labelFormat = ".2f",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrmomLabPip",
+      levels = [1, 2, 3, 4, 5, 6, 7],
+      title = "Correlation with p_{#pi^{+}}",
+    ),
+  ]
+
+  for contourPlotDef in contourPlotDefs:
+    plotsContoursFile = ROOT.TFile.Open(f"./{contourPlotDef.histName}.root", "READ")
+    makeContourOverlayPlot(
+      histBase           = histBase,
+      histContours       = plotsContoursFile.Get(contourPlotDef.histName),
+      contourLevels      = contourPlotDef.levels,
+      contourLineColor   = ROOT.kWhite,
+      contourTextColor   = ROOT.kWhite,
+      contourLabelFormat = contourPlotDef.labelFormat,
+      title              = contourPlotDef.title,
+    )
