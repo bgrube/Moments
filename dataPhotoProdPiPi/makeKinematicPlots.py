@@ -210,6 +210,12 @@ def bookHistograms(
       HistogramDefinition("thetaDegLabPVsMomLabP",     ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                       ((100, 0,  1), (100, 60, 80)), ("momLabP",   "thetaDegLabP"  )),
       HistogramDefinition("thetaDegLabPipVsMomLabPip", ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",   ((100, 0, 10), (100,  0, 30)), ("momLabPip", "thetaDegLabPip")),
       HistogramDefinition("thetaDegLabPimVsMomLabPim", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100, 0, 10), (100,  0, 30)), ("momLabPim", "thetaDegLabPim")),
+      HistogramDefinition("phiDegLabP",   ";#phi_{p}^{lab} [deg];"            + yAxisLabel, ((72, -180, 180), ), ("phiDegLabP",   )),
+      HistogramDefinition("phiDegLabPip", ";#phi_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((72, -180, 180), ), ("phiDegLabPip", )),
+      HistogramDefinition("phiDegLabPim", ";#phi_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((72, -180, 180), ), ("phiDegLabPim", )),
+      HistogramDefinition("phiDegLabPVsThetaDegLabP",     ";#phi_{p}^{lab} [deg];#theta_{p}^{lab} [deg];",                       ((100, 60, 80), (72, -180, 180)), ("thetaDegLabP",   "phiDegLabP"  )),
+      HistogramDefinition("phiDegLabPipVsThetaDegLabPip", ";#phi_{#pi^{#plus}}^{lab} [deg];#theta_{#pi^{#plus}}^{lab} [deg];",   ((100,  0, 30), (72, -180, 180)), ("thetaDegLabPip", "phiDegLabPip")),
+      HistogramDefinition("phiDegLabPimVsThetaDegLabPim", ";#phi_{#pi^{#minus}}^{lab} [deg];#theta_{#pi^{#minus}}^{lab} [deg];", ((100,  0, 30), (72, -180, 180)), ("thetaDegLabPim", "phiDegLabPim")),
     ]
   # define subsystem-dependent histograms
   pairLabel = subSystem.pairLabel
