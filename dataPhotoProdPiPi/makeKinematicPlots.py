@@ -209,13 +209,15 @@ def bookHistograms(
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   histNamesEvenOdd: list[str] = []
   histDefs: list[HistogramDefinition] = []
+  pairLabel = subSystem.pairLabel
+  pairTLatexLabel = subSystem.pairTLatexLabel
   # define histograms that are independent of subsystem
   if True:
   # if False:
     for filter, histNameSuffix in [
-      ("",               ""            ),  # all data
-      ("(phiDegHF > 0)", "_phiDegHFPos"),
-      ("(phiDegHF < 0)", "_phiDegHFNeg"),
+      ("",                           ""                        ),  # all data
+      (f"(phiDegHF{pairLabel} > 0)", f"_phiDegHF{pairLabel}Pos"),
+      (f"(phiDegHF{pairLabel} < 0)", f"_phiDegHF{pairLabel}Neg"),
     ]:
       histDefs += [
         HistogramDefinition(f"Ebeam{histNameSuffix}",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100, 8,  9), ), ("Ebeam",          ), filter),
@@ -236,8 +238,6 @@ def bookHistograms(
         HistogramDefinition(f"phiDegLabPimVsThetaDegLabPim{histNameSuffix}", ";#phi_{#pi^{#minus}}^{lab} [deg];#theta_{#pi^{#minus}}^{lab} [deg];", ((100,  0, 30), (72, -180, 180)), ("thetaDegLabPim", "phiDegLabPim"), filter),
       ]
   # define subsystem-dependent histograms
-  pairLabel = subSystem.pairLabel
-  pairTLatexLabel = subSystem.pairTLatexLabel
   if True:
   # if False:
     histDefs += [
@@ -360,8 +360,9 @@ def makePlots(
     histEvenOdd = [hist for hist in hists if hist.GetName() == histName]
     assert len(histEvenOdd) == 1, f"Expected exactly one histogram with name '{histName}', but found {len(histEvenOdd)}"
     histOdd, histEven, histSum = decomposeHistEvenOdd(histEvenOdd[0])
-    for hist in (histOdd, histEven, histSum):
-      hist.Rebin2D(4, 3)  # reduce number of bins for better visibility
+    if histOdd.GetDimension() == 2:
+      for hist in (histOdd, histEven, histSum):
+        hist.Rebin2D(4, 3)  # reduce number of bins for better visibility
     histOddValRange = max(abs(histOdd.GetMaximum()), abs(histOdd.GetMinimum()))
     histOdd.SetMaximum(+histOddValRange)
     histOdd.SetMinimum(-histOddValRange)
