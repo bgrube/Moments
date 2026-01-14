@@ -41,7 +41,7 @@ def makeComparisonPlotPosNegPhiHF(
     histDiff = histPos.Clone(histCompName)
     histDiff.Add(histNeg, -1)
     histDiff.SetTitle("(#phi_{HF} > 0)#minus (#phi_{HF} < 0)")
-    zRange = abs(histDiff.GetMinimum()) if histDiff.GetMinimum() < 0 else 10.0  # choose z range to see negative values; but avoid zero range in case function positive
+    zRange = max(abs(histDiff.GetMinimum()), abs(histDiff.GetMaximum()))
     histDiff.SetMinimum(-zRange)
     histDiff.SetMaximum(+zRange)
     histDiff.Draw("COLZ")
@@ -54,6 +54,18 @@ def makeComparisonPlotPosNegPhiHF(
       stats.SetX2NDC(0.99)
       stats.SetY1NDC(0.95)
       stats.SetY2NDC(0.99)
+    # # plot 2D asymmetry for phi > 0 and phi < 0
+    # histDiff = histPos.Clone(f"{histBaseName}_phiDegHFPiPiPosNegDiff")
+    # histDiff.Add(histNeg, -1)
+    # histSum = histPos.Clone(f"{histBaseName}_phiDegHFPiPiPosNegSum")
+    # histSum.Add(histNeg, +1)
+    # histAsym = histDiff.Clone(histCompName)
+    # histAsym.Divide(histSum)
+    # histAsym.SetTitle("#phi_{HF} Asymmetry")
+    # histAsym.SetMinimum(-0.1)
+    # histAsym.SetMaximum(+0.1)
+    # histAsym.SetStats(False)
+    # histAsym.Draw("COLZ")
   canv.SaveAs(f"{outputDirName}/{histCompName}.pdf")
 
 
