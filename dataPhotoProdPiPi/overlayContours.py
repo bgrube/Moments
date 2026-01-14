@@ -101,42 +101,44 @@ if __name__ == "__main__":
   # plotsBaseFile = ROOT.TFile.Open("./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/PARA_0/plots.root", "READ")
   plotsBaseFile = ROOT.TFile.Open("./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_ACCEPTED_PHASE_SPACE/PARA_0/plots.root", "READ")
   histBase = plotsBaseFile.Get("anglesHFPiPi_0.72_0.76")
-  plotsContoursDir = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/PARA_0/anglesHFcorrelations"
+  plotsContoursDir = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/PARA_0/anglesHFCorrelations"
+  # plotsContoursDir = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_ACCEPTED_PHASE_SPACE/PARA_0/anglesHFCorrelations"
   contourPlotDefs = [
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrEbeam",
+      histName = "anglesHFPiPiCorr_Ebeam",
       levels = [8.30, 8.35, 8.40, 8.45, 8.50, 8.55],
       title = "Correlation with E_{beam}",
       labelFormat = ".2f",
     ),
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrmomLabP",
+      histName = "anglesHFPiPiCorr_momLabP",
       levels = [0.34, 0.36, 0.38, 0.40, 0.42, 0.44],
       title = "Correlation with p_{p}^{lab}",
       labelFormat = ".2f",
     ),
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrmomLabPip",
+      histName = "anglesHFPiPiCorr_momLabPip",
       levels = [1, 2, 3, 4, 5, 6, 7],
       title = "Correlation with p_{#pi^{#plus}}^{lab}",
     ),
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrmomLabPim",
+      histName = "anglesHFPiPiCorr_momLabPim",
       levels = [1, 2, 3, 4, 5, 6, 7],
       title = "Correlation with p_{#pi^{#minus}}^{lab}",
     ),
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrthetaDegLabP",
+      histName = "anglesHFPiPiCorr_thetaDegLabP",
       levels = [71.0, 71.5, 72.0, 72.5, 73.0],
       title = "Correlation with #theta_{p}^{lab}",
+      labelFormat = ".1f",
     ),
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrthetaDegLabPip",
+      histName = "anglesHFPiPiCorr_thetaDegLabPip",
       levels = [2, 4, 6, 8, 10, 12, 14],
       title = "Correlation with #theta_{#pi^{#plus}}^{lab}",
     ),
     ContourPlotDef(
-      histName = "anglesHFPiPiCorrthetaDegLabPim",
+      histName = "anglesHFPiPiCorr_thetaDegLabPim",
       levels = [2, 4, 6, 8, 10, 12, 14],
       title = "Correlation with #theta_{#pi^{#minus}}^{lab}",
     ),
