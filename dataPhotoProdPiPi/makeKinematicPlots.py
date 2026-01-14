@@ -149,35 +149,48 @@ def bookHistogram(
     return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames)
 
 
-def decomposeHistEvenOdd(hist: ROOT.TH2 | ROOT.TH3) -> tuple[ROOT.TH2, ROOT.TH2, ROOT.TH2] | tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
-  """Decomposes a 2D or 3D histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis; returns (odd, even, odd + even)"""
+def decomposeHistEvenOdd(hist: ROOT.TH1 | ROOT.TH2 | ROOT.TH3) -> tuple[ROOT.TH1, ROOT.TH1, ROOT.TH1] | tuple[ROOT.TH2, ROOT.TH2, ROOT.TH2] | tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
+  """Decomposes a histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis for 2D or 3D histograms; returns (odd, even, odd + even)"""
   histOdd  = hist.Clone(f"{hist.GetName()}_odd")
   histEven = hist.Clone(f"{hist.GetName()}_even")
-  assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
-  if hist.GetDimension() == 2:
+  if hist.GetDimension() == 1:
+    assert hist.GetNbinsX() % 2 == 0, "Number of phi bins must be even!"
+    for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
+      phiBinPosIndex = hist.GetXaxis().FindBin(-hist.GetXaxis().GetBinCenter(phiBinNegIndex))
+      phiPosVal = hist.GetBinContent(phiBinPosIndex)
+      phiNegVal = hist.GetBinContent(phiBinNegIndex)
+      phiOddVal  = (phiPosVal - phiNegVal) / 2
+      phiEvenVal = (phiPosVal + phiNegVal) / 2
+      histOdd.SetBinContent (phiBinPosIndex, +phiOddVal)
+      histOdd.SetBinContent (phiBinNegIndex, -phiOddVal)
+      histEven.SetBinContent(phiBinPosIndex, phiEvenVal)
+      histEven.SetBinContent(phiBinNegIndex, phiEvenVal)
+  elif hist.GetDimension() == 2:
+    assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
     for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
-      for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
-        phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
-        phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPos)
+      for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
+        phiBinPosIndex = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
+        phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPosIndex)
         phiNegVal = hist.GetBinContent(thetaBinIndex, phiBinNegIndex)
         phiOddVal  = (phiPosVal - phiNegVal) / 2
         phiEvenVal = (phiPosVal + phiNegVal) / 2
-        histOdd.SetBinContent (thetaBinIndex, phiBinPos, +phiOddVal)
+        histOdd.SetBinContent (thetaBinIndex, phiBinPosIndex, +phiOddVal)
         histOdd.SetBinContent (thetaBinIndex, phiBinNegIndex, -phiOddVal)
-        histEven.SetBinContent(thetaBinIndex, phiBinPos, phiEvenVal)
+        histEven.SetBinContent(thetaBinIndex, phiBinPosIndex, phiEvenVal)
         histEven.SetBinContent(thetaBinIndex, phiBinNegIndex, phiEvenVal)
   elif hist.GetDimension() == 3:
+    assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
     for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
       for PhiBinIndex in range(1, hist.GetNbinsZ() + 1):
-        for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over half of phi bins
-          phiBinPos = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
-          phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPos, PhiBinIndex)
+        for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
+          phiBinPosIndex = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
+          phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPosIndex, PhiBinIndex)
           phiNegVal = hist.GetBinContent(thetaBinIndex, phiBinNegIndex, PhiBinIndex)
           phiOddVal  = (phiPosVal - phiNegVal) / 2
           phiEvenVal = (phiPosVal + phiNegVal) / 2
-          histOdd.SetBinContent (thetaBinIndex, phiBinPos, PhiBinIndex, +phiOddVal)
+          histOdd.SetBinContent (thetaBinIndex, phiBinPosIndex, PhiBinIndex, +phiOddVal)
           histOdd.SetBinContent (thetaBinIndex, phiBinNegIndex, PhiBinIndex, -phiOddVal)
-          histEven.SetBinContent(thetaBinIndex, phiBinPos, PhiBinIndex, phiEvenVal)
+          histEven.SetBinContent(thetaBinIndex, phiBinPosIndex, PhiBinIndex, phiEvenVal)
           histEven.SetBinContent(thetaBinIndex, phiBinNegIndex, PhiBinIndex, phiEvenVal)
   else:
     raise NotImplementedError(f"Decomposition of {hist.GetDimension()}D histograms is not implemented")
@@ -262,16 +275,20 @@ def bookHistograms(
         massPiPiBinFilter = f"({massPiPiBinMin} < massPiPi) and (massPiPi < {massPiPiBinMax})"
         histNameSuffix    = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
         histDefs += [
-          HistogramDefinition(f"anglesGJ{pairLabel}{histNameSuffix}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}"), massPiPiBinFilter),
+          HistogramDefinition(f"phiDegHF{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegHF{pairLabel}", ), massPiPiBinFilter),
+          HistogramDefinition(f"phiDegGJ{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiDegGJ{pairLabel}", ), massPiPiBinFilter),
           HistogramDefinition(f"anglesHF{pairLabel}{histNameSuffix}",           f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}"), massPiPiBinFilter),
+          HistogramDefinition(f"anglesGJ{pairLabel}{histNameSuffix}",           f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}"), massPiPiBinFilter),
           HistogramDefinition(f"PhiDegVsCosThetaHF{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{HF}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
           HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  ), massPiPiBinFilter),
           HistogramDefinition(f"phiDegHFVsPhiDeg{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{HF}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegHF{pairLabel}"), massPiPiBinFilter),
           HistogramDefinition(f"phiDegGJVsPhiDeg{pairLabel}{histNameSuffix}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{GJ}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegGJ{pairLabel}"), massPiPiBinFilter),
         ]
         histNamesEvenOdd += [
-          f"anglesGJ{pairLabel}{histNameSuffix}",
+          f"phiDegHF{pairLabel}{histNameSuffix}",
+          f"phiDegGJ{pairLabel}{histNameSuffix}",
           f"anglesHF{pairLabel}{histNameSuffix}",
+          f"anglesGJ{pairLabel}{histNameSuffix}",
           f"phiDegHFVsPhiDeg{pairLabel}{histNameSuffix}",
           f"phiDegGJVsPhiDeg{pairLabel}{histNameSuffix}",
         ]
