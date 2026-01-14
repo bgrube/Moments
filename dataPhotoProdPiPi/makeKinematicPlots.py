@@ -149,7 +149,28 @@ def bookHistogram(
     return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames)
 
 
-def decomposeHistEvenOdd(hist: ROOT.TH1 | ROOT.TH2 | ROOT.TH3) -> tuple[ROOT.TH1, ROOT.TH1, ROOT.TH1] | tuple[ROOT.TH2, ROOT.TH2, ROOT.TH2] | tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
+def calcEvenOddValue(
+  hist:          ROOT.TH1 | ROOT.TH2 | ROOT.TH3,
+  histEven:      ROOT.TH1 | ROOT.TH2 | ROOT.TH3,
+  histOdd:       ROOT.TH1 | ROOT.TH2 | ROOT.TH3,
+  posBinIndices: tuple[int, ...],
+  negBinIndices: tuple[int, ...],
+) -> None:
+  """Calculates even or odd value for given positive and negative bin indices"""
+  phiPosVal = hist.GetBinContent(*posBinIndices)
+  phiNegVal = hist.GetBinContent(*negBinIndices)
+  #TODO uncertainties and correlations are not calculated and set correctly
+  phiOddVal  = (phiPosVal - phiNegVal) / 2
+  phiEvenVal = (phiPosVal + phiNegVal) / 2
+  histOdd.SetBinContent (*posBinIndices, +phiOddVal)
+  histOdd.SetBinContent (*negBinIndices, -phiOddVal)
+  histEven.SetBinContent(*posBinIndices, phiEvenVal)
+  histEven.SetBinContent(*negBinIndices, phiEvenVal)
+
+
+def decomposeHistEvenOdd(
+  hist: ROOT.TH1 | ROOT.TH2 | ROOT.TH3,
+) -> tuple[ROOT.TH1, ROOT.TH1, ROOT.TH1] | tuple[ROOT.TH2, ROOT.TH2, ROOT.TH2] | tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
   """Decomposes a histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis for 2D or 3D histograms; returns (odd, even, odd + even)"""
   histOdd  = hist.Clone(f"{hist.GetName()}_odd")
   histEven = hist.Clone(f"{hist.GetName()}_even")
@@ -157,41 +178,20 @@ def decomposeHistEvenOdd(hist: ROOT.TH1 | ROOT.TH2 | ROOT.TH3) -> tuple[ROOT.TH1
     assert hist.GetNbinsX() % 2 == 0, "Number of phi bins must be even!"
     for phiBinNegIndex in range(1, hist.GetNbinsX() // 2 + 1):  # only need to loop over negative half of phi bins
       phiBinPosIndex = hist.GetXaxis().FindBin(-hist.GetXaxis().GetBinCenter(phiBinNegIndex))
-      phiPosVal = hist.GetBinContent(phiBinPosIndex)
-      phiNegVal = hist.GetBinContent(phiBinNegIndex)
-      phiOddVal  = (phiPosVal - phiNegVal) / 2
-      phiEvenVal = (phiPosVal + phiNegVal) / 2
-      histOdd.SetBinContent (phiBinPosIndex, +phiOddVal)
-      histOdd.SetBinContent (phiBinNegIndex, -phiOddVal)
-      histEven.SetBinContent(phiBinPosIndex, phiEvenVal)
-      histEven.SetBinContent(phiBinNegIndex, phiEvenVal)
+      calcEvenOddValue(hist, histEven, histOdd, (phiBinPosIndex, ), (phiBinNegIndex, ))
   elif hist.GetDimension() == 2:
     assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
     for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
       for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
         phiBinPosIndex = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
-        phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPosIndex)
-        phiNegVal = hist.GetBinContent(thetaBinIndex, phiBinNegIndex)
-        phiOddVal  = (phiPosVal - phiNegVal) / 2
-        phiEvenVal = (phiPosVal + phiNegVal) / 2
-        histOdd.SetBinContent (thetaBinIndex, phiBinPosIndex, +phiOddVal)
-        histOdd.SetBinContent (thetaBinIndex, phiBinNegIndex, -phiOddVal)
-        histEven.SetBinContent(thetaBinIndex, phiBinPosIndex, phiEvenVal)
-        histEven.SetBinContent(thetaBinIndex, phiBinNegIndex, phiEvenVal)
+        calcEvenOddValue(hist, histEven, histOdd, (thetaBinIndex, phiBinPosIndex), (thetaBinIndex, phiBinNegIndex))
   elif hist.GetDimension() == 3:
     assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
     for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
       for PhiBinIndex in range(1, hist.GetNbinsZ() + 1):
         for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
           phiBinPosIndex = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
-          phiPosVal = hist.GetBinContent(thetaBinIndex, phiBinPosIndex, PhiBinIndex)
-          phiNegVal = hist.GetBinContent(thetaBinIndex, phiBinNegIndex, PhiBinIndex)
-          phiOddVal  = (phiPosVal - phiNegVal) / 2
-          phiEvenVal = (phiPosVal + phiNegVal) / 2
-          histOdd.SetBinContent (thetaBinIndex, phiBinPosIndex, PhiBinIndex, +phiOddVal)
-          histOdd.SetBinContent (thetaBinIndex, phiBinNegIndex, PhiBinIndex, -phiOddVal)
-          histEven.SetBinContent(thetaBinIndex, phiBinPosIndex, PhiBinIndex, phiEvenVal)
-          histEven.SetBinContent(thetaBinIndex, phiBinNegIndex, PhiBinIndex, phiEvenVal)
+          calcEvenOddValue(hist, histEven, histOdd, (thetaBinIndex, phiBinPosIndex, PhiBinIndex), (thetaBinIndex, phiBinNegIndex, PhiBinIndex))
   else:
     raise NotImplementedError(f"Decomposition of {hist.GetDimension()}D histograms is not implemented")
   histSum = hist.Clone(f"{hist.GetName()}_sum")
