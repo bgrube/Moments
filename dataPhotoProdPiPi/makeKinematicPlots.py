@@ -354,6 +354,15 @@ def makePlot(
     hist.Draw("BOX2Z")
   else:
     hist.Draw("COLZ")
+  # adjust stats box, if present
+  canv.Update()
+  stats = canv.GetPrimitive("stats")
+  if stats is not ROOT.nullptr:
+    stats.SetFillColor(ROOT.kWhite)
+    stats.SetX1NDC(0.75)
+    stats.SetX2NDC(0.99)
+    stats.SetY1NDC(0.95)
+    stats.SetY2NDC(0.99)
   canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
 
