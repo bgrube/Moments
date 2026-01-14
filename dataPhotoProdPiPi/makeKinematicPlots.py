@@ -252,8 +252,8 @@ def bookHistograms(
       HistogramDefinition(f"PhiDegVsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#Phi [deg]",        ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"PhiDeg{pairLabel}"  )),
       HistogramDefinition(f"phiDegHFVsPhiDeg{pairLabel}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{HF}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegHF{pairLabel}")),
       HistogramDefinition(f"phiDegGJVsPhiDeg{pairLabel}",   f"{pairTLatexLabel};#Phi [deg];#phi_{{GJ}} [deg]",       (( 72, -180, +180), (72, -180, +180)), (f"PhiDeg{pairLabel}",     f"phiDegGJ{pairLabel}")),
-      HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGJ{pairLabel}VsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}", f"PhiDeg{pairLabel}")),
       HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{pairLabel}VsCosThetaHF{pairLabel}", f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiDegHF{pairLabel}", f"PhiDeg{pairLabel}")),
+      HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegGJ{pairLabel}VsCosThetaGJ{pairLabel}", f"{pairTLatexLabel};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (25, -180, +180), (25, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiDegGJ{pairLabel}", f"PhiDeg{pairLabel}")),
     ]
   if pairLabel == "PiPi":
     if True:
@@ -261,10 +261,10 @@ def bookHistograms(
       histDefs += [
         HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 0.28, 2.28), ), (f"mass{pairLabel}",   )),
         HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0,    1),    ), (f"minusT{pairLabel}", )),
-        HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
-        HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
         HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
         HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
+        HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 0.28, 2.28), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
+        HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
         HistogramDefinition(f"PhiDegVsMass{pairLabel}",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
         HistogramDefinition(f"MinusT{pairLabel}VsMass{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 0.28, 2.28), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
       ]
@@ -303,10 +303,10 @@ def bookHistograms(
       histDefs += [
         HistogramDefinition(f"mass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];"              + yAxisLabel, ((400, 1, 5 ), ), (f"mass{pairLabel}",   )),
         HistogramDefinition(f"minusT{pairLabel}", f";#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}];" + yAxisLabel, ((100, 0, 15), ), (f"minusT{pairLabel}", )),
-        HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
-        HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
         HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{HF}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaHF{pairLabel}")),
         HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{HF}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegHF{pairLabel}"  )),
+        HistogramDefinition(f"CosThetaGJ{pairLabel}VsMass{pairLabel}", f";m_{{{pairTLatexLabel}}} [GeV];cos#theta_{{GJ}}",                           ((50, 1, 5), (100,   -1,   +1)), (f"mass{pairLabel}", f"cosThetaGJ{pairLabel}")),
+        HistogramDefinition(f"PhiDegGJ{pairLabel}VsMass{pairLabel}",   f";m_{{{pairTLatexLabel}}} [GeV];#phi_{{GJ}}",                                ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"phiDegGJ{pairLabel}"  )),
         HistogramDefinition(f"PhiDegVsMass{pairLabel}",                f";m_{{{pairTLatexLabel}}} [GeV];#Phi",                                       ((50, 1, 5), ( 72, -180, +180)), (f"mass{pairLabel}", f"PhiDeg{pairLabel}"    )),
         HistogramDefinition(f"MinusT{pairLabel}VsMass{pairLabel}",     f";m_{{{pairTLatexLabel}}} [GeV];#minus t_{{{pairTLatexLabel}}} [GeV^{{2}}]", ((50, 1, 5), ( 50,    0,    1)), (f"mass{pairLabel}", f"minusT{pairLabel}"    )),
       ]
@@ -388,7 +388,7 @@ def makeAnglesHFCorrelationPlot(
   df:                   ROOT.RDataFrame,
   subSystem:            SubSystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
-  outputDirName:        str,
+  outputDirName:        str,  # directory to save output plot in
   histNameSuffix:       str = "",
   additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
 ) -> None:
