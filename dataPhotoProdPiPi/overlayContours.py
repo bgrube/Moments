@@ -112,13 +112,70 @@ if __name__ == "__main__":
     ContourPlotDef(
       histName = "anglesHFPiPiCorrmomLabP",
       levels = [0.34, 0.36, 0.38, 0.40, 0.42, 0.44],
-      title = "Correlation with p_{p}",
+      title = "Correlation with p_{p}^{lab}",
       labelFormat = ".2f",
     ),
     ContourPlotDef(
       histName = "anglesHFPiPiCorrmomLabPip",
       levels = [1, 2, 3, 4, 5, 6, 7],
-      title = "Correlation with p_{#pi^{+}}",
+      title = "Correlation with p_{#pi^{#plus}}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrmomLabPim",
+      levels = [1, 2, 3, 4, 5, 6, 7],
+      title = "Correlation with p_{#pi^{#minus}}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrthetaDegLabP",
+      levels = [71.0, 71.5, 72.0, 72.5, 73.0],
+      title = "Correlation with #theta_{p}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrthetaDegLabPip",
+      levels = [2, 4, 6, 8, 10, 12, 14],
+      title = "Correlation with #theta_{#pi^{#plus}}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorrthetaDegLabPim",
+      levels = [2, 4, 6, 8, 10, 12, 14],
+      title = "Correlation with #theta_{#pi^{#minus}}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_phiDegLabP",
+      levels = [-20, -15, -10, -5, 0, 5, 10, 15, 20],
+      title = "Correlation with #phi_{p}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_phiDegLabPip",
+      levels = [-20, -15, -10, -5, 0, 5, 10, 15, 20],
+      title = "Correlation with #phi_{#pi^{#plus}}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_phiDegLabPim",
+      levels = [-20, -15, -10, -5, 0, 5, 10, 15, 20],
+      title = "Correlation with #phi_{#pi^{#minus}}^{lab}",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_PhiDegPiPi",
+      levels = [-20, -15, -10, -5, 0, 5, 10, 15, 20],
+      title = "Correlation with #Phi",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_PsiDegHFPiPi",
+      levels = [-20, -15, -10, -5, 0, 5, 10, 15, 20],
+      title = "Correlation with #Psi",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_massPipP",
+      levels = [1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75],
+      title = "Correlation with m_{#pi^{#plus} p}",
+      labelFormat = ".2f",
+    ),
+    ContourPlotDef(
+      histName = "anglesHFPiPiCorr_massPimP",
+      levels = [1.50, 1.75, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75],
+      title = "Correlation with m_{#pi^{#minus} p}",
+      labelFormat = ".2f",
     ),
   ]
 
