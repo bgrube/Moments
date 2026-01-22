@@ -33,6 +33,7 @@ def copyTH2(histSrc: ROOT.TH2) -> ROOT.TH2:
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
+  ROOT.EnableImplicitMT()
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
@@ -189,27 +190,73 @@ if __name__ == "__main__":
       hist.Draw("COLZ")
       canv.SaveAs(f"./{hist.GetName()}.pdf")
 
-  # plot regenerated accepted phase space
-  accPsFileName = "../plotsTestPhotoProd.momentsRd.accEven.phys.detuneAccFull/acceptedPhaseSpace.root"
-  accPsTreeName = "data"
-  df = ROOT.RDataFrame(accPsTreeName, accPsFileName)
   if True:
   # if False:
-    hist = df.Histo3D(
-      ("accPs3D", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 100, -1, +1, 72, -180, +180, 72, -180, +180),
-      "cosTheta", "phiDeg", "PhiDeg",
-    ).GetValue()
-    hist2D = hist.Project3D("yx")
-    hist2D.SetName(f"{str(hist.GetName()).replace('3D', '2D')}")
-    hist2D.SetTitle("")
-    canv = ROOT.TCanvas()
-    hist2D.Rebin2D(4, 3)  # reduce number of bins for better visibility
-    hist2D.Draw("COLZ")
-    canv.SaveAs(f"./{hist2D.GetName()}_regenerated.pdf")
-    if histAccPs2DComp is not None:
+    # plot regenerated accepted phase space
+    accPsFileName = "../plotsTestPhotoProd.momentsRd.accEven.phys.detuneAccFull/acceptedPhaseSpace.root"
+    accPsTreeName = "data"
+    df = ROOT.RDataFrame(accPsTreeName, accPsFileName)
+    if True:
+    # if False:
+      hist = df.Histo3D(
+        ("accPs3D", ";cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]", 100, -1, +1, 72, -180, +180, 72, -180, +180),
+        "cosTheta", "phiDeg", "PhiDeg",
+      ).GetValue()
+      hist2D = hist.Project3D("yx")
+      hist2D.SetName(f"{str(hist.GetName()).replace('3D', '2D')}")
+      hist2D.SetTitle("")
       canv = ROOT.TCanvas()
-      histAccPs2DComp.Divide(hist2D)
-      histAccPs2DComp.SetMinimum(0.2)
-      histAccPs2DComp.SetMaximum(0.4)
-      histAccPs2DComp.Draw("COLZ")
-      canv.SaveAs(f"./{hist2D.GetName()}_regenerated_ratio.pdf")
+      hist2D.Rebin2D(4, 3)  # reduce number of bins for better visibility
+      hist2D.Draw("COLZ")
+      canv.SaveAs(f"./{hist2D.GetName()}_regenerated.pdf")
+      if histAccPs2DComp is not None:
+        canv = ROOT.TCanvas()
+        histAccPs2DComp.Divide(hist2D)
+        histAccPs2DComp.SetMinimum(0.2)
+        histAccPs2DComp.SetMaximum(0.4)
+        histAccPs2DComp.Draw("COLZ")
+        canv.SaveAs(f"./{hist2D.GetName()}_regenerated_ratio.pdf")
+
+  if True:
+  # if False:
+    # plot difference between Phi < 0 and Phi > 0
+    inTreeName = "PiPi"
+    for inFileName, label in [
+      ("./polarized/2018_08/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat_PARA_0.root", "accPs"),
+      ("./polarized/2018_08/tbin_0.1_0.2/PiPi/data_flat_PARA_0.root",           "realData"),
+    ]:
+      df = ROOT.RDataFrame(inTreeName, inFileName).Filter("(0.72 < mass and mass < 0.76)")
+      treeHasWeightColumn = "eventWeight" in df.GetColumnNames()
+      print(f"Processing file '{inFileName}' with label '{label}' and {treeHasWeightColumn=}")
+      if True:
+      # if False:
+        if treeHasWeightColumn:
+          histPhiPos = df.Filter("(PhiDeg > 0)").Histo2D(
+            (f"anglesHFPhiPos_{label}", "#Phi > 0;cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "cosTheta", "phiDeg", "eventWeight").GetValue()
+          histPhiNeg = df.Filter("(PhiDeg < 0)").Histo2D(
+            (f"anglesHFPhiNeg_{label}", "#Phi < 0;cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "cosTheta", "phiDeg", "eventWeight").GetValue()
+        else:
+          histPhiPos = df.Filter("(PhiDeg > 0)").Histo2D(
+            (f"anglesHFPhiPos_{label}", "#Phi > 0;cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "cosTheta", "phiDeg").GetValue()
+          histPhiNeg = df.Filter("(PhiDeg < 0)").Histo2D(
+            (f"anglesHFPhiNeg_{label}", "#Phi < 0;cos#theta_{HF};#phi_{HF} [deg]", 100, -1, +1, 72, -180, +180), "cosTheta", "phiDeg").GetValue()
+        histPhiDiff = histPhiPos.Clone(f"anglesHFPhiDiff_{label}")
+        histPhiDiff.SetTitle("(#Phi > 0)#minus (#Phi < 0)")
+        histPhiDiff.Add(histPhiNeg, -1)
+        for hist in (histPhiPos, histPhiNeg, histPhiDiff):
+          canv = ROOT.TCanvas()
+          hist.Rebin2D(4, 3)  # reduce number of bins for better visibility
+          if hist is histPhiDiff:
+            ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
+            histPhiDiffRange = max(abs(histPhiDiff.GetMaximum()), abs(histPhiDiff.GetMinimum()))
+            hist.SetMaximum(+histPhiDiffRange)
+            hist.SetMinimum(-histPhiDiffRange)
+          hist.Draw("COLZ")
+          legend = ROOT.TLegend(0.15, 0.75, 0.35, 0.85)
+          legend.SetHeader("FOO FOO BAR")
+          legend.AddEntry(hist, "Line 1", "f")
+          legend.AddEntry(hist, "Line 2", "f")
+          legend.AddEntry(hist, "Line 3", "f")
+          legend.Draw()
+          canv.SaveAs(f"./{hist.GetName()}.pdf")
+          ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette

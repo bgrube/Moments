@@ -6,7 +6,6 @@ from __future__ import annotations
 import os
 
 import ROOT
-from matplotlib.pyplot import hist
 
 
 def makeComparisonPlotPosNegPhiHF(

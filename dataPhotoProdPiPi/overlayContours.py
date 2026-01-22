@@ -30,7 +30,7 @@ def makeContourOverlayPlot(
   minNmbPointsForLabel: int        = 10,     # minimum number of points on contour required to draw label
   title:                str | None = None,   # title of overlay plot
 ) -> None:
-  """Overlay contour lines derived from `histContours` over histogram given by `histBase`."""
+  """Overlay contour lines derived from `histContours` over histogram given by `histBase`"""
   # see https://root.cern/doc/v636/hist102__TH2__contour__list_8C.html
   # create contours
   print(f"Creating contours for histogram '{histContours.GetName()}'")
