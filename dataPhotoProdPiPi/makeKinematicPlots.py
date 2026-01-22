@@ -570,39 +570,44 @@ if __name__ == "__main__":
               additionalFilterDefs = additionalFilterDefs,
             )
             outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
-            makePlots(
-              *bookHistograms(
-                df            = dfSubSystem,
-                inputDataType = inputDataType,
-                subSystem     = subSystem,
-              ),
-              outputDirName = outputDirName,
-            )
-            # outputDirName = f"{outputDirName}/anglesHFCorrelations"
-            # print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
-            # lvs = lorentzVectors(dataFormat = inputDataFormat)
-            # dfSubSystem = dfSubSystem.Define(f"massPipP", f"(Double32_t)massPair({lvs['pip']}, {lvs['recoil']})")
-            # dfSubSystem = dfSubSystem.Define(f"massPimP", f"(Double32_t)massPair({lvs['pim']}, {lvs['recoil']})")
-            # for kinVarNameCorr in [
-            #   "Ebeam",
-            #   "momLabP",
-            #   "momLabPip",
-            #   "momLabPim",
-            #   "thetaDegLabP",
-            #   "thetaDegLabPip",
-            #   "thetaDegLabPim",
-            #   "phiDegLabP",
-            #   "phiDegLabPip",
-            #   "phiDegLabPim",
-            #   f"PhiDeg{subSystem.pairLabel}",
-            #   f"PsiDegHF{subSystem.pairLabel}",
-            #   "massPipP",
-            #   "massPimP",
-            # ]:
-            #   makeAnglesHFCorrelationPlot(
-            #     df                   = dfSubSystem,
-            #     subSystem            = subSystem,
-            #     kinVarNameCorr       = kinVarNameCorr,
-            #     outputDirName        = outputDirName,
-            #     additionalFilterDefs = additionalFilterDefs,
-            #   )
+            if True:
+            # if False:
+              makePlots(
+                *bookHistograms(
+                  df            = dfSubSystem,
+                  inputDataType = inputDataType,
+                  subSystem     = subSystem,
+                  beamPolInfo   = beamPolInfo,
+                ),
+                outputDirName = outputDirName,
+              )
+            # if True:
+            if False:
+              outputDirName = f"{outputDirName}/anglesHFCorrelations"
+              print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
+              lvs = lorentzVectors(dataFormat = inputDataFormat)
+              dfSubSystem = dfSubSystem.Define(f"massPipP", f"(Double32_t)massPair({lvs['pip']}, {lvs['recoil']})")
+              dfSubSystem = dfSubSystem.Define(f"massPimP", f"(Double32_t)massPair({lvs['pim']}, {lvs['recoil']})")
+              for kinVarNameCorr in [
+                "Ebeam",
+                "momLabP",
+                "momLabPip",
+                "momLabPim",
+                "thetaDegLabP",
+                "thetaDegLabPip",
+                "thetaDegLabPim",
+                "phiDegLabP",
+                "phiDegLabPip",
+                "phiDegLabPim",
+                f"PhiDeg{subSystem.pairLabel}",
+                f"PsiDegHF{subSystem.pairLabel}",
+                "massPipP",
+                "massPimP",
+              ]:
+                makeAnglesHFCorrelationPlot(
+                  df                   = dfSubSystem,
+                  subSystem            = subSystem,
+                  kinVarNameCorr       = kinVarNameCorr,
+                  outputDirName        = outputDirName,
+                  additionalFilterDefs = additionalFilterDefs,
+                )
