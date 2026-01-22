@@ -341,9 +341,9 @@ def defineDataFrameColumns(
   df = DefineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
   df = DefineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
-    #TODO Use Phi from `angles` column`
     df = DefineOverwrite(df, f"beamPol{colNameSuffix}",       f"(Double32_t){beamPolInfo.pol}")
     df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}", f"(Double32_t){beamPolInfo.PhiLab}")
+    #TODO Use Phi from `angles` column
     df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix})")
     df = DefineOverwrite(df, f"PhiDeg{colNameSuffix}",        f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
   if additionalColumnDefs:
@@ -452,7 +452,7 @@ class DataSetInfo:
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  ROOT.gStyle.SetOptStat("i")
+  ROOT.EnableImplicitMT()
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
@@ -492,16 +492,19 @@ if __name__ == "__main__":
       "PARA_135",
       "PERP_45",
       "PERP_90",
+      "AMO",
     )
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
       InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
       InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
-    # outputColumns        = ("beamPol", "beamPolPhiLab", "cosTheta", "theta", "phi", "phiDeg", "Phi", "PhiDeg", "mass", "minusT")
-    outputColumns        = ("beamPol", "beamPolPhiLab", "theta", "phi", "Phi", "mass")
-    additionalColumnDefs = {}
-    additionalFilterDefs = []
+    # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
+    # outputColumnsPolarized   = (("beamPol", "beamPolPhiLab", "Phi", "PhiDeg")
+    outputColumnsUnpolarized = ("theta", "phi", "mass")
+    outputColumnsPolarized   = ("beamPol", "beamPolPhiLab", "Phi")
+    additionalColumnDefs     = {}
+    additionalFilterDefs     = []
     if False:  # cut away forward tracks in reconstructed data
       lvs = lorentzVectors(dataFormat = InputDataFormat.ALEX)
       additionalColumnDefs = {
@@ -525,6 +528,7 @@ if __name__ == "__main__":
                   + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
             for inputDataType, inputDataFormat in inputDataFormats.items():
               print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
+              outputColumns = outputColumnsUnpolarized + () if beamPolInfo is None else outputColumnsPolarized
               dataSet = DataSetInfo(
                 subsystem            = subsystem,
                 inputType            = inputDataType,
@@ -537,12 +541,14 @@ if __name__ == "__main__":
                   ((f"{inputDataDirName}/amptools_tree_signal_{beamPolLabel}.root", ),  # real data: signal and background
                    (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolLabel}.root",  )) if inputDataType == InputDataType.REAL_DATA else
                    (f"{inputDataDirName}/amptools_tree_accepted*.root", )              if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  #  (f"{inputDataDirName}/amptools_tree_truthAccepted*.root", )         if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                    (f"{inputDataDirName}/amptools_tree_thrown*.root", )                 # inputDataType == InputDataType.mcTruth
                 ),
                 inputTreeName        = "kin",
                 outputFileName       = (
                   f"{outputDataDirName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
                   f"{outputDataDirName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  # f"{outputDataDirName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   f"{outputDataDirName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.mcTruth
                 ),
                 outputTreeName       = subsystem.pairLabel,
