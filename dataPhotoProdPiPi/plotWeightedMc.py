@@ -73,60 +73,79 @@ def makePlots(
   """Overlays 1D distributions and compares 2D distributions from real data and weighted Monte Carlo"""
   histsToOverlay = HistsToOverlay()
   # loop over members of `DataToOverlay` and book histograms for `realData` and `weightedMc`
-  for member in fields(dataToOverlay):
-    df = getattr(dataToOverlay, member.name)
-    label = member.name
-    applyWeights = (label == "realData" and df.HasColumn("eventWeight"))
+  for dataToOverlayField in fields(dataToOverlay):
+    # define histograms
+    label = dataToOverlayField.name
     label = label[0].upper() + label[1:]  # make sure first character is upper case
-    histNameSuffix = pairLabel + "_" + label  # e.g. "PiPi_RealData" or "PiPi_WeightedMc"
-    hists = [
+    histNameSuffix = f"_{label}"  # i.e. "_RealData" or "_WeightedMc"
+    histDefs: list[HistogramDefinition] = []
+    if True:
+    # if False:
       # distributions in X rest frame
-      # 1D histograms
-      bookHistogram(df, HistogramDefinition(f"mass{histNameSuffix}",       ";m_{#pi#pi} [GeV];"                   + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"minusT{histNameSuffix}",     ";#minus t_{#pi#pi} [GeV^{2}];"        + yAxisLabel, ((100,    0,       1   ), ), (f"minusT{colNameSuffix}",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"cosThetaHF{histNameSuffix}", ";cos#theta_{HF};"                     + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];"                    + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiDegHF{colNameSuffix}",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDeg{histNameSuffix}",     ";#Phi [deg];"                         + yAxisLabel, (( 72, -180,    +180   ), ), (f"PhiDeg{colNameSuffix}",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PsiDegHF{histNameSuffix}",   ";#Psi = (#Phi#minus#phi_{HF}) [deg];" + yAxisLabel, (( 72, -180,    +180   ), ), (f"PsiDegHF{colNameSuffix}",   )), applyWeights),
-      # 2D histograms
-      # bookHistogram(df, HistogramDefinition(f"CosThetaHF{pairLabel}VsMass{histNameSuffix}", ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (50,   -1,   +1)), (f"mass{colNameSuffix}", "cosThetaHF{colNameSuffix}")), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"PhiDegHF{pairLabel}VsMass{histNameSuffix}",   ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}", "phiDegHF{colNameSuffix}"  )), applyWeights),
-      # bookHistogram(df, HistogramDefinition(f"PhiDeg{pairLabel}VsMass{histNameSuffix}",     ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}", "PhiDeg"                   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"anglesHF{histNameSuffix}",                 ";cos#theta_{HF};#phi_{HF} [deg]", ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiDegHF{colNameSuffix}")), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDegVsCosThetaHF{histNameSuffix}",       ";cos#theta_{HF};#Phi [deg]",      ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PhiDegVsPhiDegHF{histNameSuffix}",         ";#phi_{HF} [deg];#Phi [deg]",     ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PsiDegHFPiPiVsCosThetaHF{histNameSuffix}", ";cos#theta_{HF};#Psi [deg]",      ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PsiDegHF{colNameSuffix}")), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"PsiDegHFPiPiVsPhiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];#Psi [deg]",     ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PsiDegHF{colNameSuffix}")), applyWeights),
+      histDefs += [
+        # 1D histograms
+        HistogramDefinition(f"mass{histNameSuffix}",       ";m_{#pi#pi} [GeV];"                   + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )),
+        HistogramDefinition(f"minusT{histNameSuffix}",     ";#minus t_{#pi#pi} [GeV^{2}];"        + yAxisLabel, ((100,    0,       1   ), ), (f"minusT{colNameSuffix}",     )),
+        HistogramDefinition(f"cosThetaHF{histNameSuffix}", ";cos#theta_{HF};"                     + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )),
+        HistogramDefinition(f"phiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];"                    + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiDegHF{colNameSuffix}",   )),
+        HistogramDefinition(f"PhiDeg{histNameSuffix}",     ";#Phi [deg];"                         + yAxisLabel, (( 72, -180,    +180   ), ), (f"PhiDeg{colNameSuffix}",     )),
+        HistogramDefinition(f"PsiDegHF{histNameSuffix}",   ";#Psi = (#Phi#minus#phi_{HF}) [deg];" + yAxisLabel, (( 72, -180,    +180   ), ), (f"PsiDegHF{colNameSuffix}",   )),
+        # 2D histograms
+        HistogramDefinition(f"cosThetaHF{pairLabel}VsMass{histNameSuffix}",     ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (50,   -1,   +1)), (f"mass{colNameSuffix}",       f"cosThetaHF{colNameSuffix}")),
+        HistogramDefinition(f"phiDegHF{pairLabel}VsMass{histNameSuffix}",       ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"phiDegHF{colNameSuffix}"  )),
+        HistogramDefinition(f"PhiDeg{pairLabel}VsMass{histNameSuffix}",         ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"PhiDeg{colNameSuffix}"    )),
+        HistogramDefinition(f"anglesHF{histNameSuffix}",                        ";cos#theta_{HF};#phi_{HF} [deg]",   ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiDegHF{colNameSuffix}"  )),
+        HistogramDefinition(f"PhiDegVsCosThetaHF{histNameSuffix}",              ";cos#theta_{HF};#Phi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"    )),
+        HistogramDefinition(f"PhiDegVsPhiDegHF{histNameSuffix}",                ";#phi_{HF} [deg];#Phi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"    )),
+        HistogramDefinition(f"PsiDegHF{pairLabel}VsCosThetaHF{histNameSuffix}", ";cos#theta_{HF};#Psi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PsiDegHF{colNameSuffix}"  )),
+        HistogramDefinition(f"PsiDegHF{pairLabel}VsPhiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];#Psi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PsiDegHF{colNameSuffix}"  )),
+      ]
+    if True:
+    # if False:
       # distributions in lab frame
-      # 1D histograms
-      bookHistogram(df, HistogramDefinition(f"Ebeam_{histNameSuffix}",          ";E_{beam} [GeV];"                    + yAxisLabel, ((100,    8,    9  ), ), ("Ebeam",          )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabP_{histNameSuffix}",        ";p_{p} [GeV];"                       + yAxisLabel, ((100,    0,    1  ), ), ("momLabP",        )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabXP_{histNameSuffix}",       ";p_{x}^{p} [GeV];"                   + yAxisLabel, ((100,   -0.5, +0.5), ), ("momLabXP",       )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabYP_{histNameSuffix}",       ";p_{y}^{p} [GeV];"                   + yAxisLabel, ((100,   -0.5, +0.5), ), ("momLabYP",       )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabZP_{histNameSuffix}",       ";p_{z}^{p} [GeV];"                   + yAxisLabel, ((100,    0,    0.5), ), ("momLabZP",       )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabPip_{histNameSuffix}",      ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100,    0,   10  ), ), ("momLabPip",      )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabXPip_{histNameSuffix}",     ";p_{x}^{#pi^{#plus}} [GeV];"         + yAxisLabel, ((100,   -1.2, +1.2), ), ("momLabXPip",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabYPip_{histNameSuffix}",     ";p_{y}^{#pi^{#plus}} [GeV];"         + yAxisLabel, ((100,   -1.2, +1.2), ), ("momLabYPip",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabZPip_{histNameSuffix}",     ";p_{z}^{#pi^{#plus}} [GeV];"         + yAxisLabel, ((100,   -1,   +9  ), ), ("momLabZPip",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabPim_{histNameSuffix}",      ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100,    0,   10  ), ), ("momLabPim",      )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabXPim_{histNameSuffix}",     ";p_{x}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -1.2, +1.2), ), ("momLabXPim",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabYPim_{histNameSuffix}",     ";p_{y}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -1.2, +1.2), ), ("momLabYPim",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabZPim_{histNameSuffix}",     ";p_{z}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -1,   +9  ), ), ("momLabZPim",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"thetaDegLabP_{histNameSuffix}",   ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabP",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"thetaDegLabPip_{histNameSuffix}", ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabPip", )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"thetaDegLabPim_{histNameSuffix}", ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabPim", )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegLabP_{histNameSuffix}",     ";#phi_{p}^{lab} [deg];"              + yAxisLabel, ((100, -180, +180  ), ), ("phiDegLabP",     )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegLabPip_{histNameSuffix}",   ";#phi_{#pi^{#plus}}^{lab} [deg];"    + yAxisLabel, ((100, -180, +180  ), ), ("phiDegLabPip",   )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"phiDegLabPim_{histNameSuffix}",   ";#phi_{#pi^{#minus}}^{lab} [deg];"   + yAxisLabel, ((100, -180, +180  ), ), ("phiDegLabPim",   )), applyWeights),
-      # 2D histograms
-      bookHistogram(df, HistogramDefinition(f"momLabYPVsMomLabXP_{histNameSuffix}",        ";p_{x}^{p} [GeV];p_{y}^{p} [GeV];",                         (( 50, -0.5, +0.5), ( 50, -0.5, +0.5)), ("momLabXP",   "momLabYP"      )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabYPipVsMomLabXPip_{histNameSuffix}",    ";p_{x}^{#pi^{#plus}} [GeV];p_{y}^{#pi^{#plus}} [GeV];",     (( 50, -0.8, +0.8), ( 50, -0.8, +0.8)), ("momLabXPip", "momLabYPip"    )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"momLabYPimVsMomLabXPim_{histNameSuffix}",    ";p_{x}^{#pi^{#minus}} [GeV];p_{y}^{#pi^{#minus}} [GeV];",   (( 50, -0.8, +0.8), ( 50, -0.8, +0.8)), ("momLabXPim", "momLabYPim"    )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"thetaDegLabPVsMomLabP_{histNameSuffix}",     ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                       ((100,  0,    1),   (100, 60,   80  )), ("momLabP",    "thetaDegLabP"  )), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"thetaDegLabPipVsMomLabPip_{histNameSuffix}", ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",   ((100,  0,   10),   (100,  0,   30  )), ("momLabPip",  "thetaDegLabPip")), applyWeights),
-      bookHistogram(df, HistogramDefinition(f"thetaDegLabPimVsMomLabPim_{histNameSuffix}", ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]", ((100,  0,   10),   (100,  0,   30  )), ("momLabPim",  "thetaDegLabPim")), applyWeights),
-    ]
-    setattr(histsToOverlay, member.name, hists)
+      for filter, title, histNameSuffix in [
+        ("",                           "",              f"_{label}"                       ),  # all data
+        (f"(phiDegHF{pairLabel} > 0)", "#phi_{HF} > 0", f"_phiDegHF{pairLabel}Pos_{label}"),
+        (f"(phiDegHF{pairLabel} < 0)", "#phi_{HF} < 0", f"_phiDegHF{pairLabel}Neg_{label}"),
+      ]:
+        histDefs += [
+          # 1D histograms
+          HistogramDefinition(f"Ebeam{histNameSuffix}",          title + ";E_{beam} [GeV];"                    + yAxisLabel, ((100,    8,    9  ), ), ("Ebeam",          ), filter),
+          HistogramDefinition(f"momLabP{histNameSuffix}",        title + ";p_{p} [GeV];"                       + yAxisLabel, ((100,    0,    1  ), ), ("momLabP",        ), filter),
+          HistogramDefinition(f"momLabXP{histNameSuffix}",       title + ";p_{x}^{p} [GeV];"                   + yAxisLabel, ((100,   -0.5, +0.5), ), ("momLabXP",       ), filter),
+          HistogramDefinition(f"momLabYP{histNameSuffix}",       title + ";p_{y}^{p} [GeV];"                   + yAxisLabel, ((100,   -0.5, +0.5), ), ("momLabYP",       ), filter),
+          HistogramDefinition(f"momLabZP{histNameSuffix}",       title + ";p_{z}^{p} [GeV];"                   + yAxisLabel, ((100,    0,    0.5), ), ("momLabZP",       ), filter),
+          HistogramDefinition(f"momLabPip{histNameSuffix}",      title + ";p_{#pi^{#plus}} [GeV];"             + yAxisLabel, ((100,    0,   10  ), ), ("momLabPip",      ), filter),
+          HistogramDefinition(f"momLabXPip{histNameSuffix}",     title + ";p_{x}^{#pi^{#plus}} [GeV];"         + yAxisLabel, ((100,   -0.8, +0.8), ), ("momLabXPip",     ), filter),
+          HistogramDefinition(f"momLabYPip{histNameSuffix}",     title + ";p_{y}^{#pi^{#plus}} [GeV];"         + yAxisLabel, ((100,   -0.8, +0.8), ), ("momLabYPip",     ), filter),
+          HistogramDefinition(f"momLabZPip{histNameSuffix}",     title + ";p_{z}^{#pi^{#plus}} [GeV];"         + yAxisLabel, ((100,   -1,   +9  ), ), ("momLabZPip",     ), filter),
+          HistogramDefinition(f"momLabPim{histNameSuffix}",      title + ";p_{#pi^{#minus}} [GeV];"            + yAxisLabel, ((100,    0,   10  ), ), ("momLabPim",      ), filter),
+          HistogramDefinition(f"momLabXPim{histNameSuffix}",     title + ";p_{x}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -0.8, +0.8), ), ("momLabXPim",     ), filter),
+          HistogramDefinition(f"momLabYPim{histNameSuffix}",     title + ";p_{y}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -0.8, +0.8), ), ("momLabYPim",     ), filter),
+          HistogramDefinition(f"momLabZPim{histNameSuffix}",     title + ";p_{z}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -1,   +9  ), ), ("momLabZPim",     ), filter),
+          HistogramDefinition(f"thetaDegLabP{histNameSuffix}",   title + ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabP",   ), filter),
+          HistogramDefinition(f"thetaDegLabPip{histNameSuffix}", title + ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabPip", ), filter),
+          HistogramDefinition(f"thetaDegLabPim{histNameSuffix}", title + ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabPim", ), filter),
+          HistogramDefinition(f"phiDegLabP{histNameSuffix}",     title + ";#phi_{p}^{lab} [deg];"              + yAxisLabel, (( 72, -180, +180  ), ), ("phiDegLabP",     ), filter),
+          HistogramDefinition(f"phiDegLabPip{histNameSuffix}",   title + ";#phi_{#pi^{#plus}}^{lab} [deg];"    + yAxisLabel, (( 72, -180, +180  ), ), ("phiDegLabPip",   ), filter),
+          HistogramDefinition(f"phiDegLabPim{histNameSuffix}",   title + ";#phi_{#pi^{#minus}}^{lab} [deg];"   + yAxisLabel, (( 72, -180, +180  ), ), ("phiDegLabPim",   ), filter),
+          # 2D histograms
+          HistogramDefinition(f"momLabYPVsMomLabXP{histNameSuffix}",           title + ";p_{x}^{p} [GeV];p_{y}^{p} [GeV];",                                   ((50, -0.5, +0.5), (50,   -0.5,  +0.5)), ("momLabXP",       "momLabYP"      ), filter),
+          HistogramDefinition(f"momLabYPipVsMomLabXPip{histNameSuffix}",       title + ";p_{x}^{#pi^{#plus}} [GeV];p_{y}^{#pi^{#plus}} [GeV];",               ((50, -0.8, +0.8), (50,   -0.8,  +0.8)), ("momLabXPip",     "momLabYPip"    ), filter),
+          HistogramDefinition(f"momLabYPimVsMomLabXPim{histNameSuffix}",       title + ";p_{x}^{#pi^{#minus}} [GeV];p_{y}^{#pi^{#minus}} [GeV];",             ((50, -0.8, +0.8), (50,   -0.8,  +0.8)), ("momLabXPim",     "momLabYPim"    ), filter),
+          HistogramDefinition(f"thetaDegLabPVsMomLabP{histNameSuffix}",        title + ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                                 ((50,  0,    1  ), (50,   60,    80  )), ("momLabP",        "thetaDegLabP"  ), filter),
+          HistogramDefinition(f"thetaDegLabPipVsMomLabPip{histNameSuffix}",    title + ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",             ((50,  0,   10  ), (50,    0,    30  )), ("momLabPip",      "thetaDegLabPip"), filter),
+          HistogramDefinition(f"thetaDegLabPimVsMomLabPim{histNameSuffix}",    title + ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]",           ((50,  0,   10  ), (50,    0,    30  )), ("momLabPim",      "thetaDegLabPim"), filter),
+          HistogramDefinition(f"phiDegLabPVsThetaDegLabP{histNameSuffix}",     title + ";#theta_{p}^{lab} [deg];#phi_{p}^{lab} [deg];",                       ((50, 60,   80  ), (36, -180,  +180  )), ("thetaDegLabP",   "phiDegLabP"    ), filter),
+          HistogramDefinition(f"phiDegLabPipVsThetaDegLabPip{histNameSuffix}", title + ";#theta_{#pi^{#plus}}^{lab} [deg];#phi_{#pi^{#plus}}^{lab} [deg];",   ((50,  0,   30  ), (36, -180,  +180  )), ("thetaDegLabPip", "phiDegLabPip"  ), filter),
+          HistogramDefinition(f"phiDegLabPimVsThetaDegLabPim{histNameSuffix}", title + ";#theta_{#pi^{#minus}}^{lab} [deg];#phi_{#pi^{#minus}}^{lab} [deg];", ((50,  0,   30  ), (36, -180,  +180  )), ("thetaDegLabPim", "phiDegLabPim"  ), filter),
+        ]
+    # book histograms
+    df = getattr(dataToOverlay, dataToOverlayField.name)
+    hists = []
+    for histDef in histDefs:
+      hists.append(bookHistogram(df, histDef, applyWeights = (dataToOverlayField.name == "realData" and df.HasColumn("eventWeight"))))
+    setattr(histsToOverlay, dataToOverlayField.name, hists)
   for histRealData, histWeightedMc in zip(histsToOverlay.realData, histsToOverlay.weightedMc):
     print(f"Comparing histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
     histRealData.SetTitle  ("Real data")
