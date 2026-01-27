@@ -313,17 +313,17 @@ if __name__ == "__main__":
         )
         print(f"Loaded weighted-MC data from '{weightedDataFileName}'")
         # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
-        for member in fields(dataToOverlay):
-          df = getattr(dataToOverlay, member.name)
+        for dataToOverlayField in fields(dataToOverlay):
+          df = getattr(dataToOverlay, dataToOverlayField.name)
           df = defineColumnsForPlots(
             df              = df,
             inputDataFormat = InputDataFormat.AMPTOOLS,
             subSystem       = subSystem,
             beamPolInfo     = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
           )
-          setattr(dataToOverlay, member.name, df)
+          setattr(dataToOverlay, dataToOverlayField.name, df)
         # plot overlays for full mass range and for individual mass bins
-        plotDirName = f"{weightedDataDirName}/{useIntensityTerms}"
+        plotDirName = f"{weightedDataDirName}/plots_{useIntensityTerms}"
         print(f"Overlaying histograms for full mass range and writing plots into '{plotDirName}'")
         os.makedirs(plotDirName, exist_ok = True)
         makePlots(
