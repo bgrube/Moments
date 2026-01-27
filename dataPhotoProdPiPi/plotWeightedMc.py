@@ -62,6 +62,18 @@ class HistsToOverlay:
   weightedMc: HistListType = field(default_factory = list)
 
 
+def adjustStatsBox(canv: ROOT.TCanvas) -> None:
+  """Adjust stats box, if present"""
+  canv.Update()
+  stats = canv.GetPrimitive("stats")
+  if stats is not ROOT.nullptr:
+    stats.SetFillColor(ROOT.kWhite)
+    stats.SetX1NDC(0.75)
+    stats.SetX2NDC(0.99)
+    stats.SetY1NDC(0.95)
+    stats.SetY2NDC(0.99)
+
+
 def makePlots(
   dataToOverlay:     DataToOverlay,
   outputDirName:     str = ".",
@@ -202,11 +214,13 @@ def makePlots(
       maxZ = histRealData.GetMaximum()
       histRealData.SetMaximum(maxZ)
       histRealData.Draw("COLZ")
+      adjustStatsBox(canv)
       canv.SaveAs(f"{outputDirName}/{histRealData.GetName()}{pdfFileNameSuffix}.pdf")
       print(f"Plotting weighted-MC 2D histogram '{histWeightedMc.GetName()}'")
       canv = ROOT.TCanvas()
       histWeightedMc.SetMaximum(maxZ)
       histWeightedMc.Draw("COLZ")
+      adjustStatsBox(canv)
       canv.SaveAs(f"{outputDirName}/{histWeightedMc.GetName()}{pdfFileNameSuffix}.pdf")
       print(f"Plotting pulls of 2D histograms '{histRealData.GetName()}' - '{histWeightedMc.GetName()}'")
       ROOT.gStyle.SetOptStat(False)
