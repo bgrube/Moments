@@ -89,11 +89,11 @@ def makePlots(
     # define histograms
     label = dataToOverlayField.name
     label = label[0].upper() + label[1:]  # make sure first character is upper case
-    histNameSuffix = f"_{label}"  # i.e. "_RealData" or "_WeightedMc"
     histDefs: list[HistogramDefinition] = []
     if True:
     # if False:
       # distributions in X rest frame
+      histNameSuffix = f"{pairLabel}_{label}"  # i.e. "_RealData" or "_WeightedMc"
       histDefs += [
         # 1D histograms
         HistogramDefinition(f"mass{histNameSuffix}",       ";m_{#pi#pi} [GeV];"                   + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )),
@@ -107,8 +107,8 @@ def makePlots(
         HistogramDefinition(f"phiDegHF{pairLabel}VsMass{histNameSuffix}",       ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"phiDegHF{colNameSuffix}"  )),
         HistogramDefinition(f"PhiDeg{pairLabel}VsMass{histNameSuffix}",         ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"PhiDeg{colNameSuffix}"    )),
         HistogramDefinition(f"anglesHF{histNameSuffix}",                        ";cos#theta_{HF};#phi_{HF} [deg]",   ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiDegHF{colNameSuffix}"  )),
-        HistogramDefinition(f"PhiDegVsCosThetaHF{histNameSuffix}",              ";cos#theta_{HF};#Phi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"    )),
-        HistogramDefinition(f"PhiDegVsPhiDegHF{histNameSuffix}",                ";#phi_{HF} [deg];#Phi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"    )),
+        HistogramDefinition(f"PhiDeg{pairLabel}VsCosThetaHF{histNameSuffix}",   ";cos#theta_{HF};#Phi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"    )),
+        HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{histNameSuffix}",     ";#phi_{HF} [deg];#Phi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"    )),
         HistogramDefinition(f"PsiDegHF{pairLabel}VsCosThetaHF{histNameSuffix}", ";cos#theta_{HF};#Psi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PsiDegHF{colNameSuffix}"  )),
         HistogramDefinition(f"PsiDegHF{pairLabel}VsPhiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];#Psi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PsiDegHF{colNameSuffix}"  )),
       ]
@@ -160,8 +160,6 @@ def makePlots(
     setattr(histsToOverlay, dataToOverlayField.name, hists)
   for histRealData, histWeightedMc in zip(histsToOverlay.realData, histsToOverlay.weightedMc):
     print(f"Comparing histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
-    histRealData.SetTitle  ("Real data")
-    histWeightedMc.SetTitle("Weighted MC")
     # normalize weighted MC to integral of real data
     weightedMcIntegral = histWeightedMc.Integral()
     if weightedMcIntegral != 0:
@@ -182,7 +180,9 @@ def makePlots(
                                                  f"{histWeightedMc.GetBinContent(histWeightedMc.GetNbinsX() + 1) / histWeightedMc.Integral()})")
       ROOT.gStyle.SetOptStat(False)
       canv = ROOT.TCanvas()
-      histStack = ROOT.THStack(histWeightedMc.GetName(), "")
+      histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
+      histRealData.SetTitle  ("Real data")
+      histWeightedMc.SetTitle("Weighted MC")
       histRealData.SetLineColor  (ROOT.kRed + 1)
       histWeightedMc.SetLineColor(ROOT.kBlue + 1)
       histRealData.SetMarkerColor  (ROOT.kRed + 1)
@@ -208,6 +208,8 @@ def makePlots(
       canv.SaveAs(f"{outputDirName}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
     elif histRealData.GetDimension() == 2:
       # generate 2D comparison plots
+      histRealData.SetTitle  ("Real data")
+      histWeightedMc.SetTitle("Weighted MC")
       print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
       ROOT.gStyle.SetOptStat("i")
       canv = ROOT.TCanvas()
