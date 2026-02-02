@@ -217,6 +217,27 @@ def calculateAllMoments(
     raise ValueError(f"Unknown method {cfg.method}")
 
 
+CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
+  bool
+  isInEfficiencyHoles(
+    const double cosTheta,
+    const double phi
+  ) {
+    static std::vector<TEllipse*> holes = {
+      new TEllipse(-0.55,    0, 0.35, 30),
+      new TEllipse( 0.55, -180, 0.35, 30),
+      new TEllipse( 0.55, +180, 0.35, 30)
+    };
+    for (const auto& hole : holes) {
+      if (hole->IsInside(cosTheta, phi)) {
+        return true;
+      }
+    }
+    return false;
+  }
+"""
+
+
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
@@ -225,11 +246,11 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
-  # cfg.method = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # subtract background at moment level
-  # cfg.method = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # use FIT method for moment calculation
+  # cfg.method      = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # estimate moments using linear algebra method with background subtraction at moment level
+  # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
-  # cfg.massBinning = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
+  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
 
   dataBaseDirName = "./dataPhotoProdPiPi/polarized"
   dataPeriods = (
@@ -247,6 +268,7 @@ if __name__ == "__main__":
     "PARA_135",
     "PERP_45",
     "PERP_90",
+    # "AMO",
     # "Unpol",
   )
   maxLs = (
@@ -256,10 +278,8 @@ if __name__ == "__main__":
     # (4, 12),
     # (4, 16),
     # (4, 20),
-    # 5,
-    6,
-    # 7,
-    8,
+    # 6,
+    # 8,
     # (8, 16),
     # (8, 20),
     # 12,
@@ -268,29 +288,8 @@ if __name__ == "__main__":
   )
   forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
   # forceIntegralMatrixCalculation = False
-  # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
-  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
 
-  CUT_CPP_CODE = """
-    bool
-    isInHoles(
-      const double cosTheta,
-      const double phi
-    ) {
-      static std::vector<TEllipse*> holes = {
-        new TEllipse(-0.55,    0, 0.35, 30),
-        new TEllipse( 0.55, -180, 0.35, 30),
-        new TEllipse( 0.55, +180, 0.35, 30)
-      };
-      for (const auto& hole : holes) {
-        if (hole->IsInside(cosTheta, phi)) {
-          return true;
-        }
-      }
-      return false;
-    }
-  """
-  ROOT.gInterpreter.Declare(CUT_CPP_CODE)
+  ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
@@ -323,13 +322,15 @@ if __name__ == "__main__":
                 forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
                 additionalCuts                 = None,
                 # additionalCuts                 = (
-                #   "not isInHoles(cosTheta, phiDeg)",
+                #   "not isInEfficiencyHoles(cosTheta, phiDeg)",  # holes
                 #   # "not ((cosTheta > 0.8) and (-100 < phiDeg and phiDeg < +100))",
-                #   # "(-180 < phiDeg and phiDeg < -108)",  # phi slice 0
-                #   # "(-108 < phiDeg and phiDeg <  -36)",  # phi slice 1
-                #   # "( -36 < phiDeg and phiDeg <  +36)",  # phi slice 2
-                #   # "( +36 < phiDeg and phiDeg < +108)",  # phi slice 3
-                #   # "(+108 < phiDeg and phiDeg < +180)",  # phi slice 4
+                #   # "(-180 < phiDeg and phiDeg < -108)",    # phi slice 0
+                #   # "(-108 < phiDeg and phiDeg <  -36)",    # phi slice 1
+                #   # "( -36 < phiDeg and phiDeg <  +36)",    # phi slice 2
+                #   # "( +36 < phiDeg and phiDeg < +108)",    # phi slice 3
+                #   # "(+108 < phiDeg and phiDeg < +180)",    # phi slice 4
+                #   # "(-90 < phiDeg and phiDeg < +90)",      # phi slice 5
+                #   # "not (-90 < phiDeg and phiDeg < +90)",  # phi slice 6
                 #   # "(-1.0 < cosTheta and cosTheta < -0.6)",  # cos theta slice 0
                 #   # "(-0.6 < cosTheta and cosTheta < -0.2)",  # cos theta slice 1
                 #   # "(-0.2 < cosTheta and cosTheta < +0.2)",  # cos theta slice 2
@@ -338,12 +339,19 @@ if __name__ == "__main__":
                 #   # "((-0.8 < cosTheta and cosTheta < +0.8) and (-150 < phiDeg and phiDeg < +150))",  # border
                 #   # "((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border1
                 #   # "not ((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border3
-                #   # "(phiDeg > 0)",  # phiPos
-                #   # "(phiDeg < 0)",  # phiNeg
-                #   # "(cosTheta > 0)",  # cosThetaPos
                 #   # "(cosTheta < 0)",  # cosThetaNeg
-                #   # "(-90 < phiDeg and phiDeg < +90)",  # phi slice 5
-                #   # "not (-90 < phiDeg and phiDeg < +90)",  # phi slice 6
+                #   # "(cosTheta > 0)",  # cosThetaPos
+                #   # "(phiDeg < 0)",  # phiNeg
+                #   # "(phiDeg > 0)",  # phiPos
+                #   # "(PhiDeg < 0)",  # PhiNeg
+                #   # "(PhiDeg > 0)",  # PhiPos
+                #   # "(-0.75 < cosTheta && cosTheta < +0.75)",  # cosThetaNoSpikeOdd
+                #   # "((-150 < phiDeg && phiDeg < -30) || (+30 < phiDeg && phiDeg < +150))",  # phiNoSpikeOdd
+                #   # "!(" \
+                #   #   "   ((-1 < cosTheta && cosTheta < -0.75) && (-180 < phiDeg && phiDeg < -150))" \
+                #   #   "|| ((-1 < cosTheta && cosTheta < -0.75) && (+150 < phiDeg && phiDeg < +180))" \
+                #   #   "|| ((+0.75 < cosTheta && cosTheta < +1) && ( -30 < phiDeg && phiDeg <  +30))" \
+                #   # ")",  # noSpikeOdd
                 # ),
               )
               timer.stop("Total execution time")
