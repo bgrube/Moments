@@ -372,8 +372,9 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
+  # cfg.polarization = None  # treat data as unpolarized
 
-  dataBaseDirName          = "./dataPhotoProdPiPi/polarized"
+  dataFilesBaseDirName     = "./dataPhotoProdPiPi/polarized"
   useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
   # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
   # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
@@ -409,6 +410,7 @@ if __name__ == "__main__":
     # "PARA_135",
     # "PERP_45",
     # "PERP_90",
+    # "AMO",
     # "Unpol",
   )
   maxLs = (
@@ -437,9 +439,9 @@ if __name__ == "__main__":
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
       for beamPolLabel in beamPolLabels:
-        cfg.dataFileName       = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
-        cfg.psAccFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
-        cfg.psGenFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
+        cfg.dataFileName       = f"{dataFilesBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
+        cfg.psAccFileName      = f"{dataFilesBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
+        cfg.psGenFileName      = f"{dataFilesBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
         for maxL in maxLs:
           print(f"Generating weighted MC for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
@@ -447,7 +449,7 @@ if __name__ == "__main__":
           cfg.init()
           thisSourceFileName = os.path.basename(__file__)
           # create directory, into which weighted data will be written
-          weightedDataDirName = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/weightedMc.maxL_{maxL}/{beamPolLabel}"
+          weightedDataDirName = f"{dataFilesBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/weightedMc.maxL_{maxL}/{beamPolLabel}"
           Utilities.makeDirPath(weightedDataDirName)
           logFileName = f"{weightedDataDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
@@ -471,7 +473,7 @@ if __name__ == "__main__":
               momentResultsForBin = momentResults[massBinIndexForMoments]
               print(f"Weighting events with intensity function using moment values in mass bin {massBinIndexForMoments} at {momentResultsForBin.binCenters[cfg.massBinning.var]:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
               weightDataWithIntensityFormula(
-                inputDataDef         = (inputDataDef[0], f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/Alex/{inputDataDef[1]}") \
+                inputDataDef         = (inputDataDef[0], f"{dataFilesBaseDirName}/{dataPeriod}/{tBinLabel}/Alex/{inputDataDef[1]}") \
                                        if isinstance(inputDataDef, tuple) else inputDataDef,
                 massBinning          = massBinningForWeighting,
                 massBinIndex         = massBinIndexForWeighting,
@@ -486,7 +488,6 @@ if __name__ == "__main__":
                 cfg                  = cfg,
                 seed                 = 12345 + massBinIndexForWeighting,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
-                useIntensityTerms    = useIntensityTerms,
                 limitNmbEventsTo     = limitNmbEventsTo,
               )
               if makeIntensityFcnPlots:
