@@ -96,29 +96,29 @@ def makePlots(
       histNameSuffix = f"{pairLabel}_{label}"  # i.e. "_RealData" or "_WeightedMc"
       histDefs += [
         # 1D histograms
-        HistogramDefinition(f"mass{histNameSuffix}",       ";m_{#pi#pi} [GeV];"                   + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )),
-        HistogramDefinition(f"minusT{histNameSuffix}",     ";#minus t_{#pi#pi} [GeV^{2}];"        + yAxisLabel, ((100,    0,       1   ), ), (f"minusT{colNameSuffix}",     )),
-        HistogramDefinition(f"cosThetaHF{histNameSuffix}", ";cos#theta_{HF};"                     + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )),
-        HistogramDefinition(f"phiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];"                    + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiDegHF{colNameSuffix}",   )),
-        HistogramDefinition(f"PhiDeg{histNameSuffix}",     ";#Phi [deg];"                         + yAxisLabel, (( 72, -180,    +180   ), ), (f"PhiDeg{colNameSuffix}",     )),
-        HistogramDefinition(f"PsiDegHF{histNameSuffix}",   ";#Psi = (#Phi#minus#phi_{HF}) [deg];" + yAxisLabel, (( 72, -180,    +180   ), ), (f"PsiDegHF{colNameSuffix}",   )),
+        HistogramDefinition(f"mass{histNameSuffix}",        ";m_{#pi#pi} [GeV];"                   + yAxisLabel, (( 50,    0.28,    2.28), ), (f"mass{colNameSuffix}",       )),
+        HistogramDefinition(f"minusT{histNameSuffix}",      ";#minus t_{#pi#pi} [GeV^{2}];"        + yAxisLabel, ((100,    0,       1   ), ), (f"minusT{colNameSuffix}",     )),
+        HistogramDefinition(f"cosThetaHF{histNameSuffix}",  ";cos#theta_{HF};"                     + yAxisLabel, ((100,   -1,      +1   ), ), (f"cosThetaHF{colNameSuffix}", )),
+        HistogramDefinition(f"phiHF{pairLabel}Deg_{label}", ";#phi_{HF} [deg];"                    + yAxisLabel, (( 72, -180,    +180   ), ), (f"phiHF{colNameSuffix}Deg",   )),
+        HistogramDefinition(f"Phi{pairLabel}Deg_{label}",   ";#Phi [deg];"                         + yAxisLabel, (( 72, -180,    +180   ), ), (f"Phi{colNameSuffix}Deg",     )),
+        HistogramDefinition(f"PsiHF{pairLabel}Deg_{label}", ";#Psi = (#Phi#minus#phi_{HF}) [deg];" + yAxisLabel, (( 72, -180,    +180   ), ), (f"PsiHF{colNameSuffix}Deg",   )),
         # 2D histograms
-        HistogramDefinition(f"cosThetaHF{pairLabel}VsMass{histNameSuffix}",     ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (50,   -1,   +1)), (f"mass{colNameSuffix}",       f"cosThetaHF{colNameSuffix}")),
-        HistogramDefinition(f"phiDegHF{pairLabel}VsMass{histNameSuffix}",       ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"phiDegHF{colNameSuffix}"  )),
-        HistogramDefinition(f"PhiDeg{pairLabel}VsMass{histNameSuffix}",         ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"PhiDeg{colNameSuffix}"    )),
-        HistogramDefinition(f"anglesHF{histNameSuffix}",                        ";cos#theta_{HF};#phi_{HF} [deg]",   ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiDegHF{colNameSuffix}"  )),
-        HistogramDefinition(f"PhiDeg{pairLabel}VsCosThetaHF{histNameSuffix}",   ";cos#theta_{HF};#Phi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PhiDeg{colNameSuffix}"    )),
-        HistogramDefinition(f"PhiDeg{pairLabel}VsPhiDegHF{histNameSuffix}",     ";#phi_{HF} [deg];#Phi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PhiDeg{colNameSuffix}"    )),
-        HistogramDefinition(f"PsiDegHF{pairLabel}VsCosThetaHF{histNameSuffix}", ";cos#theta_{HF};#Psi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PsiDegHF{colNameSuffix}"  )),
-        HistogramDefinition(f"PsiDegHF{pairLabel}VsPhiDegHF{histNameSuffix}",   ";#phi_{HF} [deg];#Psi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiDegHF{colNameSuffix}",   f"PsiDegHF{colNameSuffix}"  )),
+        HistogramDefinition(f"cosThetaHF{pairLabel}VsMass{histNameSuffix}",      ";m_{#pi#pi} [GeV];cos#theta_{HF}",  ((50, 0.28, 2.28), (50,   -1,   +1)), (f"mass{colNameSuffix}",       f"cosThetaHF{colNameSuffix}")),
+        HistogramDefinition(f"phiHF{pairLabel}DegVsMass{histNameSuffix}",        ";m_{#pi#pi} [GeV];#phi_{HF} [deg]", ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"phiHF{colNameSuffix}Deg"  )),
+        HistogramDefinition(f"Phi{pairLabel}DegVsMass{histNameSuffix}",          ";m_{#pi#pi} [GeV];#Phi [deg]",      ((50, 0.28, 2.28), (36, -180, +180)), (f"mass{colNameSuffix}",       f"Phi{colNameSuffix}Deg"    )),
+        HistogramDefinition(f"anglesHF{histNameSuffix}",                         ";cos#theta_{HF};#phi_{HF} [deg]",   ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"phiHF{colNameSuffix}Deg"  )),
+        HistogramDefinition(f"Phi{pairLabel}DegVsCosThetaHF{histNameSuffix}",    ";cos#theta_{HF};#Phi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"Phi{colNameSuffix}Deg"    )),
+        HistogramDefinition(f"Phi{pairLabel}DegVsPhiHF{pairLabel}Deg_{label}",   ";#phi_{HF} [deg];#Phi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiHF{colNameSuffix}Deg",   f"Phi{colNameSuffix}Deg"    )),
+        HistogramDefinition(f"PsiHF{pairLabel}DegVsCosThetaHF{histNameSuffix}",  ";cos#theta_{HF};#Psi [deg]",        ((50,   -1,   +1), (36, -180, +180)), (f"cosThetaHF{colNameSuffix}", f"PsiHF{colNameSuffix}Deg"  )),
+        HistogramDefinition(f"PsiHF{pairLabel}DegVsPhiHF{pairLabel}Deg_{label}", ";#phi_{HF} [deg];#Psi [deg]",       ((36, -180, +180), (36, -180, +180)), (f"phiHF{colNameSuffix}Deg",   f"PsiHF{colNameSuffix}Deg"  )),
       ]
     if True:
     # if False:
       # distributions in lab frame
       for filter, title, histNameSuffix in [
         ("",                           "",              f"_{label}"                       ),  # all data
-        (f"(phiDegHF{pairLabel} > 0)", "#phi_{HF} > 0", f"_phiDegHF{pairLabel}Pos_{label}"),
-        (f"(phiDegHF{pairLabel} < 0)", "#phi_{HF} < 0", f"_phiDegHF{pairLabel}Neg_{label}"),
+        (f"(phiHF{pairLabel}Deg > 0)", "#phi_{HF} > 0", f"_phiHF{pairLabel}DegPos_{label}"),
+        (f"(phiHF{pairLabel}Deg < 0)", "#phi_{HF} < 0", f"_phiHF{pairLabel}DegNeg_{label}"),
       ]:
         histDefs += [
           # 1D histograms
@@ -135,22 +135,22 @@ def makePlots(
           HistogramDefinition(f"momLabXPim{histNameSuffix}",     title + ";p_{x}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -0.8, +0.8), ), ("momLabXPim",     ), filter),
           HistogramDefinition(f"momLabYPim{histNameSuffix}",     title + ";p_{y}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -0.8, +0.8), ), ("momLabYPim",     ), filter),
           HistogramDefinition(f"momLabZPim{histNameSuffix}",     title + ";p_{z}^{#pi^{#minus}} [GeV];"        + yAxisLabel, ((100,   -1,   +9  ), ), ("momLabZPim",     ), filter),
-          HistogramDefinition(f"thetaDegLabP{histNameSuffix}",   title + ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabP",   ), filter),
-          HistogramDefinition(f"thetaDegLabPip{histNameSuffix}", title + ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabPip", ), filter),
-          HistogramDefinition(f"thetaDegLabPim{histNameSuffix}", title + ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100,    0,   80  ), ), ("thetaDegLabPim", ), filter),
-          HistogramDefinition(f"phiDegLabP{histNameSuffix}",     title + ";#phi_{p}^{lab} [deg];"              + yAxisLabel, (( 72, -180, +180  ), ), ("phiDegLabP",     ), filter),
-          HistogramDefinition(f"phiDegLabPip{histNameSuffix}",   title + ";#phi_{#pi^{#plus}}^{lab} [deg];"    + yAxisLabel, (( 72, -180, +180  ), ), ("phiDegLabPip",   ), filter),
-          HistogramDefinition(f"phiDegLabPim{histNameSuffix}",   title + ";#phi_{#pi^{#minus}}^{lab} [deg];"   + yAxisLabel, (( 72, -180, +180  ), ), ("phiDegLabPim",   ), filter),
+          HistogramDefinition(f"thetaLabPDeg{histNameSuffix}",   title + ";#theta_{p}^{lab} [deg];"            + yAxisLabel, ((100,    0,   80  ), ), ("thetaLabPDeg",   ), filter),
+          HistogramDefinition(f"thetaLabPipDeg{histNameSuffix}", title + ";#theta_{#pi^{#plus}}^{lab} [deg];"  + yAxisLabel, ((100,    0,   80  ), ), ("thetaLabPipDeg", ), filter),
+          HistogramDefinition(f"thetaLabPimDeg{histNameSuffix}", title + ";#theta_{#pi^{#minus}}^{lab} [deg];" + yAxisLabel, ((100,    0,   80  ), ), ("thetaLabPimDeg", ), filter),
+          HistogramDefinition(f"phiLabPDeg{histNameSuffix}",     title + ";#phi_{p}^{lab} [deg];"              + yAxisLabel, (( 72, -180, +180  ), ), ("phiLabPDeg",     ), filter),
+          HistogramDefinition(f"phiLabPipDeg{histNameSuffix}",   title + ";#phi_{#pi^{#plus}}^{lab} [deg];"    + yAxisLabel, (( 72, -180, +180  ), ), ("phiLabPipDeg",   ), filter),
+          HistogramDefinition(f"phiLabPimDeg{histNameSuffix}",   title + ";#phi_{#pi^{#minus}}^{lab} [deg];"   + yAxisLabel, (( 72, -180, +180  ), ), ("phiLabPimDeg",   ), filter),
           # 2D histograms
           HistogramDefinition(f"momLabYPVsMomLabXP{histNameSuffix}",           title + ";p_{x}^{p} [GeV];p_{y}^{p} [GeV];",                                   ((50, -0.5, +0.5), (50,   -0.5,  +0.5)), ("momLabXP",       "momLabYP"      ), filter),
           HistogramDefinition(f"momLabYPipVsMomLabXPip{histNameSuffix}",       title + ";p_{x}^{#pi^{#plus}} [GeV];p_{y}^{#pi^{#plus}} [GeV];",               ((50, -0.8, +0.8), (50,   -0.8,  +0.8)), ("momLabXPip",     "momLabYPip"    ), filter),
           HistogramDefinition(f"momLabYPimVsMomLabXPim{histNameSuffix}",       title + ";p_{x}^{#pi^{#minus}} [GeV];p_{y}^{#pi^{#minus}} [GeV];",             ((50, -0.8, +0.8), (50,   -0.8,  +0.8)), ("momLabXPim",     "momLabYPim"    ), filter),
-          HistogramDefinition(f"thetaDegLabPVsMomLabP{histNameSuffix}",        title + ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                                 ((50,  0,    1  ), (50,   60,    80  )), ("momLabP",        "thetaDegLabP"  ), filter),
-          HistogramDefinition(f"thetaDegLabPipVsMomLabPip{histNameSuffix}",    title + ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",             ((50,  0,   10  ), (50,    0,    30  )), ("momLabPip",      "thetaDegLabPip"), filter),
-          HistogramDefinition(f"thetaDegLabPimVsMomLabPim{histNameSuffix}",    title + ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]",           ((50,  0,   10  ), (50,    0,    30  )), ("momLabPim",      "thetaDegLabPim"), filter),
-          HistogramDefinition(f"phiDegLabPVsThetaDegLabP{histNameSuffix}",     title + ";#theta_{p}^{lab} [deg];#phi_{p}^{lab} [deg];",                       ((50, 60,   80  ), (36, -180,  +180  )), ("thetaDegLabP",   "phiDegLabP"    ), filter),
-          HistogramDefinition(f"phiDegLabPipVsThetaDegLabPip{histNameSuffix}", title + ";#theta_{#pi^{#plus}}^{lab} [deg];#phi_{#pi^{#plus}}^{lab} [deg];",   ((50,  0,   30  ), (36, -180,  +180  )), ("thetaDegLabPip", "phiDegLabPip"  ), filter),
-          HistogramDefinition(f"phiDegLabPimVsThetaDegLabPim{histNameSuffix}", title + ";#theta_{#pi^{#minus}}^{lab} [deg];#phi_{#pi^{#minus}}^{lab} [deg];", ((50,  0,   30  ), (36, -180,  +180  )), ("thetaDegLabPim", "phiDegLabPim"  ), filter),
+          HistogramDefinition(f"thetaLabPDegVsMomLabP{histNameSuffix}",        title + ";p_{p} [GeV];#theta_{p}^{lab} [deg]",                                 ((50,  0,    1  ), (50,   60,    80  )), ("momLabP",        "thetaLabPDeg"  ), filter),
+          HistogramDefinition(f"thetaLabPipDegVsMomLabPip{histNameSuffix}",    title + ";p_{#pi^{#plus}} [GeV];#theta_{#pi^{#plus}}^{lab} [deg]",             ((50,  0,   10  ), (50,    0,    30  )), ("momLabPip",      "thetaLabPipDeg"), filter),
+          HistogramDefinition(f"thetaLabPimDegVsMomLabPim{histNameSuffix}",    title + ";p_{#pi^{#minus}} [GeV];#theta_{#pi^{#minus}}^{lab} [deg]",           ((50,  0,   10  ), (50,    0,    30  )), ("momLabPim",      "thetaLabPimDeg"), filter),
+          HistogramDefinition(f"phiLabPDegVsThetaLabPDeg{histNameSuffix}",     title + ";#theta_{p}^{lab} [deg];#phi_{p}^{lab} [deg];",                       ((50, 60,   80  ), (36, -180,  +180  )), ("thetaLabPDeg",   "phiLabPDeg"    ), filter),
+          HistogramDefinition(f"phiLabPipDegVsThetaLabPipDeg{histNameSuffix}", title + ";#theta_{#pi^{#plus}}^{lab} [deg];#phi_{#pi^{#plus}}^{lab} [deg];",   ((50,  0,   30  ), (36, -180,  +180  )), ("thetaLabPipDeg", "phiLabPipDeg"  ), filter),
+          HistogramDefinition(f"phiLabPimDegVsThetaLabPimDeg{histNameSuffix}", title + ";#theta_{#pi^{#minus}}^{lab} [deg];#phi_{#pi^{#minus}}^{lab} [deg];", ((50,  0,   30  ), (36, -180,  +180  )), ("thetaLabPimDeg", "phiLabPimDeg"  ), filter),
         ]
     # book histograms
     df = getattr(dataToOverlay, dataToOverlayField.name)

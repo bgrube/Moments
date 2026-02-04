@@ -335,7 +335,7 @@ def defineDataFrameColumns(
     raise ValueError(f"Unsupported coordinate system type '{frame}'")
   df = (
     df.Define(f"theta{angColNameSuffix}",  f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
-      .Define(f"phiDeg{angColNameSuffix}", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")  #TODO only write out columns actually needed for moment calculation; move everything else to plotting module
+      .Define(f"phi{angColNameSuffix}Deg", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")  #TODO only write out columns actually needed for moment calculation; move everything else to plotting module
   )
   # allow for redefinition of already existing columns with identical formula if function is called for several frames
   df = DefineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
@@ -345,7 +345,7 @@ def defineDataFrameColumns(
     df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}", f"(Double32_t){beamPolInfo.PhiLab}")
     #TODO Use Phi from `angles` column
     df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix})")
-    df = DefineOverwrite(df, f"PhiDeg{colNameSuffix}",        f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
+    df = DefineOverwrite(df, f"Phi{colNameSuffix}Deg",        f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
   if additionalColumnDefs:
     for columnName, columnFormula in additionalColumnDefs.items():
       print(f"Defining additional column '{columnName}' = '{columnFormula}'")

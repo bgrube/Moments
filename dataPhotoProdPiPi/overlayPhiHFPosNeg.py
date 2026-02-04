@@ -15,9 +15,9 @@ def makeComparisonPlotPosNegPhiHF(
 ) -> None:
   """Generates comparison plot for positive and negative phi_HF"""
   print(f"Generating phi_HF < 0, phi_HF > 0 comparison plot for histogram '{histBaseName}'")
-  histPos = plotsFile.Get(f"{histBaseName}_phiDegHFPiPiPos")
-  histNeg = plotsFile.Get(f"{histBaseName}_phiDegHFPiPiNeg")
-  histCompName = f"{histBaseName}_phiDegHFPiPiPosNeg"
+  histPos = plotsFile.Get(f"{histBaseName}_phiHFPiPiDegPos")
+  histNeg = plotsFile.Get(f"{histBaseName}_phiHFPiPiDegNeg")
+  histCompName = f"{histBaseName}_phiHFPiPiDegPosNeg"
   canv = ROOT.TCanvas()
   if histPos.GetDimension() == 1:
     # overlay 1D histograms
@@ -54,9 +54,9 @@ def makeComparisonPlotPosNegPhiHF(
       stats.SetY1NDC(0.95)
       stats.SetY2NDC(0.99)
     # # plot 2D asymmetry for phi > 0 and phi < 0
-    # histDiff = histPos.Clone(f"{histBaseName}_phiDegHFPiPiPosNegDiff")
+    # histDiff = histPos.Clone(f"{histBaseName}_phiHFPiPiDegPosNegDiff")
     # histDiff.Add(histNeg, -1)
-    # histSum = histPos.Clone(f"{histBaseName}_phiDegHFPiPiPosNegSum")
+    # histSum = histPos.Clone(f"{histBaseName}_phiHFPiPiDegPosNegSum")
     # histSum.Add(histNeg, +1)
     # histAsym = histDiff.Clone(histCompName)
     # histAsym.Divide(histSum)
@@ -77,6 +77,7 @@ if __name__ == "__main__":
   ROOT.gStyle.SetLegendBorderSize(1)
 
   plotsDirName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/PARA_0"
+  # plotsDirName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/AMO"
   # plotsDirName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_ACCEPTED_PHASE_SPACE/PARA_0"
   plotsFile = ROOT.TFile.Open(f"{plotsDirName}/plots.root", "READ")
 
@@ -91,21 +92,21 @@ if __name__ == "__main__":
     "momLabPim",
     "momLabXPim",
     "momLabYPim",
-    "thetaDegLabP",
-    "thetaDegLabPip",
-    "thetaDegLabPim",
-    "phiDegLabP",
-    "phiDegLabPip",
-    "phiDegLabPim",
+    "thetaLabPDeg",
+    "thetaLabPipDeg",
+    "thetaLabPimDeg",
+    "phiLabPDeg",
+    "phiLabPipDeg",
+    "phiLabPimDeg",
     "momLabYPVsMomLabXP",
     "momLabYPipVsMomLabXPip",
     "momLabYPimVsMomLabXPim",
-    "thetaDegLabPVsMomLabP",
-    "thetaDegLabPipVsMomLabPip",
-    "thetaDegLabPimVsMomLabPim",
-    "phiDegLabPVsThetaDegLabP",
-    "phiDegLabPipVsThetaDegLabPip",
-    "phiDegLabPimVsThetaDegLabPim",
+    "thetaLabPDegVsMomLabP",
+    "thetaLabPipDegVsMomLabPip",
+    "thetaLabPimDegVsMomLabPim",
+    "phiLabPDegVsThetaLabPDeg",
+    "phiLabPipDegVsThetaLabPipDeg",
+    "phiLabPimDegVsThetaLabPimDeg",
   ]:
     makeComparisonPlotPosNegPhiHF(
       plotsFile     = plotsFile,
