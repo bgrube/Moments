@@ -32,6 +32,7 @@ from MomentCalculator import (
   MomentResultsKinematicBinning,
   QnWaveIndex,
 )
+from photoProdCalcMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
 from photoProdWeightData import weightDataWithIntensityFormula
 from PlottingUtilities import (
   drawTF3,
@@ -210,7 +211,7 @@ if __name__ == "__main__":
 
   # set parameters of test case
   # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-  outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.accEven.phys.detuneAccFull")
+  outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.accFull.phys.holes.maxL_4")
   # nmbDataEvents         = 1000
   # nmbAccPsEvents        = 1000000
   nmbDataEvents         = 10000000
@@ -220,6 +221,7 @@ if __name__ == "__main__":
   binVarMass            = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
   massBinning           = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)
   maxL                  = 4  # define maximum L quantum number of moments
+  # maxL                  = 8
   partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
     # negative-reflectivity waves
     AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
@@ -252,6 +254,7 @@ if __name__ == "__main__":
     Utilities.printGitInfo()
     timer = Utilities.Timer()
     ROOT.gInterpreter.Declare(BIN_CONTENT_3D_FUNCTOR_CPP)
+    ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
     ROOT.gRandom.SetSeed(1234567890)
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
@@ -268,8 +271,8 @@ if __name__ == "__main__":
       # efficiencyFormula = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
       # efficiencyFormula = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
       # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
-      # accPsHistNameGen = "accPs3D"  # accFull
-      accPsHistNameGen = "accPs3D_even"  # accEven
+      accPsHistNameGen = "accPs3D"  # accFull
+      # accPsHistNameGen = "accPs3D_even"  # accEven
       accPsFileNameGen = f"./dataPhotoProdPiPi/{accPsHistNameGen}.root"
       accPsFileGen = ROOT.TFile.Open(accPsFileNameGen, "READ")
       accPSHistGen = accPsFileGen[accPsHistNameGen]
@@ -279,13 +282,14 @@ if __name__ == "__main__":
       efficiencyFormula = f"(1 / {accPSHistGen.GetMaximum()}) * PyVars::accPSHistGenFunctor({xVar}, {yVar}, {zVar})"
 
       # define holes in efficiency when generating data
-      efficiencyHoleGen = ""  # do not punch hole
+      # efficiencyHoleGen = ""  # do not punch hole
+      efficiencyHoleGen = f"!isInEfficiencyHoles({xVar}, {yVar})"  # holes
       # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # small hole
       # efficiencyHoleGen = "!(" \
       #   f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
       #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (-180 < {yVar} && {yVar} < -150))" \
       #   f"|| ((+0.2 < {xVar} && {xVar} < +0.9) && (+150 < {yVar} && {yVar} < +180))" \
-      # ")"  # 3 holes in efficiency similar to 0.72-0.76 mass bin when generating data
+      # ")"  # holes; similar to 0.72-0.76 mass bin
       # efficiencyHoleGen = f"!((0 < {xVar} && {xVar} < 1) && (-180 < {yVar} && {yVar} < 0))"  # large hole (whole quadrant) in efficiency when generating data
       # half-plane holes
       # efficiencyHoleGen = f"({xVar} < 0)"  # cosThetaNeg
@@ -324,18 +328,18 @@ if __name__ == "__main__":
       # accPSHistRange = max(abs(accPSHist.GetMaximum()), abs(accPSHist.GetMinimum()))
       # efficiencyFormulaDetune = f"(0.15 / {accPSHistRange}) * PyVars::accPSHistFunctor({xVar}, {yVar})"  # detuneOdd4; detune by odd terms in phi only
       # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
-      accPsHistNameReco = "accPs3D"  # detuneAccFull
-      # accPsHistNameReco = "accPs3D_even"  # detuneAccEven
-      accPsFileNameReco = f"./dataPhotoProdPiPi/{accPsHistNameReco}.root"
-      accPsFileReco = ROOT.TFile.Open(accPsFileNameReco, "READ")
-      accPSHistReco = accPsFileReco[accPsHistNameReco]
-      print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFileNameReco}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
-      accPSHistRecoFunctor = ROOT.BinContent3DFunctor(accPSHistReco)
-      RootUtilities.declareInCpp(accPSHistRecoFunctor = accPSHistRecoFunctor)  # make Python object available to use in C++
-      efficiencyFormulaReco = f"(1 / {accPSHistReco.GetMaximum()}) * PyVars::accPSHistRecoFunctor({xVar}, {yVar}, {zVar})"
+      # accPsHistNameReco = "accPs3D"  # detuneAccFull
+      # # accPsHistNameReco = "accPs3D_even"  # detuneAccEven
+      # accPsFileNameReco = f"./dataPhotoProdPiPi/{accPsHistNameReco}.root"
+      # accPsFileReco = ROOT.TFile.Open(accPsFileNameReco, "READ")
+      # accPSHistReco = accPsFileReco[accPsHistNameReco]
+      # print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFileNameReco}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
+      # accPSHistRecoFunctor = ROOT.BinContent3DFunctor(accPSHistReco)
+      # RootUtilities.declareInCpp(accPSHistRecoFunctor = accPSHistRecoFunctor)  # make Python object available to use in C++
+      # efficiencyFormulaReco = f"(1 / {accPSHistReco.GetMaximum()}) * PyVars::accPSHistRecoFunctor({xVar}, {yVar}, {zVar})"
 
-      # efficiencyFormulaGen = efficiencyFormulaReco = efficiencyFormula
-      efficiencyFormulaGen = efficiencyFormula
+      efficiencyFormulaGen = efficiencyFormulaReco = efficiencyFormula
+      # efficiencyFormulaGen = efficiencyFormula
       # insert efficiency holes
       if efficiencyHoleGen:
         efficiencyFormulaGen = f"(({efficiencyFormulaGen}) * ({efficiencyHoleGen}))"
@@ -349,7 +353,7 @@ if __name__ == "__main__":
       # calculate true moment values and generate data
       t = timer.start("Time to generate MC data")
       # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
-      momentResultsFileName = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl"
+      momentResultsFileName = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_{maxL}/unnorm_moments_phys.pkl"
       print(f"Reading moments from file '{momentResultsFileName}'")
       HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)[11]  # pick [0.72, 0.76] GeV bin
       if True:
