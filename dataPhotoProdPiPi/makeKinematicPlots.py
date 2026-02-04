@@ -158,6 +158,9 @@ def calcEvenOddValue(
   negBinIndices: tuple[int, ...],
 ) -> None:
   """Calculates even or odd value for given positive and negative bin indices"""
+  assert hist.GetDimension() == histEven.GetDimension() == histOdd.GetDimension(), "Histogram dimensions must be identical!"
+  assert len(posBinIndices) == len(negBinIndices), "Dimensions of positive and negative bin indices must be the same!"
+  assert len(posBinIndices) == hist.GetDimension(), "Dimensions of bin indices must match histogram dimensions!"
   phiPosVal = hist.GetBinContent(*posBinIndices)
   phiNegVal = hist.GetBinContent(*negBinIndices)
   #TODO uncertainties and correlations are not calculated and set correctly
@@ -421,9 +424,9 @@ def makePlots(
     histEvenOdd = [hist for hist in hists if hist.GetName() == histName]
     assert len(histEvenOdd) == 1, f"Expected exactly one histogram with name '{histName}', but found {len(histEvenOdd)}"
     histOdd, histEven, histSum = decomposeHistEvenOdd(histEvenOdd[0])
-    if histOdd.GetDimension() == 2:
-      for hist in (histOdd, histEven, histSum):
-        hist.Rebin2D(4, 3)  # reduce number of bins for better visibility
+    # if histOdd.GetDimension() == 2:
+    #   for hist in (histOdd, histEven, histSum):
+    #     hist.Rebin2D(4, 3)  # reduce number of bins for better visibility
     histOddValRange = max(abs(histOdd.GetMaximum()), abs(histOdd.GetMinimum()))
     histOdd.SetMaximum(+histOddValRange)
     histOdd.SetMinimum(-histOddValRange)
@@ -435,7 +438,7 @@ def makePlots(
   # plot all histograms
   os.makedirs(outputDirName, exist_ok = True)
   outRootFileName = f"{outputDirName}/plots.root"
-  with ROOT.TFile.Open(outRootFileName, "RECREATE") as outRootFile:
+  with ROOT.TFile.Open(outRootFileName, "RECREATE"):
     print(f"Writing histograms to '{outRootFileName}'")
     for hist in hists:
       if   (isinstance(hist, (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D))                                                                and hist            in histsOdd) \
@@ -534,6 +537,7 @@ if __name__ == "__main__":
     "PARA_135",
     "PERP_45",
     "PERP_90",
+    # "AMO",
   )
   inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
     InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
