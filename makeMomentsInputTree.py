@@ -150,7 +150,7 @@ twoBodyHelicityFrameAngles(
 	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,  // 4-momentum of recoil [GeV]
 	const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,      // 4-momentum of particle A (analyzer) [GeV]
 	const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,      // 4-momentum of particle B [GeV]
-	const double beamPolPhiLab = 0  // azimuthal angle of photon beam polarization in lab [deg]
+	const double beamPolPhiLabDeg = 0  // azimuthal angle of photon beam polarization in lab [deg]
 ) {
 	// 4-vectors in lab frame
 	const TLorentzVector beam  (PxBeam,   PyBeam,   PzBeam,   EBeam);
@@ -159,27 +159,21 @@ twoBodyHelicityFrameAngles(
 	const TLorentzVector pB    (PxPB,     PyPB,     PzPB,     EPB);
 	// boost 4-vectors to resonance rest frame
 	const TLorentzVector resonance = pA + pB;
-	// const TVector3 boost = -resonance.BoostVector();
-	// beam  (boost);
-	// recoil(boost);
-	// pA    (boost);
 	const TLorentzRotation resonanceBoost(-resonance.BoostVector());
 	const TLorentzVector beamRF   = resonanceBoost * beam;
 	const TLorentzVector recoilRF = resonanceBoost * recoil;
 	const TLorentzVector pARF     = resonanceBoost * pA;
 	// define axes of coordinate system
-	// const TVector3 y = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal to the production plane from lab momenta
-	const TVector3 y = beam.Vect().Cross(-recoil.Vect()).Unit();  // normal to the production plane from lab momenta
-	const TVector3 z = -recoilRF.Vect().Unit();  // helicity frame: z axis opposite to recoil proton in resonance rest frame
-	const TVector3 x = y.Cross(z).Unit();  // right-handed coordinate system
+	const TVector3 yAxis = beam.Vect().Cross(-recoil.Vect()).Unit();  // normal of production plane in lab frame
+	const TVector3 zAxis = -recoilRF.Vect().Unit();  // helicity frame: opposite to recoil proton in resonance rest frame
+	const TVector3 xAxis = yAxis.Cross(zAxis).Unit();  // right-handed coordinate system
 	// calculate helicity-frame angles of particle A and angle between polarization and production plane
-	const TVector3 pAHF(pARF.Vect() * x, pARF.Vect() * y, pARF.Vect() * z);  // vector of particle A (analyzer) in helicity frame
-	const Double32_t cosThetaHF = pAHF.CosTheta();  // polar angle of particle A
-	const Double32_t phiHF      = pAHF.Phi();  // azimuthal angle of particle A [rad]
+	const TVector3 pAHF(pARF.Vect() * xAxis, pARF.Vect() * yAxis, pARF.Vect() * zAxis);  // vector of particle A (analyzer) in helicity frame
+	const double cosThetaHF = pAHF.CosTheta();  // polar angle of particle A
+	const double phiHF      = pAHF.Phi();  // azimuthal angle of particle A [rad]
 	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-	const Double32_t Phi = fixAzimuthalAngleRange(  // angle between photon polarization and production plane in lab frame [rad]
-		beamPolPhiLab * TMath::DegToRad() + atan2(y * eps, beam.Vect().Unit() * (eps.Cross(y))));
-	return std::vector<Double32_t>{cosThetaHF, phiHF, Phi};
+	const double Phi = beamPolPhiLabDeg * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
+	return std::vector<Double32_t>{cosThetaHF, phiHF, fixAzimuthalAngleRange(Phi)};
 }
 """
 
@@ -194,13 +188,13 @@ double
 beamPolPhi(
 	const double PxPC, const double PyPC, const double PzPC, const double EnPC,  // 4-momentum of recoil [GeV]
 	const double PxPD, const double PyPD, const double PzPD, const double EnPD,  // 4-momentum of beam [GeV]
-	const double beamPolPhiLab = 0  // azimuthal angle of photon beam polarization in lab [deg]
+	const double beamPolPhiLabDeg = 0  // azimuthal angle of photon beam polarization in lab [deg]
 ) {
 	const TLorentzVector recoil(PxPC, PyPC, PzPC, EnPC);
 	const TLorentzVector beam  (PxPD, PyPD, PzPD, EnPD);
-	const TVector3 yAxis = (beam.Vect().Unit().Cross(-recoil.Vect().Unit())).Unit();  // normal of production plane in lab frame
+	const TVector3 yAxis = beam.Vect().Cross(-recoil.Vect()).Unit();  // normal of production plane in lab frame
 	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-	const double Phi = beamPolPhiLab * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
+	const double Phi = beamPolPhiLabDeg * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
 	return fixAzimuthalAngleRange(Phi);
 }
 """
@@ -341,10 +335,10 @@ def defineDataFrameColumns(
   df = DefineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
   df = DefineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
-    df = DefineOverwrite(df, f"beamPol{colNameSuffix}",       f"(Double32_t){beamPolInfo.pol}")
-    df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}", f"(Double32_t){beamPolInfo.PhiLab}")
+    df = DefineOverwrite(df, f"beamPol{colNameSuffix}",          f"(Double32_t){beamPolInfo.pol}")
+    df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}Deg", f"(Double32_t){beamPolInfo.PhiLab}")
     #TODO Use Phi from `angles` column
-    df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix})")
+    df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix}Deg)")
     df = DefineOverwrite(df, f"Phi{colNameSuffix}Deg",        f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
   if additionalColumnDefs:
     for columnName, columnFormula in additionalColumnDefs.items():
