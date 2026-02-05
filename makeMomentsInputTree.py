@@ -494,9 +494,9 @@ if __name__ == "__main__":
       InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
     # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
-    # outputColumnsPolarized   = (("beamPol", "beamPolPhiLab", "Phi", "PhiDeg")
+    # outputColumnsPolarized   = (("beamPol", "beamPolPhiLabDeg", "Phi", "PhiDeg")
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
-    outputColumnsPolarized   = ("beamPol", "beamPolPhiLab", "Phi")
+    outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
     additionalColumnDefs     = {}
     additionalFilterDefs     = []
     if False:  # cut away forward tracks in reconstructed data
