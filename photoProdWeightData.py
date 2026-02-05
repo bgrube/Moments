@@ -28,9 +28,8 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
-  HistAxisBinning,
 )
-from dataPhotoProdPiPi.makeMomentsInputTree import (
+from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
   CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
@@ -50,6 +49,7 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   drawTF3,
+  HistAxisBinning,
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
@@ -215,10 +215,10 @@ def reweightData(
     canv = ROOT.TCanvas()
     targetDistr.Draw()
     canv.SaveAs(f"{targetDistr.GetName()}.root")
-  # normalize histograms such that they represent the corresponding PDFs
+  # normalize target and current histograms such that they represent the corresponding PDFs
   targetDistr.Scale (1.0 / targetDistr.Integral() )
   currentDistr.Scale(1.0 / currentDistr.Integral())
-  # calculate the ratio of the target and the current PDF, that defines the weight histogram
+  # calculate the weight as the ratio of the target and the current PDF
   weightsHist = targetDistr.Clone("weightsHist")
   weightsHist.Divide(currentDistr)
   # add columns for rejection sampling to input data

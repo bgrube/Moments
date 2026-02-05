@@ -11,7 +11,7 @@ import sys
 
 import ROOT
 
-from dataPhotoProdPiPi.makeMomentsInputTree import (
+from makeMomentsInputTree import (
   CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
   CPP_CODE_BEAM_POL_PHI,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,

@@ -16,8 +16,7 @@ import os
 
 import ROOT
 
-from AnalysisConfig import HistAxisBinning
-from dataPhotoProdPiPi.makeMomentsInputTree import (
+from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
 )
@@ -27,6 +26,7 @@ from MomentCalculator import (
 )
 from PlottingUtilities import (
   drawTF3,
+  HistAxisBinning,
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
