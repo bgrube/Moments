@@ -16,7 +16,6 @@ from copy import deepcopy
 import functools
 import os
 import subprocess
-import tempfile
 
 import ROOT
 from wurlitzer import pipes, STDOUT
@@ -41,11 +40,11 @@ from makeMomentsInputTree import (
   defineDataFrameColumns,
   InputDataFormat,
   lorentzVectors,
+  reweightKinDistribution,
 )
 from MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
-  QnMomentIndex,
 )
 from PlottingUtilities import (
   drawTF3,
@@ -192,113 +191,6 @@ def weightDataWithIntensityFormula(
   return ROOT.RDataFrame(cfg.treeName, weightedDataFileName)
 
 
-def reweightData(
-  dataToWeight: ROOT.RDataFrame,  # data to reweight
-  treeName:     str,              # name of TTree holding the data
-  variableName: str,              # column name corresponding to kinematic variable whose distribution is to be reweighted
-  targetDistr:  ROOT.TH1D,        # histogram with target distribution
-) -> ROOT.RDataFrame:
-  """Generic function that reweights data in given RDataFrame such that the distribution of the given variable matches the target distribution in the given histogram"""
-  # get histogram of current distribution using same binning as targetDistribution
-  currentDistr = dataToWeight.Histo1D(
-    ROOT.RDF.TH1DModel(
-      f"{variableName}Distr", f";{variableName};Count",
-      targetDistr.GetNbinsX(), targetDistr.GetXaxis().GetXmin(), targetDistr.GetXaxis().GetXmax()
-    ),
-    variableName,
-  ).GetValue()
-  if False:
-    # save plots of current and target distributions
-    canv = ROOT.TCanvas()
-    currentDistr.Draw()
-    canv.SaveAs(f"{currentDistr.GetName()}.root")
-    canv = ROOT.TCanvas()
-    targetDistr.Draw()
-    canv.SaveAs(f"{targetDistr.GetName()}.root")
-  # normalize target and current histograms such that they represent the corresponding PDFs
-  targetDistr.Scale (1.0 / targetDistr.Integral() )
-  currentDistr.Scale(1.0 / currentDistr.Integral())
-  # calculate the weight as the ratio of the target and the current PDF
-  weightsHist = targetDistr.Clone("weightsHist")
-  weightsHist.Divide(currentDistr)
-  # add columns for rejection sampling to input data
-  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
-  dataToWeight = (
-    dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
-                .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
-  )
-  tmpFileName = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
-  dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to temporary file to ensure that random column is filled only once
-  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back from temporary file
-  nmbEvents = dataToWeight.Count().GetValue()  # number of events before reweighting
-  # determine maximum weight
-  maxWeight = dataToWeight.Max("reweightingWeight").GetValue()
-  print(f"Maximum weight is {maxWeight}")
-  # apply weights by accepting each event with probability reweightingWeight / maxWeight
-  reweightedData = (
-    dataToWeight.Define("acceptEventReweight", f"(bool)(reweightingRndNmb < (reweightingWeight / {maxWeight}))")
-                .Filter("acceptEventReweight == true")
-  )
-  nmbWeightedEvents = reweightedData.Count().GetValue()
-  print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
-  subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)
-  return reweightedData
-
-
-def reweightKinDistribution(
-  dataToWeight:     ROOT.RDataFrame,  # data to reweight
-  treeName:         str,              # name of TTree holding the data
-  binning:          HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
-  realDataFileName: str,              # name of file holding real data to construct target distribution from
-  # momentResults:    MomentResultsKinematicBinning,  # moment values
-  outFileName:      str,  # name of file to write data into
-) -> None:
-  """Reweights mass distribution of given data according to the mass dependence of H_0(0, 0)"""
-  print(f"Reweighting {binning.var.name} dependence")
-  # construct target distribution from real data
-  print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{realDataFileName}'")
-  realData = ROOT.RDataFrame(treeName, realDataFileName)
-  targetDistr = realData.Histo1D(
-    ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", "Real data", *binning.astuple),
-    binning.var.name,
-    "eventWeight",
-  ).GetValue()
-  # # construct target distribution from H_0(0, 0) values in kinematic bins
-  # targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f";{binning.axisTitle};Count", *binning.astuple)
-  # H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-  # for momentResultsForBin in momentResults:
-  #   massBinCenter = momentResultsForBin.binCenters[binning.var]
-  #   targetDistr.SetBinContent(targetDistr.FindBin(massBinCenter), momentResultsForBin[H000Index].real[0])
-  # reweight data
-  originalColumns = list(dataToWeight.GetColumnNames())
-  reweightedData = reweightData(
-    dataToWeight = dataToWeight,
-    treeName     = treeName,
-    variableName = binning.var.name,
-    targetDistr  = targetDistr,
-  )
-  print(f"Writing reweighted data to file '{outFileName}'")
-  reweightedData.Snapshot(treeName, outFileName, originalColumns)
-  if True:
-    # overlay target distribution and distribution after reweighting
-    reweightedDistr = reweightedData.Histo1D(
-      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrReweighted", "Weighted MC", *binning.astuple),
-      binning.var.name,
-    ).GetValue()
-    reweightedDistr.Scale(targetDistr.Integral() / reweightedDistr.Integral())
-    histStack = ROOT.THStack(f"{binning.var.name}DataAndMc", f";{binning.axisTitle};Count")
-    histStack.Add(targetDistr)
-    histStack.Add(reweightedDistr)
-    targetDistr.SetLineColor  (ROOT.kRed + 1)
-    targetDistr.SetMarkerColor(ROOT.kRed + 1)
-    reweightedDistr.SetLineColor  (ROOT.kBlue + 1)
-    reweightedDistr.SetMarkerColor(ROOT.kBlue + 1)
-    canv = ROOT.TCanvas()
-    histStack.Draw("NOSTACK")
-    canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-    canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
-
-
 #TODO ist this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
 def plotIntensityFcn(
   momentResults:     MomentResult,
@@ -374,10 +266,10 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
   # cfg.polarization = None  # treat data as unpolarized
 
-  dataFilesBaseDirName     = "./dataPhotoProdPiPi/polarized"
-  useIntensityTerms        = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
-  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
-  # useIntensityTerms        = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
+  dataFilesBaseDirName = "./dataPhotoProdPiPi/polarized"
+  useIntensityTerms    = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  # useIntensityTerms    = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  # useIntensityTerms    = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
   # accepted phase-space data for generating kinematic plots in mass bins
   inputDataDef             = ("kin", "amptools_tree_accepted*.root")
   weightedDataFileBaseName = f"phaseSpace_acc_weighted_raw_{useIntensityTerms.value}"
@@ -512,12 +404,12 @@ if __name__ == "__main__":
               reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
                 reweightKinDistribution(
-                  dataToWeight     = ROOT.RDataFrame(cfg.treeName, mergedFileName),  # load merged data file created in step above
-                  treeName         = cfg.treeName,
-                  binning          = massBinningForWeighting,
-                  realDataFileName = cfg.dataFileName,
-                  # momentResults    = momentResults,
-                  outFileName      = reweightedFileName,
+                  dataToWeight    = ROOT.RDataFrame(cfg.treeName, mergedFileName),  # load merged data file created in step above
+                  treeName        = cfg.treeName,
+                  binning         = massBinningForWeighting,
+                  targetDistrFrom = cfg.dataFileName,
+                  # targetDistrFrom = momentResults,
+                  outFileName     = reweightedFileName,
                 )
 
             timer.stop("Total execution time")

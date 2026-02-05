@@ -16,11 +16,23 @@ from dataclasses import (
 from enum import Enum
 import functools
 import numpy as np
-import pandas as pd
-
 import os
+import pandas as pd
+import subprocess
+import tempfile
 
 import ROOT
+
+from MomentCalculator import (
+  KinematicBinningVariable,
+  MomentResultsKinematicBinning,
+  QnMomentIndex,
+)
+from PlottingUtilities import (
+  HistAxisBinning,
+  setupPlotStyle,
+)
+import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -410,6 +422,116 @@ def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
   rootDf: ROOT.RDataFrame = ROOT.RDF.MakeNumpyDataFrame(arrayDict)
   return rootDf
 
+def reweightData(
+  dataToWeight: ROOT.RDataFrame,  # data to reweight
+  treeName:     str,              # name of TTree holding the data
+  variableName: str,              # column name corresponding to kinematic variable whose distribution is to be reweighted
+  targetDistr:  ROOT.TH1D,        # histogram with target distribution
+) -> ROOT.RDataFrame:
+  """Generic function that reweights data in given RDataFrame such that the distribution of the given variable matches the target distribution in the given histogram"""
+  # get histogram of current distribution using same binning as targetDistribution
+  currentDistr = dataToWeight.Histo1D(
+    ROOT.RDF.TH1DModel(
+      f"{variableName}Distr", f";{variableName}",
+      targetDistr.GetNbinsX(), targetDistr.GetXaxis().GetXmin(), targetDistr.GetXaxis().GetXmax()
+    ),
+    variableName,
+  ).GetValue()
+  # normalize target and current histograms such that they represent the corresponding PDFs
+  targetDistr.Scale (1.0 / targetDistr.Integral() )
+  currentDistr.Scale(1.0 / currentDistr.Integral())
+  # calculate the weight as the ratio of target and current PDF
+  weightsHist = targetDistr.Clone("weightsHist")
+  weightsHist.Divide(currentDistr)
+  if True:
+  # if False:
+    # save plots of distributions
+    for hist in (currentDistr, targetDistr, weightsHist):
+      canv = ROOT.TCanvas()
+      hist.Draw()
+      canv.SaveAs(f"{hist.GetName()}.root")
+  # add columns for rejection sampling to input data
+  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
+  dataToWeight = (
+    dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
+                .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
+  )
+  tmpFileName = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
+  dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to temporary file to ensure that random column is filled only once
+  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back from temporary file
+  nmbEvents = dataToWeight.Count().GetValue()  # number of events before reweighting
+  # determine maximum weight
+  maxWeight = dataToWeight.Max("reweightingWeight").GetValue()
+  print(f"Maximum weight is {maxWeight}")
+  # apply weights by accepting each event with probability reweightingWeight / maxWeight
+  reweightedData = (
+    dataToWeight.Define("acceptEventReweight", f"(bool)(reweightingRndNmb < (reweightingWeight / {maxWeight}))")
+                .Filter("acceptEventReweight == true")
+  )
+  nmbWeightedEvents = reweightedData.Count().GetValue()
+  print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
+  # subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  #TODO this does not work as the RDataFrame based on this file is passed to the calling code
+  return reweightedData
+
+
+def reweightKinDistribution(
+  dataToWeight:    ROOT.RDataFrame,  # data to reweight
+  treeName:        str,              # name of TTree holding the data
+  binning:         HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
+  targetDistrFrom: str | MomentResultsKinematicBinning,  # construct target distribution from given data file name or from H_0(0, 0) in given moment results
+  outFileName:     str,  # name of file to write data into
+) -> None:
+  """Reweights distribution of given kinematic variable of given data according to the kinematic distribution of data in given file name or according to kinematic dependence of H_0(0, 0) in given moment results"""
+  print(f"Reweighting {binning.var.name} dependence")
+  targetDistr = None
+  if isinstance(targetDistrFrom, str):
+    # construct target distribution from real data
+    print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{targetDistrFrom}'")
+    dataTarget = ROOT.RDataFrame(treeName, targetDistrFrom)
+    targetDistr = dataTarget.Histo1D(
+      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f"Data;{binning.axisTitle}", *binning.astuple),
+      binning.var.name,
+      "eventWeight",
+    ).GetValue()
+  elif isinstance(targetDistrFrom, MomentResultsKinematicBinning):
+    # construct target distribution from H_0(0, 0) values in kinematic bins
+    targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f"#it{{H}}_{{0}}(0, 0);{binning.axisTitle}", *binning.astuple)
+    H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
+    for momentResultsForBin in targetDistrFrom:
+      binCenter = momentResultsForBin.binCenters[binning.var]
+      targetDistr.SetBinContent(targetDistr.FindBin(binCenter), momentResultsForBin[H000Index].real[0])
+  else:
+    raise TypeError(f"Invalid {type(targetDistrFrom)=}. Must be str or MomentResultsKinematicBinning.")
+  # reweight data
+  originalColumns = list(dataToWeight.GetColumnNames())
+  reweightedData = reweightData(
+    dataToWeight = dataToWeight,
+    treeName     = treeName,
+    variableName = binning.var.name,
+    targetDistr  = targetDistr,
+  )
+  print(f"Writing reweighted data to file '{outFileName}'")
+  reweightedData.Snapshot(treeName, outFileName, originalColumns)
+  if True:
+  # if False:
+    # overlay target distribution and distribution after reweighting
+    reweightedDistr = reweightedData.Histo1D(
+      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrReweighted", "Weighted MC", *binning.astuple),
+      binning.var.name,
+    ).GetValue()
+    targetDistr.Scale(reweightedDistr.Integral() / targetDistr.Integral())
+    histStack = ROOT.THStack(f"{binning.var.name}DataAndMc", f";{binning.axisTitle};Count")
+    histStack.Add(targetDistr)
+    histStack.Add(reweightedDistr)
+    targetDistr.SetLineColor  (ROOT.kRed + 1)
+    targetDistr.SetMarkerColor(ROOT.kRed + 1)
+    reweightedDistr.SetLineColor  (ROOT.kBlue + 1)
+    reweightedDistr.SetMarkerColor(ROOT.kBlue + 1)
+    canv = ROOT.TCanvas()
+    histStack.Draw("NOSTACK")
+    canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
+    canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
+
 
 @dataclass
 class SubSystemInfo:
@@ -450,6 +572,8 @@ if __name__ == "__main__":
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
+  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
+  setupPlotStyle()
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
@@ -506,6 +630,8 @@ if __name__ == "__main__":
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
       }
       additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
+    reweightMinusTDistribution = True
+    # reweightMinusTDistribution = False
 
     for dataPeriod in dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
@@ -641,9 +767,9 @@ if __name__ == "__main__":
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
       raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
-    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.subsystem.pairLabel} subsystem, {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamPolLabel} from file(s) {dataSet.inputFileNames} to file '{dataSet.outputFileName}'")
+    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.subsystem.pairLabel} subsystem, {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamPolLabel} from file(s) {dataSet.inputFileNames}")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
-    defineDataFrameColumns(
+    df = defineDataFrameColumns(
       df                   = df,
       lvTarget             = lvs["target"],
       lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
@@ -654,4 +780,21 @@ if __name__ == "__main__":
       frame                = frame,
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
-    ).Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
+    )
+    df.Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
+    if reweightMinusTDistribution and (dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE):
+      # reweight -t distribution to match that of real data
+      outputFileNameReweighted = dataSet.outputFileName.replace(".root", ".reweighted_minusT.root")
+      reweightKinDistribution(
+        dataToWeight    = df,
+        treeName        = dataSet.outputTreeName,
+        binning         = HistAxisBinning(
+          nmbBins = 50, minVal = 0.1, maxVal = 0.2,
+          _var = KinematicBinningVariable(name= "minusT", label = "#minus#it{t}", unit = "GeV^{2}/#it{c}^{2}", nmbDigits = 3),
+        ),
+        targetDistrFrom = f"{outputDataDirName}/data_flat_{dataSet.beamPolLabel}.root",
+        outFileName     = outputFileNameReweighted,
+      )
+    else:
+      print(f"Writing converted data to file '{dataSet.outputFileName}'")
+      df.Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
