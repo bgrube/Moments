@@ -476,16 +476,16 @@ if __name__ == "__main__":
 
   # set up polarized pi+pi- real data
   if True:
-    dataDirName   = "./polarized"
+    dataDirName   = "./dataPhotoProdPiPi/polarized"
     dataPeriods   = (
-      "2017_01",
-      # "2018_08",
+      # "2017_01",
+      "2018_08",
     )
     tBinLabels    = (
       "tbin_0.1_0.2",
       "tbin_0.2_0.3",
-      # "tbin_0.3_0.4",
-      # "tbin_0.4_0.5",
+      "tbin_0.3_0.4",
+      "tbin_0.4_0.5",
     )
     beamPolLabels = (
       "PARA_0",
@@ -501,7 +501,7 @@ if __name__ == "__main__":
     }
     # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     # outputColumnsPolarized   = (("beamPol", "beamPolPhiLab", "Phi", "PhiDeg")
-    outputColumnsUnpolarized = ("theta", "phi", "mass")
+    outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     outputColumnsPolarized   = ("beamPol", "beamPolPhiLab", "Phi")
     additionalColumnDefs     = {}
     additionalFilterDefs     = []
@@ -528,7 +528,7 @@ if __name__ == "__main__":
                   + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
             for inputDataType, inputDataFormat in inputDataFormats.items():
               print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-              outputColumns = outputColumnsUnpolarized + () if beamPolInfo is None else outputColumnsPolarized
+              outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
               dataSet = DataSetInfo(
                 subsystem            = subsystem,
                 inputType            = inputDataType,
