@@ -432,7 +432,7 @@ def reweightData(
   # get histogram of current distribution using same binning as targetDistribution
   currentDistr = dataToWeight.Histo1D(
     ROOT.RDF.TH1DModel(
-      f"{variableName}Distr", f";{variableName}",
+      f"{variableName}Distr", f"Current Distribution;{variableName}",
       targetDistr.GetNbinsX(), targetDistr.GetXaxis().GetXmin(), targetDistr.GetXaxis().GetXmax()
     ),
     variableName,
@@ -442,6 +442,7 @@ def reweightData(
   currentDistr.Scale(1.0 / currentDistr.Integral())
   # calculate the weight as the ratio of target and current PDF
   weightsHist = targetDistr.Clone("weightsHist")
+  weightsHist.SetTitle("Weights")
   weightsHist.Divide(currentDistr)
   if True:
   # if False:
@@ -480,6 +481,7 @@ def reweightKinDistribution(
   binning:         HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
   targetDistrFrom: str | MomentResultsKinematicBinning,  # construct target distribution from given data file name or from H_0(0, 0) in given moment results
   outFileName:     str,  # name of file to write data into
+  outputColumns:   Sequence[str] = (),  # columns to write into output file; if empty, all columns are written
 ) -> None:
   """Reweights distribution of given kinematic variable of given data according to the kinematic distribution of data in given file name or according to kinematic dependence of H_0(0, 0) in given moment results"""
   print(f"Reweighting {binning.var.name} dependence")
@@ -489,10 +491,13 @@ def reweightKinDistribution(
     print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{targetDistrFrom}'")
     dataTarget = ROOT.RDataFrame(treeName, targetDistrFrom)
     targetDistr = dataTarget.Histo1D(
-      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f"Data;{binning.axisTitle}", *binning.astuple),
+      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f"Target Distribution;{binning.axisTitle}", *binning.astuple),
       binning.var.name,
       "eventWeight",
     ).GetValue()
+    # set under- and overflow bins to zero
+    targetDistr.SetBinContent(0, 0.0)  # underflow bin
+    targetDistr.SetBinContent(targetDistr.GetNbinsX() + 1, 0.0)  # overflow bin
   elif isinstance(targetDistrFrom, MomentResultsKinematicBinning):
     # construct target distribution from H_0(0, 0) values in kinematic bins
     targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f"#it{{H}}_{{0}}(0, 0);{binning.axisTitle}", *binning.astuple)
@@ -511,7 +516,7 @@ def reweightKinDistribution(
     targetDistr  = targetDistr,
   )
   print(f"Writing reweighted data to file '{outFileName}'")
-  reweightedData.Snapshot(treeName, outFileName, originalColumns)
+  reweightedData.Snapshot(treeName, outFileName, originalColumns if not outputColumns else outputColumns)
   if True:
   # if False:
     # overlay target distribution and distribution after reweighting
@@ -780,9 +785,8 @@ if __name__ == "__main__":
       frame                = frame,
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
-    )
-    df.Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
-    if reweightMinusTDistribution and (dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE):
+    ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
+    if reweightMinusTDistribution and dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE:
       # reweight -t distribution to match that of real data
       outputFileNameReweighted = dataSet.outputFileName.replace(".root", ".reweighted_minusT.root")
       reweightKinDistribution(
@@ -794,6 +798,7 @@ if __name__ == "__main__":
         ),
         targetDistrFrom = f"{outputDataDirName}/data_flat_{dataSet.beamPolLabel}.root",
         outFileName     = outputFileNameReweighted,
+        outputColumns   = dataSet.outputColumns,
       )
     else:
       print(f"Writing converted data to file '{dataSet.outputFileName}'")
