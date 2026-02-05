@@ -512,7 +512,7 @@ if __name__ == "__main__":
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
-  assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
+  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
@@ -523,7 +523,7 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  dataDirName   = "./polarized"
+  dataDirName   = "./dataPhotoProdPiPi/polarized"
   dataPeriods   = (
     # "2017_01",
     "2018_08",
@@ -553,7 +553,6 @@ if __name__ == "__main__":
   )
   additionalColumnDefs = {}
   additionalFilterDefs = []
-  # additionalFilterDefs = ["(0.72 < massPiPi and massPiPi < 0.76)", ]
   treeName             = "kin"
 
   for dataPeriod in dataPeriods:
@@ -607,8 +606,9 @@ if __name__ == "__main__":
                 ),
                 outputDirName = outputDirName,
               )
-            # if True:
-            if False:
+            if True:
+            # if False:
+              additionalFilterDefs = ["(0.72 < massPiPi and massPiPi < 0.76)", ]  # select mass bin at rho(770) peak
               outputDirName = f"{outputDirName}/anglesHFCorrelations"
               print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
               lvs = lorentzVectors(dataFormat = inputDataFormat)
