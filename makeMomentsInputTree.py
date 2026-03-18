@@ -574,6 +574,9 @@ class DataSetInfo:
 
 
 if __name__ == "__main__":
+  Utilities.printGitInfo()
+  timer = Utilities.Timer()
+  timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
@@ -581,9 +584,6 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
   setupPlotStyle()
-  Utilities.printGitInfo()
-  timer = Utilities.Timer()
-  timer.start("Total execution time")
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
@@ -640,8 +640,8 @@ if __name__ == "__main__":
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
       }
       additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
-    reweightMinusTDistribution = True
-    # reweightMinusTDistribution = False
+    # reweightMinusTDistribution = True
+    reweightMinusTDistribution = False
 
     for dataPeriod in dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
@@ -649,11 +649,11 @@ if __name__ == "__main__":
         print(f"Setting up t bin '{tBinLabel}':")
         for subsystem in subsystems:
           print(f"Setting up subsystem '{subsystem}':")
-          inputdataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
-          outputdataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
-          os.makedirs(outputdataDirBaseName, exist_ok = True)
+          inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
+          outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+          os.makedirs(outputDataDirBaseName, exist_ok = True)
           for beamPolLabel in beamPolLabels:
-            beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
+            beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
             print(f"Setting up beam-polarization orientation '{beamPolLabel}'"
                   + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
             for inputDataType, inputDataFormat in inputDataFormats.items():
@@ -668,18 +668,18 @@ if __name__ == "__main__":
                 beamPolLabel         = beamPolLabel,
                 beamPolInfo          = beamPolInfo,
                 inputFileNames       = (
-                  ((f"{inputdataDirBaseName}/amptools_tree_signal_{beamPolLabel}.root", ),  # real data: signal and background
-                   (f"{inputdataDirBaseName}/amptools_tree_bkgnd_{beamPolLabel}.root",  )) if inputDataType == InputDataType.REAL_DATA else
-                   (f"{inputdataDirBaseName}/amptools_tree_accepted*.root", )              if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  #  (f"{inputdataDirBaseName}/amptools_tree_truthAccepted*.root", )         if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                   (f"{inputdataDirBaseName}/amptools_tree_thrown*.root", )                 # inputDataType == InputDataType.mcTruth
+                  ((f"{inputDataDirBaseName}/amptools_tree_signal_{beamPolLabel}.root", ),  # real data: signal and background
+                   (f"{inputDataDirBaseName}/amptools_tree_bkgnd_{beamPolLabel}.root",  )) if inputDataType == InputDataType.REAL_DATA else
+                   (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", )              if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  #  (f"{inputDataDirBaseName}/amptools_tree_truthAccepted*.root", )         if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                   (f"{inputDataDirBaseName}/amptools_tree_thrown*.root", )                 # inputDataType == InputDataType.mcTruth
                 ),
                 inputTreeName        = "kin",
                 outputFileName       = (
-                  f"{outputdataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
-                  f"{outputdataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  # f"{outputdataDirBaseName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  f"{outputdataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.mcTruth
+                  f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
+                  f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  # f"{outputDataDirBaseName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.mcTruth
                 ),
                 outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
@@ -720,9 +720,9 @@ if __name__ == "__main__":
         print(f"Setting up t bin '{tBinLabel}':")
         for subsystem in subsystems:
           print(f"Setting up subsystem '{subsystem}':")
-          inputdataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
-          outputdataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
-          os.makedirs(outputdataDirBaseName, exist_ok = True)
+          inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
+          outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+          os.makedirs(outputDataDirBaseName, exist_ok = True)
           for inputDataType, inputDataFormat in inputDataFormats.items():
             print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
             dataSet = DataSetInfo(  # real data (signal + background)
@@ -732,16 +732,16 @@ if __name__ == "__main__":
               dataPeriod           = dataPeriod,
               tBinLabel            = tBinLabel,
               inputFileNames       = (
-                ((f"{inputdataDirBaseName}/amptools_tree_signal.root", ),  # real data: signal and background
-                 (f"{inputdataDirBaseName}/amptools_tree_bkgnd.root",  ))   if inputDataType == InputDataType.REAL_DATA else
-                 (f"{inputdataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.mcReco else
-                 (f"{inputdataDirBaseName}/amptools_tree_thrown*.root", )    # inputDataType == InputDataType.mcTruth
+                ((f"{inputDataDirBaseName}/amptools_tree_signal.root", ),  # real data: signal and background
+                 (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ))   if inputDataType == InputDataType.REAL_DATA else
+                 (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.mcReco else
+                 (f"{inputDataDirBaseName}/amptools_tree_thrown*.root", )    # inputDataType == InputDataType.mcTruth
               ),
               inputTreeName        = "kin",
               outputFileName       = (
-                f"{outputdataDirBaseName}/data_flat.root"           if inputDataType == InputDataType.REAL_DATA else
-                f"{outputdataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.mcReco else
-                f"{outputdataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.mcTruth
+                f"{outputDataDirBaseName}/data_flat.root"           if inputDataType == InputDataType.REAL_DATA else
+                f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.mcReco else
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.mcTruth
               ),
               outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
@@ -764,13 +764,13 @@ if __name__ == "__main__":
     df = None
     if dataSet.inputType == InputDataType.REAL_DATA:
       # combine signal and background region data with correct event weights into one RDataFrame
-      outputdataDirBaseName = os.path.dirname(dataSet.outputFileName)
+      outputDataDirBaseName = os.path.dirname(dataSet.outputFileName)
       df = getDataFrameWithCorrectEventWeights(
         dataSigRegionFileNames  = dataSet.inputFileNames[0],
         dataBkgRegionFileNames  = dataSet.inputFileNames[1],
         treeName                = dataSet.inputTreeName,
-        friendSigRegionFileName = f"{outputdataDirBaseName}/data_sig_{dataSet.beamPolLabel}.root.weights",
-        friendBkgRegionFileName = f"{outputdataDirBaseName}/data_bkg_{dataSet.beamPolLabel}.root.weights",
+        friendSigRegionFileName = f"{outputDataDirBaseName}/data_sig_{dataSet.beamPolLabel}.root.weights",
+        friendBkgRegionFileName = f"{outputDataDirBaseName}/data_bkg_{dataSet.beamPolLabel}.root.weights",
       )
     elif dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE:
       # read all MC files into one RDataFrame
@@ -792,6 +792,7 @@ if __name__ == "__main__":
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
     if reweightMinusTDistribution and dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE:
+      #TODO this is currently only implemented for the bin 0.1 < -t < 0.2 GeV^2/c^2
       # reweight -t distribution to match that of real data
       outputFileNameReweighted = dataSet.outputFileName.replace(".root", ".reweighted_minusT.root")
       reweightKinDistribution(
@@ -801,7 +802,7 @@ if __name__ == "__main__":
           nmbBins = 50, minVal = 0.1, maxVal = 0.2,
           _var = KinematicBinningVariable(name= "minusT", label = "#minus#it{t}", unit = "GeV^{2}/#it{c}^{2}", nmbDigits = 3),
         ),
-        targetDistrFrom = f"{outputdataDirBaseName}/data_flat_{dataSet.beamPolLabel}.root",
+        targetDistrFrom = f"{outputDataDirBaseName}/data_flat_{dataSet.beamPolLabel}.root",
         outFileName     = outputFileNameReweighted,
         outputColumns   = dataSet.outputColumns,
       )
