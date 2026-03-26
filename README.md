@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bgrube/Moments)
+
 # Repository for moment analysis of two-(pseudo)scalar meson systems #
 
 Currently, the repository contains 2 analyses that are based on real data:
