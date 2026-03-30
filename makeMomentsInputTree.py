@@ -356,18 +356,18 @@ def defineDataFrameColumns(
       .Define(f"phi{angColNameSuffix}Deg", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")  #TODO only write out columns actually needed for moment calculation; move everything else to plotting module
   )
   # allow for redefinition of already existing columns with identical formula if function is called for several frames
-  df = DefineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
-  df = DefineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+  df = defineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
+  df = defineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
-    df = DefineOverwrite(df, f"beamPol{colNameSuffix}",          f"(Double32_t){beamPolInfo.pol}")
-    df = DefineOverwrite(df, f"beamPolPhiLab{colNameSuffix}Deg", f"(Double32_t){beamPolInfo.PhiLab}")
+    df = defineOverwrite(df, f"beamPol{colNameSuffix}",          f"(Double32_t){beamPolInfo.pol}")
+    df = defineOverwrite(df, f"beamPolPhiLab{colNameSuffix}Deg", f"(Double32_t){beamPolInfo.PhiLab}")
     #TODO Use Phi from `angles` column
-    df = DefineOverwrite(df, f"Phi{colNameSuffix}",           f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix}Deg)")
-    df = DefineOverwrite(df, f"Phi{colNameSuffix}Deg",        f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
+    df = defineOverwrite(df, f"Phi{colNameSuffix}",    f"(Double32_t)beamPolPhi({lvRecoil}, {lvBeam}, beamPolPhiLab{colNameSuffix}Deg)")
+    df = defineOverwrite(df, f"Phi{colNameSuffix}Deg", f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
   if additionalColumnDefs:
     for columnName, columnFormula in additionalColumnDefs.items():
       print(f"Defining additional column '{columnName}' = '{columnFormula}'")
-      df = df.Define(columnName, columnFormula)
+      df = defineOverwrite(df, columnName, columnFormula)
   if additionalFilterDefs:
     for filterDef in additionalFilterDefs:
       print(f"Applying additional filter '{filterDef}'")
