@@ -553,11 +553,14 @@ def reweightKinDistribution(
 @dataclass
 class SubSystemInfo:
   """Stores information about a two-body subsystem (particle pair)"""
-  pairLabel:       str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
-  lvALabel:        str  # label of Lorentz-vector of daughter A (analyzer)
-  lvBLabel:        str  # label of Lorentz-vector of daughter B
-  lvRecoilLabel:   str  # label of Lorentz-vector of recoil particle
-  pairTLatexLabel: str = ""  # optional LaTeX label for particle pair (e.g. "#pi#pi" for pi+ pi- pair)
+  pairLabel:         str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
+  lvALabel:          str  # label of Lorentz-vector of daughter A (analyzer)
+  lvBLabel:          str  # label of Lorentz-vector of daughter B
+  lvRecoilLabel:     str  # label of Lorentz-vector of recoil particle
+  ATLatexLabel:      str = ""  # optional LaTeX label for particle A (analyzer)
+  BTLatexLabel:      str = ""  # optional LaTeX label for particle B
+  recoilTLatexLabel: str = ""  # optional LaTeX label for recoil particle
+  pairTLatexLabel:   str = ""  # optional LaTeX label for particle pair (e.g. "#pi#pi" for pi+ pi- pair)
 
 class InputDataType(Enum):  #TODO use AnalysisConfig.DataType instead
   REAL_DATA             = 0
@@ -605,34 +608,37 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
   frame = CoordSysType.HF  # helicity frame, i.e. z_HF = -p_recoil
-  subsystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-    SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
-    # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
-    # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip"   ),
-  )
-  dataSets: list[DataSetInfo] = []
+  subsystems: list[SubSystemInfo] = []
+  dataSets:   list[DataSetInfo]   = []
 
-  # set up polarized pi+pi- real data
+  # set up polarized pi+pi- data
   if True:
+    subsystems      = [  # particle pairs to analyze; particle A is the analyzer
+      SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
+      # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
+      # SubSystemInfo(pairLabel = "PimP", lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip"   ),
+    ]
     dataDirBaseName = "./dataPhotoProdPiPi/polarized"
     dataPeriods     = (
       # "2017_01",
-      "2018_08",
+      "2017_01_ver05",  #NOTE SDME analysis: 0.60 < m_pipi < 0.88 GeV
+      # "2018_08",
     )
     tBinLabels      = (
-      "tbin_0.1_0.2",
-      "tbin_0.2_0.3",
-      "tbin_0.3_0.4",
-      "tbin_0.4_0.5",
+      "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis  #TODO actual upper limit seems to 0.11364635 GeV^2
+      # "tbin_0.1_0.2",
+      # "tbin_0.2_0.3",
+      # "tbin_0.3_0.4",
+      # "tbin_0.4_0.5",
     )
     beamPolLabels   = (
       "PARA_0",
-      "PARA_135",
-      "PERP_45",
-      "PERP_90",
-      "AMO",
+      # "PARA_135",
+      # "PERP_45",
+      # "PERP_90",
+      # "AMO",
     )
-    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
+    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
       InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
       InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
@@ -680,16 +686,16 @@ if __name__ == "__main__":
                 inputFileNames       = (
                   ((f"{inputDataDirBaseName}/amptools_tree_signal_{beamPolLabel}.root", ),  # real data: signal and background
                    (f"{inputDataDirBaseName}/amptools_tree_bkgnd_{beamPolLabel}.root",  )) if inputDataType == InputDataType.REAL_DATA else
-                   (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", )              if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  #  (f"{inputDataDirBaseName}/amptools_tree_truthAccepted*.root", )         if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                   (f"{inputDataDirBaseName}/amptools_tree_thrown*.root", )                 # inputDataType == InputDataType.mcTruth
+                  (f"{inputDataDirBaseName}/amptools_tree_accepted*.root",               ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  # (f"{inputDataDirBaseName}/amptools_tree_truthAccepted*.root",          ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",                 )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
                 ),
                 inputTreeName        = "kin",
                 outputFileName       = (
                   f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
                   f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                   # f"{outputDataDirBaseName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.mcTruth
+                  f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
                 ),
                 outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
@@ -707,7 +713,7 @@ if __name__ == "__main__":
               )
               dataSets.append(dataSet)
 
-  # setup unpolarized pi+pi- real data
+  # setup unpolarized pi+pi- data
   if False:
     dataDirBaseName           = "./unpolarized"
     dataPeriods           = (
@@ -718,7 +724,7 @@ if __name__ == "__main__":
     outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
-    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
+    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
       InputDataType.REAL_DATA             : InputDataFormat.ALEX,
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.ALEX,
       InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
@@ -743,9 +749,9 @@ if __name__ == "__main__":
               tBinLabel            = tBinLabel,
               inputFileNames       = (
                 ((f"{inputDataDirBaseName}/amptools_tree_signal.root", ),  # real data: signal and background
-                 (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ))   if inputDataType == InputDataType.REAL_DATA else
-                 (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.mcReco else
-                 (f"{inputDataDirBaseName}/amptools_tree_thrown*.root", )    # inputDataType == InputDataType.mcTruth
+                 (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ) ) if inputDataType == InputDataType.REAL_DATA else
+                (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.mcReco else
+                (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
               ),
               inputTreeName        = "kin",
               outputFileName       = (
