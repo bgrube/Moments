@@ -232,14 +232,14 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   massBinning        = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
 )
 # configuration for Nizar's polarized eta pi0 data
-CFG_NIZAR = AnalysisConfig(
-  treeName           = "etaPi0",
-  dataFileName       = "./dataTestNizar/data_flat.root",
-  psAccFileName      = "./dataTestNizar/phaseSpace_acc_flat.root",
-  psGenFileName      = None,
+CFG_POLARIZED_ETAPI0 = AnalysisConfig(
+  treeName           = "EtaPi0",
+  dataFileName       = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/data_flat_All.root",
+  psAccFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_acc_flat_All.root",
+  psGenFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_gen_flat_All.root",
   polarization       = "beamPol",  # read polarization from tree column
   maxL               = 4,
-  outFileDirBaseName = "./plotsTestNizar",
+  outFileDirBaseName = "./plotsPhotoProdEtaPi0",
   # normalizeMoments   = True,
   binVarMass         = KinematicBinningVariable(
     name      = "mass",
