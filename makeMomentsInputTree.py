@@ -273,8 +273,12 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   elif dataFormat == InputDataFormat.AMPTOOLS:
     lvs["beam"  ] = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
     lvs["recoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
+    # pi+ pi- channel
     lvs["pip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+
     lvs["pim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-
+    # eta pi0 channel
+    lvs["eta"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # eta  #TODO check index
+    lvs["pi0"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi0
   elif dataFormat == InputDataFormat.JPAC_MC:
     # kinematic variables according to Eq. (1) in Bibrzycki et al., PRD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
@@ -612,7 +616,7 @@ if __name__ == "__main__":
   dataSets:   list[DataSetInfo]   = []
 
   # set up polarized pi+pi- data
-  if True:
+  if False:
     subsystems      = [  # particle pairs to analyze; particle A is the analyzer
       SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
       # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
@@ -757,7 +761,7 @@ if __name__ == "__main__":
               outputFileName       = (
                 f"{outputDataDirBaseName}/data_flat.root"           if inputDataType == InputDataType.REAL_DATA else
                 f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.mcReco else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.mcTruth
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
               ),
               outputTreeName       = subsystem.pairLabel,
                 outputColumns        = (
@@ -775,18 +779,94 @@ if __name__ == "__main__":
             )
             dataSets.append(dataSet)
 
+  # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
+  if True:
+    subsystem = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
+    dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/polarized"
+    dataPeriods     = (
+      "merged",
+    )
+    tBinLabels      = (
+      "t010020",
+    )
+    beamPolLabel    = "All"  # input files contain all beam polarization orientations merged together
+    beamPolInfo     = BeamPolInfo(  # read beam polarization info from input tree
+      pol    = "Pol",
+      PhiLab = "BeamAngle",
+    )
+    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
+      InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    }
+    outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
+    outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
+    additionalColumnDefs     = {"eventWeight" : "weightASBS"}  # use this column as event weights
+    additionalFilterDefs     = []
+    # reweightMinusTDistribution = True
+    reweightMinusTDistribution = False
+
+    print(f"Setting up subsystem '{subsystem}':")
+    for dataPeriod in dataPeriods:
+      print(f"Setting up data period '{dataPeriod}':")
+      for tBinLabel in tBinLabels:
+        print(f"Setting up t bin '{tBinLabel}':")
+        inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Nizar"
+        outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+        os.makedirs(outputDataDirBaseName, exist_ok = True)
+        for inputDataType, inputDataFormat in inputDataFormats.items():
+          print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
+          outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
+          dataSet = DataSetInfo(
+            subsystem            = subsystem,
+            inputType            = inputDataType,
+            inputFormat          = inputDataFormat,
+            dataPeriod           = dataPeriod,
+            tBinLabel            = tBinLabel,
+            beamPolLabel         = beamPolLabel,
+            beamPolInfo          = beamPolInfo,
+            inputFileNames       = (
+              (f"{inputDataDirBaseName}/amptools_tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
+              (f"{inputDataDirBaseName}/amptools_tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+              (f"{inputDataDirBaseName}/amptools_tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+            ),
+            inputTreeName        = "kin",
+            outputFileName       = (
+              f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
+              f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+              f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+            ),
+            outputTreeName       = subsystem.pairLabel,
+            outputColumns        = (
+              outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
+              outputColumns  # no event weights for MC data
+            ),
+            additionalColumnDefs = (
+              additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+              {}  # no additional variables for MC truth
+            ),
+            additionalFilterDefs = (
+              additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+              []  # no additional selection cuts for MC truth
+            ),
+          )
+          dataSets.append(dataSet)
+
   # process data sets
   for dataSet in dataSets:
     df = None
     if dataSet.inputType == InputDataType.REAL_DATA:
       # combine signal and background region data with correct event weights into one RDataFrame
       outputDataDirBaseName = os.path.dirname(dataSet.outputFileName)
-      df = getDataFrameWithCorrectEventWeights(
-        dataSigRegionFileNames  = dataSet.inputFileNames[0],
-        dataBkgRegionFileNames  = dataSet.inputFileNames[1],
-        treeName                = dataSet.inputTreeName,
-        friendSigRegionFileName = f"{outputDataDirBaseName}/data_sig_{dataSet.beamPolLabel}.root.weights",
-        friendBkgRegionFileName = f"{outputDataDirBaseName}/data_bkg_{dataSet.beamPolLabel}.root.weights",
+      df = (
+        getDataFrameWithCorrectEventWeights(
+          dataSigRegionFileNames  = dataSet.inputFileNames[0],
+          dataBkgRegionFileNames  = dataSet.inputFileNames[1],
+          treeName                = dataSet.inputTreeName,
+          friendSigRegionFileName = f"{outputDataDirBaseName}/data_sig_{dataSet.beamPolLabel}.root.weights",
+          friendBkgRegionFileName = f"{outputDataDirBaseName}/data_bkg_{dataSet.beamPolLabel}.root.weights",
+        ) if len(dataSet.inputFileNames) == 2 else
+        ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames[0])  # if only one tuple of input file names is given, assume that it already contains combined signal and background data with correct event weights
       )
     elif dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE:
       # read all MC files into one RDataFrame
