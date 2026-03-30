@@ -29,6 +29,7 @@ from makeMomentsInputTree import (
   CPP_CODE_TRACKDISTFDC,
   CoordSysType,
   defineDataFrameColumns,
+  defineOverwrite,
   getDataFrameWithCorrectEventWeights,
   InputDataType,
   InputDataFormat,
@@ -52,7 +53,9 @@ def defineColumnsForPlots(
 ) -> ROOT.RDataFrame:
   """Defines RDataFrame columns for kinematic plots"""
   lvs = lorentzVectors(dataFormat = inputDataFormat)
-  dfResult = df
+  ALabel      = subSystem.lvALabel
+  BLabel      = subSystem.lvBLabel
+  recoilLabel = subSystem.lvRecoilLabel
   for frame in (CoordSysType.HF, CoordSysType.GJ):
     #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
     #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
@@ -60,52 +63,48 @@ def defineColumnsForPlots(
     #    GJ for pi+ pi- meson system:  use pi+  as analyzer and z_GJ = p_beam    and y_HF = p_recoil x p_beam
     #    GJ for pi+- p  baryon system: use pi+- as analyzer and z_GJ = p_target  and y_HF = p_beam   x p_pi-+
     #  particle A is the analyzer, particle B is the other particle in the pair, and the recoil is the third particle in the final state
-    dfResult = defineDataFrameColumns(
-      df                   = dfResult,
+    df = defineDataFrameColumns(
+      df                   = df,
       lvTarget             = lvs["target"],
       lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
-      lvRecoil             = lvs[subSystem.lvRecoilLabel],
-      lvA                  = lvs[subSystem.lvALabel],
-      lvB                  = lvs[subSystem.lvBLabel],
+      lvRecoil             = lvs[recoilLabel],
+      lvA                  = lvs[ALabel],
+      lvB                  = lvs[BLabel],
       beamPolInfo          = beamPolInfo,
       frame                = frame,
-      flipYAxis            = (frame == CoordSysType.HF) and subSystem.pairLabel == "PiPi",  # only flip y axis for pi+ pi- system in HF frame
       additionalColumnDefs = additionalColumnDefs,
       additionalFilterDefs = additionalFilterDefs,
       colNameSuffix        = subSystem.pairLabel,
     )
     # define additional columns for subsystem
     if beamPolInfo is not None:
-      dfResult = (
-        dfResult.Define(f"Psi{frame.name}{subSystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subSystem.pairLabel} - phi{frame.name}{subSystem.pairLabel}) * TMath::RadToDeg())")
+      df = (
+        df.Define(f"Psi{frame.name}{subSystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subSystem.pairLabel} - phi{frame.name}{subSystem.pairLabel}) * TMath::RadToDeg())")
       )
   # define additional columns that are independent of subsystem
-  dfResult = (
-    dfResult.Define(f"mass{subSystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subSystem.pairLabel}, 2)")
-            .Define("Ebeam",                        f"(Double32_t)TLorentzVector({lvs['beam']}).E()")
-            # track kinematics
-            .Define("momLabP",        f"(Double32_t)TLorentzVector({lvs['recoil']}).P()")
-            .Define("momLabXP",       f"(Double32_t)TLorentzVector({lvs['recoil']}).X()")
-            .Define("momLabYP",       f"(Double32_t)TLorentzVector({lvs['recoil']}).Y()")
-            .Define("momLabZP",       f"(Double32_t)TLorentzVector({lvs['recoil']}).Z()")
-            .Define("momLabPip",      f"(Double32_t)TLorentzVector({lvs['pip'   ]}).P()")
-            .Define("momLabXPip",     f"(Double32_t)TLorentzVector({lvs['pip'   ]}).X()")
-            .Define("momLabYPip",     f"(Double32_t)TLorentzVector({lvs['pip'   ]}).Y()")
-            .Define("momLabZPip",     f"(Double32_t)TLorentzVector({lvs['pip'   ]}).Z()")
-            .Define("momLabPim",      f"(Double32_t)TLorentzVector({lvs['pim'   ]}).P()")
-            .Define("momLabXPim",     f"(Double32_t)TLorentzVector({lvs['pim'   ]}).X()")
-            .Define("momLabYPim",     f"(Double32_t)TLorentzVector({lvs['pim'   ]}).Y()")
-            .Define("momLabZPim",     f"(Double32_t)TLorentzVector({lvs['pim'   ]}).Z()")
-            .Define("thetaLabPDeg",   f"(Double32_t)(TLorentzVector({lvs['recoil']}).Theta() * TMath::RadToDeg())")
-            .Define("thetaLabPipDeg", f"(Double32_t)(TLorentzVector({lvs['pip'   ]}).Theta() * TMath::RadToDeg())")
-            .Define("thetaLabPimDeg", f"(Double32_t)(TLorentzVector({lvs['pim'   ]}).Theta() * TMath::RadToDeg())")
-            .Define("phiLabPDeg",     f"(Double32_t)(TLorentzVector({lvs['recoil']}).Phi()   * TMath::RadToDeg())")
-            .Define("phiLabPipDeg",   f"(Double32_t)(TLorentzVector({lvs['pip'   ]}).Phi()   * TMath::RadToDeg())")
-            .Define("phiLabPimDeg",   f"(Double32_t)(TLorentzVector({lvs['pim'   ]}).Phi()   * TMath::RadToDeg())")
-  )
+  df = defineOverwrite(df, f"mass{subSystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subSystem.pairLabel}, 2)")
+  df = defineOverwrite(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs['beam']}).E()")
+  # track kinematics
+  df = defineOverwrite(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).P()")
+  df = defineOverwrite(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).X()")
+  df = defineOverwrite(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Y()")
+  df = defineOverwrite(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Z()")
+  df = defineOverwrite(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).P()")
+  df = defineOverwrite(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).X()")
+  df = defineOverwrite(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Y()")
+  df = defineOverwrite(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Z()")
+  df = defineOverwrite(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).P()")
+  df = defineOverwrite(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).X()")
+  df = defineOverwrite(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Y()")
+  df = defineOverwrite(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Z()")
+  df = defineOverwrite(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Theta() * TMath::RadToDeg())")
+  df = defineOverwrite(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwrite(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwrite(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).phi()   * TMath::RadToDeg())")
+  df = defineOverwrite(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).phi()        * TMath::RadToDeg())")
+  df = defineOverwrite(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).phi()        * TMath::RadToDeg())")
   # print(f"!!! {df.GetDefinedColumnNames()=}")
-  # print(f"!!! {dfResult.GetDefinedColumnNames()=}")
-  return dfResult
+  return df
 
 
 @dataclass
