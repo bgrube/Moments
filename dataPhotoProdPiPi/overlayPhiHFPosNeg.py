@@ -76,40 +76,57 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
   ROOT.gStyle.SetLegendBorderSize(1)
 
-  plotsDirName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/PARA_0"
-  # plotsDirName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_REAL_DATA/AMO"
-  # plotsDirName = "./polarized/2018_08/tbin_0.1_0.2/PiPi/plots_ACCEPTED_PHASE_SPACE/PARA_0"
-  plotsFile = ROOT.TFile.Open(f"{plotsDirName}/plots.root", "READ")
+  # dataPeriod = "2017_01"
+  dataPeriod = "2017_01_ver05"
+  # dataPeriod = "2018_08"
 
-  for histBaseName in [
-    "Ebeam",
-    "momLabP",
-    "momLabXP",
-    "momLabYP",
-    "momLabPip",
-    "momLabXPip",
-    "momLabYPip",
-    "momLabPim",
-    "momLabXPim",
-    "momLabYPim",
-    "thetaLabPDeg",
-    "thetaLabPipDeg",
-    "thetaLabPimDeg",
-    "phiLabPDeg",
-    "phiLabPipDeg",
-    "phiLabPimDeg",
-    "momLabYPVsMomLabXP",
-    "momLabYPipVsMomLabXPip",
-    "momLabYPimVsMomLabXPim",
-    "thetaLabPDegVsMomLabP",
-    "thetaLabPipDegVsMomLabPip",
-    "thetaLabPimDegVsMomLabPim",
-    "phiLabPDegVsThetaLabPDeg",
-    "phiLabPipDegVsThetaLabPipDeg",
-    "phiLabPimDegVsThetaLabPimDeg",
-  ]:
-    makeComparisonPlotPosNegPhiHF(
-      plotsFile     = plotsFile,
-      histBaseName  = histBaseName,
-      outputDirName = plotsDirName,
-    )
+  tBinLabel = "tbin_0.100_0.114"  # lowest |t| bin of SDME analysis
+  # tBinLabel = "tbin_0.1_0.2"
+  # tBinLabel = "tbin_0.2_0.3"
+  # tBinLabel = "tbin_0.3_0.4"
+  # tBinLabel = "tbin_0.4_0.5"
+
+  beamPolLabel = "PARA_0"
+  # beamPolLabel = "PARA_135"
+  # beamPolLabel = "PERP_45"
+  # beamPolLabel = "PERP_90"
+  # beamPolLabel = "AMO"
+  # beamPolLabel = "Unpol"
+
+  dataType = "REAL_DATA"
+  # dataType = "ACCEPTED_PHASE_SPACE"
+
+  plotsDirName = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi/plots_{dataType}/{beamPolLabel}"
+  with ROOT.TFile.Open(f"{plotsDirName}/plots.root", "READ") as plotsFile:
+    for histBaseName in [
+      "Ebeam",
+      "momLabP",
+      "momLabXP",
+      "momLabYP",
+      "momLabPip",
+      "momLabXPip",
+      "momLabYPip",
+      "momLabPim",
+      "momLabXPim",
+      "momLabYPim",
+      "thetaLabPDeg",
+      "thetaLabPipDeg",
+      "thetaLabPimDeg",
+      "phiLabPDeg",
+      "phiLabPipDeg",
+      "phiLabPimDeg",
+      "momLabYPVsMomLabXP",
+      "momLabYPipVsMomLabXPip",
+      "momLabYPimVsMomLabXPim",
+      "thetaLabPDegVsMomLabP",
+      "thetaLabPipDegVsMomLabPip",
+      "thetaLabPimDegVsMomLabPim",
+      "phiLabPDegVsThetaLabPDeg",
+      "phiLabPipDegVsThetaLabPipDeg",
+      "phiLabPimDegVsThetaLabPimDeg",
+    ]:
+      makeComparisonPlotPosNegPhiHF(
+        plotsFile     = plotsFile,
+        histBaseName  = histBaseName,
+        outputDirName = plotsDirName,
+      )
