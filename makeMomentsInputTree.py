@@ -44,12 +44,18 @@ print = functools.partial(print, flush = True)
 @dataclass
 class BeamPolInfo:
   """Stores information about beam polarization for a specific orientation"""
-  pol:    float  # photon-beam polarization magnitude
-  PhiLab: float  # azimuthal angle of photon beam polarization in lab frame [deg]
+  pol:    float | str  # photon-beam polarization magnitude value or column name
+  PhiLab: float | str  # azimuthal angle of photon beam polarization in lab frame [deg] value or column name
 
 # polarization values from Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
 # beam polarization angles in lab frame taken from `Lab Phi` column of tables 2 to 5 in GlueX-doc-3977
 BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {beam-polarization orientation : BeamPolInfo(...)}
+  "merged" : {  # several merged data periods with different polarization values
+    "All" : BeamPolInfo(  # read polarization values from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
+  },
   "2017_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3537,
@@ -290,23 +296,25 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   return lvs
 
 
-class CoordSysType(Enum):
-  HF = 0  # helicity frame
-  GJ = 1  # Gottfried-Jackson frame
-
-def DefineOverwrite(
+def defineOverwrite(
   df:         ROOT.RDataFrame,
   colName:    str,
   newFormula: str,
 ) -> ROOT.RDataFrame:
-  """If column `colName` exists, redefines it using formula `newExpr`"""
+  """If column `colName` exists, redefines it using formula `newFormula`"""
   if not df.HasColumn(colName):
-    # print(f"Defining column '{colName}' = '{newExpr}'")
+    # print(f"Defining column '{colName}' = '{newFormula}'")
     df = df.Define(colName, newFormula)
   else:
     print(f"Redefining column '{colName}' to '{newFormula}'")
     df = df.Redefine(colName, newFormula)
   return df
+
+
+class CoordSysType(Enum):
+  HF = 0  # helicity frame
+  GJ = 1  # Gottfried-Jackson frame
+
 
 def defineDataFrameColumns(
   df:                   ROOT.RDataFrame,
@@ -317,10 +325,10 @@ def defineDataFrameColumns(
   lvB:                  str,  # function-argument list with Lorentz-vector components of daughter B
   beamPolInfo:          BeamPolInfo | None = None,  # photon beam polarization
   frame:                CoordSysType       = CoordSysType.HF,  # reference frame for angle definitions
-  flipYAxis:            bool               = False,  # if set y-axis of reference frame is inverted
   additionalColumnDefs: dict[str, str]     = {},  # additional columns to define
   additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
   colNameSuffix:        str                = "",  # suffix appended to column names
+  flipYAxis:            bool               = False,  # if set y-axis of reference frame is inverted  #TODO remove
 ) -> ROOT.RDataFrame:
   """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
@@ -334,6 +342,8 @@ def defineDataFrameColumns(
     )
   elif frame == CoordSysType.GJ:
     #TODO use local C++ code instead FSRoot functions
+    if flipYAxis:
+      print("Flipping y axis of Gottfried-Jackson frame; this corresponds to shifting azimuthal angle by 180 degrees")
     df = (
       # use z_GJ = p_beam, A as analyzer, and y_GJ = (p_beam x p_recoil), if flipYAxis is False else -y_GJ
       df.Define(f"cosTheta{angColNameSuffix}", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature is different from FSMath::helcostheta (see FSBasic/FSMath.h)
@@ -792,7 +802,7 @@ if __name__ == "__main__":
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
     if reweightMinusTDistribution and dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE:
-      #TODO this is currently only implemented for the bin 0.1 < -t < 0.2 GeV^2/c^2
+      #TODO this is currently only implemented for the bin 0.1 < |t| < 0.2 GeV^2/c^2
       # reweight -t distribution to match that of real data
       outputFileNameReweighted = dataSet.outputFileName.replace(".root", ".reweighted_minusT.root")
       reweightKinDistribution(

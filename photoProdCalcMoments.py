@@ -65,7 +65,7 @@ def calculateAllMoments(
     dataSamples: dict[str | None, ROOT.RDataFrame] = {  # dict: key = data sample label
       None : cfg.loadData(AnalysisConfig.DataType.REAL_DATA, additionalCuts),
     } if cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS else {
-      "Sig" : cfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIGNAL, additionalCuts),    # select events in signal region (mixture of signal and background)``
+      "Sig" : cfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIGNAL, additionalCuts),    # select events in signal region (mixture of signal and background)
       "Bkg" : cfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIDEBAND, additionalCuts),  # select events in sideband regions (ideally, pure background)
     }
     #TODO: implement event range limit
@@ -88,9 +88,9 @@ def calculateAllMoments(
         massBinFilter = cfg.massBinning.binFilter(massBinIndex)
         print(f"Applying filter '{massBinFilter}' to select kinematic bin")
         dataInBin = dataSample.Filter(massBinFilter)
-        print(f"Loaded {dataInBin.Count().GetValue()} data events")
+        print(f"Loaded {dataInBin.Count().GetValue()} real-data events for kinematic bin")
         if "eventWeight" in dataInBin.GetColumnNames():
-          print(f"Sample contains {dataInBin.Sum('eventWeight').GetValue()} events after applying event weights")
+          print(f"Real-data sample contains {dataInBin.Sum('eventWeight').GetValue()} events after applying event weights")
         dataPsAccInBin = None if dataPsAcc is None else dataPsAcc.Filter(massBinFilter)
         nmbPsAccEvents = None if dataPsAcc is None else dataPsAccInBin.Count().GetValue()
         nmbPsGenEvents = None

@@ -98,7 +98,7 @@ def readPartialWaveAmplitudes(
   for key in ampSeries.index:
     waveName = key.split("::")[-1]
     plotFileName = f"{fitResultPlotDir}/etapi_plot_{waveName}.root"
-    plotFile = ROOT.TFile.Open(plotFileName, "READ")
+    plotFile = ROOT.TFile.Open(plotFileName, "READ")  #TODO use with statement to ensure file gets closed
     waveIntensity = 0.0
     # for total intensity sum up intensities of all beam polarization directions
     for angleLabelHist in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "total" else [angleLabel]:

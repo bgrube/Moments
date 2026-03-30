@@ -379,14 +379,14 @@ if __name__ == "__main__":
                 weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndexForWeighting}.root",
                 cfg                  = cfg,
                 seed                 = 12345 + massBinIndexForWeighting,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
-                beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
+                beamPolInfo          = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] if isinstance(inputDataDef, tuple) else None,
                 limitNmbEventsTo     = limitNmbEventsTo,
               )
               if makeIntensityFcnPlots:
                 plotIntensityFcn(
                   momentResults     = momentResultsForBin,
                   massBinIndex      = massBinIndexForWeighting,
-                  beamPolInfo       = BEAM_POL_INFOS[dataPeriod][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
+                  beamPolInfo       = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
                   outputDirName     = weightedDataDirName,
                   useIntensityTerms = useIntensityTerms,
                 )

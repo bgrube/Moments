@@ -158,7 +158,7 @@ if __name__ == "__main__":
       plotIntensityFcn(
         momentResults     = momentResultsForBin,
         massBinIndex      = massBinIndex,
-        beamPolInfo       = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
+        beamPolInfo       = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
         outputDirName     = ".",
         nmbBinsPerAxis    = 50,
         useIntensityTerms = useIntensityTerms,

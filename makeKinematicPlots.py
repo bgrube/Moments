@@ -35,6 +35,7 @@ from makeMomentsInputTree import (
   SubSystemInfo,
   lorentzVectors,
 )
+import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -210,6 +211,7 @@ def bookHistograms(
   beamPolInfo:   BeamPolInfo | None,
 ) -> tuple[HistListType, list[str]]:
   """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
+  print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subSystem}'")
   applyWeights = (inputDataType == InputDataType.REAL_DATA and df.HasColumn("eventWeight"))
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   histNamesEvenOdd: list[str] = []
@@ -377,6 +379,7 @@ def bookHistograms(
       HistogramDefinition("eventWeight", ";Event weight;Combos", ((100, -1, +2), ), ("eventWeight", )),
       applyWeights = False,
     ))
+  print(f"Booked {len(hists)} histograms")
   return hists, histNamesEvenOdd
 
 
@@ -476,6 +479,7 @@ def makeAnglesHFCorrelationPlot(
   xColName = f"cosThetaHF{pairLabel}"
   yColName = f"phiHF{pairLabel}Deg"
   # fill 2D histogram in helicity-frame angles with average values of kinVarNameCorr
+  #TODO replace this code by RDataFrame's Profile2D function
   histCorr = ROOT.TH2D(
     f"anglesHF{pairLabel}Corr_{kinVarNameCorr}{histNameSuffix}",
     f"{pairTLatexLabel};cos#theta_{{HF}};#phi_{{HF}} [deg]",
@@ -507,6 +511,9 @@ def makeAnglesHFCorrelationPlot(
 
 
 if __name__ == "__main__":
+  Utilities.printGitInfo()
+  timer = Utilities.Timer()
+  timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
@@ -637,3 +644,6 @@ if __name__ == "__main__":
                   outputDirName        = outputDirName,
                   additionalFilterDefs = additionalFilterDefs,
                 )
+
+  timer.stop("Total execution time")
+  print(timer.summary)
