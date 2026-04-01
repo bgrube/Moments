@@ -27,7 +27,7 @@ from wurlitzer import pipes, STDOUT
 from AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
-  CFG_NIZAR,
+  CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
@@ -656,6 +656,7 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
+  cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
@@ -666,7 +667,7 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.JPAC
   #
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   compareTo = None
   # compareTo = ComparisonMomentsType.PWA
   # compareTo = ("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
@@ -675,22 +676,30 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
 
-  dataBaseDirName = "./dataPhotoProdPiPi/polarized"
+  # subsystemLabel = "PiPi"  #TODO move into analysis config
+  subsystemLabel = "EtaPi0"
+  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
   dataPeriods = (
+    "merged",
     # "2017_01",
-    "2018_08",
+    # "2017_01_ver05",
+    # "2018_08",
   )
   tBinLabels = (
-    "tbin_0.1_0.2",
-    "tbin_0.2_0.3",
-    "tbin_0.3_0.4",
-    "tbin_0.4_0.5",
+    "t010020",
+    # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
+    # "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
   )
   beamPolLabels = (
-    "PARA_0",
-    "PARA_135",
-    "PERP_45",
-    "PERP_90",
+    "All",
+    # "PARA_0",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
+    # "AMO",
     # "Unpol",
   )
   maxLs = (
@@ -701,35 +710,34 @@ if __name__ == "__main__":
     # (4, 16),
     # (4, 20),
     # 6,
-    8,
+    # 8,
     # (8, 16),
     # (8, 20),
     # 12,
     # 16,
     # 20,
   )
-  # plotCompareUncert = True
-  plotCompareUncert = False
+  plotCompareUncert = True
+  # plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0  # no scaling
   # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
-  normalizeComparisonMoments = True  # whether to scale comparison moments to GlueX moments
-  # normalizeComparisonMoments = False
+  # normalizeComparisonMoments = True  # whether to scale comparison moments to estimated moments
+  normalizeComparisonMoments = False
   yAxisUnit = ""
   # yAxisUnit = " [#mub/GeV^{3}]"
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
+  # cfg.plotMomentsInBins = True
 
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
       for beamPolLabel in beamPolLabels:
-        cfg.dataFileName       = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
-        cfg.psAccFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
-        cfg.psGenFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
+        cfg.dataFileName       = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/data_flat_{beamPolLabel}.root"
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
         for maxL in maxLs:
-          print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+          print(f"Plotting '{subsystemLabel}' moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           cfg.maxL = maxL
           cfg.init()
           thisSourceFileName = os.path.basename(__file__)
