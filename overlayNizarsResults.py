@@ -31,6 +31,7 @@ if __name__ == "__main__":
   momentPlotFileNizar = "/work/halld2/home/nseptian/EtaPi0_4Gamma_data/moment_gr/UnnormalizedMoments_vs_Mass_t010020.root"
   with ROOT.TFile.Open(momentPlotFileNizar) as fileNizar:
     for momentIndex in MomentIndices(maxL = 4, polarized = True).qnIndices:
+      # get objects to be overlaid
       i = momentIndex.momentIndex
       L = momentIndex.L
       M = momentIndex.M
@@ -38,19 +39,10 @@ if __name__ == "__main__":
       canvLinAlg = None
       with ROOT.TFile.Open(momentPlotFileLinAlg) as file:
         canvLinAlg = file.Get("c1")
+      momentHistStack = canvLinAlg.GetPrimitive(f"./plotsPhotoProdEtaPi0/merged/t010020/All.maxL_4/unnorm_phys_mass_compare_H{i}_{L}_{M}_Re")
       graphNizar = fileNizar.Get(f"gr_unnormalized_moments_{i}_{L}_{M}_vs_mass")
       # overlay the two plots
-      momentHist = canvLinAlg.GetPrimitive("Moment Real Part")
-      xMin = ctypes.c_double(0.0)
-      xMax = ctypes.c_double(0.0)
-      yMin = ctypes.c_double(0.0)
-      yMax = ctypes.c_double(0.0)
-      graphNizar.ComputeRange(xMin, yMin, xMax, yMax)
-      print(f"graphNizar: x range = [{xMin.value}, {xMax.value}], y range = [{yMin.value}, {yMax.value}]")
-      print(f"{momentHist.GetMinimum()} <= y <= {momentHist.GetMaximum()} before overlaying Nizar's results")
-      momentHist.SetMinimum(min(momentHist.GetMinimum(), yMin.value))
-      momentHist.SetMaximum(max(momentHist.GetMaximum(), yMax.value))
-      print(f"{momentHist.GetMinimum()} <= y <= {momentHist.GetMaximum()} after overlaying Nizar's results")
+      momentHist = canvLinAlg.GetPrimitive(f"Moment Real Part")
       momentHist.SetLineColor(ROOT.kBlue + 1)
       momentHist.SetMarkerColor(ROOT.kBlue + 1)
       momentHist.SetMarkerStyle(ROOT.kOpenCircle)
@@ -64,6 +56,15 @@ if __name__ == "__main__":
       graphNizar.Draw("P SAME")
       graphNizar.SetMarkerSize(0.8)
       legend.AddEntry(graphNizar, "MCMC", "LP")
-      canvLinAlg.Modified()
-      canvLinAlg.Update()
+      # extend y axis range if necessary to accommodate Nizar's results
+      xMin = ctypes.c_double(0.0)
+      xMax = ctypes.c_double(0.0)
+      yMin = ctypes.c_double(0.0)
+      yMax = ctypes.c_double(0.0)
+      graphNizar.ComputeRange(xMin, yMin, xMax, yMax)
+      print(f"graphNizar: x range = [{xMin.value}, {xMax.value}], y range = [{yMin.value}, {yMax.value}]")
+      print(f"{momentHistStack.GetMinimum()} <= y <= {momentHistStack.GetMaximum()} before overlaying Nizar's results")
+      momentHistStack.SetMinimum(min(momentHistStack.GetMinimum(), yMin.value))
+      momentHistStack.SetMaximum(max(momentHistStack.GetMaximum(), yMax.value))
+      print(f"{momentHistStack.GetMinimum()} <= y <= {momentHistStack.GetMaximum()} after overlaying Nizar's results")
       canvLinAlg.SaveAs(f"H{i}_{L}_{M}_Re_Nizar.pdf")
