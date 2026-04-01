@@ -24,13 +24,14 @@ from wurlitzer import pipes, STDOUT
 from AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
-  CFG_NIZAR,
+  CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
   CFG_UNPOLARIZED_PIPP,
 )
+from makeMomentsInputTree import BEAM_POL_INFOS
 from MomentCalculator import (
   DataSet,
   MomentCalculator,
@@ -240,8 +241,8 @@ CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
 
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
@@ -249,25 +250,32 @@ if __name__ == "__main__":
   # cfg.method      = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # estimate moments using linear algebra method with background subtraction at moment level
   # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
-  # cfg.polarization = None  # treat data as unpolarized
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
+  # cfg.massBinning = HistAxisBinning(nmbBins = 7, minVal = 0.60, maxVal = 0.88)  # mass range of SDME analysis
 
-  dataBaseDirName = "./dataPhotoProdPiPi/polarized"
+  # subsystemLabel = "PiPi"  #TODO move into analysis config
+  subsystemLabel = "EtaPi0"
+  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
   dataPeriods = (
+    "merged",
     # "2017_01",
-    "2018_08",
+    # "2017_01_ver05",
+    # "2018_08",
   )
   tBinLabels = (
-    "tbin_0.1_0.2",
-    "tbin_0.2_0.3",
-    "tbin_0.3_0.4",
-    "tbin_0.4_0.5",
+    "t010020",
+    # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
+    # "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
   )
   beamPolLabels = (
-    "PARA_0",
-    "PARA_135",
-    "PERP_45",
-    "PERP_90",
+    "All",
+    # "PARA_0",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
     # "AMO",
     # "Unpol",
   )
@@ -295,10 +303,11 @@ if __name__ == "__main__":
   for dataPeriod in dataPeriods:
     for tBinLabel in tBinLabels:
       for beamPolLabel in beamPolLabels:
-        cfg.dataFileName       = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/data_flat_{beamPolLabel}.root"
-        cfg.psAccFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_acc_flat_{beamPolLabel}.root"
-        cfg.psGenFileName      = f"{dataBaseDirName}/{dataPeriod}/{tBinLabel}/PiPi/phaseSpace_gen_flat_{beamPolLabel}.root"
+        cfg.dataFileName       = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/data_flat_{beamPolLabel}.root"
+        cfg.psAccFileName      = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+        cfg.psGenFileName      = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
+        cfg.polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None
         for maxL in maxLs:
           print(f"Performing moment analysis for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           cfg.maxL = maxL
@@ -322,7 +331,7 @@ if __name__ == "__main__":
                 forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
                 additionalCuts                 = None,
                 # additionalCuts                 = (
-                #   "not isInEfficiencyHoles(cosTheta, phiDeg)",  # holes
+                #   # "not isInEfficiencyHoles(cosTheta, phiDeg)",  # holes
                 #   # "not ((cosTheta > 0.8) and (-100 < phiDeg and phiDeg < +100))",
                 #   # "(-180 < phiDeg and phiDeg < -108)",    # phi slice 0
                 #   # "(-108 < phiDeg and phiDeg <  -36)",    # phi slice 1
@@ -341,10 +350,10 @@ if __name__ == "__main__":
                 #   # "not ((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border3
                 #   # "(cosTheta < 0)",  # cosThetaNeg
                 #   # "(cosTheta > 0)",  # cosThetaPos
-                #   # "(phiDeg < 0)",  # phiNeg
-                #   # "(phiDeg > 0)",  # phiPos
-                #   # "(PhiDeg < 0)",  # PhiNeg
-                #   # "(PhiDeg > 0)",  # PhiPos
+                #   # "(phi < 0)",  # phiNeg
+                #   # "(phi > 0)",  # phiPos
+                #   # "(Phi < 0)",  # PhiNeg
+                #   # "(Phi > 0)",  # PhiPos
                 #   # "(-0.75 < cosTheta && cosTheta < +0.75)",  # cosThetaNoSpikeOdd
                 #   # "((-150 < phiDeg && phiDeg < -30) || (+30 < phiDeg && phiDeg < +150))",  # phiNoSpikeOdd
                 #   # "!(" \
@@ -352,6 +361,7 @@ if __name__ == "__main__":
                 #   #   "|| ((-1 < cosTheta && cosTheta < -0.75) && (+150 < phiDeg && phiDeg < +180))" \
                 #   #   "|| ((+0.75 < cosTheta && cosTheta < +1) && ( -30 < phiDeg && phiDeg <  +30))" \
                 #   # ")",  # noSpikeOdd
+                #   "(0.100 < minusT and minusT < 0.114)",
                 # ),
               )
               timer.stop("Total execution time")
