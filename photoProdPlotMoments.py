@@ -687,6 +687,10 @@ if __name__ == "__main__":
   )
   tBinLabels = (
     "t010020",
+    "t020032",
+    "t032050",
+    "t050075",
+    "t075100",
     # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
     # "tbin_0.1_0.2",
     # "tbin_0.2_0.3",
@@ -757,6 +761,8 @@ if __name__ == "__main__":
               compareTo                   = compareTo,
               normalizeComparisonMoments  = normalizeComparisonMoments,
               plotComparisonMomentsUncert = plotCompareUncert,
+              outFileType                 = "pdf",
+              # outFileType                 = "root",
               yAxisUnit                   = yAxisUnit,
             )
             timer.stop("Total execution time")

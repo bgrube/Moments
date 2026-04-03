@@ -775,6 +775,10 @@ if __name__ == "__main__":
     )
     tBinLabels      = (
       "t010020",
+      "t020032",
+      "t032050",
+      "t050075",
+      "t075100",
     )
     beamPolLabel    = "All"  # input files contain all beam polarization orientations merged together
     beamPolInfo     = BeamPolInfo(  # read beam polarization info from input tree
