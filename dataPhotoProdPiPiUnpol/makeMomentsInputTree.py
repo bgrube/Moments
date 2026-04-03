@@ -109,7 +109,7 @@ def defineAngleFormulas(
         # y_HF/GJ = p_beam x p_recoil if flipYAxis is False else -yHF
         "(Double32_t)" +
         (
-               f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
+          f"flipYAxis(FSMath::helphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})" if frame == "Hf"  # use z_HF = -p_recoil
           else f"flipYAxis(FSMath::gjphi ({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})"                   # use z_GJ = p_beam
         )
       )

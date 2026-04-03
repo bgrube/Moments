@@ -32,7 +32,7 @@ from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_HF_ANGLES,
+  CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CoordSysType,
@@ -252,7 +252,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_HF_ANGLES)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 

@@ -158,18 +158,25 @@ fixAzimuthalAngleRange(double angle)  // [rad]
 }
 """
 
-# C++ function to calculate helicity angles and beam polarization angle for moment analysis
-CPP_CODE_HF_ANGLES = """
-// calculates helicity angles and azimuthal angle between photon polarization and production plane in lab frame
+# C++ function to calculate angles and beam polarization angle for moment analysis
+CPP_CODE_TWO_BODY_ANGLES = """
+// calculates helicity or Gottfried-Jackson angles (theta, phi)
+// and azimuthal angle Phi between photon polarization and production plane in lab frame
 // for reaction beam + target -> resonance + recoil with resonance -> A + B
-// angles are returned as vector (cos(theta_HF), phi_HF [rad], Phi [rad])
+// angles are returned as vector (cos(theta), phi [rad], Phi [rad])
 // code taken from GlueX AmpTools: https://github.com/JeffersonLab/halld_sim/blob/39b18bdbab88192275fed57fda161f9a52d04422/src/libraries/AMPTOOLS_AMPS/TwoPiAngles.cc#L94
+enum CoordSysType {
+  HF = 0,  // helicity frame
+  GJ = 1,  // Gottfried-Jackson frame
+};
+
 std::vector<Double32_t>
-twoBodyHelicityFrameAngles(
+twoBodyAngles(
 	const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam,    // 4-momentum of beam [GeV]
 	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,  // 4-momentum of recoil [GeV]
 	const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,      // 4-momentum of particle A (analyzer) [GeV]
 	const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,      // 4-momentum of particle B [GeV]
+	const CoordSysType coordSysType,   // coordinate system type for angle definitions
 	const double beamPolPhiLabDeg = 0  // azimuthal angle of photon beam polarization in lab [deg]
 ) {
 	// 4-vectors in lab frame
@@ -185,71 +192,24 @@ twoBodyHelicityFrameAngles(
 	const TLorentzVector pARF     = resonanceBoost * pA;
 	// define axes of coordinate system
 	const TVector3 yAxis = beam.Vect().Cross(-recoil.Vect()).Unit();  // normal of production plane in lab frame
-	const TVector3 zAxis = -recoilRF.Vect().Unit();  // helicity frame: opposite to recoil proton in resonance rest frame
+	const TVector3 zAxis = [&]() -> TVector3 {  // z axis depends on coordinate system type
+		if (coordSysType == HF) {
+			return -recoilRF.Vect().Unit();  // helicity frame: opposite to recoil proton in resonance rest frame
+		} else if (coordSysType == GJ) {
+			return beamRF.Vect().Unit();     // Gottfried-Jackson frame: along beam direction in resonance rest frame
+		} else {
+			throw std::runtime_error(std::string("Unsupported coordinate system type '") + std::to_string(coordSysType) + "'");
+		}
+	}();
 	const TVector3 xAxis = yAxis.Cross(zAxis).Unit();  // right-handed coordinate system
-	// calculate helicity-frame angles of particle A and angle between polarization and production plane
-	const TVector3 pAHF(pARF.Vect() * xAxis, pARF.Vect() * yAxis, pARF.Vect() * zAxis);  // vector of particle A (analyzer) in helicity frame
-	const double cosThetaHF = pAHF.CosTheta();  // polar angle of particle A
-	const double phiHF      = pAHF.Phi();  // azimuthal angle of particle A [rad]
+	// calculate angles of particle A (analyzer) in selected frame
+	const TVector3 pA_frame(pARF.Vect() * xAxis, pARF.Vect() * yAxis, pARF.Vect() * zAxis);  // vector of particle A in selected frame
+	const double cosTheta = pA_frame.CosTheta();  // polar angle of particle A
+	const double phi      = pA_frame.Phi();       // azimuthal angle of particle A [rad]
+	// calculate azimuthal angle between beam polarization and production plane
 	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
 	const double Phi = beamPolPhiLabDeg * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
-	return std::vector<Double32_t>{cosThetaHF, phiHF, fixAzimuthalAngleRange(Phi)};
-}
-"""
-
-# C++ function to calculate Gottfried-Jackson angles and beam polarization angle for moment analysis
-#TODO merge with `twoBodyHelicityFrameAngles`
-CPP_CODE_GJ_ANGLES = """
-// calculates Gottfried-Jackson angles and azimuthal angle between photon polarization and production plane in lab frame
-// for reaction beam + target -> resonance + recoil with resonance -> A + B
-// angles are returned as vector (cos(theta_GJ), phi_GJ [rad], Phi [rad])
-std::vector<Double32_t>
-twoBodyGottfriedJacksonFrameAngles(
-	const double PxBeam,   const double PyBeam,   const double PzBeam,   const double EBeam,    // 4-momentum of beam [GeV]
-	const double PxRecoil, const double PyRecoil, const double PzRecoil, const double ERecoil,  // 4-momentum of recoil [GeV]
-	const double PxPA,     const double PyPA,     const double PzPA,     const double EPA,      // 4-momentum of particle A (analyzer) [GeV]
-	const double PxPB,     const double PyPB,     const double PzPB,     const double EPB,      // 4-momentum of particle B [GeV]
-	const double beamPolPhiLabDeg = 0  // azimuthal angle of photon beam polarization in lab [deg]
-) {
-	// 4-vectors in lab frame
-	const TLorentzVector beam  (PxBeam,   PyBeam,   PzBeam,   EBeam);
-	const TLorentzVector recoil(PxRecoil, PyRecoil, PzRecoil, ERecoil);
-	const TLorentzVector pA    (PxPA,     PyPA,     PzPA,     EPA);
-	const TLorentzVector pB    (PxPB,     PyPB,     PzPB,     EPB);
-	// boost 4-vectors to resonance rest frame
-	const TLorentzVector resonance = pA + pB;
-	const TLorentzRotation resonanceBoost(-resonance.BoostVector());
-	const TLorentzVector beamRF   = resonanceBoost * beam;
-	const TLorentzVector recoilRF = resonanceBoost * recoil;
-	const TLorentzVector pARF     = resonanceBoost * pA;
-	// define axes of coordinate system
-	const TVector3 yAxis = beam.Vect().Cross(-recoil.Vect()).Unit();  // normal of production plane in lab frame
-	const TVector3 zAxis = beamRF.Vect().Unit();  // Gottfried-Jackson frame: along beam direction in resonance rest frame
-	const TVector3 xAxis = yAxis.Cross(zAxis).Unit();  // right-handed coordinate system
-	// calculate Gottfried-Jackson frame angles of particle A and angle between polarization and production plane
-	const TVector3 pAGJ(pARF.Vect() * xAxis, pARF.Vect() * yAxis, pARF.Vect() * zAxis);  // vector of particle A (analyzer) in Gottfried-Jackson frame
-	const double cosThetaGJ = pAGJ.CosTheta();  // polar angle of particle A
-	const double phiGJ      = pAGJ.Phi();  // azimuthal angle of particle A [rad]
-	const TVector3 eps(1, 0, 0);  // reference beam polarization vector at 0 degrees in lab frame
-	const double Phi = beamPolPhiLabDeg * TMath::DegToRad() + atan2(yAxis.Dot(eps), beam.Vect().Unit().Dot(eps.Cross(yAxis)));  // angle between photon polarization and production plane in lab frame [rad]
-	return std::vector<Double32_t>{cosThetaGJ, phiGJ, fixAzimuthalAngleRange(Phi)};
-}
-"""
-
-# C++ function to flip y axis if needed
-CPP_CODE_FLIPYAXIS = """
-// flips y axis `flip` is true; corresponds to shifting azimuthal angle by 180 degrees
-double
-flipYAxis(
-	double     phi,
-	const bool flip = false
-) {
-	if (not flip) {
-		return phi;
-	}
-  //TODO is this correct? or should it be phi -> -phi?
-	phi += TMath::Pi();
-	return fixAzimuthalAngleRange(phi);
+	return std::vector<Double32_t>{cosTheta, phi, fixAzimuthalAngleRange(Phi)};
 }
 """
 
@@ -353,25 +313,37 @@ def defineDataFrameColumns(
   """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
+  coordSysTypeStr = None
   if frame == CoordSysType.HF:
-    df = (
-      # use z_HF = -p_recoil, A as analyzer, and y_HF = (p_beam x p_recoil)
-      df.Define(f"angles{angColNameSuffix}",   f"twoBodyHelicityFrameAngles({lvBeam}, {lvRecoil}, {lvA}, {lvB}, {'0' if beamPolInfo is None else beamPolInfo.PhiLab})")
-        .Define(f"cosTheta{angColNameSuffix}", f"angles{angColNameSuffix}[0]")
-        .Define(f"phi{angColNameSuffix}",      f"angles{angColNameSuffix}[1]")
-    )
+    coordSysTypeStr = 'CoordSysType::HF'
   elif frame == CoordSysType.GJ:
-    flipYAxis = True  #TODO remove
-    df = (
-      df.Define(f"angles{angColNameSuffix}",   f"twoBodyGottfriedJacksonFrameAngles({lvBeam}, {lvRecoil}, {lvA}, {lvB}, {'0' if beamPolInfo is None else beamPolInfo.PhiLab})")
-        .Define(f"cosTheta{angColNameSuffix}", f"angles{angColNameSuffix}[0]")
-        .Define(f"phi{angColNameSuffix}",      f"angles{angColNameSuffix}[1]")
-        # use z_GJ = p_beam, A as analyzer, and y_GJ = (p_beam x p_recoil), if flipYAxis is False else -y_GJ
-        .Define(f"cosTheta{angColNameSuffix}_FSROOT", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature is different from FSMath::helcostheta (see FSBasic/FSMath.h)
-        .Define(f"phi{angColNameSuffix}_FSROOT",      f"(Double32_t)flipYAxis(FSMath::gjphi({lvA}, {lvB}, {lvRecoil}, {lvBeam}), {'true' if flipYAxis else 'false'})")
-    )
+    coordSysTypeStr = 'CoordSysType::GJ'
   else:
     raise ValueError(f"Unsupported coordinate system type '{frame}'")
+  df = (
+    df.Define(f"angles{angColNameSuffix}",   f"twoBodyAngles({lvBeam}, {lvRecoil}, {lvA}, {lvB}, {coordSysTypeStr}, {'0' if beamPolInfo is None else beamPolInfo.PhiLab})")
+      .Define(f"cosTheta{angColNameSuffix}", f"angles{angColNameSuffix}[0]")
+      .Define(f"phi{angColNameSuffix}",      f"angles{angColNameSuffix}[1]")
+  )
+  if True:
+  # if False:
+    #TODO there seems to be a bug in the FSROOT functions that calculate phi
+    #     when using the same analyzer as for cosTheta, phi is flipped by 180 deg
+    #     this difference is seen when comparing to GlueX AmpTools function and also when comparing to PWA results
+    #     switching the analyzer for the phi calculation cures this problem
+    #     in general, switching the analyzer flips sign of moments with odd M
+    if frame == CoordSysType.HF:
+      df = (
+        # use z_HF = -p_recoil, A as analyzer, and y_HF = -(p_beam x p_recoil)
+        df.Define(f"cosTheta{angColNameSuffix}_FSROOT", f"(Double32_t)FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})")
+          .Define(f"phi{angColNameSuffix}_FSROOT",      f"(Double32_t)FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})")  # need to switch analyzer to make it agree
+      )
+    elif frame == CoordSysType.GJ:
+      df = (
+        # use z_GJ = p_beam, A as analyzer, and y_GJ = -(p_beam x p_recoil)
+        df.Define(f"cosTheta{angColNameSuffix}_FSROOT", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature is different from FSMath::helcostheta (see FSBasic/FSMath.h)
+          .Define(f"phi{angColNameSuffix}_FSROOT",      f"(Double32_t)FSMath::gjphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})")  # need to switch analyzer to make it agree
+      )
   df = (
     df.Define(f"theta{angColNameSuffix}",  f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
       .Define(f"phi{angColNameSuffix}Deg", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
@@ -620,9 +592,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
-  ROOT.gInterpreter.Declare(CPP_CODE_HF_ANGLES)
-  ROOT.gInterpreter.Declare(CPP_CODE_GJ_ANGLES)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
@@ -798,6 +768,7 @@ if __name__ == "__main__":
   # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
   if True:
     subsystem = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
+    # subsystem = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "pi0", lvBLabel = "eta", lvRecoilLabel = "recoil")
     dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/polarized"
     dataPeriods     = (
       "merged",

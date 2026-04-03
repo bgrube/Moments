@@ -13,7 +13,7 @@ import ROOT
 
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_HF_ANGLES,
+  CPP_CODE_TWO_BODY_ANGLES,
 )
 from MomentCalculator import (
   AcceptanceIntegralMatrix,
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     # compare with intensity formula from `MomentResult`
     # declare C++ functions
     ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-    ROOT.gInterpreter.Declare(CPP_CODE_HF_ANGLES)
+    ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
     intensityFcnMoments = ROOT.TF3(
       f"intensityFcnMoments",
       H.intensityFormula(

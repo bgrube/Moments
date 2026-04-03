@@ -21,9 +21,7 @@ from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_FLIPYAXIS,
-  CPP_CODE_GJ_ANGLES,
-  CPP_CODE_HF_ANGLES,
+  CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TRACKDISTFDC,
@@ -272,7 +270,7 @@ def bookHistograms(
       HistogramDefinition(f"phiHF{pairLabel}Deg",   f"{title};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiHF{pairLabel}Deg",   )),
       HistogramDefinition(f"phiGJ{pairLabel}Deg",   f"{title};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiGJ{pairLabel}Deg",   )),
       # 2D histograms
-      HistogramDefinition(f"anglesHF{pairLabel}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100, -1, +1), (36, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg")),
+      HistogramDefinition(f"anglesHF{pairLabel}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg")),
       HistogramDefinition(f"anglesGJ{pairLabel}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg")),
     ]
     if beamPolInfo is not None:
@@ -527,9 +525,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_FLIPYAXIS)
-  ROOT.gInterpreter.Declare(CPP_CODE_HF_ANGLES)
-  ROOT.gInterpreter.Declare(CPP_CODE_GJ_ANGLES)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
@@ -567,8 +563,8 @@ if __name__ == "__main__":
 
   # parameters for eta pi0 data
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-    # SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", ATLatexLabel = "#eta", lvBLabel = "pi0", BTLatexLabel = "#pi^{0}", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
-    SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "pi0", ATLatexLabel = "#pi^{0}", lvBLabel = "eta", BTLatexLabel = "#eta", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
+    SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", ATLatexLabel = "#eta", lvBLabel = "pi0", BTLatexLabel = "#pi^{0}", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
+    # SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "pi0", ATLatexLabel = "#pi^{0}", lvBLabel = "eta", BTLatexLabel = "#eta", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
   )
   dataDirName   = "./dataPhotoProdEtaPi0/polarized"
   dataPeriods   = (
@@ -584,6 +580,7 @@ if __name__ == "__main__":
   BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
   useSeparateBackgroundFiles = False
   additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
+  # additionalColumnDefs = {}  #TODO no weights for generated MC
   additionalFilterDefs = []
 
   treeName = "kin"
