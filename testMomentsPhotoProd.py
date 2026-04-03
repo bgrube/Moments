@@ -405,7 +405,8 @@ if __name__ == "__main__":
       if True:
       # if False:
         # plot intensity and efficiency functions used to generate data
-        #NOTE this does not work well for histogram-based efficiencies because binning used in plotting is coarser than histogram binning; to fix this plotting should use the same binning and then a Rebin3D has to be applied
+        #!NOTE! this does not work well for histogram-based efficiencies because binning used in plotting is coarser than histogram binning
+        #       to fix this plotting should use the same binning and then a Rebin3D has to be applied
         for label, formula in {
           "efficiencyFormulaGen"     : efficiencyFormulaGen,
           "efficiencyFormulaReco"    : efficiencyFormulaReco,

@@ -88,7 +88,7 @@ def plotIntensityFcn(
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
     # ROOT.gStyle.SetCanvasDefW(600)
     # draw projections of intensity function onto (cos(theta), phi) plane
-    histProj = histFcn.Project3D("yx")  # NOTE: "yx" gives y = phi vs. x = cos(theta)
+    histProj = histFcn.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
     canv = ROOT.TCanvas()
     ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # draw 2D plot with pos/neg color palette and symmetric z axis
     histProj.SetTitle(f"Intensity Function Projection;{histFcn.GetXaxis().GetTitle()};{histFcn.GetYaxis().GetTitle()}")
@@ -98,7 +98,7 @@ def plotIntensityFcn(
     histProj.Draw("COLZ")
     canv.SaveAs(f"{outputDirName}/{histProj.GetName()}.pdf")
     ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
-    histProjNeg = histFcnNeg.Project3D("yx")  # NOTE: "yx" gives y = phi vs. x = cos(theta)
+    histProjNeg = histFcnNeg.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
     canv = ROOT.TCanvas()
     histProjNeg.SetTitle(f"Intensity Function Projection, Negative Part;{histFcnNeg.GetXaxis().GetTitle()};{histFcnNeg.GetYaxis().GetTitle()}")
     histProjNeg.SetMinimum(0)

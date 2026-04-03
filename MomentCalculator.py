@@ -1321,7 +1321,7 @@ def constructMomentResultFrom(
   indices:      MomentIndices,  # index mapping and iterators
   momentValues: Sequence[MomentValue],
 ) -> MomentResult:
-  """Constructs `MomentResult` instance from given moment values; !Note! only diagonal elements of covariance matrix are set"""
+  """Constructs `MomentResult` instance from given moment values; !NOTE! only diagonal elements of covariance matrix are set"""
   # ensure that all moment values have the same bin centers, labels, and number of bootstrap samples
   assert all(momentValues[0].binCenters         == momentValue.binCenters         for momentValue in momentValues[1:]), "Moment values must have the same bin centers"
   assert all(momentValues[0].label              == momentValue.label              for momentValue in momentValues[1:]), "Moment values must have the same label"
