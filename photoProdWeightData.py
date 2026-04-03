@@ -31,9 +31,8 @@ from AnalysisConfig import (
 from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
-  CPP_CODE_ANGLES_GLUEX_AMPTOOLS,
-  CPP_CODE_BEAM_POL_PHI,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
+  CPP_CODE_HF_ANGLES,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CoordSysType,
@@ -96,7 +95,6 @@ def loadInputData(
         lvB         = lvs["pim"],
         beamPolInfo = beamPolInfo,
         frame       = CoordSysType.HF,
-        flipYAxis   = True,
       )
     kinematicBinFilter: str = massBinning.binFilter(massBinIndex)
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
@@ -254,8 +252,7 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_ANGLES_GLUEX_AMPTOOLS)
-  ROOT.gInterpreter.Declare(CPP_CODE_BEAM_POL_PHI)
+  ROOT.gInterpreter.Declare(CPP_CODE_HF_ANGLES)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 
@@ -264,7 +261,6 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarized K- K_S Delta++ data
-  # cfg.polarization = None  # treat data as unpolarized
 
   dataFilesBaseDirName = "./dataPhotoProdPiPi/polarized"
   useIntensityTerms    = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
@@ -305,6 +301,7 @@ if __name__ == "__main__":
     # "AMO",
     # "Unpol",
   )
+  cfg.polarization = None  # treat data as unpolarized
   maxLs = (
     4,
     # (4, 6),
