@@ -564,7 +564,6 @@ if __name__ == "__main__":
   # parameters for eta pi0 data
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
     SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", ATLatexLabel = "#eta", lvBLabel = "pi0", BTLatexLabel = "#pi^{0}", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
-    # SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "pi0", ATLatexLabel = "#pi^{0}", lvBLabel = "eta", BTLatexLabel = "#eta", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
   )
   dataDirName   = "./dataPhotoProdEtaPi0/polarized"
   dataPeriods   = (
@@ -584,7 +583,6 @@ if __name__ == "__main__":
   BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
   useSeparateBackgroundFiles = False
   additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
-  # additionalColumnDefs = {}  #TODO no weights for generated MC
   additionalFilterDefs = []
 
   treeName = "kin"
@@ -641,8 +639,14 @@ if __name__ == "__main__":
               inputDataFormat      = inputDataFormat,
               subSystem            = subSystem,
               beamPolInfo          = beamPolInfo,
-              additionalColumnDefs = additionalColumnDefs,
-              additionalFilterDefs = additionalFilterDefs,
+              additionalColumnDefs = (
+                additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                {}  # no additional variables for MC truth
+              ),
+              additionalFilterDefs = (
+                additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                []  # no additional selection cuts for MC truth
+              ),
             ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem \'{subSystem}\'" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
             outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
             if True:

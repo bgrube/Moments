@@ -254,8 +254,8 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     lvs["pip"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # pi+
     lvs["pim"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi-
     # eta pi0 channel
-    lvs["eta"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # eta  #TODO check index
-    lvs["pi0"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi0
+    lvs["pi0"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # eta
+    lvs["eta"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi0
   elif dataFormat == InputDataFormat.JPAC_MC:
     # kinematic variables according to Eq. (1) in Bibrzycki et al., PRD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
@@ -767,8 +767,8 @@ if __name__ == "__main__":
 
   # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
   if True:
-    subsystem = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
-    # subsystem = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "pi0", lvBLabel = "eta", lvRecoilLabel = "recoil")
+    frame           = CoordSysType.GJ  # Gottfried-Jackson frame, i.e. z_GJ = p_beam
+    subsystem       = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
     dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/polarized"
     dataPeriods     = (
       "merged",
@@ -864,7 +864,8 @@ if __name__ == "__main__":
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
       raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
-    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for {dataSet.subsystem.pairLabel} subsystem, {dataSet.dataPeriod}, {dataSet.tBinLabel}, and {dataSet.beamPolLabel} from file(s) {dataSet.inputFileNames}")
+    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for '{dataSet.subsystem.pairLabel}' subsystem, "
+          f"'{dataSet.dataPeriod}' period, '{dataSet.tBinLabel}' t bin, and '{dataSet.beamPolLabel}' beam polarization from file(s) {dataSet.inputFileNames}")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     df = defineDataFrameColumns(
       df                   = df,
