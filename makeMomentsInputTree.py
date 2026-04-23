@@ -348,7 +348,7 @@ def defineDataFrameColumns(
     df.Define(f"theta{angColNameSuffix}",  f"(Double32_t)std::acos(cosTheta{angColNameSuffix})")
       .Define(f"phi{angColNameSuffix}Deg", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
   )
-  # allow for redefinition of already existing columns with identical formula if function is called for several frames
+  # allow for redefinition of already existing frame-independent columns if function is called for several frames
   df = defineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
   df = defineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
