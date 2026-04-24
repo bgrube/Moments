@@ -369,20 +369,22 @@ def defineDataFrameColumns(
 
 DATA_TCHAINS: list[ROOT.TChain] = []  # use global variable to avoid garbage collection
 def getDataFrameWithCorrectEventWeights(
-  dataSigRegionFileNames:    Sequence[str],
-  dataBkgRegionFileNames:    Sequence[str],
-  treeName:                  str,
-  friendSigRegionFileName:   str  = "data_sig.root.weights",
-  friendBkgRegionFileName:   str  = "data_bkg.root.weights",
-  forceOverwriteFriendFiles: bool = True,
+  dataSigRegionFileNames:    Sequence[str],  # file names of input data files for signal region
+  dataBkgRegionFileNames:    Sequence[str],  # file names of input data files for background region
+  treeName:                  str,            # name of tree in input files
+  sigRegionWeightFormula:    str  = "Weight",   # formula for calculating event weight for signal events
+  bkgRegionWeightFormula:    str  = "-Weight",  # formula for calculating event weight for background events
+  friendSigRegionFileName:   str  = "data_sig.root.weights",  # file name for friend tree that contains event weights for signal region
+  friendBkgRegionFileName:   str  = "data_bkg.root.weights",  # file name for friend tree that contains event weights for background region
+  forceOverwriteFriendFiles: bool = True,  # if False existing friend files will be used and assumed to contain the correct event weights
 ) -> ROOT.RDataFrame:
   """Create friend trees with correct event weights and attach them to data tree"""
   # write corrected weights into friend trees
   for dataFileNames, weightFormula, friendFileName in (
-    (dataSigRegionFileNames,  "Weight", friendSigRegionFileName),
-    (dataBkgRegionFileNames, "-Weight", friendBkgRegionFileName),
+    (dataSigRegionFileNames, sigRegionWeightFormula, friendSigRegionFileName),
+    (dataBkgRegionFileNames, bkgRegionWeightFormula, friendBkgRegionFileName),
   ):
-    print(f"Loading real-data file(s) {dataFileNames}")
+    print(f"Processing file(s) {dataFileNames}")
     if not forceOverwriteFriendFiles and os.path.exists(friendFileName):
       print(f"File '{friendFileName}' already exists, skipping creation of event-weight friend tree")
       continue
