@@ -21,10 +21,11 @@ from makeMomentsInputTree import (
   BeamPolInfo,
   BEAM_POL_INFOS,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TRACKDISTFDC,
+  CPP_CODE_TWO_BODY_ANGLES,
+  CPP_CODE_TWO_BODY_ANGLES_NIZAR,
   CoordSysType,
   defineDataFrameColumns,
   defineOverwrite,
@@ -525,10 +526,11 @@ if __name__ == "__main__":
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
-  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES_NIZAR)
 
   # # parameters for pi+ pi- data
   # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
@@ -536,8 +538,9 @@ if __name__ == "__main__":
   #   # SubSystemInfo(pairLabel = "PipP",   lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#plus}" ),
   #   # SubSystemInfo(pairLabel = "PimP",   lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip",    pairTLatexLabel = "p{{BTLatexLabel}}"),
   # )
-  # dataDirName   = "./dataPhotoProdPiPi/polarized"
-  # dataPeriods   = (
+  # dataDirBasePath = "./dataPhotoProdPiPi/polarized"
+  # inputDataDirName = "Alex"  # subdirectory in where data files are stored
+  # dataPeriods = (
   #   # "2017_01",
   #   "2017_01_ver05",
   #   # "2018_08",
@@ -563,13 +566,19 @@ if __name__ == "__main__":
 
   # parameters for eta pi0 data
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-    SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", ATLatexLabel = "#eta", lvBLabel = "pi0", BTLatexLabel = "#pi^{0}", lvRecoilLabel = "recoil", recoilTLatexLabel ="p", pairTLatexLabel = "#eta#pi^{0}"  ),
+    SubSystemInfo(
+      pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
+      lvALabel      = "eta",    ATLatexLabel      = "#eta",
+      lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
+      lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
+    ),
   )
-  dataDirName   = "./dataPhotoProdEtaPi0/polarized"
-  dataPeriods   = (
+  dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
+  inputDataDirName = "Nizar"  # subdirectory in where data files are stored
+  dataPeriods = (
     "merged",
   )
-  tBinLabels    = (
+  tBinLabels = (
     "t010020",
     "t020032",
     "t032050",
@@ -596,8 +605,7 @@ if __name__ == "__main__":
     print(f"Generating plots for data period '{dataPeriod}':")
     for tBinLabel in tBinLabels:
       print(f"Generating plots for t bin '{tBinLabel}':")
-      # inputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Alex"
-      inputDataDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/Nizar"
+      inputDataDirPath = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/{inputDataDirName}"
       for inputDataType, inputDataFormat in inputDataFormats.items():
         print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
         for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
@@ -616,20 +624,20 @@ if __name__ == "__main__":
             # combine signal and background region data with correct event weights into one RDataFrame
             df = (
               getDataFrameWithCorrectEventWeights(
-                dataSigRegionFileNames  = (f"{inputDataDirName}/amptools_tree_signal_{beamPolLabel}.root", ),
-                dataBkgRegionFileNames  = (f"{inputDataDirName}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
+                dataSigRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_signal_{beamPolLabel}.root", ),
+                dataBkgRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
                 treeName                = treeName,
-                friendSigRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
-                friendBkgRegionFileName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
+                friendSigRegionFileName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
+                friendBkgRegionFileName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
               ) if useSeparateBackgroundFiles else
-              ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_data_{beamPolLabel}.root")
+              ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_data_{beamPolLabel}.root")
             )
           elif inputDataType == InputDataType.ACCEPTED_PHASE_SPACE:
-            print(f"Loading accepted phase space data from '{inputDataDirName}/amptools_tree_accepted*.root'")
-            df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_accepted*.root")
+            print(f"Loading accepted phase space data from '{inputDataDirPath}/amptools_tree_accepted*.root'")
+            df = ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_accepted*.root")
           elif inputDataType == InputDataType.GENERATED_PHASE_SPACE:
-            print(f"Loading generated phase space data from '{inputDataDirName}/amptools_tree_thrown*.root'")
-            df = ROOT.RDataFrame(treeName, f"{inputDataDirName}/amptools_tree_thrown*.root")
+            print(f"Loading generated phase space data from '{inputDataDirPath}/amptools_tree_thrown*.root'")
+            df = ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_thrown*.root")
           else:
             raise RuntimeError(f"Unsupported input data type '{inputDataType}'")
           for subSystem in subSystems:
@@ -648,7 +656,7 @@ if __name__ == "__main__":
                 []  # no additional selection cuts for MC truth
               ),
             ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem \'{subSystem}\'" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
-            outputDirName = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
+            outputDirName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
             if True:
             # if False:
               makePlots(
