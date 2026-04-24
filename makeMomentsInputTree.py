@@ -47,6 +47,20 @@ class BeamPolInfo:
   pol:    float | str  # photon-beam polarization magnitude value or column name
   PhiLab: float | str  # azimuthal angle of photon beam polarization in lab frame [deg] value or column name
 
+  def __str__(self) -> str:
+    result = "pol = "
+    if isinstance(self.pol, float):
+      result += f"{self.pol:.4f}"
+    else:
+      result += f"'{self.pol}'"
+    result += ", PhiLab = "
+    if isinstance(self.PhiLab, float):
+      result += f"{self.PhiLab:.1f} deg"
+    else:
+      result += f"'{self.PhiLab}'"
+    return result
+
+
 # polarization values from Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
 # beam polarization angles in lab frame taken from `Lab Phi` column of tables 2 to 5 in GlueX-doc-3977
 BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {beam-polarization orientation : BeamPolInfo(...)}

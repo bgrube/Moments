@@ -610,15 +610,7 @@ if __name__ == "__main__":
         print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
         for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
           beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
-          beamPolInfoPrint: list[str] = []
-          if beamPolInfo is not None:
-            if isinstance(beamPolInfo.pol, float):
-              beamPolInfoPrint.append(f"pol = {beamPolInfo.pol:.4f}")
-            if isinstance(beamPolInfo.PhiLab, float):
-              beamPolInfoPrint.append(f"PhiLab = {beamPolInfo.PhiLab:.1f} deg")
-            if len(beamPolInfoPrint) > 0:
-              beamPolInfoPrint[0] = f": {beamPolInfoPrint[0]}"
-          print(f"Generating plots for beam-polarization orientation '{beamPolLabel}'{', '.join(beamPolInfoPrint)}")
+          print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
           df = None
           if inputDataType == InputDataType.REAL_DATA:
             # combine signal and background region data with correct event weights into one RDataFrame
