@@ -793,7 +793,7 @@ if __name__ == "__main__":
             dataSets.append(dataSet)
 
   # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
-  if True:
+  if False:
     frame           = CoordSysType.GJ  # Gottfried-Jackson frame, i.e. z_GJ = p_beam
     subsystem       = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
     dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/polarized"
@@ -870,6 +870,57 @@ if __name__ == "__main__":
           )
           dataSets.append(dataSet)
 
+  # set up unpolarized eta' eta data from Will's analysis
+  if True:
+    subsystem       = SubSystemInfo(pairLabel = "EtapEta", lvALabel = "etap", lvBLabel = "eta", lvRecoilLabel = "recoil")
+    dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/unpolarized"
+    dataPeriods     = ("2018_08",)
+    tBinLabels      = ("ALLT", )
+    beamPolLabel    = "Unpol"
+    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
+      InputDataType.REAL_DATA             : InputDataFormat.FSROOT_RECO,
+      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT_RECO,
+      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT_TRUTH,
+    }
+    outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
+    # reweightMinusTDistribution = True
+    reweightMinusTDistribution = False
+
+    print(f"Setting up subsystem '{subsystem}':")
+    for dataPeriod in dataPeriods:
+      print(f"Setting up data period '{dataPeriod}':")
+      for tBinLabel in tBinLabels:
+        print(f"Setting up t bin '{tBinLabel}':")
+        inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Will"
+        outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystem.pairLabel}"
+        os.makedirs(outputDataDirBaseName, exist_ok = True)
+        for inputDataType, inputDataFormat in inputDataFormats.items():
+          print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
+          dataSet = DataSetInfo(
+            subsystem      = subsystem,
+            inputType      = inputDataType,
+            inputFormat    = inputDataFormat,
+            dataPeriod     = dataPeriod,
+            tBinLabel      = tBinLabel,
+            inputFileNames = (
+              (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
+              (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+              (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE  #TODO fix file format
+            ),
+            inputTreeName  = "ntFSGlueX_100_4000110" if inputDataType == InputDataType.GENERATED_PHASE_SPACE else "kin",
+            outputFileName = (
+              f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
+              f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+              f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+            ),
+            outputTreeName = subsystem.pairLabel,
+            outputColumns  = (
+              outputColumnsUnpolarized if inputDataType == InputDataType.GENERATED_PHASE_SPACE else  # no event weights for MC data
+              outputColumnsUnpolarized + ("eventWeight", )
+            ),
+          )
+          dataSets.append(dataSet)
+
   # process data sets
   for dataSet in dataSets:
     df = None
@@ -892,7 +943,7 @@ if __name__ == "__main__":
     else:
       raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
     print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for '{dataSet.subsystem.pairLabel}' subsystem, "
-          f"'{dataSet.dataPeriod}' period, '{dataSet.tBinLabel}' t bin, and '{dataSet.beamPolLabel}' beam polarization from file(s) {dataSet.inputFileNames}")
+          f"'{dataSet.dataPeriod}' period, '{dataSet.tBinLabel}' t bin, and {dataSet.beamPolLabel or 'no'} beam polarization from file(s) {dataSet.inputFileNames}")
     lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
     df = defineDataFrameColumns(
       df                   = df,
