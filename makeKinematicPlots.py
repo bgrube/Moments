@@ -532,7 +532,7 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES_NIZAR)
 
-  # # parameters for pi+ pi- data
+  # # parameters for polarized pi+ pi- data
   # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
   #   SubSystemInfo(pairLabel = "PiPi",   lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"       ),
   #   # SubSystemInfo(pairLabel = "PipP",   lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#plus}" ),
@@ -564,41 +564,62 @@ if __name__ == "__main__":
   # additionalFilterDefs = []
   # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
 
-  # parameters for eta pi0 data
+  # # parameters for polarized eta pi0 data
+  # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
+  #   SubSystemInfo(
+  #     pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
+  #     lvALabel      = "eta",    ATLatexLabel      = "#eta",
+  #     lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
+  #     lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
+  #   ),
+  # )
+  # dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
+  # inputDataDirName = "Nizar"  # subdirectory in where data files are stored
+  # dataPeriods = (
+  #   "merged",
+  # )
+  # tBinLabels = (
+  #   "t010020",
+  #   "t020032",
+  #   "t032050",
+  #   "t050075",
+  #   "t075100",
+  # )
+  # beamPolLabels = (
+  #   "All",
+  # )
+  # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
+  # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
+  # useSeparateBackgroundFiles = False
+  # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
+  # additionalFilterDefs = []
+
+  # parameters for unpolarized eta' eta data
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
     SubSystemInfo(
-      pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
-      lvALabel      = "eta",    ATLatexLabel      = "#eta",
-      lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
-      lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
+      pairLabel     = "EtapEta", pairTLatexLabel   = "#eta'#eta",
+      lvALabel      = "etap",    ATLatexLabel      = "#eta'",
+      lvBLabel      = "eta",     BTLatexLabel      = "#eta",
+      lvRecoilLabel = "recoil",  recoilTLatexLabel = "p",
     ),
   )
-  dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
-  inputDataDirName = "Nizar"  # subdirectory in where data files are stored
-  dataPeriods = (
-    "merged",
-  )
-  tBinLabels = (
-    "t010020",
-    "t020032",
-    "t032050",
-    "t050075",
-    "t075100",
-  )
-  beamPolLabels = (
-    "All",
-  )
-  BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
-  BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
+  dataDirBasePath = "./dataPhotoProdEtapEta/unpolarized"
+  inputDataDirName = "Will"  # subdirectory in where data files are stored
+  dataPeriods = ("2018_08", )
+  tBinLabels = ("ALLT", )
+  beamPolLabels = ("Unpol", )
   useSeparateBackgroundFiles = False
-  additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
+  additionalColumnDefs = {}
   additionalFilterDefs = []
 
   treeName = "kin"
-  inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in ampTools format
-    InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-    InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+  inputDataFormats: dict[InputDataType, InputDataFormat] = {
+    # InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+    # InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+    # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    InputDataType.REAL_DATA             : InputDataFormat.FSROOT_RECO,
+    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT_RECO,
+    # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT_TRUTH,  #TODO fix file format
   }
 
   for dataPeriod in dataPeriods:
@@ -616,17 +637,23 @@ if __name__ == "__main__":
             # combine signal and background region data with correct event weights into one RDataFrame
             df = (
               getDataFrameWithCorrectEventWeights(
-                dataSigRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_signal_{beamPolLabel}.root", ),
-                dataBkgRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
+                # dataSigRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_signal_{beamPolLabel}.root", ),  #TODO remove 'amptools_' from name
+                # dataBkgRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
+                dataSigRegionFileNames  = (f"{inputDataDirPath}/tree_signal_{beamPolLabel}.root", ),
+                dataBkgRegionFileNames  = (f"{inputDataDirPath}/tree_bkgnd_{beamPolLabel}.root",  ),
                 treeName                = treeName,
                 friendSigRegionFileName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
                 friendBkgRegionFileName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
               ) if useSeparateBackgroundFiles else
-              ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_data_{beamPolLabel}.root")
+              # ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_data_{beamPolLabel}.root")
+              ROOT.RDataFrame(treeName, f"{inputDataDirPath}/tree_data_{beamPolLabel}.root")
             )
           elif inputDataType == InputDataType.ACCEPTED_PHASE_SPACE:
-            print(f"Loading accepted phase space data from '{inputDataDirPath}/amptools_tree_accepted*.root'")
-            df = ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_accepted*.root")
+            # inputFileNamePattern = f"{inputDataDirPath}/amptools_tree_accepted*.root"
+            # inputFileNamePattern = f"{inputDataDirPath}/tree_accepted*.root"  #TODO pattern does not work if signal and background files exist for accepted PS
+            inputFileNamePattern = f"{inputDataDirPath}/tree_accepted_{beamPolLabel}.root"
+            print(f"Loading accepted phase space data from '{inputFileNamePattern}'")
+            df = ROOT.RDataFrame(treeName, inputFileNamePattern)
           elif inputDataType == InputDataType.GENERATED_PHASE_SPACE:
             print(f"Loading generated phase space data from '{inputDataDirPath}/amptools_tree_thrown*.root'")
             df = ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_thrown*.root")
@@ -647,7 +674,7 @@ if __name__ == "__main__":
                 additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
                 []  # no additional selection cuts for MC truth
               ),
-            ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem \'{subSystem}\'" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
+            ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem {subSystem.pairLabel}" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
             outputDirName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
             if True:
             # if False:
