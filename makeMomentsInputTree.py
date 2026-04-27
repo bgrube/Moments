@@ -88,6 +88,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {b
       PhiLab = -41.6,
     ),
     "AMO" : None,
+    "Unpol" : None,
   },
   "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
@@ -107,6 +108,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {b
       PhiLab = -42.4,
     ),
     "AMO" : None,
+    "Unpol" : None,
   },
   "2018_08" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
@@ -126,6 +128,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {b
       PhiLab = -42.1,
     ),
     "AMO" : None,
+    "Unpol" : None,
   },
 }
 
