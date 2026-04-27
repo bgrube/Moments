@@ -28,12 +28,12 @@ if __name__ == "__main__":
   ROOT.EnableImplicitMT()
 
   dataRootDir      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/Will"
-  # sigFilePath      = f"{dataRootDir}/fsroot_tree_signal.root"
-  # bkgFilePath      = f"{dataRootDir}/fsroot_tree_bkgnd.root"
-  # outFileName      = f"{dataRootDir}/fsroot_tree_data.root"  # name of output file (will be created in current directory)
-  sigFilePath      = f"{dataRootDir}/fsroot_tree_accepted_signal.root"
-  bkgFilePath      = f"{dataRootDir}/fsroot_tree_accepted_bkgnd.root"
-  outFileName      = f"{dataRootDir}/fsroot_tree_accepted.root"  # name of output file (will be created in current directory)
+  # sigFilePath      = f"{dataRootDir}/tree_signal_Unpol.root"
+  # bkgFilePath      = f"{dataRootDir}/tree_bkgnd_Unpol.root"
+  # outFileName      = f"{dataRootDir}/tree_data_Unpol.root"
+  sigFilePath      = f"{dataRootDir}/tree_accepted_signal_Unpol.root"
+  bkgFilePath      = f"{dataRootDir}/tree_accepted_bkgnd_Unpol.root"
+  outFileName      = f"{dataRootDir}/tree_accepted_Unpol.root"
   inTreeName       = "nt"  # name of tree in input files
   sigWeightFormula = "1.0"   # formula for calculating event weight for signal events
   bkgWeightFormula = "-1.0"  # formula for calculating event weight for background events
