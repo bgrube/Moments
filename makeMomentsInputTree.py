@@ -254,6 +254,8 @@ class InputDataFormat(Enum):
   AMPTOOLS        = 1  # AmpTools format
   JPAC_MC         = 2  # MC truth data in JPAC text format
   TLORENTZVECTORS = 3  # TLorentzVector for each particle
+  FSROOT_RECO     = 4  # FSROOT format for reconstructed
+  FSROOT_TRUTH    = 5  # FSROOT format for MC truth
 
 def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
@@ -289,6 +291,12 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     lvs["recoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
     lvs["pip"   ] = "lvPipLab.X(),    lvPipLab.Y(),    lvPipLab.Z(),    lvPipLab.E()"     # pi+
     lvs["pim"   ] = "lvPimLab.X(),    lvPimLab.Y(),    lvPimLab.Z(),    lvPimLab.E()"     # pi-
+  elif dataFormat == InputDataFormat.FSROOT_RECO or dataFormat == InputDataFormat.FSROOT_TRUTH:
+    prefix = "MC" if dataFormat == InputDataFormat.FSROOT_TRUTH else ""
+    lvs["beam"  ] = f"{prefix}PxPB, {prefix}PyPB, {prefix}PzPB, {prefix}EnPB"  # beam photon
+    lvs["recoil"] = f"{prefix}PxP1, {prefix}PyP1, {prefix}PzP1, {prefix}EnP1"  # recoil proton
+    lvs["etap"  ] = f"{prefix}PxP2, {prefix}PyP2, {prefix}PzP2, {prefix}EnP2"  # eta'
+    lvs["eta"   ] = f"{prefix}PxP3, {prefix}PyP3, {prefix}PzP3, {prefix}EnP3"  # eta
   else:
     raise RuntimeError(f"Unsupported data format type '{dataFormat}'")
   return lvs
