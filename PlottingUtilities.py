@@ -415,6 +415,25 @@ def makeMomentHistogram(
   return hist
 
 
+def drawHorizontalZeroLine(
+  canv:      ROOT.TCanvas | None = None,
+  lineColor: int                 = ROOT.kBlack,
+  lineStyle: int                 = ROOT.kDashed,
+) -> None:
+  """Draws horizontal line at y = 0 in given or current canvas with given style attributes"""
+  if canv is None:
+    canv = ROOT.gPad
+  canv.Modified()
+  canv.Update()
+  if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):  # zero must be in the shown y range
+    zeroLine = ROOT.TLine()
+    zeroLine.SetLineColor(lineColor)
+    zeroLine.SetLineStyle(lineStyle)
+    zeroLine.DrawLine(canv.GetUxmin(), 0, canv.GetUxmax(), 0)
+    # xAxis = histStack.GetXaxis()
+    # zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+
+
 def plotMoments(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
   binning:           HistAxisBinning | None                                    = None,  # if not None data are plotted as function of binning variable
@@ -511,14 +530,7 @@ def plotMoments(
     # histStack.GetHistogram().SetLineStyle(ROOT.kDashed)
     # histStack.GetHistogram().SetLineWidth(1)  # add zero line; see https://root-forum.cern.ch/t/continuing-the-discussion-from-an-unwanted-horizontal-line-is-drawn-at-y-0/50877/1
     #TODO automatic zero line does not work; workaround:
-    canv.Modified()
-    canv.Update()
-    if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-      zeroLine = ROOT.TLine()
-      zeroLine.SetLineColor(ROOT.kBlack)
-      zeroLine.SetLineStyle(ROOT.kDashed)
-      xAxis = histStack.GetXaxis()
-      zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
+    drawHorizontalZeroLine(canv)
     canv.SaveAs(f"{histStack.GetName()}.{outFileType}")
 
     if not trueValues:
