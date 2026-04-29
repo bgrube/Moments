@@ -240,7 +240,6 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
   polarization       = "beamPol",  # read polarization from tree column
   maxL               = 4,
   outFileDirBaseName = "./plotsPhotoProdEtaPi0",
-  # normalizeMoments   = True,
   binVarMass         = KinematicBinningVariable(
     name      = "mass",
     label     = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
@@ -248,6 +247,24 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     nmbDigits = 3,
   ),
   massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
+)
+# configuration for Will's unpolarized eta' eta data
+CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
+  treeName           = "EtapEta",
+  dataFileName       = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/data_flat_Unpol.root",
+  psAccFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_acc_flat_Unpol.root",
+  psGenFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_gen_flat_Unpol.root",
+  polarization       = None,  # unpolarized photoproduction
+  maxL               = 4,
+  outFileDirBaseName = "./plotsPhotoProdEtapEta",
+  plotMomentsInBins  = True,
+  binVarMass         = KinematicBinningVariable(
+    name      = "mass",
+    label     = "#it{m}_{#it{#eta}'#it{#eta}}",
+    unit      = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ),
+  massBinning        = HistAxisBinning(nmbBins = 8, minVal = 1.5, maxVal = 3.5),  # 250 MeV wide bins
 )
 # configuration for Kevin's K- K_S Delta++ data
 CFG_KEVIN = AnalysisConfig(
