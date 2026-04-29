@@ -24,6 +24,7 @@ from wurlitzer import pipes, STDOUT
 from AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
+  CFG_UNPOLARIZED_ETAPETA,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
@@ -241,7 +242,8 @@ CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
 
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
@@ -252,22 +254,26 @@ if __name__ == "__main__":
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
   # cfg.massBinning = HistAxisBinning(nmbBins = 7, minVal = 0.60, maxVal = 0.88)  # mass range of SDME analysis
+  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
 
+  subsystemLabel = "EtapEta"
+  # subsystemLabel = "EtaPi0"
   # subsystemLabel = "PiPi"  #TODO move into analysis config
-  subsystemLabel = "EtaPi0"
-  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
+  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
+  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
   dataPeriods = (
-    "merged",
+    # "merged",
     # "2017_01",
     # "2017_01_ver05",
-    # "2018_08",
+    "2018_08",
   )
   tBinLabels = (
-    "t010020",
-    "t020032",
-    "t032050",
-    "t050075",
-    "t075100",
+    "ALLT",
+    # "t010020",
+    # "t020032",
+    # "t032050",
+    # "t050075",
+    # "t075100",
     # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
     # "tbin_0.1_0.2",
     # "tbin_0.2_0.3",
@@ -275,13 +281,13 @@ if __name__ == "__main__":
     # "tbin_0.4_0.5",
   )
   beamPolLabels = (
-    "All",
+    # "All",
     # "PARA_0",
     # "PARA_135",
     # "PERP_45",
     # "PERP_90",
     # "AMO",
-    # "Unpol",
+    "Unpol",
   )
   maxLs = (
     4,
@@ -290,7 +296,9 @@ if __name__ == "__main__":
     # (4, 12),
     # (4, 16),
     # (4, 20),
+    # 5,
     # 6,
+    # 7,
     # 8,
     # (8, 16),
     # (8, 20),
@@ -311,7 +319,7 @@ if __name__ == "__main__":
         cfg.psAccFileName      = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
         cfg.psGenFileName      = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
-        cfg.polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None
+        cfg.polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?
         for maxL in maxLs:
           print(f"Performing moment analysis for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           cfg.maxL = maxL
