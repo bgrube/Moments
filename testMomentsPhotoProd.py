@@ -201,6 +201,31 @@ public:
 """
 
 
+# taken from https://root-forum.cern.ch/t/can-we-shift-histogram-for-several-channels/12050/2
+#TODO move to more suitable module
+def scaleHistAxes(
+  axes:     Iterable[ROOT.TAxis],
+  scaleFcn: Callable[[float], float],
+) -> None:
+  """Scales the given axes with the given linear scaling function"""
+  for axis in axes:
+    if (axis.IsVariableBinSize()):  # the axis has non-equidistant bins
+      #!NOTE! bins must remain in increasing order, hence the `scaleFcn` function
+      # must be strictly (monotonically) increasing
+      xBins = axis.GetXbins();  # get TArrayD with current x-bin borders
+      for i in range(xBins.GetSize()):
+        xBins[i] = scaleFcn(xBins[i]);  # scale x-bin borders
+      axis.Set(xBins.GetSize() - 1, xBins.GetArray());  # set new x-bin borders
+    else:  # the axis has equidistant bins
+      #!NOTE! we modify Xmin and Xmax only, hence the `scaleFcn` function
+      # must be linear (and Xmax must remain greater than Xmin)
+      axis.Set(
+        axis.GetNbins(),
+        scaleFcn(axis.GetXmin()),  # new Xmin
+        scaleFcn(axis.GetXmax())   # new Xmax
+      )
+
+
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
