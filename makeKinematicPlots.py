@@ -35,6 +35,7 @@ from makeMomentsInputTree import (
   SubSystemInfo,
   lorentzVectors,
 )
+from PlottingUtilities import drawHorizontalZeroLine
 import Utilities
 
 
@@ -414,6 +415,9 @@ def makePlot(
     stats.SetX2NDC(0.99)
     stats.SetY1NDC(0.95)
     stats.SetY2NDC(0.99)
+  # draw zero line
+  if hist.GetDimension() == 1:
+    drawHorizontalZeroLine(canv)
   canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
 
 
@@ -424,7 +428,8 @@ def makePlots(
 ) -> None:
   """Writes histograms to ROOT file and generates PDF plots"""
   for hist in hists:
-    hist.SetMinimum(0)
+    if hist.GetMinimum() >= 0:
+      hist.SetMinimum(0)
   # add phi-even and phi-odd histograms to list of histograms to plot
   histsEvenOdd = []
   histsOdd     = []  # need to keep track of odd histograms to set color palette
@@ -612,6 +617,7 @@ if __name__ == "__main__":
   additionalColumnDefs = {}
   additionalFilterDefs = []
 
+  # treeName = "nt"
   treeName = "kin"
   inputDataFormats: dict[InputDataType, InputDataFormat] = {
     # InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
@@ -655,8 +661,11 @@ if __name__ == "__main__":
             print(f"Loading accepted phase space data from '{inputFileNamePattern}'")
             df = ROOT.RDataFrame(treeName, inputFileNamePattern)
           elif inputDataType == InputDataType.GENERATED_PHASE_SPACE:
-            print(f"Loading generated phase space data from '{inputDataDirPath}/amptools_tree_thrown*.root'")
-            df = ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_thrown*.root")
+            # inputFileNamePattern = f"{inputDataDirPath}/amptools_tree_thrown*.root"
+            # inputFileNamePattern = f"{inputDataDirPath}/tree_thrown*.root"
+            inputFileNamePattern = f"{inputDataDirPath}/tree_thrown_{beamPolLabel}.root"
+            print(f"Loading generated phase space data from '{inputFileNamePattern}'")
+            df = ROOT.RDataFrame(treeName, inputFileNamePattern)
           else:
             raise RuntimeError(f"Unsupported input data type '{inputDataType}'")
           for subSystem in subSystems:
