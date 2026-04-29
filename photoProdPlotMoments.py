@@ -27,6 +27,7 @@ from wurlitzer import pipes, STDOUT
 from AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
+  CFG_UNPOLARIZED_ETAPETA,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_CLAS,
@@ -274,6 +275,7 @@ def makeAllPlots(
         normalizationFactor = momentResultsCompare.normalizeTo(
           momentResultsPhys,
           normBinIndex = None,  # normalize to integral over mass bins
+          # normBinIndex = 11,  # pick [0.72, 0.76] GeV bin in polarized analysis
           # normBinIndex = 36,    # normalize to mass bin, where H_0(0, 0) is maximal in CLAS and GlueX data; corresponds to m_pipi = 0.765 GeV
         )
         print(f"Scaled comparison moments by factor {normalizationFactor}")
@@ -297,6 +299,7 @@ def makeAllPlots(
         print(f"Physical moments of real data for kinematic bin {binTitle}:\n{HPhys}")
         HComp = None if momentResultsCompare is None else momentResultsCompare[massBinIndex]  #TODO don't look up by mass bin index but by bin center
         if cfg.plotMomentsInBins:
+          # HComp.scaleBy(HPhys[H000Index].val.real / HComp[H000Index].val.real)  # normalize comparison moments to H_0(0, 0)
           chi2ValuesInMassBins[massBinIndex] = plotMomentsInBin(
             HData             = HPhys,
             normalizedMoments = cfg.normalizeMoments,
@@ -656,7 +659,9 @@ def makeAllPlots(
 
 
 if __name__ == "__main__":
-  cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
@@ -671,26 +676,33 @@ if __name__ == "__main__":
   compareTo = None
   # compareTo = ComparisonMomentsType.PWA
   # compareTo = ("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
+  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho/2017_01/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho.phiNeg/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho.phiPos/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plotsPhotoProdPiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plotsPhotoProdPiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
   #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
-  # cfg = deepcopy(CFG_NIZAR)  # perform analysis of Nizar's polarized eta pi0 data
-  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
 
+  subsystemLabel = "EtapEta"
+  # subsystemLabel = "EtaPi0"
   # subsystemLabel = "PiPi"  #TODO move into analysis config
-  subsystemLabel = "EtaPi0"
-  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
+  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
+  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
   dataPeriods = (
-    "merged",
+    # "merged",
     # "2017_01",
     # "2017_01_ver05",
-    # "2018_08",
+    "2018_08",
   )
   tBinLabels = (
-    "t010020",
-    "t020032",
-    "t032050",
-    "t050075",
-    "t075100",
+    "ALLT",
+    # "t010020",
+    # "t020032",
+    # "t032050",
+    # "t050075",
+    # "t075100",
     # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
     # "tbin_0.1_0.2",
     # "tbin_0.2_0.3",
@@ -698,13 +710,13 @@ if __name__ == "__main__":
     # "tbin_0.4_0.5",
   )
   beamPolLabels = (
-    "All",
+    # "All",
     # "PARA_0",
     # "PARA_135",
     # "PERP_45",
     # "PERP_90",
     # "AMO",
-    # "Unpol",
+    "Unpol",
   )
   maxLs = (
     4,
@@ -713,6 +725,7 @@ if __name__ == "__main__":
     # (4, 12),
     # (4, 16),
     # (4, 20),
+    # 5,
     # 6,
     # 8,
     # (8, 16),
@@ -724,6 +737,7 @@ if __name__ == "__main__":
   plotCompareUncert = True
   # plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0  # no scaling
+  # scaleFactorPhysicalMoments = 0.5  # account for phi <> 0 cut
   # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
   # normalizeComparisonMoments = True  # whether to scale comparison moments to estimated moments
   normalizeComparisonMoments = False
