@@ -254,8 +254,7 @@ class InputDataFormat(Enum):
   AMPTOOLS        = 1  # AmpTools format
   JPAC_MC         = 2  # MC truth data in JPAC text format
   TLORENTZVECTORS = 3  # TLorentzVector for each particle
-  FSROOT_RECO     = 4  # FSROOT format for reconstructed
-  FSROOT_TRUTH    = 5  # FSROOT format for MC truth
+  FSROOT          = 4  # FSROOT format
 
 def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
@@ -291,12 +290,11 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     lvs["recoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
     lvs["pip"   ] = "lvPipLab.X(),    lvPipLab.Y(),    lvPipLab.Z(),    lvPipLab.E()"     # pi+
     lvs["pim"   ] = "lvPimLab.X(),    lvPimLab.Y(),    lvPimLab.Z(),    lvPimLab.E()"     # pi-
-  elif dataFormat == InputDataFormat.FSROOT_RECO or dataFormat == InputDataFormat.FSROOT_TRUTH:
-    prefix = "MC" if dataFormat == InputDataFormat.FSROOT_TRUTH else ""
-    lvs["beam"  ] = f"{prefix}PxPB, {prefix}PyPB, {prefix}PzPB, {prefix}EnPB"  # beam photon
-    lvs["recoil"] = f"{prefix}PxP1, {prefix}PyP1, {prefix}PzP1, {prefix}EnP1"  # recoil proton
-    lvs["etap"  ] = f"{prefix}PxP2, {prefix}PyP2, {prefix}PzP2, {prefix}EnP2"  # eta'
-    lvs["eta"   ] = f"{prefix}PxP3, {prefix}PyP3, {prefix}PzP3, {prefix}EnP3"  # eta
+  elif dataFormat == InputDataFormat.FSROOT:
+    lvs["beam"  ] = "PxPB, PyPB, PzPB, EnPB"  # beam photon
+    lvs["recoil"] = "PxP1, PyP1, PzP1, EnP1"  # recoil proton
+    lvs["etap"  ] = "PxP2, PyP2, PzP2, EnP2"  # eta'
+    lvs["eta"   ] = "PxP3, PyP3, PzP3, EnP3"  # eta
   else:
     raise RuntimeError(f"Unsupported data format type '{dataFormat}'")
   return lvs
@@ -878,9 +876,9 @@ if __name__ == "__main__":
     tBinLabels      = ("ALLT", )
     beamPolLabel    = "Unpol"
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
-      InputDataType.REAL_DATA             : InputDataFormat.FSROOT_RECO,
-      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT_RECO,
-      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT_TRUTH,
+      InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
+      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
+      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
     }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     # reweightMinusTDistribution = True
@@ -907,7 +905,7 @@ if __name__ == "__main__":
               (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
               (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE  #TODO fix file format
             ),
-            inputTreeName  = "ntFSGlueX_100_4000110" if inputDataType == InputDataType.GENERATED_PHASE_SPACE else "kin",
+            inputTreeName  = "nt" if inputDataType == InputDataType.GENERATED_PHASE_SPACE else "kin",
             outputFileName = (
               f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
               f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
