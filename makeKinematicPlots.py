@@ -211,7 +211,8 @@ def bookHistograms(
 ) -> tuple[HistListType, list[str]]:
   """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
   print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subSystem}'")
-  applyWeights = (inputDataType == InputDataType.REAL_DATA and df.HasColumn("eventWeight"))
+  # applyWeights = (inputDataType == InputDataType.REAL_DATA and df.HasColumn("eventWeight"))
+  applyWeights = df.HasColumn("eventWeight")
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   histNamesEvenOdd: list[str] = []
   histDefs: list[HistogramDefinition] = []
@@ -623,9 +624,9 @@ if __name__ == "__main__":
     # InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
     # InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
     # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
-    InputDataType.REAL_DATA             : InputDataFormat.FSROOT_RECO,
-    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT_RECO,
-    # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT_TRUTH,  #TODO fix file format
+    InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
+    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
+    # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
   }
 
   for dataPeriod in dataPeriods:
