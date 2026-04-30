@@ -435,8 +435,8 @@ if __name__ == "__main__":
                   dataToWeight    = ROOT.RDataFrame(cfg.treeName, mergedFileName),  # load merged data file created in step above
                   treeName        = cfg.treeName,
                   binning         = massBinningForWeighting,
-                  targetDistrFrom = cfg.dataFileName,
-                  # targetDistrFrom = momentResults,
+                  targetDistrFrom = cfg.dataFileName,  # match measured mass distribution
+                  # targetDistrFrom = momentResults,  # match acceptance-corrected mass distribution, i.e. H_0(0, 0)
                   outFileName     = reweightedFileName,
                 )
 
