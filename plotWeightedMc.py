@@ -25,7 +25,6 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TWO_BODY_ANGLES,
-  getDataFrameWithCorrectEventWeights,
   InputDataFormat,
   SubSystemInfo,
 )
@@ -374,7 +373,7 @@ if __name__ == "__main__":
         weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms}_reweighted.root"
         dataToOverlay = DataToOverlay(
           realData   = (
-            getDataFrameWithCorrectEventWeights(
+            Utilities.getDataFrameWithCorrectEventWeights(
               dataSigRegionFileNames  = (f"{dataDirPath}/{inputDataDirName}/amptools_tree_signal_{beamPolLabel}.root", ),
               dataBkgRegionFileNames  = (f"{dataDirPath}/{inputDataDirName}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
               treeName                = "kin",

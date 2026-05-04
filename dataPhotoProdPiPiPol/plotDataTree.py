@@ -11,9 +11,9 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TRACKDISTFDC,
-  getDataFrameWithCorrectEventWeights,
   lorentzVectors,
 )
+import Utilities
 
 
 # Alex' code to calculate helicity angles
@@ -121,7 +121,7 @@ if __name__ == "__main__":
   lvs = lorentzVectors(realData = True)
   print(f"Reading data from tree '{treeName}' in signal file(s) {dataSigRegionFileNames} and background file(s) '{dataBkgRegionFileNames}'")
   df = (
-    getDataFrameWithCorrectEventWeights(
+    Utilities.getDataFrameWithCorrectEventWeights(  #TODO get rid of this by merging files first using mergeSigAndBkgTrees.py
       dataSigRegionFileNames  = dataSigRegionFileNames,
       dataBkgRegionFileNames  = dataBkgRegionFileNames,
       treeName                = treeName,

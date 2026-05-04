@@ -29,7 +29,6 @@ from makeMomentsInputTree import (
   CoordSysType,
   defineDataFrameColumns,
   defineOverwrite,
-  getDataFrameWithCorrectEventWeights,
   InputDataType,
   InputDataFormat,
   SubSystemInfo,
@@ -643,7 +642,7 @@ if __name__ == "__main__":
           if inputDataType == InputDataType.REAL_DATA:
             # combine signal and background region data with correct event weights into one RDataFrame
             df = (
-              getDataFrameWithCorrectEventWeights(
+              Utilities.getDataFrameWithCorrectEventWeights(
                 # dataSigRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_signal_{beamPolLabel}.root", ),  #TODO remove 'amptools_' from name
                 # dataBkgRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
                 dataSigRegionFileNames  = (f"{inputDataDirPath}/tree_signal_{beamPolLabel}.root", ),

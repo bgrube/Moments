@@ -390,47 +390,6 @@ def defineDataFrameColumns(
   return df
 
 
-DATA_TCHAINS: list[ROOT.TChain] = []  # use global variable to avoid garbage collection
-def getDataFrameWithCorrectEventWeights(
-  dataSigRegionFileNames:    Sequence[str],  # file names of input data files for signal region
-  dataBkgRegionFileNames:    Sequence[str],  # file names of input data files for background region
-  treeName:                  str,            # name of tree in input files
-  sigRegionWeightFormula:    str  = "Weight",   # formula for calculating event weight for signal events
-  bkgRegionWeightFormula:    str  = "-Weight",  # formula for calculating event weight for background events
-  friendSigRegionFileName:   str  = "data_sig.root.weights",  # file name for friend tree that contains event weights for signal region
-  friendBkgRegionFileName:   str  = "data_bkg.root.weights",  # file name for friend tree that contains event weights for background region
-  forceOverwriteFriendFiles: bool = True,  # if False existing friend files will be used and assumed to contain the correct event weights
-) -> ROOT.RDataFrame:
-  """Create friend trees with correct event weights and attach them to data tree"""
-  # write corrected weights into friend trees
-  for dataFileNames, weightFormula, friendFileName in (
-    (dataSigRegionFileNames, sigRegionWeightFormula, friendSigRegionFileName),
-    (dataBkgRegionFileNames, bkgRegionWeightFormula, friendBkgRegionFileName),
-  ):
-    print(f"Processing file(s) {dataFileNames}")
-    if not forceOverwriteFriendFiles and os.path.exists(friendFileName):
-      print(f"File '{friendFileName}' already exists, skipping creation of event-weight friend tree")
-      continue
-    print(f"Writing event-weight friend tree to file '{friendFileName}'")
-    ROOT.RDataFrame(treeName, dataFileNames) \
-        .Define("eventWeight", weightFormula) \
-        .Snapshot(treeName, friendFileName, ["eventWeight"])
-  # chain trees for signal and background regions and add friend trees with weights
-  dataTChain   = ROOT.TChain(treeName)
-  weightTChain = ROOT.TChain(treeName)
-  for dataFileNames, friendFileName in (
-    (dataSigRegionFileNames, friendSigRegionFileName),
-    (dataBkgRegionFileNames, friendBkgRegionFileName),
-  ):
-    for dataFileName in dataFileNames:
-      dataTChain.Add(dataFileName)
-    weightTChain.Add(friendFileName)
-  dataTChain.AddFriend(weightTChain)
-  #TODO have a look at <https://root.cern/doc/v632/classROOT_1_1RDataFrame.html#rdf-from-spec> to build data frame.
-  DATA_TCHAINS.append(dataTChain)  # avoid garbage collection of TChain
-  return ROOT.RDataFrame(dataTChain)
-
-
 def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
   """Reads JPAC data from an ASCII file into a ROOT RDataFrame"""
   print(f"Reading file '{inputFileName}'")
@@ -926,7 +885,7 @@ if __name__ == "__main__":
       # combine signal and background region data with correct event weights into one RDataFrame
       outputDataDirBaseName = os.path.dirname(dataSet.outputFileName)
       df = (
-        getDataFrameWithCorrectEventWeights(
+        Utilities.getDataFrameWithCorrectEventWeights(
           dataSigRegionFileNames  = dataSet.inputFileNames[0],
           dataBkgRegionFileNames  = dataSet.inputFileNames[1],
           treeName                = dataSet.inputTreeName,
