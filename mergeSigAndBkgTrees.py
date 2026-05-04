@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """
-This module converts input data into the format expected by `MomentCalculator`.
-
-Usage: Run this module as a script to convert input data files.
+This script merges signal and background trees with event weights into a single output tree.
 """
 
 
 from __future__ import annotations
 
+import argparse
 import functools
 
 import ROOT
 
-from makeMomentsInputTree import getDataFrameWithCorrectEventWeights
 import Utilities
 
 
@@ -27,28 +25,29 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
 
-  dataRootDir      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/Will"
-  # sigFilePath      = f"{dataRootDir}/tree_signal_Unpol.root"
-  # bkgFilePath      = f"{dataRootDir}/tree_bkgnd_Unpol.root"
-  # outFileName      = f"{dataRootDir}/tree_data_Unpol.root"
-  sigFilePath      = f"{dataRootDir}/tree_accepted_signal_Unpol.root"
-  bkgFilePath      = f"{dataRootDir}/tree_accepted_bkgnd_Unpol.root"
-  outFileName      = f"{dataRootDir}/tree_accepted_Unpol.root"
-  inTreeName       = "nt"  # name of tree in input files
-  sigWeightFormula = "1.0"   # formula for calculating event weight for signal events
-  bkgWeightFormula = "-1.0"  # formula for calculating event weight for background events
-  outTreeName      = "kin"  # name of the output tree
-  outWeightColName = "eventWeight"  # name of column in output tree that contains the event weight
+  parser = argparse.ArgumentParser(description = "Merges signal and background trees with event weights into a single output tree.")
+  parser.add_argument("--sigFilePath",         type = str,                          help = "Path to ROOT file with signal events")
+  parser.add_argument("--bkgFilePath",         type = str,                          help = "Path to ROOT file with background events")
+  parser.add_argument("--inTreeName",          type = str,                          help = "Name of tree in input files")
+  parser.add_argument("--outFileName",         type = str,                          help = "Path of output ROOT file")
+  parser.add_argument("--outTreeName",         type = str, default = None,          help = "Name of the output tree (default: name of input tree)")
+  parser.add_argument("--sigWeightFormula",    type = str, default = "1.0",         help = "Formula for calculating the event weight for signal events (default: '%(default)s')")
+  parser.add_argument("--bkgWeightFormula",    type = str, default = "-1.0",        help = "Formula for calculating the event weight for background events (default: '%(default)s')")
+  parser.add_argument("--weightColNameOutput", type = str, default = "eventWeight", help = "Name of column in output tree that contains the event weight (default: '%(default)s')")
+  args = parser.parse_args()
+  if args.outTreeName is None:
+    args.outTreeName = args.inTreeName
 
-  mergedDf: ROOT.RDataFrame = getDataFrameWithCorrectEventWeights(
-    dataSigRegionFileNames  = (sigFilePath, ),
-    dataBkgRegionFileNames  = (bkgFilePath, ),
-    treeName                = inTreeName,
-    sigRegionWeightFormula  = sigWeightFormula,
-    bkgRegionWeightFormula  = bkgWeightFormula,
+  mergedDf: ROOT.RDataFrame = Utilities.getDataFrameWithCorrectEventWeights(
+    dataSigRegionFileNames  = (args.sigFilePath, ),
+    dataBkgRegionFileNames  = (args.bkgFilePath, ),
+    treeName                = args.inTreeName,
+    sigRegionWeightFormula  = args.sigWeightFormula,
+    bkgRegionWeightFormula  = args.bkgWeightFormula,
+    weightColNameOutput     = args.weightColNameOutput,
   )
-  print(f"Writing merged tree '{outTreeName}' to file '{outFileName}'")
-  mergedDf = mergedDf.Snapshot(outTreeName, outFileName)
+  print(f"Writing merged tree '{args.outTreeName}' to file '{args.outFileName}'")
+  mergedDf = mergedDf.Snapshot(args.outTreeName, args.outFileName)
 
   timer.stop("Total execution time")
   print(timer.summary)
