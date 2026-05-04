@@ -7,6 +7,7 @@ extended maximum likelihood-fitting of the data.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 import functools
@@ -15,8 +16,6 @@ import nptyping as npt
 import os
 import textwrap
 import threadpoolctl
-from typing import Sequence
-
 
 import ROOT
 import iminuit as im

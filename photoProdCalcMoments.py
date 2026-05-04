@@ -11,12 +11,12 @@ and to generate the output files.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from copy import deepcopy
 import functools
 import numpy as np
 import os
 import threadpoolctl
-from typing import Iterable
 
 import ROOT
 from wurlitzer import pipes, STDOUT

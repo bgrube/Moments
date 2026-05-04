@@ -3,13 +3,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 import functools
 import math
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import threadpoolctl
-from typing import Collection
 
 import py3nj
 from uncertainties import UFloat, ufloat

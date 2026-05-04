@@ -4,12 +4,12 @@ This module defines the input parameters for the various moment analyses
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import (
   dataclass,
   field,
 )
 from enum import Enum, auto
-from typing import Iterable
 
 import ROOT
 

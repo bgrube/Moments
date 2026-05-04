@@ -5,15 +5,15 @@
 
 from __future__ import annotations
 
+from collections.abc import (
+  Callable,
+  Iterable,
+)
 import functools
 import numpy as np
 import os
 import threadpoolctl
-from typing import (
-  Callable,
-  Iterable,
-  TypedDict,
-)
+from typing import TypedDict
 
 import ROOT
 from wurlitzer import pipes, STDOUT

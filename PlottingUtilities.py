@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import (
+  Iterator,
+  Mapping,
+  Sequence,
+)
 import copy
 import ctypes
 from dataclasses import dataclass
@@ -12,12 +17,7 @@ import numpy as np
 import nptyping as npt
 import os
 from scipy import stats
-from typing import (
-  Any,
-  Iterator,
-  Mapping,
-  Sequence,
-)
+from typing import Any
 
 import ROOT
 

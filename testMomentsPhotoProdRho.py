@@ -2,14 +2,12 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=3
 
+from __future__ import annotations
+
 import functools
 import numpy as np
 import os
 import threadpoolctl
-from typing import (
-  List,
-  Tuple,
-)
 
 import ROOT
 

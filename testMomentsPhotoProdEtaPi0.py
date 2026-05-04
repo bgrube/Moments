@@ -3,15 +3,12 @@
 
 # equation numbers refer to https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6124&version=4
 
+from __future__ import annotations
+
 import functools
 import numpy as np
 import pandas as pd
 import threadpoolctl
-from typing import (
-  Dict,
-  List,
-  Tuple,
-)
 
 import ROOT
 
@@ -57,7 +54,7 @@ print = functools.partial(print, flush = True)
 def readPartialWaveAmplitudes(
   csvFileName:   str,
   massBinCenter: float,  # [GeV]
-) -> List[AmplitudeValue]:
+) -> list[AmplitudeValue]:
   """Reads partial-wave amplitudes values for given mass bin from CSV data"""
   df = pd.read_csv(csvFileName).astype({"mass": float})
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])
@@ -140,10 +137,10 @@ if __name__ == "__main__":
 
     # setup MomentCalculators for all mass bins
     momentIndices = MomentIndices(maxL)
-    momentsInBins:      List[MomentCalculator] = []
-    momentsInBinsTruth: List[MomentCalculator] = []
-    nmbSignalGenEvents: List[int]              = []
-    nmbPsGenEvents:     List[int]              = []
+    momentsInBins:      list[MomentCalculator] = []
+    momentsInBinsTruth: list[MomentCalculator] = []
+    nmbSignalGenEvents: list[int]              = []
+    nmbPsGenEvents:     list[int]              = []
     assert len(massBinning) > 0, f"Need at least one mass bin, but found {len(massBinning)}"
     with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(massBinning)} bins"):
       for massBinIndex, massBinCenter in enumerate(massBinning):
@@ -257,7 +254,7 @@ if __name__ == "__main__":
           plotMomentsBootstrapDiffInBin(momentsInBin.HPhys, outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_", graphTitle = title)
 
       # plot kinematic dependences of all moments
-      pullParameters: Dict[QnMomentIndex, Dict[bool, Tuple[Tuple[float, float], Tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
+      pullParameters: dict[QnMomentIndex, dict[bool, tuple[tuple[float, float], tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
       for qnIndex in momentIndices.qnIndices:
         plotMoments1D(
           momentResults     = moments.momentResultsPhys,

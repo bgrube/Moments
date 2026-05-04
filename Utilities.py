@@ -1,5 +1,8 @@
 """Module that provides utility functions of general scope"""
 
+from __future__ import annotations
+
+from collections.abc import Sequence
 import contextlib
 from dataclasses import (
   dataclass,
@@ -9,10 +12,6 @@ import functools
 import os
 import subprocess
 import time
-from typing import (
-  Dict,
-  Optional,
-)
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -44,8 +43,8 @@ class TimeData:
   """Holds start and stop times for wall and cpu timer"""
   wallTimeStart: float
   cpuTimeStart:  float
-  wallTimeStop:  Optional[float] = None
-  cpuTimeStop:   Optional[float] = None
+  wallTimeStop:  float | None = None
+  cpuTimeStop:   float | None = None
 
   def stop(self) -> None:
     """Sets stop times"""
@@ -53,17 +52,17 @@ class TimeData:
     self.cpuTimeStop  = time.process_time()
 
   @property
-  def wallTime(self) -> Optional[float]:
+  def wallTime(self) -> float | None:
     """Returns elapsed wall time"""
     return None if self.wallTimeStop is None else self.wallTimeStop - self.wallTimeStart
 
   @property
-  def cpuTime(self) -> Optional[float]:
+  def cpuTime(self) -> float | None:
     """Returns elapsed CPU time"""
     return None if self.cpuTimeStop  is None else self.cpuTimeStop  - self.cpuTimeStart
 
   @property
-  def summary(self) -> Optional[str]:
+  def summary(self) -> str | None:
     """Returns string that summarizes wall and CPU time"""
     strings = []
     if self.wallTime is not None:
@@ -77,7 +76,7 @@ class TimeData:
 @dataclass
 class Timer:
   """Measures time differences"""
-  _times: Dict[str, TimeData] = field(default_factory = lambda: {})  # stores start and stop times for wall time and CPU time indexed by name
+  _times: dict[str, TimeData] = field(default_factory = lambda: {})  # stores start and stop times for wall time and CPU time indexed by name
 
   def start(
     self,
@@ -91,14 +90,14 @@ class Timer:
   def stop(
     self,
     name: str,
-  ) -> Optional[TimeData]:
+  ) -> TimeData | None:
     """Stops the timer associated with given name"""
     if name not in self._times:
       # gracefully ignore unknown timers
       return None
     t = self._times[name]
     t.stop()
-    return
+    return t
 
   @contextlib.contextmanager
   def timeThis(
@@ -113,7 +112,7 @@ class Timer:
       t.stop()
 
   @property
-  def summary(self) -> Optional[str]:
+  def summary(self) -> str | None:
     """Returns string with summary of all timers"""
     strings = []
     for name, timeData in self._times.items():
