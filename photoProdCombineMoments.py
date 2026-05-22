@@ -18,7 +18,9 @@ from wurlitzer import pipes, STDOUT
 
 from MomentCalculator import MomentResultsKinematicBinning
 from AnalysisConfig import (
+  CFG_POLARIZED_ETAPPI0,
   CFG_POLARIZED_PIPI,
+  CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
 import Utilities
@@ -44,19 +46,28 @@ def combineMomentResultsKinematicBinning(results: Sequence[MomentResultsKinemati
 
 
 if __name__ == "__main__":
+  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta pi0 data
 
   dataPeriods = (
-    "2017_01",
+    "merged",
+    # "2017_01",
+    # "2018_01",
     # "2018_08",
+    # "2019_11",
   )
   tBinLabels = (
-    "tbin_0.1_0.2",
-    "tbin_0.2_0.3",
-    "tbin_0.3_0.4",
-    "tbin_0.4_0.5",
+    # "LOWT",
+    # "XSCUTS",
+    # "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
+    "tbin_0.1_0.5",
   )
+  beamPolLabels = ("Unpol", )
   dataSetsToCombine = {
     # "0_90"      : ("PARA_0",   "PERP_90"),
     # "-45_45"    : ("PARA_135", "PERP_45"),
@@ -67,14 +78,16 @@ if __name__ == "__main__":
   maxLs = (
     4,
     # 5,
-    6,
+    # 6,
     # 7,
-    8,
+    # 8,
   )
   momentsFileName = "_moments_phys.pkl"
 
+  # labelCombined = "merged"
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in dataPeriods:
+  # for beamPolLabel in beamPolLabels:
     for tBinLabel in tBinLabels:
       for maxL in maxLs:
         cfg.maxL = maxL
@@ -82,12 +95,14 @@ if __name__ == "__main__":
           print(f"Combining moments for data sets '{beamPolLabels}' for data period '{dataPeriod}', t bin '{tBinLabel}', and L_max = {maxL}")
           # constructing input file names
           momentResultsFileNames = []
+          # for dataPeriod in dataPeriods:
           for beamPolLabel in beamPolLabels:
             cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
             cfg.init()
             momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
           # combining moment results
           cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{labelCombined}"
+          # cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{labelCombined}/{tBinLabel}/{beamPolLabel}"
           cfg.init(createOutFileDir = True)
           thisSourceFileName = os.path.basename(__file__)
           logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
