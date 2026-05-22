@@ -44,9 +44,10 @@ def plotIntensityFcn(
   outputDirName:     str,
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
+  coorsysLabel:      str                             = "HF",
 ) -> None:
   """Draw intensity function in given mass bin and save PDF to output directory"""
-  print(f"Plotting intensity function for mass bin {massBinIndex}")
+  print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and {useIntensityTerms.value}")
   if True:
     # draw intensity function as 3D plot
     # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
@@ -70,7 +71,7 @@ def plotIntensityFcn(
       fcn                = intensityFcn,
       binnings           = binnings,
       outFileName        = f"{outputDirName}/{intensityFcn.GetName()}.png",
-      histTitle          = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
+      histTitle          = f"Intensity Function;cos#theta_{{{coorsysLabel}}};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = True,
     )
     if minVal < 0:
@@ -82,7 +83,7 @@ def plotIntensityFcn(
       fcn                = intensityFcnNeg,
       binnings           = binnings,
       outFileName        = f"{outputDirName}/{intensityFcnNeg.GetName()}.png",
-      histTitle          = "Intensity Function, Negative Part;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
+      histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coorsysLabel}}};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = False,
     )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
@@ -92,9 +93,9 @@ def plotIntensityFcn(
     canv = ROOT.TCanvas()
     ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # draw 2D plot with pos/neg color palette and symmetric z axis
     histProj.SetTitle(f"Intensity Function Projection;{histFcn.GetXaxis().GetTitle()};{histFcn.GetYaxis().GetTitle()}")
-    zRange = abs(histProj.GetMinimum()) if histProj.GetMinimum() < 0 else 10.0  # choose z range to see negative values; but avoid zero range in case function positive
-    histProj.SetMinimum(-zRange)
-    histProj.SetMaximum(+zRange)
+    # zRange = abs(histProj.GetMinimum()) if histProj.GetMinimum() < 0 else 10.0  # choose z range to see negative values; but avoid zero range in case function positive
+    # histProj.SetMinimum(-zRange)
+    # histProj.SetMaximum(+zRange)
     histProj.Draw("COLZ")
     canv.SaveAs(f"{outputDirName}/{histProj.GetName()}.pdf")
     ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
@@ -105,8 +106,8 @@ def plotIntensityFcn(
     histProjNeg.Draw("COLZ")
     canv.SaveAs(f"{outputDirName}/{histProjNeg.GetName()}.pdf")
   if False:
-    # draw intensity as function of phi_HF and Phi for fixed cos(theta)_HF value
-    cosTheta = 0.0  # fixed value of cos(theta)_HF
+    # draw intensity as function of phi and Phi for fixed cos(theta) value
+    cosTheta = 0.0  # fixed value of cos(theta)
     # formula uses variables: x = phi in [-180, +180] deg; y = Phi in [-180, +180] deg
     intensityFormulaFixedCosTheta = momentResults.intensityFormula(
       polarization      = beamPolInfo.pol,
@@ -116,7 +117,7 @@ def plotIntensityFcn(
       useIntensityTerms = useIntensityTerms,
     )
     intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcn_fixedCosTheta_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
-    intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{HF}} = {cosTheta};#phi_{{HF}} [deg];#Phi [deg]")
+    intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{{coorsysLabel}}} = {cosTheta};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]")
     intensityFcnFixedCosTheta.SetNpx(100)
     intensityFcnFixedCosTheta.SetNpy(100)
     intensityFcnFixedCosTheta.SetMinimum(0)
@@ -126,23 +127,36 @@ def plotIntensityFcn(
 
 
 if __name__ == "__main__":
+  Utilities.printGitInfo()
+  timer = Utilities.Timer()
+  timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
-
-  Utilities.printGitInfo()
-  timer = Utilities.Timer()
   setupPlotStyle()
 
-  dataPeriod   = "2018_08"
-  tBinLabel    = "tbin_0.1_0.2"
-  beamPolLabel = "PARA_0"
-  maxL         = 4
+  # polarized eta pi0 data
+  plotsDirPath        = "./plotsPhotoProdEtaPi0"
+  dataPeriod          = "merged"
+  tBinLabel           = "t010020"
+  # tBinLabel           = "t050075"
+  beamPolLabel        = "All"
+  overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
+  coordSysLabel       = "GJ"
+  # polarized pi+pi- data
+  # plotsDirPath        = "./plotsPhotoProdPiPiPol"
+  # dataPeriod          = "2018_08"
+  # tBinLabel           = "tbin_0.1_0.2"
+  # beamPolLabel        = "PARA_0"
+  # overrideBeamPolInfo = None
+  # coordSysLabel       = "HF"
+  # massBinning         = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)  # generate plots in these bins
 
-  timer.start("Total execution time")
-  momentResultsFileName = f"./plotsPhotoProdPiPiPol/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL}/unnorm_moments_phys.pkl"
+  maxL = 4
+
+  momentResultsFileName = f"./{plotsDirPath}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL}/unnorm_moments_phys.pkl"
   print(f"Reading moments from file '{momentResultsFileName}'")
   momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
   for useIntensityTerms in (
@@ -158,10 +172,11 @@ if __name__ == "__main__":
       plotIntensityFcn(
         momentResults     = momentResultsForBin,
         massBinIndex      = massBinIndex,
-        beamPolInfo       = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
+        beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
         outputDirName     = ".",
         nmbBinsPerAxis    = 50,
         useIntensityTerms = useIntensityTerms,
+        coorsysLabel      = coordSysLabel,
       )
 
   timer.stop("Total execution time")
