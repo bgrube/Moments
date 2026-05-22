@@ -27,9 +27,10 @@ from wurlitzer import pipes, STDOUT
 from AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
-  CFG_UNPOLARIZED_ETAPETA,
   CFG_POLARIZED_ETAPI0,
+  CFG_POLARIZED_ETAPPI0,
   CFG_POLARIZED_PIPI,
+  CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
@@ -660,8 +661,9 @@ def makeAllPlots(
 
 if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
+  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
@@ -685,19 +687,22 @@ if __name__ == "__main__":
   #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
 
-  subsystemLabel = "EtapEta"
+  # subsystemLabel = "EtapEta"
   # subsystemLabel = "EtaPi0"
+  subsystemLabel = "EtapPi0"
   # subsystemLabel = "PiPi"  #TODO move into analysis config
-  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
-  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
+  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
+  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
   dataPeriods = (
-    # "merged",
+    "merged",
     # "2017_01",
     # "2017_01_ver05",
-    "2018_08",
+    # "2018_08",
   )
   tBinLabels = (
-    "ALLT",
+    # "ALLT",
+    # "LOWT",
+    # "XSCUTS",
     # "t010020",
     # "t020032",
     # "t032050",
@@ -708,15 +713,17 @@ if __name__ == "__main__":
     # "tbin_0.2_0.3",
     # "tbin_0.3_0.4",
     # "tbin_0.4_0.5",
+    "tbin_0.1_0.5",
   )
   beamPolLabels = (
     # "All",
+    "allOrient",
     # "PARA_0",
     # "PARA_135",
     # "PERP_45",
     # "PERP_90",
     # "AMO",
-    "Unpol",
+    # "Unpol",
   )
   maxLs = (
     4,
@@ -738,11 +745,13 @@ if __name__ == "__main__":
   # plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0  # no scaling
   # scaleFactorPhysicalMoments = 0.5  # account for phi <> 0 cut
+  yAxisUnit = ""
   # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
+  # yAxisUnit = " [#mub/GeV^{3}]"
+  # scaleFactorPhysicalMoments = 1.0 / (0.250 * 0.1305 * 1e3)  # [nb / GeV]; from 1 / ([250 MeV mass bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
+  # yAxisUnit = " [nb/GeV]"
   # normalizeComparisonMoments = True  # whether to scale comparison moments to estimated moments
   normalizeComparisonMoments = False
-  yAxisUnit = ""
-  # yAxisUnit = " [#mub/GeV^{3}]"
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
