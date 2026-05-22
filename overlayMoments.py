@@ -117,6 +117,7 @@ if __name__ == "__main__":
 
   # define what to overlay
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
@@ -135,11 +136,12 @@ if __name__ == "__main__":
     # "2018_08",
   )
   tBinLabels = (
-    "t010020",
-    "t020032",
-    "t032050",
-    "t050075",
-    "t075100",
+    "LOWT",
+    # "t010020",
+    # "t020032",
+    # "t032050",
+    # "t050075",
+    # "t075100",
     # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
     # "tbin_0.1_0.2",
     # "tbin_0.2_0.3",
@@ -196,11 +198,14 @@ if __name__ == "__main__":
         #
         # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4",     "GJ, L_{max} = 4", None),
         # (f"{cfg.outFileDirBaseName}.bak/{dataPeriod}/{tBinLabel}/All.maxL_4", "HF, L_{max} = 4", None),
-        (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4", "L_{max} = 4", None),
-        (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_5", "L_{max} = 5", None),
-        (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_6", "L_{max} = 6", None),
+        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4", "L_{max} = 4", None),
+        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_5", "L_{max} = 5", None),
+        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_6", "L_{max} = 6", None),
         # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_7", "L_{max} = 7", None),
         # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_8", "L_{max} = 8", None),
+        #
+        (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/Unpol.maxL_4", "LOWT",   None),
+        (f"{cfg.outFileDirBaseName}/{dataPeriod}/XSCUTS/Unpol.maxL_4",      "XSCUTS", None),
       )
       outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}.overlay")
       # outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{tBinLabel}.overlay")
