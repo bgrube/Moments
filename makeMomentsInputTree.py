@@ -191,7 +191,7 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     # kinematic variables according to Eq. (1) in Bibrzycki et al., PRD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
     # four-momenta are defined as
-    #                 (p_x, p_y, p_z, E)
+    #               (p_x, p_y, p_z, E)
     lvs["beam"  ] = "q1,  q2,  q3,  q0"   # beam photon
     lvs["target"] = "p11, p12, p13, p10"  # target proton
     lvs["recoil"] = "p21, p22, p23, p20"  # recoil proton
@@ -729,8 +729,17 @@ if __name__ == "__main__":
   if True:
     subsystem       = SubSystemInfo(pairLabel = "EtapEta", lvALabel = "etap", lvBLabel = "eta", lvRecoilLabel = "recoil")
     dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/unpolarized"
-    dataPeriods     = ("2018_08",)
-    tBinLabels      = ("ALLT", )
+    dataPeriods     = (
+      "2017_01",
+      "2018_01",
+      "2018_08",
+      "2019_11",
+    )
+    tBinLabels      = (
+      # "ALLT",
+      # "LOWT",
+      "XSCUTS",
+    )
     beamPolLabel    = "Unpol"
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
       InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
@@ -762,7 +771,7 @@ if __name__ == "__main__":
               (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
               (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE  #TODO fix file format
             ),
-            inputTreeName  = "nt" if inputDataType == InputDataType.GENERATED_PHASE_SPACE else "kin",
+            inputTreeName  = "nt",
             outputFileName = (
               f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
               f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
