@@ -285,10 +285,11 @@ class AnalysisConfig:
 
   def loadData(
     self,
-    dataType:       AnalysisConfig.DataType,
-    additionalCuts: Iterable[str] | None = None,
+    dataType:             AnalysisConfig.DataType,
+    additionalCuts:       Iterable[str] | None = None,  # optional additional cuts to be applied to loaded data
+    additionalColumnDefs: dict[str, str]       = {},    # additional columns to define
   ) -> ROOT.RDataFrame | None:
-    """Returns a ROOT RDataFrame with given data type and applies optional additional cuts"""
+    """Returns a ROOT RDataFrame with given data type, applies optional additional cuts, and defines optional additional columns"""
     df = None
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       print(f"Loading real data from tree '{self.treeName}' in file '{self.dataFileName}'")
@@ -326,6 +327,11 @@ class AnalysisConfig:
         df = ROOT.RDataFrame(self.treeName, self.psAccFileName)
     else:
       raise ValueError(f"Unknown data type: {dataType}")
+    # add additional columns if requested
+    if df is not None and additionalColumnDefs:
+      for columnName, columnFormula in additionalColumnDefs.items():
+        print(f"Defining additional column '{columnName}' = '{columnFormula}'")
+        df = defineOverwriteRDataFrame(df, columnName, columnFormula)
     # apply additional cuts
     if df is not None and additionalCuts is not None:
       for cut in additionalCuts:
