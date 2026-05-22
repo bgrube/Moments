@@ -1869,7 +1869,7 @@ class MomentCalculator:
       self._calculateBasisFcnValues(momentCalculator)
       self._calculateIntegralVector(momentCalculator)
 
-    def _intensityFcn(
+    def _intensityFcn(  #TODO improve naming
       self,
       moments: npt.NDArray[npt.Shape["nmbMoments"], npt.Float64]  # fit parameters = all non-zero moment values: [{Re H_0}, {Re H_1}, {Im H_2}]
     ) -> tuple[np.float64, npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]]:

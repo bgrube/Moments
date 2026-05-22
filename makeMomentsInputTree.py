@@ -25,6 +25,7 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`  #TODO add this to all scripts that generate plots
 
 from AnalysisConfig import (
+  BeamPolInfo,
   BEAM_POL_INFOS,
   defineOverwriteRDataFrame,
 )

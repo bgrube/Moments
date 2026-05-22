@@ -344,8 +344,8 @@ if __name__ == "__main__":
   beamPolLabels = ("All", )
   maxL = 4
   # maxL = 8
-  # useIntensityTerms = "allTerms"  #TODO use MomentResult.IntensityTermsType
-  useIntensityTerms = "parityConserving"
+  useIntensityTerms = "allTerms"  #TODO use MomentResult.IntensityTermsType
+  # useIntensityTerms = "parityConserving"
   # useIntensityTerms = "parityViolating"
   BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
   BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
@@ -384,7 +384,7 @@ if __name__ == "__main__":
           ),
           weightedMc = ROOT.RDataFrame(subSystem.pairLabel, weightedDataFilePath),
         )
-        print(f"Loaded weighted-MC data from '{weightedDataFilePath}'")
+        print(f"Loaded weighted-MC data from '{weightedDataFilePath}'; '{dataDirPath}/{inputDataDirName}/amptools_tree_data_{beamPolLabel}.root'")
         # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
         for dataToOverlayField in fields(dataToOverlay):
           df = getattr(dataToOverlay, dataToOverlayField.name)  # get value of class member with name `dataToOverlayField.name`

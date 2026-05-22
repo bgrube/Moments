@@ -294,7 +294,7 @@ if __name__ == "__main__":
   # inputDataDef: tuple[str, str, SubSystemInfo, CoordSysType] = ("kin", "Alex/amptools_tree_accepted*.root", subsystem, frame)
   frame = CoordSysType.GJ  # Gottfried-Jackson frame, i.e. z_GJ = p_beam
   subsystem = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
-  inputDataDef: tuple[str, str, SubSystemInfo, CoordSysType] = ("kin", "Nizar/amptools_tree_accepted_All.root", subsystem, frame)
+  inputDataDef: tuple[str, str, SubSystemInfo, CoordSysType] = ("kin", "Nizar/amptools_tree_accepted_All.root", subsystem, frame)  #TODO use dataclass instead of tuple
   BEAM_POL_INFOS["merged"]["All"] = BeamPolInfo(  # read beam polarization info from input tree
     pol    = "Pol",
     PhiLab = "BeamAngle",

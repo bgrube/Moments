@@ -169,7 +169,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {<
 
 @dataclass
 class AnalysisConfig:
-  """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
+  """Stores configuration parameters for the moment analysis; defaults are for unpolarized pi+pi- analysis"""
 
   class MethodType(Enum):
     """Enumerates methods used for moment analysis"""
@@ -177,7 +177,7 @@ class AnalysisConfig:
     LIN_ALG_BG_SUBTR_MOMENTS     = 1  # linear-algebra method for acceptance correction + background subtraction by subtracting moments
     MAX_LIKELIHOOD_FIT           = 2  # maximum-likelihood fit for acceptance correction + background subtraction by subtracting moments
 
-  # defaults are for unpolarized pipi analysis
+  # defaults are for unpolarized pi+pi- analysis
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   # Spring 2017 low-energy data
@@ -225,7 +225,7 @@ class AnalysisConfig:
       nmbBins = 100,
       minVal  = 0.4,   # [GeV]
       maxVal  = 1.4,   # [GeV]
-      _var    = None,  # set by init()
+      _var    = None,  # set by init()  #TODO why keep a separate binVarMass member instead of using binning.var?
     )
   )
 
@@ -410,7 +410,8 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     unit      = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ),
-  massBinning        = HistAxisBinning(nmbBins = 8, minVal = 1.5, maxVal = 3.5),  # 250 MeV wide bins
+  # massBinning        = HistAxisBinning(nmbBins = 8, minVal = 1.5, maxVal = 3.5),  # 250 MeV wide bins
+  massBinning        = HistAxisBinning(nmbBins = 15, minVal = 1.5, maxVal = 3.0),  # 100 MeV wide bins
 )
 # configuration for Kevin's K- K_S Delta++ data
 CFG_KEVIN = AnalysisConfig(
