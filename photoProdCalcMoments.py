@@ -23,6 +23,7 @@ from wurlitzer import pipes, STDOUT
 
 from AnalysisConfig import (
   AnalysisConfig,
+  BEAM_POL_INFOS,
   CFG_KEVIN,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_POLARIZED_ETAPI0,
@@ -32,7 +33,6 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_PWA,
   CFG_UNPOLARIZED_PIPP,
 )
-from makeMomentsInputTree import BEAM_POL_INFOS
 from MomentCalculator import (
   DataSet,
   MomentCalculator,

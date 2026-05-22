@@ -16,7 +16,7 @@ import os
 
 import ROOT
 
-from makeMomentsInputTree import (
+from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
 )

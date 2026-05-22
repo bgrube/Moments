@@ -22,6 +22,137 @@ import Utilities
 
 
 @dataclass
+class BeamPolInfo:
+  """Stores information about beam polarization for a specific orientation"""
+  pol:    float | str  # photon-beam polarization magnitude value or column name
+  PhiLab: float | str  # azimuthal angle of photon beam polarization in lab frame [deg] value or column name
+
+  def __str__(self) -> str:
+    result = "pol = "
+    if isinstance(self.pol, float):
+      result += f"{self.pol:.4f}"
+    else:
+      result += f"'{self.pol}'"
+    result += ", PhiLab = "
+    if isinstance(self.PhiLab, float):
+      result += f"{self.PhiLab:.1f} deg"
+    else:
+      result += f"'{self.PhiLab}'"
+    return result
+
+
+BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {<beam-polarization orientation> : BeamPolInfo(...)}; `None`` means unpolarized
+  "merged" : {  # several merged data periods with different polarization values
+    "All" : BeamPolInfo(  # read polarization values from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
+    # approximate polarization values across all data-taking periods; don't use for serious analyses
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.35,
+      PhiLab = 0,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.35,
+      PhiLab = 45,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.35,
+      PhiLab = 90,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.35,
+      PhiLab = -45,
+    ),
+    "AMO"   : None,
+    "Unpol" : None,
+  },
+  # polarization values from Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
+  # beam polarization angles in lab frame taken from `Lab Phi` column of tables 2 to 5 in GlueX-doc-3977
+  "2017_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3537,
+      PhiLab = 1.8,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3484,
+      PhiLab = 47.9,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3472,
+      PhiLab = 94.5,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3512,
+      PhiLab = -41.6,
+    ),
+    "AMO"   : None,
+    "Unpol" : None,
+  },
+  "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3420,
+      PhiLab = 4.1,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3474,
+      PhiLab = 48.5,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3478,
+      PhiLab = 94.2,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3517,
+      PhiLab = -42.4,
+    ),
+    "AMO"   : None,
+    "Unpol" : None,
+  },
+  "2018_08" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3563,
+      PhiLab = 3.3,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3403,
+      PhiLab = 48.3,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3430,
+      PhiLab = 92.9,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3523,
+      PhiLab = -42.1,
+    ),
+    "AMO"   : None,
+    "Unpol" : None,
+  },
+  "2019_11" : {  # Spring 2020 polarization magnitudes obtained by running `root makePolVals2020.C'(0)'`  #TODO did Alex already produce PhiLab values?
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3525,
+      PhiLab = 0,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3535,
+      PhiLab = 45,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3536,
+      PhiLab = 90,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3721,
+      PhiLab = -45,
+    ),
+    "AMO"   : None,
+    "Unpol" : None,
+  },
+}
+
+
+@dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized production"""
 

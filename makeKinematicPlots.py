@@ -17,9 +17,11 @@ from typing_extensions import TypeAlias
 
 import ROOT
 
-from makeMomentsInputTree import (
+from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+)
+from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
@@ -215,11 +217,11 @@ def bookHistograms(
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   histNamesEvenOdd: list[str] = []
   histDefs: list[HistogramDefinition] = []
-  pairLabel = subSystem.pairLabel
-  # define histograms that are independent of subsystem
+  pairLabel    = subSystem.pairLabel
   ATLatex      = subSystem.ATLatexLabel
   BTLatex      = subSystem.BTLatexLabel
   recoilTLatex = subSystem.recoilTLatexLabel
+  # define histograms that are independent of subsystem
   if True:
   # if False:
     if pairLabel == "PiPi" or pairLabel == "EtaPi0":  # although histograms are independent of subsystem; use mesonic subsystem to define them

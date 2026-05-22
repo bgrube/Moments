@@ -13,6 +13,7 @@ import os
 
 import ROOT
 
+from AnalysisConfig import BEAM_POL_INFOS
 from makeKinematicPlots import (
   bookHistogram,
   defineColumnsForPlots,
@@ -20,7 +21,6 @@ from makeKinematicPlots import (
   HistogramDefinition,
 )
 from makeMomentsInputTree import (
-  BEAM_POL_INFOS,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,

@@ -22,6 +22,8 @@ from wurlitzer import pipes, STDOUT
 
 from AnalysisConfig import (
   AnalysisConfig,
+  BeamPolInfo,
+  BEAM_POL_INFOS,
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
@@ -30,8 +32,6 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_PWA,
 )
 from makeMomentsInputTree import (
-  BeamPolInfo,
-  BEAM_POL_INFOS,
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
