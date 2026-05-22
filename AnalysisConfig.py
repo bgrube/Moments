@@ -56,7 +56,7 @@ class BeamPolInfo:
     return result
 
 
-BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # data period : {<beam-polarization orientation> : BeamPolInfo(...)}; `None`` means unpolarized
+BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period label> : {<beam-polarization label> : BeamPolInfo(...)}; `None` means unpolarized
   "merged" : {  # several merged data periods with different polarization values
     "All" : BeamPolInfo(  # read polarization values from the given column names
       pol    = "beamPol",
