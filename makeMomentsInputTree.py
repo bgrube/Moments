@@ -212,21 +212,6 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   return lvs
 
 
-def defineOverwrite(
-  df:         ROOT.RDataFrame,
-  colName:    str,
-  newFormula: str,
-) -> ROOT.RDataFrame:
-  """If column `colName` exists, redefines it using formula `newFormula`"""
-  if not df.HasColumn(colName):
-    # print(f"Defining column '{colName}' = '{newFormula}'")
-    df = df.Define(colName, newFormula)
-  else:
-    print(f"Redefining column '{colName}' to '{newFormula}'")
-    df = df.Redefine(colName, newFormula)
-  return df
-
-
 class CoordSysType(Enum):
   HF = 0  # helicity frame
   GJ = 1  # Gottfried-Jackson frame
@@ -284,17 +269,17 @@ def defineDataFrameColumns(
       .Define(f"phi{angColNameSuffix}Deg", f"(Double32_t)(phi{angColNameSuffix} * TMath::RadToDeg())")
   )
   # allow for redefinition of already existing frame-independent columns if function is called for several frames
-  df = defineOverwrite(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
-  df = defineOverwrite(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
+  df = defineOverwriteRDataFrame(df, f"mass{colNameSuffix}",   f"(Double32_t)massPair({lvA}, {lvB})")
+  df = defineOverwriteRDataFrame(df, f"minusT{colNameSuffix}", f"(Double32_t)-mandelstamT({lvTarget}, {lvRecoil})")
   if beamPolInfo is not None:
-    df = defineOverwrite(df, f"beamPol{colNameSuffix}",          f"(Double32_t){beamPolInfo.pol}")
-    df = defineOverwrite(df, f"beamPolPhiLab{colNameSuffix}Deg", f"(Double32_t){beamPolInfo.PhiLab}")
-    df = defineOverwrite(df, f"Phi{colNameSuffix}",              f"angles{angColNameSuffix}[2]")
-    df = defineOverwrite(df, f"Phi{colNameSuffix}Deg",           f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
+    df = defineOverwriteRDataFrame(df, f"beamPol{colNameSuffix}",          f"(Double32_t){beamPolInfo.pol}")
+    df = defineOverwriteRDataFrame(df, f"beamPolPhiLab{colNameSuffix}Deg", f"(Double32_t){beamPolInfo.PhiLab}")
+    df = defineOverwriteRDataFrame(df, f"Phi{colNameSuffix}",              f"angles{angColNameSuffix}[2]")
+    df = defineOverwriteRDataFrame(df, f"Phi{colNameSuffix}Deg",           f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
   if additionalColumnDefs:
     for columnName, columnFormula in additionalColumnDefs.items():
       print(f"Defining additional column '{columnName}' = '{columnFormula}'")
-      df = defineOverwrite(df, columnName, columnFormula)
+      df = defineOverwriteRDataFrame(df, columnName, columnFormula)
   if additionalFilterDefs:
     for filterDef in additionalFilterDefs:
       print(f"Applying additional filter '{filterDef}'")

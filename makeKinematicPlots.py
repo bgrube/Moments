@@ -20,6 +20,7 @@ import ROOT
 from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+  defineOverwriteRDataFrame,
 )
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
@@ -30,7 +31,6 @@ from makeMomentsInputTree import (
   CPP_CODE_TWO_BODY_ANGLES_NIZAR,
   CoordSysType,
   defineDataFrameColumns,
-  defineOverwrite,
   InputDataType,
   InputDataFormat,
   SubSystemInfo,
@@ -83,27 +83,27 @@ def defineColumnsForPlots(
         df.Define(f"Psi{frame.name}{subSystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subSystem.pairLabel} - phi{frame.name}{subSystem.pairLabel}) * TMath::RadToDeg())")
       )
   # define additional columns that are independent of subsystem
-  df = defineOverwrite(df, f"mass{subSystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subSystem.pairLabel}, 2)")
-  df = defineOverwrite(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs['beam']}).E()")
+  df = defineOverwriteRDataFrame(df, f"mass{subSystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subSystem.pairLabel}, 2)")
+  df = defineOverwriteRDataFrame(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs['beam']}).E()")
   # track kinematics
-  df = defineOverwrite(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).P()")
-  df = defineOverwrite(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).X()")
-  df = defineOverwrite(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Y()")
-  df = defineOverwrite(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Z()")
-  df = defineOverwrite(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).P()")
-  df = defineOverwrite(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).X()")
-  df = defineOverwrite(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Y()")
-  df = defineOverwrite(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Z()")
-  df = defineOverwrite(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).P()")
-  df = defineOverwrite(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).X()")
-  df = defineOverwrite(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Y()")
-  df = defineOverwrite(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Z()")
-  df = defineOverwrite(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Theta() * TMath::RadToDeg())")
-  df = defineOverwrite(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Theta()      * TMath::RadToDeg())")
-  df = defineOverwrite(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Theta()      * TMath::RadToDeg())")
-  df = defineOverwrite(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).phi()   * TMath::RadToDeg())")
-  df = defineOverwrite(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).phi()        * TMath::RadToDeg())")
-  df = defineOverwrite(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Z()")
+  df = defineOverwriteRDataFrame(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Z()")
+  df = defineOverwriteRDataFrame(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Z()")
+  df = defineOverwriteRDataFrame(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Theta() * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).phi()   * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).phi()        * TMath::RadToDeg())")
   # print(f"!!! {df.GetDefinedColumnNames()=}")
   return df
 

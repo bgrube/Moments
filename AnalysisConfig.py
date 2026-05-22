@@ -21,6 +21,21 @@ from PlottingUtilities import HistAxisBinning
 import Utilities
 
 
+def defineOverwriteRDataFrame(
+  df:         ROOT.RDataFrame,
+  colName:    str,
+  newFormula: str,
+) -> ROOT.RDataFrame:
+  """Defines column `colName` using formula `newFormula`; overwriting column definition if it already exists"""
+  if not df.HasColumn(colName):
+    # print(f"Defining column '{colName}' = '{newFormula}'")
+    df = df.Define(colName, newFormula)
+  else:
+    print(f"Redefining column '{colName}' to '{newFormula}'")
+    df = df.Redefine(colName, newFormula)
+  return df
+
+
 @dataclass
 class BeamPolInfo:
   """Stores information about beam polarization for a specific orientation"""
