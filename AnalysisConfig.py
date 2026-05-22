@@ -398,7 +398,24 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     unit      = "GeV/#it{c}^{2}",
     nmbDigits = 3,
   ),
-  massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),
+  massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),  # 40 MeV wide bins
+)
+# configuration for Zach's polarized eta' pi0 data
+CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
+  treeName           = "kin",
+  dataFileName       = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/data_flat_PARA_0.root",
+  psAccFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/phaseSpace_acc_flat_PARA_0.root",
+  psGenFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/phaseSpace_gen_flat_PARA_0.root",
+  polarization       = "beamPol",  # read polarization from tree column
+  maxL               = 4,
+  outFileDirBaseName = "./plotsPhotoProdEtapPi0",
+  binVarMass         = KinematicBinningVariable(
+    name      = "mass",
+    label     = "#it{m}_{#it{#eta}'#it{#pi}^{0}}",
+    unit      = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ),
+  massBinning        = HistAxisBinning(nmbBins = 20, minVal = 1.2, maxVal = 2.0),  # 40 MeV wide bins
 )
 # configuration for Will's unpolarized eta' eta data
 CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
