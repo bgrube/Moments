@@ -36,7 +36,11 @@ from makeMomentsInputTree import (
   SubSystemInfo,
   lorentzVectors,
 )
-from PlottingUtilities import drawHorizontalZeroLine
+from PlottingUtilities import (
+  drawHorizontalZeroLine,
+  HistAxisBinning,
+  setupPlotStyle,
+)
 import Utilities
 
 
@@ -205,10 +209,11 @@ def decomposeHistEvenOdd(
 
 
 def bookHistograms(
-  df:            ROOT.RDataFrame,
-  inputDataType: InputDataType,
-  subSystem:     SubSystemInfo,
-  beamPolInfo:   BeamPolInfo | None,
+  df:                   ROOT.RDataFrame,
+  inputDataType:        InputDataType,
+  subSystem:            SubSystemInfo,
+  beamPolInfo:          BeamPolInfo | None,
+  subsystemMassBinning: HistAxisBinning | None = None,  # if not None, histograms will be booked in bins of the subsystem mass
 ) -> tuple[HistListType, list[str]]:
   """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
   print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subSystem}'")
@@ -315,27 +320,23 @@ def bookHistograms(
         histDefs += [
           HistogramDefinition(f"Phi{pairLabel}DegVsMass{pairLabel}", f";m_{{{pairTLatex}}} [GeV];#Phi [deg]", ((50, 0.28, 2.28), ( 72, -180, +180)), (f"mass{pairLabel}", f"Phi{pairLabel}Deg")),
         ]
-    # create histograms in m_pipi bins
-    # if True:
-    if False:
-      #TODO generalize to other mesonic subsystems
-      massPiPiRange = (0.28, 2.28)  # [GeV]
-      massPiPiNmbBins = 50
-      massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
-      for binIndex in range(0, massPiPiNmbBins):
-        massPiPiBinMin    = massPiPiRange[0] + binIndex * massPiPiBinWidth
-        massPiPiBinMax    = massPiPiBinMin + massPiPiBinWidth
-        massPiPiBinFilter = f"({massPiPiBinMin} < massPiPi) and (massPiPi < {massPiPiBinMax})"
-        histNameSuffix    = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
+    # create histograms in mass bins
+    if subsystemMassBinning is not None:
+      massBinWidth = (subsystemMassBinning.maxVal - subsystemMassBinning.minVal) / subsystemMassBinning.nmbBins
+      for binIndex in range(0, subsystemMassBinning.nmbBins):
+        massBinMin     = subsystemMassBinning.minVal + binIndex * massBinWidth
+        massBinMax     = massBinMin + massBinWidth
+        massBinFilter  = f"({massBinMin} < mass{pairLabel}) and (mass{pairLabel} < {massBinMax})"
+        histNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}"
         histDefs += [
           # 1D histograms
-          HistogramDefinition(f"cosThetaHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaHF{pairLabel}", ), massPiPiBinFilter),
-          HistogramDefinition(f"cosThetaGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaGJ{pairLabel}", ), massPiPiBinFilter),
-          HistogramDefinition(f"phiHF{pairLabel}Deg{histNameSuffix}",   f"{title};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiHF{pairLabel}Deg",   ), massPiPiBinFilter),
-          HistogramDefinition(f"phiGJ{pairLabel}Deg{histNameSuffix}",   f"{title};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiGJ{pairLabel}Deg",   ), massPiPiBinFilter),
+          HistogramDefinition(f"cosThetaHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaHF{pairLabel}", ), massBinFilter),
+          HistogramDefinition(f"cosThetaGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};"  + yAxisLabel, ((100,   -1,   +1), ), (f"cosThetaGJ{pairLabel}", ), massBinFilter),
+          HistogramDefinition(f"phiHF{pairLabel}Deg{histNameSuffix}",   f"{title};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiHF{pairLabel}Deg",   ), massBinFilter),
+          HistogramDefinition(f"phiGJ{pairLabel}Deg{histNameSuffix}",   f"{title};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiGJ{pairLabel}Deg",   ), massBinFilter),
           # 2D histograms
-          HistogramDefinition(f"anglesHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg"), massPiPiBinFilter),
-          HistogramDefinition(f"anglesGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg"), massPiPiBinFilter),
+          HistogramDefinition(f"anglesHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg"), massBinFilter),
+          HistogramDefinition(f"anglesGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg"), massBinFilter),
         ]
         histNamesEvenOdd += [
           f"phiHF{pairLabel}Deg{histNameSuffix}",
@@ -346,12 +347,12 @@ def bookHistograms(
         if beamPolInfo is not None:
           histDefs += [
             # 1D histograms
-            HistogramDefinition(f"Phi{pairLabel}Deg{histNameSuffix}", f"{title};#Phi [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"Phi{pairLabel}Deg", ), massPiPiBinFilter),
+            HistogramDefinition(f"Phi{pairLabel}Deg{histNameSuffix}", f"{title};#Phi [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"Phi{pairLabel}Deg", ), massBinFilter),
             # 2D histograms
-            HistogramDefinition(f"Phi{pairLabel}DegVsCosThetaHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};#Phi [deg]",  ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"Phi{pairLabel}Deg"  ), massPiPiBinFilter),
-            HistogramDefinition(f"Phi{pairLabel}DegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};#Phi [deg]",  ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"Phi{pairLabel}Deg"  ), massPiPiBinFilter),
-            HistogramDefinition(f"phiHF{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",   f"{title};#Phi [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"Phi{pairLabel}Deg",     f"phiHF{pairLabel}Deg"), massPiPiBinFilter),
-            HistogramDefinition(f"phiGJ{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",   f"{title};#Phi [deg];#phi_{{GJ}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"Phi{pairLabel}Deg",     f"phiGJ{pairLabel}Deg"), massPiPiBinFilter),
+            HistogramDefinition(f"Phi{pairLabel}DegVsCosThetaHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};#Phi [deg]",  ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"Phi{pairLabel}Deg"  ), massBinFilter),
+            HistogramDefinition(f"Phi{pairLabel}DegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};#Phi [deg]",  ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"Phi{pairLabel}Deg"  ), massBinFilter),
+            HistogramDefinition(f"phiHF{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",   f"{title};#Phi [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"Phi{pairLabel}Deg",     f"phiHF{pairLabel}Deg"), massBinFilter),
+            HistogramDefinition(f"phiGJ{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",   f"{title};#Phi [deg];#phi_{{GJ}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"Phi{pairLabel}Deg",     f"phiGJ{pairLabel}Deg"), massBinFilter),
           ]
           histNamesEvenOdd += [
             f"phiHF{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",
@@ -530,6 +531,7 @@ if __name__ == "__main__":
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
+  setupPlotStyle()
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
@@ -567,6 +569,7 @@ if __name__ == "__main__":
   #   # "AMO",
   # )
   # useSeparateBackgroundFiles = True  # if True, signal and background regions are stored in separate input files
+  # massBinning = None  # do not generate plots in mass bins
   # additionalColumnDefs = {}
   # additionalFilterDefs = []
   # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
@@ -598,6 +601,7 @@ if __name__ == "__main__":
   # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
   # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
   # useSeparateBackgroundFiles = False
+  # massBinning = HistAxisBinning(nmbBins = 17, minVal  = 1.04, maxVal  = 1.72)  # generate plots in these bins
   # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
   # additionalFilterDefs = []
 
@@ -612,10 +616,20 @@ if __name__ == "__main__":
   )
   dataDirBasePath = "./dataPhotoProdEtapEta/unpolarized"
   inputDataDirName = "Will"  # subdirectory in where data files are stored
-  dataPeriods = ("2018_08", )
-  tBinLabels = ("ALLT", )
+  dataPeriods = (
+    "2017_01",
+    "2018_01",
+    "2018_08",
+    "2019_11",
+  )
+  tBinLabels = (
+    # "ALLT",
+    # "LOWT",
+    "XSCUTS",
+  )
   beamPolLabels = ("Unpol", )
   useSeparateBackgroundFiles = False
+  massBinning = None  # do not generate plots in mass bins
   additionalColumnDefs = {}
   additionalFilterDefs = []
 
@@ -691,10 +705,11 @@ if __name__ == "__main__":
             # if False:
               makePlots(
                 *bookHistograms(
-                  df            = dfSubSystem,
-                  inputDataType = inputDataType,
-                  subSystem     = subSystem,
-                  beamPolInfo   = beamPolInfo,
+                  df                   = dfSubSystem,
+                  inputDataType        = inputDataType,
+                  subSystem            = subSystem,
+                  beamPolInfo          = beamPolInfo,
+                  subsystemMassBinning = massBinning,
                 ),
                 outputDirName = outputDirName,
               )
