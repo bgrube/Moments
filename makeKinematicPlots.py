@@ -527,7 +527,7 @@ if __name__ == "__main__":
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
-  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")  #TODO remove FSROOT dependency
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
@@ -574,73 +574,73 @@ if __name__ == "__main__":
   # additionalFilterDefs = []
   # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
 
-  # # parameters for polarized eta pi0 data
-  # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-  #   SubSystemInfo(
-  #     pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
-  #     lvALabel      = "eta",    ATLatexLabel      = "#eta",
-  #     lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
-  #     lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
-  #   ),
-  # )
-  # dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
-  # inputDataDirName = "Nizar"  # subdirectory in where data files are stored
-  # dataPeriods = (
-  #   "merged",
-  # )
-  # tBinLabels = (
-  #   "t010020",
-  #   "t020032",
-  #   "t032050",
-  #   "t050075",
-  #   "t075100",
-  # )
-  # beamPolLabels = (
-  #   "All",
-  # )
-  # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
-  # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
-  # useSeparateBackgroundFiles = False
-  # massBinning = HistAxisBinning(nmbBins = 17, minVal  = 1.04, maxVal  = 1.72)  # generate plots in these bins
-  # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
-  # additionalFilterDefs = []
-
-  # parameters for unpolarized eta' eta data
+  # parameters for polarized eta pi0 data
   subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
     SubSystemInfo(
-      pairLabel     = "EtapEta", pairTLatexLabel   = "#eta'#eta",
-      lvALabel      = "etap",    ATLatexLabel      = "#eta'",
-      lvBLabel      = "eta",     BTLatexLabel      = "#eta",
-      lvRecoilLabel = "recoil",  recoilTLatexLabel = "p",
+      pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
+      lvALabel      = "eta",    ATLatexLabel      = "#eta",
+      lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
+      lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
     ),
   )
-  dataDirBasePath = "./dataPhotoProdEtapEta/unpolarized"
-  inputDataDirName = "Will"  # subdirectory in where data files are stored
+  dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
+  inputDataDirName = "Nizar"  # subdirectory in where data files are stored
   dataPeriods = (
-    "2017_01",
-    "2018_01",
-    "2018_08",
-    "2019_11",
+    "merged",
   )
   tBinLabels = (
-    # "ALLT",
-    # "LOWT",
-    "XSCUTS",
+    "t010020",
+    "t020032",
+    "t032050",
+    "t050075",
+    "t075100",
   )
-  beamPolLabels = ("Unpol", )
+  beamPolLabels = (
+    "All",
+  )
+  BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
+  BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
   useSeparateBackgroundFiles = False
-  massBinning = None  # do not generate plots in mass bins
-  additionalColumnDefs = {}
+  massBinning = HistAxisBinning(nmbBins = 17, minVal  = 1.04, maxVal  = 1.72)  # generate plots in these bins
+  additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
   additionalFilterDefs = []
+
+  # # parameters for unpolarized eta' eta data
+  # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
+  #   SubSystemInfo(
+  #     pairLabel     = "EtapEta", pairTLatexLabel   = "#eta'#eta",
+  #     lvALabel      = "etap",    ATLatexLabel      = "#eta'",
+  #     lvBLabel      = "eta",     BTLatexLabel      = "#eta",
+  #     lvRecoilLabel = "recoil",  recoilTLatexLabel = "p",
+  #   ),
+  # )
+  # dataDirBasePath = "./dataPhotoProdEtapEta/unpolarized"
+  # inputDataDirName = "Will"  # subdirectory in where data files are stored
+  # dataPeriods = (
+  #   "2017_01",
+  #   "2018_01",
+  #   "2018_08",
+  #   "2019_11",
+  # )
+  # tBinLabels = (
+  #   # "ALLT",
+  #   # "LOWT",
+  #   "XSCUTS",
+  # )
+  # beamPolLabels = ("Unpol", )
+  # useSeparateBackgroundFiles = False
+  # massBinning = None  # do not generate plots in mass bins
+  # additionalColumnDefs = {}
+  # additionalFilterDefs = []
 
   # treeName = "nt"
   treeName = "kin"
   inputDataFormats: dict[InputDataType, InputDataFormat] = {
-    # InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-    # InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-    # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
-    InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
-    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
+    InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+    InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    # InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
+    # InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
     # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
   }
 
