@@ -48,23 +48,33 @@ if __name__ == "__main__":
 
   # plot histograms of `hadd`ed ROOT file
   inputFileName = f"./{tBinLabel}/dataPlots.root"
-  histNamesToPlot = [
-    "hDataMassPiPi",
-  ]
-  massPiPiRange = (0.28, 2.28)  # [GeV]
-  massPiPiNmbBins = 50
-  massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
-  for binIndex in range(0, massPiPiNmbBins):
-    massPiPiBinMin = massPiPiRange[0] + binIndex * massPiPiBinWidth
-    massPiPiBinMax = massPiPiBinMin + massPiPiBinWidth
-    histNameSuffix = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
-    histNamesToPlot += [f"hDataAnglesGjPiPi{histNameSuffix}", f"hDataAnglesHfPiPi{histNameSuffix}"]
   print(f"Reading data from '{inputFileName}'")
   inputFile = ROOT.TFile.Open(inputFileName, "READ")
-  for histName in histNamesToPlot:
-    print(f"Plotting histogram '{histName}'")
-    hist = inputFile.Get(histName)
-    canv = ROOT.TCanvas()
-    hist.SetMinimum(0)
-    hist.Draw("COLZ")
-    canv.SaveAs(f"./{tBinLabel}/{histName}.pdf")
+  # histNamesToPlot = [
+  #   "hDataMassPiPi",
+  # ]
+  # massPiPiRange = (0.28, 2.28)  # [GeV]
+  # massPiPiNmbBins = 50
+  # massPiPiBinWidth = (massPiPiRange[1] - massPiPiRange[0]) / massPiPiNmbBins
+  # for binIndex in range(0, massPiPiNmbBins):
+  #   massPiPiBinMin = massPiPiRange[0] + binIndex * massPiPiBinWidth
+  #   massPiPiBinMax = massPiPiBinMin + massPiPiBinWidth
+  #   histNameSuffix = f"_{massPiPiBinMin:.2f}_{massPiPiBinMax:.2f}"
+  #   histNamesToPlot += [f"hDataAnglesGjPiPi{histNameSuffix}", f"hDataAnglesHfPiPi{histNameSuffix}"]
+  # for histName in histNamesToPlot:
+  #   print(f"Plotting histogram '{histName}'")
+  #   hist = inputFile.Get(histName)
+  #   canv = ROOT.TCanvas()
+  #   hist.SetMinimum(0)
+  #   hist.Draw("COLZ")
+  #   canv.SaveAs(f"./{tBinLabel}/{histName}.pdf")
+  # plot all histograms
+  for key in inputFile.GetListOfKeys():
+    obj = key.ReadObj()
+    if obj.InheritsFrom("TH1"):
+      histName = obj.GetName()
+      print(f"Plotting histogram '{histName}'")
+      canv = ROOT.TCanvas()
+      obj.SetMinimum(0)
+      obj.Draw("COLZ")
+      canv.SaveAs(f"./{tBinLabel}/{histName}.pdf")
