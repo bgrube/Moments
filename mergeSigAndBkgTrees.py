@@ -22,7 +22,6 @@ if __name__ == "__main__":
   timer = Utilities.Timer()
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
-  ROOT.EnableImplicitMT()
 
   parser = argparse.ArgumentParser(description = "Merges signal and background trees with event weights into a single output tree.")
   parser.add_argument("--sigFilePath",         type = str,                          help = "Path to ROOT file with signal events")

@@ -149,7 +149,9 @@ def getDataFrameWithCorrectEventWeights(
   forceOverwriteFriendFiles: bool = True,  # if False existing friend files will be used and assumed to contain the correct event weights
   weightColNameOutput:       str  = "eventWeight",  # name of column in friend trees that contains event weights
 ) -> ROOT.RDataFrame:
-  """Creates friend trees with correct event weights and attaches them to data tree"""
+  """Creates friend trees with correct event weights and attaches them to data tree; must not be used in multi-threaded mode"""
+  if ROOT.IsImplicitMTEnabled():
+    raise RuntimeError("getDataFrameWithCorrectEventWeights() must not be used in multi-threaded mode")
   # write corrected weights into friend trees
   for dataFileNames, weightFormula, friendFileName in (
     (dataSigRegionFileNames, sigRegionWeightFormula, friendSigRegionFileName),
@@ -159,10 +161,10 @@ def getDataFrameWithCorrectEventWeights(
     if not forceOverwriteFriendFiles and os.path.exists(friendFileName):
       print(f"File '{friendFileName}' already exists, skipping creation of event-weight friend tree")
       continue
-    print(f"Writing event-weight friend tree to file '{friendFileName}'")
+    print(f"Writing friend tree '{treeName}' with '{weightColNameOutput}' = '{weightFormula}' column to file '{friendFileName}'")
     ROOT.RDataFrame(treeName, dataFileNames) \
         .Define(weightColNameOutput, weightFormula) \
-        .Snapshot(treeName, friendFileName, [weightColNameOutput])
+        .Snapshot(treeName, friendFileName, [weightColNameOutput])  #!NOTE! when multi-threading is enabled, the order of entries is not guaranteed to be preserved
   # chain trees for signal and background regions and add friend trees with weights
   dataTChain   = ROOT.TChain(treeName)
   weightTChain = ROOT.TChain(treeName)
