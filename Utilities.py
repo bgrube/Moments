@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from collections.abc import Sequence
 import contextlib
 from dataclasses import (
@@ -11,6 +12,7 @@ from dataclasses import (
 import functools
 import os
 import subprocess
+import sys
 import time
 
 import ROOT
@@ -24,6 +26,18 @@ def printGitInfo() -> None:
   repoDir = os.path.dirname(os.path.abspath(__file__))
   gitInfo = subprocess.check_output(["git", "describe", "--always"], cwd = repoDir).strip().decode()
   print(f"Running code in '{repoDir}', git version '{gitInfo}'")
+
+
+def print_command_line_arguments(args: argparse.Namespace) -> None:
+  """Prints all command-line arguments and their values and the git hash."""
+  launched_script_file_name = os.path.basename(sys.argv[0])  # get file name of script that was launched
+  print("-------------------------------------------------------------------------------")
+  print(f"Running script {launched_script_file_name} with arguments:")
+  max_arg_name_length = max(len(arg_name) for arg_name in vars(args).keys())
+  for arg_name, arg_value in sorted(vars(args).items()):  # sort keys for stable, tidy output
+    print(f"{arg_name:>{max_arg_name_length + 2}} : {arg_value}")
+  printGitInfo()
+  print("-------------------------------------------------------------------------------")
 
 
 def makeDirPath(dirPath: str) -> str:

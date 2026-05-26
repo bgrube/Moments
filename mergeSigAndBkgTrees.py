@@ -19,7 +19,6 @@ print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
-  Utilities.printGitInfo()
   timer = Utilities.Timer()
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
@@ -37,6 +36,7 @@ if __name__ == "__main__":
   args = parser.parse_args()
   if args.outTreeName is None:
     args.outTreeName = args.inTreeName
+  Utilities.print_command_line_arguments(args)
 
   mergedDf: ROOT.RDataFrame = Utilities.getDataFrameWithCorrectEventWeights(
     dataSigRegionFileNames  = (args.sigFilePath, ),
