@@ -1,7 +1,11 @@
 """Module that provides functions for using ROOT code"""
 
+from __future__ import annotations
+
 import functools
-from typing import Any
+import os
+import threading
+from typing import Any, Callable
 
 import ROOT
 
@@ -12,6 +16,34 @@ import OpenMpUtilities
 print = functools.partial(print, flush = True)
 
 
+def runOnce(func) -> Callable[..., Any | None]:
+  """Decorator that ensures that the decorated function is executed only once; subsequent calls return the result of the first call"""
+  threadLock = threading.Lock()
+  firstCall  = True
+  funcResult = None  # store result of first function call to return it for all subsequent calls
+
+  def wrapper(*args, **kwargs) -> Any | None:
+    nonlocal firstCall, funcResult
+    if not firstCall:
+      return funcResult
+    with threadLock:
+      if firstCall:
+        funcResult = func(*args, **kwargs)
+        firstCall = False
+    return funcResult
+
+  return wrapper
+
+
+@runOnce
+def loadFSROOTLibraries() -> None:
+  """Loads FSROOT libraries"""
+  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
+  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
+  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
+
+
+#TODO put this into a function to make loading more explicit
 # C++ implementation of (complex conjugated) Wigner D function, spherical harmonics, and basis functions for polarized photoproduction moments
 # also provides complexT typedef for std::complex<double>
 OpenMpUtilities.enableRootACLiCOpenMp()

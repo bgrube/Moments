@@ -42,6 +42,10 @@ from PlottingUtilities import (
   setupPlotStyle,
 )
 import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from RootUtilities import (
+  declareInCpp,
+  loadFSROOTLibraries,
+)
 import Utilities
 
 
@@ -336,7 +340,7 @@ def reweightData(
       hist.Draw()
       canv.SaveAs(f"{hist.GetName()}.root")
   # add columns for rejection sampling to input data
-  RootUtilities.declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
+  declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
   dataToWeight = (
     dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
                 .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
@@ -464,10 +468,7 @@ if __name__ == "__main__":
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   # ROOT.EnableImplicitMT()
-  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
-  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
-  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
+  loadFSROOTLibraries()
   setupPlotStyle()
 
   # declare C++ functions
