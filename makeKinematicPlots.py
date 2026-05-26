@@ -20,6 +20,7 @@ import ROOT
 from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+  CoordSysType,
   defineOverwriteRDataFrame,
 )
 from makeMomentsInputTree import (
@@ -29,7 +30,6 @@ from makeMomentsInputTree import (
   CPP_CODE_TRACKDISTFDC,
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_TWO_BODY_ANGLES_NIZAR,
-  CoordSysType,
   defineDataFrameColumns,
   InputDataType,
   InputDataFormat,

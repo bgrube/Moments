@@ -167,6 +167,11 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
 }
 
 
+class CoordSysType(Enum):
+  HF = 0  # helicity frame
+  GJ = 1  # Gottfried-Jackson frame
+
+
 @dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized pi+pi- analysis"""
@@ -179,6 +184,7 @@ class AnalysisConfig:
 
   # defaults are for unpolarized pi+pi- analysis
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
+  frame:                    CoordSysType              = CoordSysType.HF  # coordinate system, in which moments are calculated
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   # Spring 2017 low-energy data
   dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
@@ -189,7 +195,7 @@ class AnalysisConfig:
   # dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
   # psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC
   # psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC
-  polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization
+  polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column
   maxL:                     int | tuple[int, int]     = 8  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
   outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
   # normalizeMoments:         bool                      = True
@@ -385,6 +391,7 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
 )
 # configuration for Nizar's polarized eta pi0 data
 CFG_POLARIZED_ETAPI0 = AnalysisConfig(
+  frame              = CoordSysType.GJ,
   treeName           = "EtaPi0",
   dataFileName       = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/data_flat_All.root",
   psAccFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_acc_flat_All.root",

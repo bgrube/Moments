@@ -9,6 +9,7 @@ Usage: Run this module as a script to convert input data files.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from copy import deepcopy
 from dataclasses import (
   dataclass,
   field,
@@ -27,6 +28,8 @@ ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`  #T
 from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+  CFG_POLARIZED_PIPI,
+  CoordSysType,
   defineOverwriteRDataFrame,
 )
 from MomentCalculator import (
@@ -211,11 +214,6 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
   else:
     raise RuntimeError(f"Unsupported data format type '{dataFormat}'")
   return lvs
-
-
-class CoordSysType(Enum):
-  HF = 0  # helicity frame
-  GJ = 1  # Gottfried-Jackson frame
 
 
 def defineDataFrameColumns(
@@ -465,7 +463,7 @@ if __name__ == "__main__":
   timer = Utilities.Timer()
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
-  ROOT.EnableImplicitMT()
+  # ROOT.EnableImplicitMT()
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
   ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
@@ -479,12 +477,12 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  frame = CoordSysType.HF  # helicity frame, i.e. z_HF = -p_recoil
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   subsystems: list[SubSystemInfo] = []
   dataSets:   list[DataSetInfo]   = []
 
   # set up polarized pi+pi- data
-  if False:
+  if True:
     subsystems      = [  # particle pairs to analyze; particle A is the analyzer
       SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
       # SubSystemInfo(pairLabel = "PipP", lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim"   ),
@@ -649,7 +647,6 @@ if __name__ == "__main__":
 
   # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
   if False:
-    frame           = CoordSysType.GJ  # Gottfried-Jackson frame, i.e. z_GJ = p_beam
     subsystem       = SubSystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
     dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/polarized"
     dataPeriods     = (
@@ -726,7 +723,7 @@ if __name__ == "__main__":
           dataSets.append(dataSet)
 
   # set up unpolarized eta' eta data from Will's analysis
-  if True:
+  if False:
     subsystem       = SubSystemInfo(pairLabel = "EtapEta", lvALabel = "etap", lvBLabel = "eta", lvRecoilLabel = "recoil")
     dataDirBaseName = f"./dataPhotoProd{subsystem.pairLabel}/unpolarized"
     dataPeriods     = (
@@ -817,7 +814,7 @@ if __name__ == "__main__":
       lvA                  = lvs[dataSet.subsystem.lvALabel],
       lvB                  = lvs[dataSet.subsystem.lvBLabel],
       beamPolInfo          = dataSet.beamPolInfo,
-      frame                = frame,
+      frame                = cfg.frame,
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running

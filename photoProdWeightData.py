@@ -30,13 +30,13 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
+  CoordSysType,
 )
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
-  CoordSysType,
   defineDataFrameColumns,
   InputDataFormat,
   lorentzVectors,

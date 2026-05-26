@@ -501,7 +501,7 @@ def getStdVectorFromRdfColumn(
 
 
 def readInputData(
-  polarization:      float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization variable
+  polarization:      float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column
   data:              ROOT.RDataFrame,
   flipSignOfWeights: bool = False,  # if set, weights of real-data event are sign-flipped
 ) -> tuple[
