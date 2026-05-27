@@ -23,7 +23,7 @@ from AnalysisConfig import (
   BEAM_POL_INFOS,
   CoordSysType,
   defineOverwriteRDataFrame,
-  SubSystemInfo,
+  SubsystemInfo,
 )
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
@@ -52,7 +52,7 @@ print = functools.partial(print, flush = True)
 def defineColumnsForPlots(
   df:                   ROOT.RDataFrame,
   inputDataFormat:      InputDataFormat,
-  subSystem:            SubSystemInfo,
+  subSystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   additionalColumnDefs: dict[str, str] = {},  # additional columns to define
   additionalFilterDefs: list[str]      = [],  # additional filter conditions to apply
@@ -212,7 +212,7 @@ def decomposeHistEvenOdd(
 def bookHistograms(
   df:                   ROOT.RDataFrame,
   inputDataType:        InputDataType,
-  subSystem:            SubSystemInfo,
+  subSystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   subsystemMassBinning: HistAxisBinning | None = None,  # if not None, histograms will be booked in bins of the subsystem mass
 ) -> tuple[HistListType, list[str]]:
@@ -468,7 +468,7 @@ def makePlots(
 
 def makeAnglesHFCorrelationPlot(
   df:                   ROOT.RDataFrame,
-  subSystem:            SubSystemInfo,
+  subSystem:            SubsystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
   outputDirName:        str,  # directory to save output plot in
   histNameSuffix:       str = "",
@@ -572,8 +572,8 @@ if __name__ == "__main__":
   # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
 
   # parameters for polarized eta pi0 data
-  subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-    SubSystemInfo(
+  subSystems: tuple[SubsystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
+    SubsystemInfo(
       pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
       lvALabel      = "eta",    ATLatexLabel      = "#eta",
       lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",

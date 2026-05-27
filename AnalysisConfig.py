@@ -174,12 +174,12 @@ class CoordSysType(Enum):
 
 
 @dataclass
-class SubSystemInfo:
+class SubsystemInfo:
   """Stores information about the (A, B) two-body subsystem, for which moments are calculated, for the reaction beam + target -> A + B + recoil"""
-  pairLabel:         str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
   lvALabel:          str  # label of Lorentz-vector of daughter A (analyzer)
   lvBLabel:          str  # label of Lorentz-vector of daughter B
   lvRecoilLabel:     str  # label of Lorentz-vector of recoil particle
+  pairLabel:         str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
   ATLatexLabel:      str = ""  # optional LaTeX label for particle A (analyzer)
   BTLatexLabel:      str = ""  # optional LaTeX label for particle B
   recoilTLatexLabel: str = ""  # optional LaTeX label for recoil particle
@@ -196,9 +196,19 @@ class AnalysisConfig:
     LIN_ALG_BG_SUBTR_MOMENTS     = 1  # linear-algebra method for acceptance correction + background subtraction by subtracting moments
     MAX_LIKELIHOOD_FIT           = 2  # maximum-likelihood fit for acceptance correction + background subtraction by subtracting moments
 
-  # defaults are for unpolarized pi+pi- analysis
+  # defaults are for unpolarized gamma + p -> (pi+ pi-) p data
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   frame:                    CoordSysType              = CoordSysType.HF  # coordinate system, in which moments are calculated
+  subsystem:                SubsystemInfo             = SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
+    lvALabel          = "pip",     # label of pi+ Lorentz-vector
+    lvBLabel          = "pim",     # label of pi- Lorentz-vector
+    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+    pairLabel         = "PiPi",    #TODO treeName is identical
+    ATLatexLabel      = "#it{#pi}^{#plus}",
+    BTLatexLabel      = "#it{#pi}^{#minus}",
+    recoilTLatexLabel = "#it{p}",
+    pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
+  )
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   # Spring 2017 low-energy data
   dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
@@ -360,7 +370,7 @@ class AnalysisConfig:
     return df
 
 
-# configurations for unpolarized pi+ pi- data in CLAS kinematic range
+# configurations for unpolarized gamma + p -> (pi+ pi-) p data in CLAS kinematic range
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
@@ -378,7 +388,7 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
   # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
 )
-# configuration for polarized pi+ pi- data
+# configuration for polarized gamma + p -> (pi+ pi-) p data
 CFG_POLARIZED_PIPI = AnalysisConfig(
   dataFileName       = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/data_flat_0.0.root",
   psAccFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat.root",
@@ -388,8 +398,18 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",
   massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
 )
-# configuration for unpolarized pi+ p data
+# configuration for unpolarized gamma + p -> (pi+ p) pi- data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
+  subsystem          = SubsystemInfo(  # pi+ p subsystem to analyze; pi+ is the analyzer
+    lvALabel          = "pip",    # label of pi+ Lorentz-vector
+    lvBLabel          = "recoil", # label of proton Lorentz-vector
+    lvRecoilLabel     = "pim",    # label of "recoil" pi- Lorentz-vector
+    pairLabel         = "PipP",
+    ATLatexLabel      = "#it{#pi}^{#plus}",
+    BTLatexLabel      = "#it{p}",
+    recoilTLatexLabel = "#it{#pi}^{#minus}",
+    pairTLatexLabel   = "#it{#pi}^{#plus}#it{p}",
+  ),
   dataFileName       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/data_flat.root",
   psAccFileName      = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/phaseSpace_acc_flat.root",
   psGenFileName      = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/phaseSpace_gen_flat.root",
@@ -403,9 +423,19 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   ),
   massBinning        = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
 )
-# configuration for Nizar's polarized eta pi0 data
+# configuration for Nizar's polarized gamma + p -> (eta pi0) p data, with eta -> gamma + gamma
 CFG_POLARIZED_ETAPI0 = AnalysisConfig(
   frame              = CoordSysType.GJ,
+  subsystem          = SubsystemInfo(  # eta pi0 subsystem to analyze; eta is the analyzer
+    lvALabel          = "eta",     # label of eta Lorentz-vector
+    lvBLabel          = "pi0",     # label of pi0 Lorentz-vector
+    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+    pairLabel         = "EtaPi0",
+    ATLatexLabel      = "#it{#eta}",
+    BTLatexLabel      = "#it{#pi}^{0}",
+    recoilTLatexLabel = "#it{p}",
+    pairTLatexLabel   = "#it{#eta}#it{#pi}^{0}",
+  ),
   treeName           = "EtaPi0",
   dataFileName       = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/data_flat_All.root",
   psAccFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_acc_flat_All.root",
@@ -421,8 +451,18 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
   ),
   massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),  # 40 MeV wide bins
 )
-# configuration for Zach's polarized eta' pi0 data
+# configuration for Zach's polarized gamma + p -> (eta' pi0) p data, with eta' -> pi+ + pi- + eta and eta -> gamma + gamma
 CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
+  subsystem          = SubsystemInfo(  # eta' pi0 subsystem to analyze; eta' is the analyzer
+    lvALabel          = "etap",    # label of eta' Lorentz-vector
+    lvBLabel          = "pi0",     # label of pi0 Lorentz-vector
+    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+    pairLabel         = "EtaPi0",
+    ATLatexLabel      = "#it{#eta}'",
+    BTLatexLabel      = "#it{#pi}^{0}",
+    recoilTLatexLabel = "#it{p}",
+    pairTLatexLabel   = "#it{#eta}'#it{#pi}^{0}",
+  ),
   treeName           = "kin",
   dataFileName       = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/data_flat_PARA_0.root",
   psAccFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/phaseSpace_acc_flat_PARA_0.root",
@@ -438,8 +478,18 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
   ),
   massBinning        = HistAxisBinning(nmbBins = 20, minVal = 1.2, maxVal = 2.0),  # 40 MeV wide bins
 )
-# configuration for Will's unpolarized eta' eta data
+# configuration for Will's unpolarized gamma + p -> (eta' eta) p data
 CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
+  subsystem          = SubsystemInfo(  # eta' eta subsystem to analyze; eta' is the analyzer
+    lvALabel          = "etap",    # label of eta' Lorentz-vector
+    lvBLabel          = "eta",     # label of eta Lorentz-vector
+    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+    pairLabel         = "EtaPEta",
+    ATLatexLabel      = "#it{#eta}'",
+    BTLatexLabel      = "#it{#eta}",
+    recoilTLatexLabel = "#it{p}",
+    pairTLatexLabel   = "#it{#eta}'#it{#eta}",
+  ),
   treeName           = "EtapEta",
   dataFileName       = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/data_flat_Unpol.root",
   psAccFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_acc_flat_Unpol.root",
@@ -457,8 +507,18 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   # massBinning        = HistAxisBinning(nmbBins = 8, minVal = 1.5, maxVal = 3.5),  # 250 MeV wide bins
   massBinning        = HistAxisBinning(nmbBins = 15, minVal = 1.5, maxVal = 3.0),  # 100 MeV wide bins
 )
-# configuration for Kevin's K- K_S Delta++ data
+# configuration for Kevin's gamma + p -> (K- K_S) Delta++ data
 CFG_KEVIN = AnalysisConfig(
+  subsystem          = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer
+    lvALabel          = "K-",      # label of K- Lorentz-vector
+    lvBLabel          = "K_S",     # label of K_S Lorentz-vector
+    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+    pairLabel         = "KmKS",
+    ATLatexLabel      = "#it{K}^{#minus}",
+    BTLatexLabel      = "#it{K}_{S}^{0}",
+    recoilTLatexLabel = "#it{p}",
+    pairTLatexLabel   = "#it{K}^{#minus}#it{K}_{S}^{0}",
+  ),
   treeName                 = "ntFSGlueX_100_11100_angles",
   dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
   psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",

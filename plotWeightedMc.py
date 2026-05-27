@@ -16,7 +16,7 @@ ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import (
   BEAM_POL_INFOS,
-  SubSystemInfo,
+  SubsystemInfo,
 )
 from makeKinematicPlots import (
   bookHistogram,
@@ -81,7 +81,7 @@ def adjustStatsBox(canv: ROOT.TCanvas) -> None:
 
 def makePlots(
   dataToOverlay:         DataToOverlay,
-  subSystem:             SubSystemInfo,
+  subSystem:             SubsystemInfo,
   outputDirName:         str = ".",
   pdfFileNameSuffix:     str = "",
   yAxisLabel:            str = "RF-Sideband Subtracted Combos",
@@ -324,7 +324,7 @@ if __name__ == "__main__":
   # # useIntensityTerms = "parityConserving"
   # # useIntensityTerms = "parityViolating"
 
-  subSystem = SubSystemInfo(
+  subSystem = SubsystemInfo(
     pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
     lvALabel      = "eta",    ATLatexLabel      = "#eta",
     lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
