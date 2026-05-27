@@ -56,6 +56,7 @@ class BeamPolInfo:
     return result
 
 
+#TODO maybe using a function would be more flexible here
 BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period label> : {<beam-polarization label> : BeamPolInfo(...)}; `None` means unpolarized
   "merged" : {  # several merged data periods with different polarization values
     "All" : BeamPolInfo(  # read polarization values from the given column names
@@ -167,7 +168,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
 }
 
 
-class CoordSysType(Enum):
+class CoordSysType(Enum):  #TODO move into AnalysisConfig class?
   """Enumerates coordinate systems in which moments can be calculated"""
   HF = 0  # helicity frame
   GJ = 1  # Gottfried-Jackson frame
@@ -209,17 +210,23 @@ class AnalysisConfig:
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
   )
+  dataDirBaseName:          str                       = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data
+  dataPeriods:              tuple[str, ...]           = (  # labels of data periods to process
+    "2017_01",
+    "2018_08",
+  )
+  tBinLabels:               tuple[str, ...]           = (  # labels of t bins to process
+    "tbin_0.4_0.5",
+  )
+  beamPolLabels:            tuple[str, ...]           = (  # labels of beam polarizations to process, e.g. "PARA_0"; use "AMO" or "Unpol" for unpolarized data  #TODO store list of BeamPolInfos and generate labels with a function
+    "Unpol",
+  )
   treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
   # Spring 2017 low-energy data
-  dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
-  psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC
-  psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC
-  #TODO make it easier to switch data
-  # # Fall 2018 low-energy data
-  # dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze
-  # psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC
-  # psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2018_08/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC
-  polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column
+  dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze  #TODO remove?
+  psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC  #TODO remove?
+  psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC  #TODO remove?
+  polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
   maxL:                     int | tuple[int, int]     = 8  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
   outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
   # normalizeMoments:         bool                      = True
@@ -388,8 +395,30 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
   # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
 )
+
+
 # configuration for polarized gamma + p -> (pi+ pi-) p data
 CFG_POLARIZED_PIPI = AnalysisConfig(
+  dataDirBaseName    = "./dataPhotoProdPiPi/polarized",
+  dataPeriods        = (
+    # "2017_01",
+    "2017_01_ver05",  #!NOTE! SDME analysis: 0.60 < m_pipi < 0.88 GeV
+    # "2018_08",
+  ),
+  tBinLabels         = (
+    "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis  #TODO actual upper limit seems to 0.11364635 GeV^2
+    # "tbin_0.1_0.2",
+    # "tbin_0.2_0.3",
+    # "tbin_0.3_0.4",
+    # "tbin_0.4_0.5",
+  ),
+  beamPolLabels      = (
+    "PARA_0",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
+    # "AMO",
+  ),
   dataFileName       = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/data_flat_0.0.root",
   psAccFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat.root",
   psGenFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_gen_flat.root",
@@ -398,6 +427,8 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",
   massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
 )
+
+
 # configuration for unpolarized gamma + p -> (pi+ p) pi- data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   subsystem          = SubsystemInfo(  # pi+ p subsystem to analyze; pi+ is the analyzer
@@ -423,6 +454,8 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   ),
   massBinning        = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
 )
+
+
 # configuration for Nizar's polarized gamma + p -> (eta pi0) p data, with eta -> gamma + gamma
 CFG_POLARIZED_ETAPI0 = AnalysisConfig(
   frame              = CoordSysType.GJ,
@@ -436,6 +469,16 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}#it{#pi}^{0}",
   ),
+  dataDirBaseName    = "./dataPhotoProdEtaPi0/polarized",
+  dataPeriods        = ("merged", ),  # merged Phase-I + Spring 2020 data with different polarization values
+  tBinLabels         = (
+    "t010020",
+    "t020032",
+    "t032050",
+    "t050075",
+    "t075100",
+  ),
+  beamPolLabels      = ("All", ),  # input files contain all beam polarization orientations merged together
   treeName           = "EtaPi0",
   dataFileName       = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/data_flat_All.root",
   psAccFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_acc_flat_All.root",
@@ -451,6 +494,8 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
   ),
   massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),  # 40 MeV wide bins
 )
+
+
 # configuration for Zach's polarized gamma + p -> (eta' pi0) p data, with eta' -> pi+ + pi- + eta and eta -> gamma + gamma
 CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
   subsystem          = SubsystemInfo(  # eta' pi0 subsystem to analyze; eta' is the analyzer
@@ -478,6 +523,8 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
   ),
   massBinning        = HistAxisBinning(nmbBins = 20, minVal = 1.2, maxVal = 2.0),  # 40 MeV wide bins
 )
+
+
 # configuration for Will's unpolarized gamma + p -> (eta' eta) p data
 CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   subsystem          = SubsystemInfo(  # eta' eta subsystem to analyze; eta' is the analyzer
@@ -490,6 +537,19 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#eta}",
   ),
+  dataDirBaseName    = f"./dataPhotoProdEtaPEta/unpolarized",
+  dataPeriods        = (
+    "2017_01",
+    "2018_01",
+    "2018_08",
+    "2019_11",
+  ),
+  tBinLabels         = (
+    # "ALLT",
+    # "LOWT",
+    "XSCUTS",
+  ),
+  beamPolLabels      = ("Unpol", ),
   treeName           = "EtapEta",
   dataFileName       = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/data_flat_Unpol.root",
   psAccFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_acc_flat_Unpol.root",
@@ -507,6 +567,8 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   # massBinning        = HistAxisBinning(nmbBins = 8, minVal = 1.5, maxVal = 3.5),  # 250 MeV wide bins
   massBinning        = HistAxisBinning(nmbBins = 15, minVal = 1.5, maxVal = 3.0),  # 100 MeV wide bins
 )
+
+
 # configuration for Kevin's gamma + p -> (K- K_S) Delta++ data
 CFG_KEVIN = AnalysisConfig(
   subsystem          = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer

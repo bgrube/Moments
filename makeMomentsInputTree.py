@@ -475,27 +475,8 @@ if __name__ == "__main__":
 
   # set up polarized pi+pi- data
   if True:
+  # if False:
     cfg = deepcopy(CFG_POLARIZED_PIPI)
-    dataDirBaseName = "./dataPhotoProdPiPi/polarized"
-    dataPeriods     = (
-      # "2017_01",
-      "2017_01_ver05",  #!NOTE! SDME analysis: 0.60 < m_pipi < 0.88 GeV
-      # "2018_08",
-    )
-    tBinLabels      = (
-      "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis  #TODO actual upper limit seems to 0.11364635 GeV^2
-      # "tbin_0.1_0.2",
-      # "tbin_0.2_0.3",
-      # "tbin_0.3_0.4",
-      # "tbin_0.4_0.5",
-    )
-    beamPolLabels   = (
-      "PARA_0",
-      # "PARA_135",
-      # "PERP_45",
-      # "PERP_90",
-      # "AMO",
-    )
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
       InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
@@ -517,14 +498,15 @@ if __name__ == "__main__":
     # reweightMinusTDistribution = True
     reweightMinusTDistribution = False
 
-    for dataPeriod in dataPeriods:
+    print(f"Setting up subsystem '{cfg.subsystem}':")
+    for dataPeriod in cfg.dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in tBinLabels:
+      for tBinLabel in cfg.tBinLabels:
         print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
-        outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
+        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
+        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for beamPolLabel in beamPolLabels:
+        for beamPolLabel in cfg.beamPolLabels:
           beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
           print(f"Setting up beam-polarization orientation '{beamPolLabel}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
@@ -569,14 +551,9 @@ if __name__ == "__main__":
             dataSets.append(dataSet)
 
   # setup unpolarized pi+pi- data
+  # if True:
   if False:
     cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)
-    dataDirBaseName       = "./unpolarized"
-    dataPeriods           = (
-      "2017_01",
-      "2018_08",
-    )
-    tBinLabels            = ("tbin_0.4_0.5", )
     outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
@@ -585,13 +562,15 @@ if __name__ == "__main__":
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.ALEX,
       InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
+
     #TODO merge with loop for polarized data sets and move into function
-    for dataPeriod in dataPeriods:
+    print(f"Setting up subsystem '{cfg.subsystem}':")
+    for dataPeriod in cfg.dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in tBinLabels:
+      for tBinLabel in cfg.tBinLabels:
         print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
-        outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
+        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
+        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
         for inputDataType, inputDataFormat in inputDataFormats.items():
           print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
@@ -604,13 +583,13 @@ if __name__ == "__main__":
             inputFileNames       = (
               ((f"{inputDataDirBaseName}/amptools_tree_signal.root", ),  # real data: signal and background
                 (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ) ) if inputDataType == InputDataType.REAL_DATA else
-              (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.mcReco else
+              (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
               (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
             ),
             inputTreeName        = "kin",
             outputFileName       = (
               f"{outputDataDirBaseName}/data_flat.root"           if inputDataType == InputDataType.REAL_DATA else
-              f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.mcReco else
+              f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
               f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
             ),
             outputTreeName       = cfg.subsystem.pairLabel,
@@ -630,20 +609,9 @@ if __name__ == "__main__":
           dataSets.append(dataSet)
 
   # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
+  # if True:
   if False:
     cfg = deepcopy(CFG_POLARIZED_ETAPI0)
-    dataDirBaseName = f"./dataPhotoProd{cfg.subsystem.pairLabel}/polarized"
-    dataPeriods     = (
-      "merged",
-    )
-    tBinLabels      = (
-      "t010020",
-      "t020032",
-      "t032050",
-      "t050075",
-      "t075100",
-    )
-    beamPolLabel    = "All"  # input files contain all beam polarization orientations merged together
     beamPolInfo     = BeamPolInfo(  # read beam polarization info from input tree
       pol    = "Pol",
       PhiLab = "BeamAngle",
@@ -661,67 +629,56 @@ if __name__ == "__main__":
     reweightMinusTDistribution = False
 
     print(f"Setting up subsystem '{cfg.subsystem}':")
-    for dataPeriod in dataPeriods:
+    for dataPeriod in cfg.dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in tBinLabels:
+      for tBinLabel in cfg.tBinLabels:
         print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Nizar"
-        outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
+        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Nizar"
+        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for inputDataType, inputDataFormat in inputDataFormats.items():
-          print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-          outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
-          dataSet = DataSetInfo(
-            subsystem            = cfg.subsystem,
-            inputType            = inputDataType,
-            inputFormat          = inputDataFormat,
-            dataPeriod           = dataPeriod,
-            tBinLabel            = tBinLabel,
-            beamPolLabel         = beamPolLabel,
-            beamPolInfo          = beamPolInfo,
-            inputFileNames       = (
-              (f"{inputDataDirBaseName}/amptools_tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
-              (f"{inputDataDirBaseName}/amptools_tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              (f"{inputDataDirBaseName}/amptools_tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
-            ),
-            inputTreeName        = "kin",
-            outputFileName       = (
-              f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
-              f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
-            ),
-            outputTreeName       = cfg.subsystem.pairLabel,
-            outputColumns        = (
-              outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
-              outputColumns  # no event weights for MC data
-            ),
-            additionalColumnDefs = (
-              additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              {}  # no additional variables for MC truth
-            ),
-            additionalFilterDefs = (
-              additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              []  # no additional selection cuts for MC truth
-            ),
-          )
-          dataSets.append(dataSet)
+        for beamPolLabel in cfg.beamPolLabels:  #TODO only one entry
+          for inputDataType, inputDataFormat in inputDataFormats.items():
+            print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
+            outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
+            dataSet = DataSetInfo(
+              subsystem            = cfg.subsystem,
+              inputType            = inputDataType,
+              inputFormat          = inputDataFormat,
+              dataPeriod           = dataPeriod,
+              tBinLabel            = tBinLabel,
+              beamPolLabel         = beamPolLabel,
+              beamPolInfo          = beamPolInfo,
+              inputFileNames       = (
+                (f"{inputDataDirBaseName}/amptools_tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
+                (f"{inputDataDirBaseName}/amptools_tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                (f"{inputDataDirBaseName}/amptools_tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+              ),
+              inputTreeName        = "kin",
+              outputFileName       = (
+                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
+                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+              ),
+              outputTreeName       = cfg.subsystem.pairLabel,
+              outputColumns        = (
+                outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
+                outputColumns  # no event weights for MC data
+              ),
+              additionalColumnDefs = (
+                additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                {}  # no additional variables for MC truth
+              ),
+              additionalFilterDefs = (
+                additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                []  # no additional selection cuts for MC truth
+              ),
+            )
+            dataSets.append(dataSet)
 
   # set up unpolarized eta' eta data from Will's analysis
+  # if True:
   if False:
     cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)
-    dataDirBaseName = f"./dataPhotoProd{cfg.subsystem.pairLabel}/unpolarized"
-    dataPeriods     = (
-      "2017_01",
-      "2018_01",
-      "2018_08",
-      "2019_11",
-    )
-    tBinLabels      = (
-      # "ALLT",
-      # "LOWT",
-      "XSCUTS",
-    )
-    beamPolLabel    = "Unpol"
     inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
       InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
       InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
@@ -732,39 +689,40 @@ if __name__ == "__main__":
     reweightMinusTDistribution = False
 
     print(f"Setting up subsystem '{cfg.subsystem}':")
-    for dataPeriod in dataPeriods:
+    for dataPeriod in cfg.dataPeriods:
       print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in tBinLabels:
+      for tBinLabel in cfg.tBinLabels:
         print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/Will"
-        outputDataDirBaseName = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
+        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Will"
+        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for inputDataType, inputDataFormat in inputDataFormats.items():
-          print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-          dataSet = DataSetInfo(
-            subsystem      = cfg.subsystem,
-            inputType      = inputDataType,
-            inputFormat    = inputDataFormat,
-            dataPeriod     = dataPeriod,
-            tBinLabel      = tBinLabel,
-            inputFileNames = (
-              (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
-              (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE  #TODO fix file format
-            ),
-            inputTreeName  = "nt",
-            outputFileName = (
-              f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
-              f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
-            ),
-            outputTreeName = cfg.subsystem.pairLabel,
-            outputColumns  = (
-              outputColumnsUnpolarized if inputDataType == InputDataType.GENERATED_PHASE_SPACE else  # no event weights for MC data
-              outputColumnsUnpolarized + ("eventWeight", )
-            ),
-          )
-          dataSets.append(dataSet)
+        for beamPolLabel in cfg.beamPolLabels:
+          for inputDataType, inputDataFormat in inputDataFormats.items():
+            print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
+            dataSet = DataSetInfo(
+              subsystem      = cfg.subsystem,
+              inputType      = inputDataType,
+              inputFormat    = inputDataFormat,
+              dataPeriod     = dataPeriod,
+              tBinLabel      = tBinLabel,
+              inputFileNames = (
+                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
+                (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE  #TODO fix file format
+              ),
+              inputTreeName  = "nt",
+              outputFileName = (
+                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
+                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+              ),
+              outputTreeName = cfg.subsystem.pairLabel,
+              outputColumns  = (
+                outputColumnsUnpolarized if inputDataType == InputDataType.GENERATED_PHASE_SPACE else  # no event weights for MC data
+                outputColumnsUnpolarized + ("eventWeight", )
+              ),
+            )
+            dataSets.append(dataSet)
 
   # process data sets
   for dataSet in dataSets:
