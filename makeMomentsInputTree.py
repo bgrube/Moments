@@ -555,11 +555,10 @@ if __name__ == "__main__":
                 beamPolLabel         = beamPolLabel,
                 beamPolInfo          = beamPolInfo,
                 inputFileNames       = (
-                  ((f"{inputDataDirBaseName}/amptools_tree_signal_{beamPolLabel}.root", ),  # real data: signal and background
-                   (f"{inputDataDirBaseName}/amptools_tree_bkgnd_{beamPolLabel}.root",  )) if inputDataType == InputDataType.REAL_DATA else
-                  (f"{inputDataDirBaseName}/amptools_tree_accepted*.root",               ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  # (f"{inputDataDirBaseName}/amptools_tree_truthAccepted*.root",          ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                  (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",                 )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                  (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root", ) if inputDataType == InputDataType.REAL_DATA else
+                  (f"{inputDataDirBaseName}/tree_accepted*.root",           ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  # (f"{inputDataDirBaseName}/tree_truthAccepted*.root",      ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                  (f"{inputDataDirBaseName}/tree_thrown*.root",             )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
                 ),
                 inputTreeName        = "kin",
                 outputFileName       = (
