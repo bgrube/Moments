@@ -32,6 +32,7 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
   CoordSysType,
+  SubSystemInfo,
 )
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
@@ -42,7 +43,6 @@ from makeMomentsInputTree import (
   InputDataFormat,
   lorentzVectors,
   reweightKinDistribution,
-  SubSystemInfo,
 )
 from MomentCalculator import (
   MomentResult,

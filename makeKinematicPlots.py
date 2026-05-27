@@ -23,6 +23,7 @@ from AnalysisConfig import (
   BEAM_POL_INFOS,
   CoordSysType,
   defineOverwriteRDataFrame,
+  SubSystemInfo,
 )
 from makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
@@ -34,7 +35,6 @@ from makeMomentsInputTree import (
   defineDataFrameColumns,
   InputDataType,
   InputDataFormat,
-  SubSystemInfo,
   lorentzVectors,
 )
 from PlottingUtilities import (

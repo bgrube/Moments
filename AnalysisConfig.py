@@ -168,8 +168,22 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
 
 
 class CoordSysType(Enum):
+  """Enumerates coordinate systems in which moments can be calculated"""
   HF = 0  # helicity frame
   GJ = 1  # Gottfried-Jackson frame
+
+
+@dataclass
+class SubSystemInfo:
+  """Stores information about the (A, B) two-body subsystem, for which moments are calculated, for the reaction beam + target -> A + B + recoil"""
+  pairLabel:         str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
+  lvALabel:          str  # label of Lorentz-vector of daughter A (analyzer)
+  lvBLabel:          str  # label of Lorentz-vector of daughter B
+  lvRecoilLabel:     str  # label of Lorentz-vector of recoil particle
+  ATLatexLabel:      str = ""  # optional LaTeX label for particle A (analyzer)
+  BTLatexLabel:      str = ""  # optional LaTeX label for particle B
+  recoilTLatexLabel: str = ""  # optional LaTeX label for recoil particle
+  pairTLatexLabel:   str = ""  # optional LaTeX label for particle pair (e.g. "#pi#pi" for pi+ pi- pair)
 
 
 @dataclass

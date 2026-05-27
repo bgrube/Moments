@@ -14,7 +14,10 @@ import os
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from AnalysisConfig import BEAM_POL_INFOS
+from AnalysisConfig import (
+  BEAM_POL_INFOS,
+  SubSystemInfo,
+)
 from makeKinematicPlots import (
   bookHistogram,
   defineColumnsForPlots,
@@ -27,7 +30,6 @@ from makeMomentsInputTree import (
   CPP_CODE_MASSPAIR,
   CPP_CODE_TWO_BODY_ANGLES,
   InputDataFormat,
-  SubSystemInfo,
 )
 from PlottingUtilities import (
   HistAxisBinning,

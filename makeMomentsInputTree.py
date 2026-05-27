@@ -31,6 +31,7 @@ from AnalysisConfig import (
   CFG_POLARIZED_PIPI,
   CoordSysType,
   defineOverwriteRDataFrame,
+  SubSystemInfo,
 )
 from MomentCalculator import (
   KinematicBinningVariable,
@@ -426,18 +427,6 @@ def reweightKinDistribution(
     canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
     canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
 
-
-@dataclass
-class SubSystemInfo:
-  """Stores information about a two-body subsystem (particle pair)"""
-  pairLabel:         str  # label for particle pair (e.g. "PiPi" for pi+ pi- pair)
-  lvALabel:          str  # label of Lorentz-vector of daughter A (analyzer)
-  lvBLabel:          str  # label of Lorentz-vector of daughter B
-  lvRecoilLabel:     str  # label of Lorentz-vector of recoil particle
-  ATLatexLabel:      str = ""  # optional LaTeX label for particle A (analyzer)
-  BTLatexLabel:      str = ""  # optional LaTeX label for particle B
-  recoilTLatexLabel: str = ""  # optional LaTeX label for recoil particle
-  pairTLatexLabel:   str = ""  # optional LaTeX label for particle pair (e.g. "#pi#pi" for pi+ pi- pair)
 
 class InputDataType(Enum):  #TODO use AnalysisConfig.DataType instead
   REAL_DATA             = 0
