@@ -248,8 +248,7 @@ def defineDataFrameColumns(
       .Define(f"cosTheta{angColNameSuffix}", f"angles{angColNameSuffix}[0]")
       .Define(f"phi{angColNameSuffix}",      f"angles{angColNameSuffix}[1]")
   )
-  if True:
-  # if False:
+  if defineFSROOTAngles:
     #TODO there seems to be a bug in the FSROOT functions that calculate phi
     #     when using the same analyzer as for cosTheta, phi is flipped by 180 deg
     #     this difference is seen when comparing to GlueX AmpTools function and also when comparing to PWA results
