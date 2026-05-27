@@ -19,9 +19,9 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import (
+  AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
-  CoordSysType,
   defineOverwriteRDataFrame,
   SubsystemInfo,
 )
@@ -62,7 +62,7 @@ def defineColumnsForPlots(
   ALabel      = subSystem.lvALabel
   BLabel      = subSystem.lvBLabel
   recoilLabel = subSystem.lvRecoilLabel
-  for frame in (CoordSysType.HF, CoordSysType.GJ):
+  for frame in (AnalysisConfig.CoordSysType.HF, AnalysisConfig.CoordSysType.GJ):
     #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
     #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
     #    HF for pi+- p  baryon system: use pi+- as analyzer and z_HF = -p_pi-+   and y_HF = p_beam   x p_pi-+

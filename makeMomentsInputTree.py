@@ -26,13 +26,13 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import (
+  AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
-  CoordSysType,
   defineOverwriteRDataFrame,
   SubsystemInfo,
 )
@@ -231,20 +231,20 @@ def defineDataFrameColumns(
   lvRecoil:             str,  # function-argument list with Lorentz-vector components of recoil proton
   lvA:                  str,  # function-argument list with Lorentz-vector components of daughter A (analyzer)
   lvB:                  str,  # function-argument list with Lorentz-vector components of daughter B
-  beamPolInfo:          BeamPolInfo | None = None,  # photon beam polarization
-  frame:                CoordSysType       = CoordSysType.HF,  # reference frame for angle definitions
-  additionalColumnDefs: dict[str, str]     = {},  # additional columns to define
-  additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
-  colNameSuffix:        str                = "",  # suffix appended to column names
-  defineFSROOTAngles:   bool               = False,  # if True, define additional columns with angles calculated using FSROOT
+  beamPolInfo:          BeamPolInfo | None          = None,  # photon beam polarization
+  frame:                AnalysisConfig.CoordSysType = AnalysisConfig.CoordSysType.HF,  # reference frame for angle definitions
+  additionalColumnDefs: dict[str, str]              = {},  # additional columns to define
+  additionalFilterDefs: list[str]                   = [],  # additional filter conditions to apply
+  colNameSuffix:        str                         = "",  # suffix appended to column names
+  defineFSROOTAngles:   bool                        = False,  # if True, define additional columns with angles calculated using FSROOT
 ) -> ROOT.RDataFrame:
   """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   coordSysTypeStr = None
-  if frame == CoordSysType.HF:
+  if frame == AnalysisConfig.CoordSysType.HF:
     coordSysTypeStr = 'CoordSysType::HF'
-  elif frame == CoordSysType.GJ:
+  elif frame == AnalysisConfig.CoordSysType.GJ:
     coordSysTypeStr = 'CoordSysType::GJ'
   else:
     raise ValueError(f"Unsupported coordinate system type '{frame}'")
@@ -260,13 +260,13 @@ def defineDataFrameColumns(
     #     this difference is seen when comparing to GlueX AmpTools function and also when comparing to PWA results
     #     switching the analyzer for the phi calculation cures this problem
     #     in general, switching the analyzer flips sign of moments with odd M
-    if frame == CoordSysType.HF:
+    if frame == AnalysisConfig.CoordSysType.HF:
       df = (
         # use z_HF = -p_recoil, A as analyzer, and y_HF = -(p_beam x p_recoil)
         df.Define(f"cosTheta{angColNameSuffix}_FSROOT", f"(Double32_t)FSMath::helcostheta({lvA}, {lvB}, {lvRecoil})")
           .Define(f"phi{angColNameSuffix}_FSROOT",      f"(Double32_t)FSMath::helphi({lvB}, {lvA}, {lvRecoil}, {lvBeam})")  # need to switch analyzer to make it agree
       )
-    elif frame == CoordSysType.GJ:
+    elif frame == AnalysisConfig.CoordSysType.GJ:
       df = (
         # use z_GJ = p_beam, A as analyzer, and y_GJ = -(p_beam x p_recoil)
         df.Define(f"cosTheta{angColNameSuffix}_FSROOT", f"(Double32_t)FSMath::gjcostheta({lvA}, {lvB}, {lvBeam})")  #!NOTE! signature is different from FSMath::helcostheta (see FSBasic/FSMath.h)

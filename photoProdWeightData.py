@@ -31,7 +31,6 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
-  CoordSysType,
   SubsystemInfo,
 )
 from makeMomentsInputTree import (
@@ -62,7 +61,7 @@ print = functools.partial(print, flush = True)
 
 
 def loadInputData(
-  inputDataDef:     AnalysisConfig.DataType | tuple[str, str, SubsystemInfo, CoordSysType] | int,
+  inputDataDef:     AnalysisConfig.DataType | tuple[str, str, SubsystemInfo, AnalysisConfig.CoordSysType] | int,
     # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
     # if `tuple`, a tuple (<tree name>, <file name>, <subsystem info>, <coordinate system type>) for raw data is expected
     # if `int`, phase-space distribution in angles is generated with given number of events
@@ -139,7 +138,7 @@ def loadInputData(
 
 
 def weightDataWithIntensityFormula(
-  inputDataDef:         AnalysisConfig.DataType | tuple[str, str, SubsystemInfo, CoordSysType] | int,
+  inputDataDef:         AnalysisConfig.DataType | tuple[str, str, SubsystemInfo, AnalysisConfig.CoordSysType] | int,
     # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
     # if `tuple`, a tuple (<tree name>, <file name>, <subsystem info>, <coordinate system type>) for raw data is expected
     # if `int`, phase-space distribution in angles is generated with given number of events
@@ -286,12 +285,12 @@ if __name__ == "__main__":
   # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
   # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
 
-  # frame = CoordSysType.HF  # helicity frame, i.e. z_HF = -p_recoil
+  # frame = AnalysisConfig.CoordSysType.HF  # helicity frame, i.e. z_HF = -p_recoil
   # subsystem = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil"),
-  # inputDataDef: tuple[str, str, SubSystemInfo, CoordSysType] = ("kin", "Alex/amptools_tree_accepted*.root", subsystem, frame)
-  frame = CoordSysType.GJ  # Gottfried-Jackson frame, i.e. z_GJ = p_beam
+  # inputDataDef: tuple[str, str, SubSystemInfo, AnalysisConfig.CoordSysType] = ("kin", "Alex/amptools_tree_accepted*.root", subsystem, frame)
+  frame = AnalysisConfig.CoordSysType.GJ  # Gottfried-Jackson frame, i.e. z_GJ = p_beam
   subsystem = SubsystemInfo(pairLabel = "EtaPi0", lvALabel = "eta", lvBLabel = "pi0", lvRecoilLabel = "recoil")
-  inputDataDef: tuple[str, str, SubsystemInfo, CoordSysType] = ("kin", "Nizar/amptools_tree_accepted_All.root", subsystem, frame)  #TODO use dataclass instead of tuple
+  inputDataDef: tuple[str, str, SubsystemInfo, AnalysisConfig.CoordSysType] = ("kin", "Nizar/amptools_tree_accepted_All.root", subsystem, frame)  #TODO use dataclass instead of tuple
   BEAM_POL_INFOS["merged"]["All"] = BeamPolInfo(  # read beam polarization info from input tree
     pol    = "Pol",
     PhiLab = "BeamAngle",

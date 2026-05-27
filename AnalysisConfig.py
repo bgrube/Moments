@@ -168,12 +168,6 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
 }
 
 
-class CoordSysType(Enum):  #TODO move into AnalysisConfig class?
-  """Enumerates coordinate systems in which moments can be calculated"""
-  HF = 0  # helicity frame
-  GJ = 1  # Gottfried-Jackson frame
-
-
 @dataclass
 class SubsystemInfo:
   """Stores information about the (A, B) two-body subsystem, for which moments are calculated, for the reaction beam + target -> A + B + recoil"""
@@ -196,6 +190,11 @@ class AnalysisConfig:
     LIN_ALG_BG_SUBTR_NEG_WEIGHTS = 0  # linear-algebra method for acceptance correction + background subtraction by negative event weights
     LIN_ALG_BG_SUBTR_MOMENTS     = 1  # linear-algebra method for acceptance correction + background subtraction by subtracting moments
     MAX_LIKELIHOOD_FIT           = 2  # maximum-likelihood fit for acceptance correction + background subtraction by subtracting moments
+
+  class CoordSysType(Enum):
+    """Enumerates coordinate systems in which moments can be calculated"""
+    HF = 0  # helicity frame
+    GJ = 1  # Gottfried-Jackson frame
 
   # defaults are for unpolarized gamma + p -> (pi+ pi-) p data
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
