@@ -22,6 +22,7 @@ import os
 import pandas as pd
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
 from AnalysisConfig import (

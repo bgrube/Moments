@@ -12,6 +12,7 @@ import functools
 import os
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import BEAM_POL_INFOS
 from makeKinematicPlots import (
@@ -287,10 +288,6 @@ if __name__ == "__main__":
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
-  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
-  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
-  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
   setupPlotStyle()
 
   # declare C++ functions

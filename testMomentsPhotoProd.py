@@ -16,6 +16,7 @@ import threadpoolctl
 from typing import TypedDict
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
 from AnalysisConfig import AnalysisConfig
@@ -228,9 +229,6 @@ def scaleHistAxes(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
-  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   setupPlotStyle()
   # ROOT.gStyle.SetOptStat(False)
 

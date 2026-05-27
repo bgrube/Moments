@@ -1,6 +1,13 @@
 {
 	gROOT->SetStyle("Modern");
 
+	gStyle->SetPadTopMargin(0.100);
+	gStyle->SetPadBottomMargin(0.160);
+	gStyle->SetPadLeftMargin(0.145);
+	gStyle->SetPadRightMargin(0.115);
+	gStyle->SetCanvasDefH(600.0);
+	gStyle->SetCanvasDefW(600.0);
+
 	// no borders
 	gStyle->SetCanvasBorderMode(0);
 	gStyle->SetCanvasBorderSize(0);
@@ -27,6 +34,15 @@
 	gStyle->SetCanvasColor    (fullyTransparentColor);
 	// gStyle->SetLegendFillColor(fullyTransparentColor);
 
+	gStyle->SetLineColor(kBlack);
+	gStyle->SetMarkerStyle(20);
+	gStyle->SetMarkerSize(0.5);
+
+	gStyle->SetStripDecimals(false);
+	gStyle->SetTitleOffset(1.5,"X");
+	gStyle->SetTitleOffset(1.8,"Y");
+	gStyle->SetLabelSize(0.03, "Z");
+
 	gStyle->SetOptTitle(true);
 	gStyle->SetOptStat (true);
 	gStyle->SetOptFit  (true);
@@ -38,6 +54,11 @@
 	gStyle->SetNumberContours(100);
 
 	gStyle->SetHistMinimumZero(true);
+	TTreeFormula::SetMaxima(100000,10000,10000);
+	TTree::SetMaxTreeSize(2e12);
+	TH1::SetDefaultSumw2(true);
+	TH2::SetDefaultSumw2(true);
+	TH3::SetDefaultSumw2(true);
 	TGaxis::SetMaxDigits(3);  // restrict the number of digits in axis tick labels
 
 	// gStyle->SetPaperSize(kA4);   // set A4 paper size

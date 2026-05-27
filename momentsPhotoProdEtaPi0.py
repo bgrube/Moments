@@ -11,6 +11,7 @@ import pandas as pd
 import threadpoolctl
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from MomentCalculator import (
   AmplitudeSet,

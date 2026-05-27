@@ -10,6 +10,7 @@ import os
 import threadpoolctl
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 import MomentCalculator
 import PlottingUtilities

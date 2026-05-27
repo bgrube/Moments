@@ -16,6 +16,7 @@ from typing_extensions import TypeAlias
 # from typing import TypeAlias  # for Python 3.10+
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import (
   BeamPolInfo,
@@ -527,10 +528,6 @@ if __name__ == "__main__":
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
-  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")  #TODO remove FSROOT dependency
-  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
-  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
   setupPlotStyle()
 
   # declare C++ functions

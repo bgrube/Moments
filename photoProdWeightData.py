@@ -18,6 +18,7 @@ import os
 import subprocess
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
 from AnalysisConfig import (
@@ -252,10 +253,6 @@ def plotIntensityFcn(
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
-  ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
-  ROOT.gROOT.SetMacroPath("$FSROOT:" + ROOT.gROOT.GetMacroPath())
-  assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
-  assert ROOT.gROOT.LoadMacro("./rootlogon.C") == 0, "Error loading './rootlogon.C'"
 
   # declare C++ functions
   ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
@@ -372,7 +369,6 @@ if __name__ == "__main__":
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
-            ROOT.gROOT.SetBatch(True)
             setupPlotStyle()
             print(f"Using configuration:\n{cfg}")
             timer.start("Total execution time")

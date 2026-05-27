@@ -18,6 +18,7 @@ import textwrap
 import threadpoolctl
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 import iminuit as im
 import iminuit.cost as cost
 from iminuit.typing import (

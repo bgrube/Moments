@@ -15,6 +15,7 @@ import py3nj
 from uncertainties import UFloat, ufloat
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from PlottingUtilities import (
   setupPlotStyle,

@@ -8,6 +8,7 @@ from copy import deepcopy
 import functools
 
 import ROOT
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from MomentCalculator import (
   KinematicBinningVariable,

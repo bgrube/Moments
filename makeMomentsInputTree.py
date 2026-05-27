@@ -23,7 +23,7 @@ import subprocess
 import tempfile
 
 import ROOT
-ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`  #TODO add this to all scripts that generate plots
+ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import (
   BeamPolInfo,
