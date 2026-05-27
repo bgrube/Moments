@@ -232,6 +232,7 @@ def defineDataFrameColumns(
   additionalColumnDefs: dict[str, str]     = {},  # additional columns to define
   additionalFilterDefs: list[str]          = [],  # additional filter conditions to apply
   colNameSuffix:        str                = "",  # suffix appended to column names
+  defineFSROOTAngles:   bool               = False,  # if True, define additional columns with angles calculated using FSROOT
 ) -> ROOT.RDataFrame:
   """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
@@ -249,6 +250,7 @@ def defineDataFrameColumns(
       .Define(f"phi{angColNameSuffix}",      f"angles{angColNameSuffix}[1]")
   )
   if defineFSROOTAngles:
+    loadFSROOTLibraries()
     #TODO there seems to be a bug in the FSROOT functions that calculate phi
     #     when using the same analyzer as for cosTheta, phi is flipped by 180 deg
     #     this difference is seen when comparing to GlueX AmpTools function and also when comparing to PWA results
@@ -467,7 +469,6 @@ if __name__ == "__main__":
   timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   # ROOT.EnableImplicitMT()
-  loadFSROOTLibraries()
   setupPlotStyle()
 
   # declare C++ functions
