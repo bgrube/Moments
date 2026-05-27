@@ -204,6 +204,14 @@ class AnalysisConfig:
     GENERATED_PHASE_SPACE = 3
     ACCEPTED_PHASE_SPACE  = 4
 
+  class DataFormat(Enum):
+    """Enumerates formats of input data files"""
+    ALEX            = 0  # Alex' data format  #TODO improve naming
+    AMPTOOLS        = 1  # AmpTools format
+    JPAC_MC         = 2  # MC truth data in JPAC text format
+    TLORENTZVECTORS = 3  # TLorentzVector for each particle
+    FSROOT          = 4  # FSROOT format
+
   # defaults are for unpolarized gamma + p -> (pi+ pi-) p data
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   frame:                    CoordSysType              = CoordSysType.HF  # coordinate system, in which moments are calculated

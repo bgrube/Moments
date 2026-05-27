@@ -15,6 +15,7 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from AnalysisConfig import (
+  AnalysisConfig,
   BEAM_POL_INFOS,
   SubsystemInfo,
 )
@@ -29,7 +30,6 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TWO_BODY_ANGLES,
-  InputDataFormat,
 )
 from PlottingUtilities import (
   HistAxisBinning,
@@ -389,7 +389,7 @@ if __name__ == "__main__":
           df = getattr(dataToOverlay, dataToOverlayField.name)  # get value of class member with name `dataToOverlayField.name`
           df = defineColumnsForPlots(
             df                   = df,
-            inputDataFormat      = InputDataFormat.AMPTOOLS,
+            inputDataFormat      = AnalysisConfig.DataFormat.AMPTOOLS,
             subSystem            = subSystem,
             beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
             additionalColumnDefs = additionalColumnDefs[dataToOverlayField.name],

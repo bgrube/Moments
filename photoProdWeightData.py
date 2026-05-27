@@ -39,7 +39,6 @@ from makeMomentsInputTree import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   defineDataFrameColumns,
-  InputDataFormat,
   lorentzVectors,
   reweightKinDistribution,
 )
@@ -90,7 +89,7 @@ def loadInputData(
       subsystem = inputDataDef[2]
       frame     = inputDataDef[3]
       assert beamPolInfo is not None, "Beam polarization information must be provided when loading raw data from file"
-      lvs = lorentzVectors(dataFormat = InputDataFormat.AMPTOOLS)
+      lvs = lorentzVectors(dataFormat = AnalysisConfig.DataFormat.AMPTOOLS)
       dataToWeight = defineDataFrameColumns(
         df          = dataToWeight,
         lvTarget    = lvs["target"],

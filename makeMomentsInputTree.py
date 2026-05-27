@@ -173,23 +173,16 @@ trackDistFdc(
 """
 
 
-class InputDataFormat(Enum):
-  ALEX            = 0  # Alex' data format  #TODO improve naming
-  AMPTOOLS        = 1  # AmpTools format
-  JPAC_MC         = 2  # MC truth data in JPAC text format
-  TLORENTZVECTORS = 3  # TLorentzVector for each particle
-  FSROOT          = 4  # FSROOT format
-
-def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
+def lorentzVectors(dataFormat: AnalysisConfig.DataFormat) -> dict[str, str]:
   """Returns Lorentz-vectors for beam photon ("beam"), target proton ("target"), recoil proton ("recoil"), pi+ ("pip"), and pi- ("pim")"""
   lvs = {}
   lvs["target"] = "0, 0, 0, 0.938271999359130859375"  # proton mass value from phase-space generator
-  if dataFormat == InputDataFormat.ALEX:
+  if dataFormat == AnalysisConfig.DataFormat.ALEX:
     lvs["beam"  ] = "beam_p4_kin.Px(), beam_p4_kin.Py(), beam_p4_kin.Pz(), beam_p4_kin.Energy()"  # beam photon
     lvs["recoil"] = "p_p4_kin.Px(),    p_p4_kin.Py(),    p_p4_kin.Pz(),    p_p4_kin.Energy()"     # recoil proton
     lvs["pip"   ] = "pip_p4_kin.Px(),  pip_p4_kin.Py(),  pip_p4_kin.Pz(),  pip_p4_kin.Energy()"   # pi+
     lvs["pim"   ] = "pim_p4_kin.Px(),  pim_p4_kin.Py(),  pim_p4_kin.Pz(),  pim_p4_kin.Energy()"   # pi-
-  elif dataFormat == InputDataFormat.AMPTOOLS:
+  elif dataFormat == AnalysisConfig.DataFormat.AMPTOOLS:
     lvs["beam"  ] = "Px_Beam,          Py_Beam,          Pz_Beam,          E_Beam"           # beam photon
     lvs["recoil"] = "Px_FinalState[0], Py_FinalState[0], Pz_FinalState[0], E_FinalState[0]"  # recoil proton
     # pi+ pi- channel
@@ -198,7 +191,7 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     # eta pi0 channel
     lvs["pi0"   ] = "Px_FinalState[1], Py_FinalState[1], Pz_FinalState[1], E_FinalState[1]"  # eta
     lvs["eta"   ] = "Px_FinalState[2], Py_FinalState[2], Pz_FinalState[2], E_FinalState[2]"  # pi0
-  elif dataFormat == InputDataFormat.JPAC_MC:
+  elif dataFormat == AnalysisConfig.DataFormat.JPAC_MC:
     # kinematic variables according to Eq. (1) in Bibrzycki et al., PRD 111, 014002 (2025)
     # gamma (q) + p (p1) -> pi+ (k1) + pi- (k2) + p (p2)
     # four-momenta are defined as
@@ -208,13 +201,13 @@ def lorentzVectors(dataFormat: InputDataFormat) -> dict[str, str]:
     lvs["recoil"] = "p21, p22, p23, p20"  # recoil proton
     lvs["pip"   ] = "k11, k12, k13, k10"  # pi+
     lvs["pim"   ] = "k21, k22, k23, k20"  # pi-
-  elif dataFormat == InputDataFormat.TLORENTZVECTORS:
+  elif dataFormat == AnalysisConfig.DataFormat.TLORENTZVECTORS:
     lvs["beam"  ] = "lvBeamLab.X(),   lvBeamLab.Y(),   lvBeamLab.Z(),   lvBeamLab.E()"    # beam photon
     lvs["target"] = "lvTargetLab.X(), lvTargetLab.Y(), lvTargetLab.Z(), lvTargetLab.E()"  # target proton
     lvs["recoil"] = "lvRecoilLab.X(), lvRecoilLab.Y(), lvRecoilLab.Z(), lvRecoilLab.E()"  # recoil proton
     lvs["pip"   ] = "lvPipLab.X(),    lvPipLab.Y(),    lvPipLab.Z(),    lvPipLab.E()"     # pi+
     lvs["pim"   ] = "lvPimLab.X(),    lvPimLab.Y(),    lvPimLab.Z(),    lvPimLab.E()"     # pi-
-  elif dataFormat == InputDataFormat.FSROOT:
+  elif dataFormat == AnalysisConfig.DataFormat.FSROOT:
     lvs["beam"  ] = "PxPB, PyPB, PzPB, EnPB"  # beam photon
     lvs["recoil"] = "PxP1, PyP1, PzP1, EnP1"  # recoil proton
     lvs["etap"  ] = "PxP2, PyP2, PzP2, EnP2"  # eta'
@@ -436,7 +429,7 @@ class DataSetInfo:
   """Stores information about a data set"""
   subsystem:            SubsystemInfo
   inputType:            AnalysisConfig.DataType
-  inputFormat:          InputDataFormat
+  inputFormat:          AnalysisConfig.DataFormat
   dataPeriod:           str
   tBinLabel:            str
   inputFileNames:       tuple[str, ...] | tuple[tuple[str, ...], tuple[str, ...]]  # either a tuple of input file names for MC or a tuple with 2 tuples of input file names for real data (signal region, background region)
@@ -472,10 +465,10 @@ if __name__ == "__main__":
   if True:
   # if False:
     cfg = deepcopy(CFG_POLARIZED_PIPI)
-    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
     }
     # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     # outputColumnsPolarized   = (("beamPol", "beamPolPhiLabDeg", "Phi", "PhiDeg")
@@ -484,7 +477,7 @@ if __name__ == "__main__":
     additionalColumnDefs     = {}
     additionalFilterDefs     = []
     if False:  # cut away forward tracks in reconstructed data
-      lvs = lorentzVectors(dataFormat = InputDataFormat.ALEX)
+      lvs = lorentzVectors(dataFormat = AnalysisConfig.DataFormat.ALEX)
       additionalColumnDefs = {
         "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['pip']})",
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
@@ -552,10 +545,10 @@ if __name__ == "__main__":
     outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
-    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.ALEX,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.ALEX,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.ALEX,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
     }
 
     #TODO merge with loop for polarized data sets and move into function
@@ -611,10 +604,10 @@ if __name__ == "__main__":
       pol    = "Pol",
       PhiLab = "BeamAngle",
     )
-    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
     }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
@@ -674,10 +667,10 @@ if __name__ == "__main__":
   # if True:
   if False:
     cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)
-    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.FSROOT,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
+    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.FSROOT,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
     }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     # reweightMinusTDistribution = True

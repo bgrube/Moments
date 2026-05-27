@@ -33,7 +33,6 @@ from makeMomentsInputTree import (
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_TWO_BODY_ANGLES_NIZAR,
   defineDataFrameColumns,
-  InputDataFormat,
   lorentzVectors,
 )
 from PlottingUtilities import (
@@ -50,7 +49,7 @@ print = functools.partial(print, flush = True)
 
 def defineColumnsForPlots(
   df:                   ROOT.RDataFrame,
-  inputDataFormat:      InputDataFormat,
+  inputDataFormat:      AnalysisConfig.DataFormat,
   subSystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   additionalColumnDefs: dict[str, str] = {},  # additional columns to define
@@ -631,13 +630,13 @@ if __name__ == "__main__":
 
   # treeName = "nt"
   treeName = "kin"
-  inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {
-    AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
-    # AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.FSROOT,
-    # AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
-    # AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
+  inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
+    # AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.FSROOT,
+    # AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
+    # AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
   }
 
   for dataPeriod in dataPeriods:
