@@ -9,7 +9,7 @@ from dataclasses import (
   dataclass,
   field,
 )
-from enum import Enum, auto
+from enum import Enum
 
 import ROOT
 
@@ -213,9 +213,9 @@ class AnalysisConfig:
     FSROOT          = 4  # FSROOT format
 
   # defaults are for unpolarized gamma + p -> (pi+ pi-) p data
-  method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
-  frame:                    CoordSysType              = CoordSysType.HF  # coordinate system, in which moments are calculated
-  subsystem:                SubsystemInfo             = SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
+  method:                   AnalysisConfig.MethodType  = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
+  frame:                    CoordSysType               = CoordSysType.HF  # coordinate system, in which moments are calculated
+  subsystem:                SubsystemInfo              = SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
     lvALabel          = "pip",     # label of pi+ Lorentz-vector
     lvBLabel          = "pim",     # label of pi- Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -225,46 +225,51 @@ class AnalysisConfig:
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
   )
-  dataDirBaseName:          str                       = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data
-  dataPeriods:              tuple[str, ...]           = (  # labels of data periods to process
+  dataDirBaseName:          str                        = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data
+  dataPeriods:              tuple[str, ...]            = (  # labels of data periods to process
     "2017_01",
     "2018_08",
   )
-  tBinLabels:               tuple[str, ...]           = (  # labels of t bins to process
+  tBinLabels:               tuple[str, ...]            = (  # labels of t bins to process
     "tbin_0.4_0.5",
   )
-  beamPolLabels:            tuple[str, ...]           = (  # labels of beam polarizations to process, e.g. "PARA_0"; use "AMO" or "Unpol" for unpolarized data  #TODO store list of BeamPolInfos and generate labels with a function
+  beamPolLabels:            tuple[str, ...]            = (  # labels of beam polarizations to process, e.g. "PARA_0"; use "AMO" or "Unpol" for unpolarized data  #TODO store list of BeamPolInfos and generate labels with a function
     "Unpol",
   )
-  treeName:                 str                       = "PiPi"  # name of tree to read from data and MC files
+  inputDataFormats:         dict[DataType, DataFormat] = field(default_factory = lambda: {  # data formats for each input data type
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.ALEX,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
+  })
+  treeName:                 str                        = "PiPi"  # name of tree to read from data and MC files
   # Spring 2017 low-energy data
-  dataFileName:             str                       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze  #TODO remove?
-  psAccFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC  #TODO remove?
-  psGenFileName:            str | None                = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC  #TODO remove?
-  polarization:             float | str | None        = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
-  maxL:                     int | tuple[int, int]     = 8  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
-  outFileDirBaseName:       str                       = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
-  # normalizeMoments:         bool                      = True
-  normalizeMoments:         bool                      = False
-  nmbBootstrapSamples:      int                       = 0
-  # nmbBootstrapSamples:      int                       = 10000
-  # plotAngularDistributions: bool                      = True
-  plotAngularDistributions: bool                      = False
-  # plotAccIntegralMatrices:  bool                      = True
-  plotAccIntegralMatrices:  bool                      = False
-  # calcAccPsMoments:         bool                      = True
-  calcAccPsMoments:         bool                      = False
-  # plotAccPsMoments:         bool                      = True
-  plotAccPsMoments:         bool                      = False
-  # plotMomentsInBins:        bool                      = True
-  plotMomentsInBins:        bool                      = False
-  # plotMeasuredMoments:      bool                      = True
-  plotMeasuredMoments:      bool                      = False
-  # plotCovarianceMatrices:   bool                      = True
-  plotCovarianceMatrices:   bool                      = False
-  limitNmbPsAccEvents:      int                       = 0
-  # limitNmbPsAccEvents:      int                       = 100000
-  binVarMass:               KinematicBinningVariable  = field(
+  dataFileName:             str                        = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze  #TODO remove?
+  psAccFileName:            str | None                 = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC  #TODO remove?
+  psGenFileName:            str | None                 = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC  #TODO remove?
+  polarization:             float | str | None         = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
+  maxL:                     int | tuple[int, int]      = 8  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
+  outFileDirBaseName:       str                        = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
+  # normalizeMoments:         bool                       = True
+  normalizeMoments:         bool                       = False
+  nmbBootstrapSamples:      int                        = 0
+  # nmbBootstrapSamples:      int                        = 10000
+  # plotAngularDistributions: bool                       = True
+  plotAngularDistributions: bool                       = False
+  # plotAccIntegralMatrices:  bool                       = True
+  plotAccIntegralMatrices:  bool                       = False
+  # calcAccPsMoments:         bool                       = True
+  calcAccPsMoments:         bool                       = False
+  # plotAccPsMoments:         bool                       = True
+  plotAccPsMoments:         bool                       = False
+  # plotMomentsInBins:        bool                       = True
+  plotMomentsInBins:        bool                       = False
+  # plotMeasuredMoments:      bool                       = True
+  plotMeasuredMoments:      bool                       = False
+  # plotCovarianceMatrices:   bool                       = True
+  plotCovarianceMatrices:   bool                       = False
+  limitNmbPsAccEvents:      int                        = 0
+  # limitNmbPsAccEvents:      int                        = 100000
+  binVarMass:               KinematicBinningVariable   = field(
     default_factory = lambda: KinematicBinningVariable(
       name      = "mass",
       label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
@@ -272,7 +277,7 @@ class AnalysisConfig:
       nmbDigits = 3,
     )
   )
-  massBinning:              HistAxisBinning           = field(
+  massBinning:              HistAxisBinning            = field(
     default_factory = lambda: HistAxisBinning(  # same binning as used by CLAS
       nmbBins = 100,
       minVal  = 0.4,   # [GeV]
@@ -426,6 +431,11 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     # "PERP_90",
     # "AMO",
   ),
+  inputDataFormats   = {
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
+    # AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
+    # AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
+  },
   dataFileName       = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/data_flat_0.0.root",
   psAccFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat.root",
   psGenFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_gen_flat.root",
@@ -465,7 +475,7 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
 
 # configuration for Nizar's polarized gamma + p -> (eta pi0) p data, with eta -> gamma + gamma
 CFG_POLARIZED_ETAPI0 = AnalysisConfig(
-  frame              = CoordSysType.GJ,
+  frame              = AnalysisConfig.CoordSysType.GJ,
   subsystem          = SubsystemInfo(  # eta pi0 subsystem to analyze; eta is the analyzer
     lvALabel          = "eta",     # label of eta Lorentz-vector
     lvBLabel          = "pi0",     # label of pi0 Lorentz-vector
@@ -486,6 +496,11 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     "t075100",
   ),
   beamPolLabels      = ("All", ),  # input files contain all beam polarization orientations merged together
+  inputDataFormats   = {
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
+  },
   treeName           = "EtaPi0",
   dataFileName       = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/data_flat_All.root",
   psAccFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_acc_flat_All.root",
@@ -557,6 +572,11 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     "XSCUTS",
   ),
   beamPolLabels      = ("Unpol", ),
+  inputDataFormats   = {
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.FSROOT,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
+  },
   treeName           = "EtapEta",
   dataFileName       = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/data_flat_Unpol.root",
   psAccFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_acc_flat_Unpol.root",

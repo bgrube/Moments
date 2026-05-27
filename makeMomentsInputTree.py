@@ -14,7 +14,6 @@ from dataclasses import (
   dataclass,
   field,
 )
-from enum import Enum
 import functools
 import numpy as np
 import os
@@ -465,11 +464,6 @@ if __name__ == "__main__":
   if True:
   # if False:
     cfg = deepcopy(CFG_POLARIZED_PIPI)
-    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
-    }
     # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     # outputColumnsPolarized   = (("beamPol", "beamPolPhiLabDeg", "Phi", "PhiDeg")
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
@@ -498,7 +492,7 @@ if __name__ == "__main__":
           beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
           print(f"Setting up beam-polarization orientation '{beamPolLabel}'"
                 + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
-          for inputDataType, inputDataFormat in inputDataFormats.items():
+          for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
             print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
             outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
             dataSet = DataSetInfo(
@@ -545,11 +539,6 @@ if __name__ == "__main__":
     outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
-    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.ALEX,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
-    }
 
     #TODO merge with loop for polarized data sets and move into function
     print(f"Setting up subsystem '{cfg.subsystem}':")
@@ -560,7 +549,7 @@ if __name__ == "__main__":
         inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
         outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for inputDataType, inputDataFormat in inputDataFormats.items():
+        for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
           print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
           dataSet = DataSetInfo(  # real data (signal + background)
             subsystem            = cfg.subsystem,
@@ -604,11 +593,6 @@ if __name__ == "__main__":
       pol    = "Pol",
       PhiLab = "BeamAngle",
     )
-    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
-    }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
     additionalColumnDefs     = {"eventWeight" : "weightASBS"}  # use this column as event weights
@@ -625,7 +609,7 @@ if __name__ == "__main__":
         outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
         for beamPolLabel in cfg.beamPolLabels:  #TODO only one entry
-          for inputDataType, inputDataFormat in inputDataFormats.items():
+          for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
             print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
             outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
             dataSet = DataSetInfo(
@@ -667,11 +651,6 @@ if __name__ == "__main__":
   # if True:
   if False:
     cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)
-    inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {  # all files in AmpTools format
-      AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.FSROOT,
-      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
-      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
-    }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     # reweightMinusTDistribution = True
     reweightMinusTDistribution = False
@@ -685,7 +664,7 @@ if __name__ == "__main__":
         outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
         os.makedirs(outputDataDirBaseName, exist_ok = True)
         for beamPolLabel in cfg.beamPolLabels:
-          for inputDataType, inputDataFormat in inputDataFormats.items():
+          for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
             print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
             dataSet = DataSetInfo(
               subsystem      = cfg.subsystem,
