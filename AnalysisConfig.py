@@ -196,6 +196,14 @@ class AnalysisConfig:
     HF = 0  # helicity frame
     GJ = 1  # Gottfried-Jackson frame
 
+  class DataType(Enum):
+    """Enumerates used input data types"""
+    REAL_DATA             = 0
+    REAL_DATA_SIGNAL      = 1  # real data in signal region
+    REAL_DATA_SIDEBAND    = 2  # real data in sideband region(s)
+    GENERATED_PHASE_SPACE = 3
+    ACCEPTED_PHASE_SPACE  = 4
+
   # defaults are for unpolarized gamma + p -> (pi+ pi-) p data
   method:                   AnalysisConfig.MethodType = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   frame:                    CoordSysType              = CoordSysType.HF  # coordinate system, in which moments are calculated
@@ -310,14 +318,6 @@ class AnalysisConfig:
     self.massBinning.var = self.binVarMass
     if createOutFileDir:
       Utilities.makeDirPath(self.outFileDirName)
-
-  class DataType(Enum):
-    """Enumerates used input data types"""
-    REAL_DATA             = 0
-    REAL_DATA_SIGNAL      = 1  # real data in signal region
-    REAL_DATA_SIDEBAND    = 2  # real data in sideband region(s)
-    GENERATED_PHASE_SPACE = 3
-    ACCEPTED_PHASE_SPACE  = 4
 
   def loadData(
     self,

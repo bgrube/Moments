@@ -431,16 +431,11 @@ def reweightKinDistribution(
     canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
 
 
-class InputDataType(Enum):  #TODO use AnalysisConfig.DataType instead
-  REAL_DATA             = 0
-  GENERATED_PHASE_SPACE = 3
-  ACCEPTED_PHASE_SPACE  = 4
-
 @dataclass
 class DataSetInfo:
   """Stores information about a data set"""
   subsystem:            SubsystemInfo
-  inputType:            InputDataType
+  inputType:            AnalysisConfig.DataType
   inputFormat:          InputDataFormat
   dataPeriod:           str
   tBinLabel:            str
@@ -477,10 +472,10 @@ if __name__ == "__main__":
   if True:
   # if False:
     cfg = deepcopy(CFG_POLARIZED_PIPI)
-    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
-      InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
     # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     # outputColumnsPolarized   = (("beamPol", "beamPolPhiLabDeg", "Phi", "PhiDeg")
@@ -522,29 +517,29 @@ if __name__ == "__main__":
               beamPolLabel         = beamPolLabel,
               beamPolInfo          = beamPolInfo,
               inputFileNames       = (
-                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root", ) if inputDataType == InputDataType.REAL_DATA else
-                (f"{inputDataDirBaseName}/tree_accepted*.root",           ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                # (f"{inputDataDirBaseName}/tree_truthAccepted*.root",      ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                (f"{inputDataDirBaseName}/tree_thrown*.root",             )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+                (f"{inputDataDirBaseName}/tree_accepted*.root",           ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                # (f"{inputDataDirBaseName}/tree_truthAccepted*.root",      ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                (f"{inputDataDirBaseName}/tree_thrown*.root",             )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
               ),
               inputTreeName        = "kin",
               outputFileName       = (
-                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
-                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                # f"{outputDataDirBaseName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                # f"{outputDataDirBaseName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
               ),
               outputTreeName       = cfg.subsystem.pairLabel,
               outputColumns        = (
-                outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
+                outputColumns + ("eventWeight", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
                 outputColumns  # no event weights for MC data
               ),
               additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 {}  # no additional variables for MC truth
               ),
               additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 []  # no additional selection cuts for MC truth
               ),
             )
@@ -557,10 +552,10 @@ if __name__ == "__main__":
     outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
     additionalColumnDefs  = {}
     additionalFilterDefs  = []
-    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
-      InputDataType.REAL_DATA             : InputDataFormat.ALEX,
-      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.ALEX,
-      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.ALEX,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.ALEX,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
 
     #TODO merge with loop for polarized data sets and move into function
@@ -582,27 +577,27 @@ if __name__ == "__main__":
             tBinLabel            = tBinLabel,
             inputFileNames       = (
               ((f"{inputDataDirBaseName}/amptools_tree_signal.root", ),  # real data: signal and background
-                (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ) ) if inputDataType == InputDataType.REAL_DATA else
-              (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ) ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+              (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+              (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",   )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
             ),
             inputTreeName        = "kin",
             outputFileName       = (
-              f"{outputDataDirBaseName}/data_flat.root"           if inputDataType == InputDataType.REAL_DATA else
-              f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-              f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+              f"{outputDataDirBaseName}/data_flat.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+              f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+              f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
             ),
             outputTreeName       = cfg.subsystem.pairLabel,
               outputColumns        = (
-                outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
+                outputColumns + ("eventWeight", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
                 outputColumns  # no event weights for MC data
               ),
               additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 {}  # no additional variables for MC truth
               ),
               additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 []  # no additional selection cuts for MC truth
               ),
           )
@@ -616,10 +611,10 @@ if __name__ == "__main__":
       pol    = "Pol",
       PhiLab = "BeamAngle",
     )
-    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
-      InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
     }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
@@ -649,27 +644,27 @@ if __name__ == "__main__":
               beamPolLabel         = beamPolLabel,
               beamPolInfo          = beamPolInfo,
               inputFileNames       = (
-                (f"{inputDataDirBaseName}/amptools_tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
-                (f"{inputDataDirBaseName}/amptools_tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                (f"{inputDataDirBaseName}/amptools_tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                (f"{inputDataDirBaseName}/amptools_tree_data_{beamPolLabel}.root",     ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+                (f"{inputDataDirBaseName}/amptools_tree_accepted_{beamPolLabel}.root", ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                (f"{inputDataDirBaseName}/amptools_tree_thrown_{beamPolLabel}.root",   )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
               ),
               inputTreeName        = "kin",
               outputFileName       = (
-                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
-                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
               ),
               outputTreeName       = cfg.subsystem.pairLabel,
               outputColumns        = (
-                outputColumns + ("eventWeight", ) if inputDataType == InputDataType.REAL_DATA else
+                outputColumns + ("eventWeight", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
                 outputColumns  # no event weights for MC data
               ),
               additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 {}  # no additional variables for MC truth
               ),
               additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 []  # no additional selection cuts for MC truth
               ),
             )
@@ -679,10 +674,10 @@ if __name__ == "__main__":
   # if True:
   if False:
     cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)
-    inputDataFormats: dict[InputDataType, InputDataFormat] = {  # all files in AmpTools format
-      InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
-      InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
-      InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
+    inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {  # all files in AmpTools format
+      AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.FSROOT,
+      AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
+      AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
     }
     outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
     # reweightMinusTDistribution = True
@@ -706,19 +701,19 @@ if __name__ == "__main__":
               dataPeriod     = dataPeriod,
               tBinLabel      = tBinLabel,
               inputFileNames = (
-                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root",     ) if inputDataType == InputDataType.REAL_DATA else
-                (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == InputDataType.GENERATED_PHASE_SPACE  #TODO fix file format
+                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root",     ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+                (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE  #TODO fix file format
               ),
               inputTreeName  = "nt",
               outputFileName = (
-                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == InputDataType.REAL_DATA else
-                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == InputDataType.GENERATED_PHASE_SPACE
+                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
+                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
+                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
               ),
               outputTreeName = cfg.subsystem.pairLabel,
               outputColumns  = (
-                outputColumnsUnpolarized if inputDataType == InputDataType.GENERATED_PHASE_SPACE else  # no event weights for MC data
+                outputColumnsUnpolarized if inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE else  # no event weights for MC data
                 outputColumnsUnpolarized + ("eventWeight", )
               ),
             )
@@ -727,7 +722,7 @@ if __name__ == "__main__":
   # process data sets
   for dataSet in dataSets:
     df = None
-    if dataSet.inputType == InputDataType.REAL_DATA:
+    if dataSet.inputType == AnalysisConfig.DataType.REAL_DATA:
       # combine signal and background region data with correct event weights into one RDataFrame
       outputDataDirBaseName = os.path.dirname(dataSet.outputFileName)
       df = (
@@ -740,7 +735,7 @@ if __name__ == "__main__":
         ) if len(dataSet.inputFileNames) == 2 else
         ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames[0])  # if only one tuple of input file names is given, assume that it already contains combined signal and background data with correct event weights
       )
-    elif dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == InputDataType.GENERATED_PHASE_SPACE:
+    elif dataSet.inputType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
       # read all MC files into one RDataFrame
       df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
     else:
@@ -760,7 +755,7 @@ if __name__ == "__main__":
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
-    if reweightMinusTDistribution and dataSet.inputType == InputDataType.ACCEPTED_PHASE_SPACE:
+    if reweightMinusTDistribution and dataSet.inputType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
       #TODO this is currently only implemented for the bin 0.1 < |t| < 0.2 GeV^2/c^2
       # reweight -t distribution to match that of real data
       outputFileNameReweighted = dataSet.outputFileName.replace(".root", ".reweighted_minusT.root")

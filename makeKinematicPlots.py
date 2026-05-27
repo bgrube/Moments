@@ -33,7 +33,6 @@ from makeMomentsInputTree import (
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_TWO_BODY_ANGLES_NIZAR,
   defineDataFrameColumns,
-  InputDataType,
   InputDataFormat,
   lorentzVectors,
 )
@@ -211,14 +210,14 @@ def decomposeHistEvenOdd(
 
 def bookHistograms(
   df:                   ROOT.RDataFrame,
-  inputDataType:        InputDataType,
+  inputDataType:        AnalysisConfig.DataType,
   subSystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   subsystemMassBinning: HistAxisBinning | None = None,  # if not None, histograms will be booked in bins of the subsystem mass
 ) -> tuple[HistListType, list[str]]:
   """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
   print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subSystem}'")
-  # applyWeights = (inputDataType == InputDataType.REAL_DATA and df.HasColumn("eventWeight"))
+  # applyWeights = (inputDataType == AnalysisConfig.DataType.REAL_DATA and df.HasColumn("eventWeight"))
   applyWeights = df.HasColumn("eventWeight")
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   histNamesEvenOdd: list[str] = []
@@ -632,13 +631,13 @@ if __name__ == "__main__":
 
   # treeName = "nt"
   treeName = "kin"
-  inputDataFormats: dict[InputDataType, InputDataFormat] = {
-    InputDataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
-    InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
-    InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
-    # InputDataType.REAL_DATA             : InputDataFormat.FSROOT,
-    # InputDataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
-    # InputDataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
+  inputDataFormats: dict[AnalysisConfig.DataType, InputDataFormat] = {
+    AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.AMPTOOLS,
+    # AnalysisConfig.DataType.REAL_DATA             : InputDataFormat.FSROOT,
+    # AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : InputDataFormat.FSROOT,
+    # AnalysisConfig.DataType.GENERATED_PHASE_SPACE : InputDataFormat.FSROOT,
   }
 
   for dataPeriod in dataPeriods:
@@ -652,7 +651,7 @@ if __name__ == "__main__":
           beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
           print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
           df = None
-          if inputDataType == InputDataType.REAL_DATA:
+          if inputDataType == AnalysisConfig.DataType.REAL_DATA:
             # combine signal and background region data with correct event weights into one RDataFrame
             df = (
               Utilities.getDataFrameWithCorrectEventWeights(
@@ -667,13 +666,13 @@ if __name__ == "__main__":
               # ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_data_{beamPolLabel}.root")
               ROOT.RDataFrame(treeName, f"{inputDataDirPath}/tree_data_{beamPolLabel}.root")
             )
-          elif inputDataType == InputDataType.ACCEPTED_PHASE_SPACE:
+          elif inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
             # inputFileNamePattern = f"{inputDataDirPath}/amptools_tree_accepted*.root"
             # inputFileNamePattern = f"{inputDataDirPath}/tree_accepted*.root"  #TODO pattern does not work if signal and background files exist for accepted PS
             inputFileNamePattern = f"{inputDataDirPath}/tree_accepted_{beamPolLabel}.root"
             print(f"Loading accepted phase space data from '{inputFileNamePattern}'")
             df = ROOT.RDataFrame(treeName, inputFileNamePattern)
-          elif inputDataType == InputDataType.GENERATED_PHASE_SPACE:
+          elif inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
             # inputFileNamePattern = f"{inputDataDirPath}/amptools_tree_thrown*.root"
             # inputFileNamePattern = f"{inputDataDirPath}/tree_thrown*.root"
             inputFileNamePattern = f"{inputDataDirPath}/tree_thrown_{beamPolLabel}.root"
@@ -689,11 +688,11 @@ if __name__ == "__main__":
               subSystem            = subSystem,
               beamPolInfo          = beamPolInfo,
               additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 {}  # no additional variables for MC truth
               ),
               additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == InputDataType.REAL_DATA or inputDataType == InputDataType.ACCEPTED_PHASE_SPACE else
+                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
                 []  # no additional selection cuts for MC truth
               ),
             ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem {subSystem.pairLabel}" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
