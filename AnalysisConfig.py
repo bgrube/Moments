@@ -719,3 +719,47 @@ CFG_KEVIN = AnalysisConfig(
   ),
   massBinning              = HistAxisBinning(nmbBins = 20, minVal = 1.0, maxVal = 1.8),  # original binning: 200 bins in [0.6, 2.6] GeV
 )
+
+
+# configuration for Gabriel's gamma p -> K_S (K_L) p data
+CFG_POLARIZED_KSKL = AnalysisConfig(
+  subsystem          = SubsystemInfo(  # K_S K_L subsystem to analyze; K_L is the analyzer
+    lvALabel          = "K_L",     # label of K_S Lorentz-vector
+    lvBLabel          = "K_S",     # label of K_L Lorentz-vector
+    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+    pairLabel         = "KSKL",
+    ATLatexLabel      = "#it{K}_{L}^{0}",
+    BTLatexLabel      = "#it{K}_{S}^{0}",
+    recoilTLatexLabel = "#it{p}",
+    pairTLatexLabel   = "#it{K}_{S}^{0}#it{K}_{L}^{0}",
+  ),
+  dataDirBaseName    = "./dataPhotoProdKSKL/polarized",
+  dataPeriods        = ("merged", ),  # merged Phase-I(?) data with different polarization values
+  tBinLabels         = ("AllT", ),
+  beamPolLabels      = (
+    "PARA_0",
+    # "PARA_135",
+    # "PERP_45",
+    # "PERP_90",
+  ),
+  inputDataFormats   = {
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.FSROOT,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
+  },
+  inputTreeName      = "flatTree",
+  treeName           = "KSKL",
+  dataFileName       = "./dataPhotoProdKSKL/polarized/merged/AllT/KSKL/data_flat_PARA_0.root",
+  psAccFileName      = "./dataPhotoProdKSKL/polarized/merged/AllT/KSKL/phaseSpace_acc_flat_PARA_0.root",
+  psGenFileName      = "./dataPhotoProdKSKL/polarized/merged/AllT/KSKL/phaseSpace_gen_flat_PARA_0.root",
+  polarization       = "beamPol",  # read polarization from tree column
+  maxL               = 4,
+  outFileDirBaseName = "./plotsPhotoProdKSKL",
+  binVarMass         = KinematicBinningVariable(
+    name      = "mass",
+    label     = "#it{m}_{#it{K}_{S}^{0}#it{K}_{L}^{0}}",
+    unit      = "GeV/#it{c}^{2}",
+    nmbDigits = 3,
+  ),
+  massBinning        = HistAxisBinning(nmbBins = 70, minVal = 1.2, maxVal = 2.6),  # 20 MeV wide bins
+)

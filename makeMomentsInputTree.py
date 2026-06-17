@@ -29,6 +29,7 @@ from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
   CFG_POLARIZED_ETAPI0,
+  CFG_POLARIZED_KSKL,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
@@ -211,6 +212,8 @@ def lorentzVectors(dataFormat: AnalysisConfig.DataFormat) -> dict[str, str]:
     lvs["recoil"] = "PxP1, PyP1, PzP1, EnP1"  # recoil proton
     lvs["etap"  ] = "PxP2, PyP2, PzP2, EnP2"  # eta'
     lvs["eta"   ] = "PxP3, PyP3, PzP3, EnP3"  # eta
+    lvs["K_S"   ] = "PxP2, PyP2, PzP2, EnP2"  # not mass-constrained K_S
+    lvs["K_L"   ] = "PxP3, PyP3, PzP3, EnP3"  # missing mass-constrained K_L
   else:
     raise RuntimeError(f"Unsupported data format type '{dataFormat}'")
   return lvs
@@ -492,6 +495,8 @@ if __name__ == "__main__":
   #   }
   # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "weightASBS"  # use this column as event weights
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # unpolarized gamma p -> (eta' eta) p data from Will's analysis
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # polarized gamma p -> (K_S K_L) p data from Gabriel's analysis
+  # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
 
   dataSets: list[DataSetInfo] = []
   print(f"Setting up subsystem '{cfg.subsystem}':")
