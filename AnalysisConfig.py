@@ -4,7 +4,10 @@ This module defines the input parameters for the various moment analyses
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import (
+  Callable,
+  Iterable,
+)
 from dataclasses import (
   dataclass,
   field,

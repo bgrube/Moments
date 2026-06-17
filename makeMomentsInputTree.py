@@ -240,6 +240,10 @@ def defineDataFrameColumns(
     coordSysTypeStr = 'CoordSysType::GJ'
   else:
     raise ValueError(f"Unsupported coordinate system type '{frame}'")
+  if additionalColumnDefs:  # define additional columns before all other variables to allow for use in angle definitions
+    for columnName, columnFormula in additionalColumnDefs.items():
+      print(f"Defining additional column '{columnName}' = '{columnFormula}'")
+      df = defineOverwriteRDataFrame(df, columnName, columnFormula)
   df = (
     df.Define(f"angles{angColNameSuffix}",   f"twoBodyAngles({lvBeam}, {lvRecoil}, {lvA}, {lvB}, {coordSysTypeStr}, {'0' if beamPolInfo is None else beamPolInfo.PhiLab})")  # cos(theta), phi [rad], Phi [rad]
       .Define(f"cosTheta{angColNameSuffix}", f"angles{angColNameSuffix}[0]")
@@ -276,10 +280,6 @@ def defineDataFrameColumns(
     df = defineOverwriteRDataFrame(df, f"beamPolPhiLab{colNameSuffix}Deg", f"(Double32_t){beamPolInfo.PhiLab}")
     df = defineOverwriteRDataFrame(df, f"Phi{colNameSuffix}",              f"angles{angColNameSuffix}[2]")
     df = defineOverwriteRDataFrame(df, f"Phi{colNameSuffix}Deg",           f"(Double32_t)(Phi{colNameSuffix} * TMath::RadToDeg())")
-  if additionalColumnDefs:
-    for columnName, columnFormula in additionalColumnDefs.items():
-      print(f"Defining additional column '{columnName}' = '{columnFormula}'")
-      df = defineOverwriteRDataFrame(df, columnName, columnFormula)
   if additionalFilterDefs:
     for filterDef in additionalFilterDefs:
       print(f"Applying additional filter '{filterDef}'")
@@ -457,239 +457,71 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  cfg = None
-  dataSets: list[DataSetInfo] = []
+  #TODO merge code with loop over DataSetInfos below; remove DataSetInfo
+  outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
+  outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
+  #TODO move these two also into AnalysisConfig
+  additionalColumnDefs     = {  # additional columns for each data type
+    AnalysisConfig.DataType.REAL_DATA             : {},
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : {},
+  }
+  additionalFilterDefs     = {  # additional filters for each data type
+    AnalysisConfig.DataType.REAL_DATA             : [],
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : [],
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
+  }
+  # reweightMinusTDistribution = True
+  reweightMinusTDistribution = False
 
-  # set up polarized pi+pi- data
-  if True:
-  # if False:
-    cfg = deepcopy(CFG_POLARIZED_PIPI)
-    # outputColumnsUnpolarized = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
-    # outputColumnsPolarized   = (("beamPol", "beamPolPhiLabDeg", "Phi", "PhiDeg")
-    outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
-    outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
-    additionalColumnDefs     = {}
-    additionalFilterDefs     = []
-    if False:  # cut away forward tracks in reconstructed data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # polarized gamma p -> (pi+ pi-) p data
+  if False:  # cut away forward tracks in reconstructed data
+    for inputDataType in (AnalysisConfig.DataType.REAL_DATA, AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE):
       lvs = lorentzVectors(dataFormat = AnalysisConfig.DataFormat.ALEX)
-      additionalColumnDefs = {
+      additionalColumnDefs[inputDataType] = {
         "DistFdcPip": f"(Double32_t)trackDistFdc(pip_x4_kin.Z(), {lvs['pip']})",
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
       }
-      additionalFilterDefs = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
-    # reweightMinusTDistribution = True
-    reweightMinusTDistribution = False
+      additionalFilterDefs[inputDataType] = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # polarized gamma p -> (eta pi0) p data, with eta -> gamma gamma from Nizar's analysis
+  # for inputDataType in additionalColumnDefs:
+  #   additionalColumnDefs[inputDataType] = {
+  #     "beamPol"          : "Pol",         # use this column for beam polarization degree
+  #     "beamPolPhiLabDeg" : "BeamAngle",   # use this column for beam polarization angle in lab frame
+  #   }
+  # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "weightASBS"  # use this column as event weights
+  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # unpolarized gamma p -> (eta' eta) p data from Will's analysis
 
-    print(f"Setting up subsystem '{cfg.subsystem}':")
-    for dataPeriod in cfg.dataPeriods:
-      print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in cfg.tBinLabels:
-        print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
-        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
-        os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for beamPolLabel in cfg.beamPolLabels:
-          beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
-          print(f"Setting up beam-polarization orientation '{beamPolLabel}'"
-                + (f": pol = {beamPolInfo.pol:.4f}, PhiLab = {beamPolInfo.PhiLab:.1f} deg" if beamPolInfo is not None else ""))
-          for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
-            print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-            outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
-            dataSet = DataSetInfo(
-              subsystem            = cfg.subsystem,
-              inputType            = inputDataType,
-              inputFormat          = inputDataFormat,
-              dataPeriod           = dataPeriod,
-              tBinLabel            = tBinLabel,
-              beamPolLabel         = beamPolLabel,
-              beamPolInfo          = beamPolInfo,
-              inputFileNames       = (
-                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                (f"{inputDataDirBaseName}/tree_accepted*.root",           ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                # (f"{inputDataDirBaseName}/tree_truthAccepted*.root",      ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                (f"{inputDataDirBaseName}/tree_thrown*.root",             )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-              ),
-              inputTreeName        = "kin",
-              outputFileName       = (
-                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                # f"{outputDataDirBaseName}/phaseSpace_accTruth_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-              ),
-              outputTreeName       = cfg.subsystem.pairLabel,
-              outputColumns        = (
-                outputColumns + ("eventWeight", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                outputColumns  # no event weights for MC data
-              ),
-              additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                {}  # no additional variables for MC truth
-              ),
-              additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                []  # no additional selection cuts for MC truth
-              ),
-            )
-            dataSets.append(dataSet)
-
-  # setup unpolarized pi+pi- data
-  # if True:
-  if False:
-    cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)
-    outputColumns         = ("cosTheta", "theta", "phi", "phiDeg", "mass", "minusT")
-    additionalColumnDefs  = {}
-    additionalFilterDefs  = []
-
-    #TODO merge with loop for polarized data sets and move into function
-    print(f"Setting up subsystem '{cfg.subsystem}':")
-    for dataPeriod in cfg.dataPeriods:
-      print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in cfg.tBinLabels:
-        print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Alex"
-        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
-        os.makedirs(outputDataDirBaseName, exist_ok = True)
+  dataSets: list[DataSetInfo] = []
+  print(f"Setting up subsystem '{cfg.subsystem}':")
+  for dataPeriod in cfg.dataPeriods:
+    print(f"Setting up data period '{dataPeriod}':")
+    for tBinLabel in cfg.tBinLabels:
+      print(f"Setting up t bin '{tBinLabel}':")
+      os.makedirs(cfg.outputDataDirBasePath(dataPeriod, tBinLabel), exist_ok = True)
+      for beamPolLabel in cfg.beamPolLabels:
+        beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
+        print(f"Setting up beam-polarization orientation '{beamPolLabel}'")
         for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
           print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-          dataSet = DataSetInfo(  # real data (signal + background)
+          dataSet = DataSetInfo(
             subsystem            = cfg.subsystem,
             inputType            = inputDataType,
             inputFormat          = inputDataFormat,
             dataPeriod           = dataPeriod,
             tBinLabel            = tBinLabel,
-            inputFileNames       = (
-              ((f"{inputDataDirBaseName}/amptools_tree_signal.root", ),  # real data: signal and background
-                (f"{inputDataDirBaseName}/amptools_tree_bkgnd.root",  ) ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-              (f"{inputDataDirBaseName}/amptools_tree_accepted*.root", ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-              (f"{inputDataDirBaseName}/amptools_tree_thrown*.root",   )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-            ),
-            inputTreeName        = "kin",
-            outputFileName       = (
-              f"{outputDataDirBaseName}/data_flat.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-              f"{outputDataDirBaseName}/phaseSpace_acc_flat.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-              f"{outputDataDirBaseName}/phaseSpace_gen_flat.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-            ),
+            beamPolLabel         = beamPolLabel,
+            beamPolInfo          = beamPolInfo,
+            inputFileNames       = cfg.inputFilePaths(inputDataType, dataPeriod, tBinLabel, beamPolLabel),
+            inputTreeName        = cfg.inputTreeName,
+            outputFileName       = cfg.outputFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel),
             outputTreeName       = cfg.subsystem.pairLabel,
-              outputColumns        = (
-                outputColumns + ("eventWeight", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                outputColumns  # no event weights for MC data
-              ),
-              additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                {}  # no additional variables for MC truth
-              ),
-              additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                []  # no additional selection cuts for MC truth
-              ),
+            outputColumns        = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized),
+            additionalColumnDefs = additionalColumnDefs[inputDataType],
+            additionalFilterDefs = additionalFilterDefs[inputDataType],
           )
           dataSets.append(dataSet)
-
-  # set up polarized eta pi0 -> 4 gamma data from Nizar's analysis
-  # if True:
-  if False:
-    cfg = deepcopy(CFG_POLARIZED_ETAPI0)
-    beamPolInfo     = BeamPolInfo(  # read beam polarization info from input tree
-      pol    = "Pol",
-      PhiLab = "BeamAngle",
-    )
-    outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
-    outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
-    additionalColumnDefs     = {"eventWeight" : "weightASBS"}  # use this column as event weights
-    additionalFilterDefs     = []
-    # reweightMinusTDistribution = True
-    reweightMinusTDistribution = False
-
-    print(f"Setting up subsystem '{cfg.subsystem}':")
-    for dataPeriod in cfg.dataPeriods:
-      print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in cfg.tBinLabels:
-        print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Nizar"
-        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
-        os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for beamPolLabel in cfg.beamPolLabels:  #TODO only one entry
-          for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
-            print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-            outputColumns = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized)
-            dataSet = DataSetInfo(
-              subsystem            = cfg.subsystem,
-              inputType            = inputDataType,
-              inputFormat          = inputDataFormat,
-              dataPeriod           = dataPeriod,
-              tBinLabel            = tBinLabel,
-              beamPolLabel         = beamPolLabel,
-              beamPolInfo          = beamPolInfo,
-              inputFileNames       = (
-                (f"{inputDataDirBaseName}/amptools_tree_data_{beamPolLabel}.root",     ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                (f"{inputDataDirBaseName}/amptools_tree_accepted_{beamPolLabel}.root", ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                (f"{inputDataDirBaseName}/amptools_tree_thrown_{beamPolLabel}.root",   )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-              ),
-              inputTreeName        = "kin",
-              outputFileName       = (
-                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-              ),
-              outputTreeName       = cfg.subsystem.pairLabel,
-              outputColumns        = (
-                outputColumns + ("eventWeight", ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                outputColumns  # no event weights for MC data
-              ),
-              additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                {}  # no additional variables for MC truth
-              ),
-              additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                []  # no additional selection cuts for MC truth
-              ),
-            )
-            dataSets.append(dataSet)
-
-  # set up unpolarized eta' eta data from Will's analysis
-  # if True:
-  if False:
-    cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)
-    outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
-    # reweightMinusTDistribution = True
-    reweightMinusTDistribution = False
-
-    print(f"Setting up subsystem '{cfg.subsystem}':")
-    for dataPeriod in cfg.dataPeriods:
-      print(f"Setting up data period '{dataPeriod}':")
-      for tBinLabel in cfg.tBinLabels:
-        print(f"Setting up t bin '{tBinLabel}':")
-        inputDataDirBaseName  = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/Will"
-        outputDataDirBaseName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}"
-        os.makedirs(outputDataDirBaseName, exist_ok = True)
-        for beamPolLabel in cfg.beamPolLabels:
-          for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
-            print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-            dataSet = DataSetInfo(
-              subsystem      = cfg.subsystem,
-              inputType      = inputDataType,
-              inputFormat    = inputDataFormat,
-              dataPeriod     = dataPeriod,
-              tBinLabel      = tBinLabel,
-              inputFileNames = (
-                (f"{inputDataDirBaseName}/tree_data_{beamPolLabel}.root",     ) if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                (f"{inputDataDirBaseName}/tree_accepted_{beamPolLabel}.root", ) if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                (f"{inputDataDirBaseName}/tree_thrown_{beamPolLabel}.root",   )  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE  #TODO fix file format
-              ),
-              inputTreeName  = "nt",
-              outputFileName = (
-                f"{outputDataDirBaseName}/data_flat_{beamPolLabel}.root"           if inputDataType == AnalysisConfig.DataType.REAL_DATA else
-                f"{outputDataDirBaseName}/phaseSpace_acc_flat_{beamPolLabel}.root" if inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                f"{outputDataDirBaseName}/phaseSpace_gen_flat_{beamPolLabel}.root"  # inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-              ),
-              outputTreeName = cfg.subsystem.pairLabel,
-              outputColumns  = (
-                outputColumnsUnpolarized if inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE else  # no event weights for MC data
-                outputColumnsUnpolarized + ("eventWeight", )
-              ),
-            )
-            dataSets.append(dataSet)
 
   # process data sets
   for dataSet in dataSets:
@@ -727,6 +559,7 @@ if __name__ == "__main__":
       additionalColumnDefs = dataSet.additionalColumnDefs,
       additionalFilterDefs = dataSet.additionalFilterDefs,
     ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
+    outputColumns = dataSet.outputColumns + ("eventWeight", ) if df.HasColumn("eventWeight") else dataSet.outputColumns
     if reweightMinusTDistribution and dataSet.inputType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
       #TODO this is currently only implemented for the bin 0.1 < |t| < 0.2 GeV^2/c^2
       # reweight -t distribution to match that of real data
@@ -740,11 +573,11 @@ if __name__ == "__main__":
         ),
         targetDistrFrom = f"{outputDataDirBaseName}/data_flat_{dataSet.beamPolLabel}.root",
         outFileName     = outputFileNameReweighted,
-        outputColumns   = dataSet.outputColumns,
+        outputColumns   = outputColumns,
       )
     else:
       print(f"Writing converted data to file '{dataSet.outputFileName}'")
-      df.Snapshot(dataSet.outputTreeName, dataSet.outputFileName, dataSet.outputColumns)
+      df.Snapshot(dataSet.outputTreeName, dataSet.outputFileName, outputColumns)
 
   timer.stop("Total execution time")
   print(timer.summary)
