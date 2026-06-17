@@ -289,6 +289,72 @@ class AnalysisConfig:
     )
   )
 
+  def inputDataDirBasePath(
+    self,
+    dataPeriod: str,
+    tBinLabel:  str,
+  ) -> str:
+    """Generates base path of directory with input data"""
+    return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/input"
+
+  @staticmethod
+  def _default_inputFilePaths(
+    cfg:          AnalysisConfig,
+    dataType:     AnalysisConfig.DataType,
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str
+  ) -> tuple[str, ...]:
+    """Default function that generates input file paths based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePaths` member"""
+    # one input file for each data type
+    if dataType == AnalysisConfig.DataType.REAL_DATA:
+      return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
+    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+      return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_accepted_{beamPolLabel}.root", )
+    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+      return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_thrown_{beamPolLabel}.root", )
+    else:
+      raise ValueError(f"Unknown data type: {dataType}")
+
+  _inputFilePaths: Callable[[AnalysisConfig, AnalysisConfig.DataType, str, str, str], tuple[str, ...]] = field(
+        default_factory = lambda: AnalysisConfig._default_inputFilePaths,
+        repr            = False, 
+        compare         = False,
+    )
+
+  def inputFilePaths(
+    self,
+    dataType:     AnalysisConfig.DataType,
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str,
+  ) -> tuple[str, ...]:
+    return self._inputFilePaths(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
+
+  def outputDataDirBasePath(
+    self,
+    dataPeriod: str,
+    tBinLabel:  str,
+  ) -> str:
+    """Generates base path of directory with converted output data"""
+    return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
+
+  def outputFilePath(
+    self,
+    dataType:     AnalysisConfig.DataType,
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str,
+  ) -> str:
+    if dataType == AnalysisConfig.DataType.REAL_DATA:
+      return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
+    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+      return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_acc_flat_{beamPolLabel}.root"
+    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+      return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_gen_flat_{beamPolLabel}.root"
+    else:
+      raise ValueError(f"Unknown data type: {dataType}")
+
   @property
   def maxLPhys(self) -> int:
     """Returns maximum L of physical moments"""
@@ -413,6 +479,23 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
 
 
 # configuration for polarized gamma p -> (pi+ pi-) p data
+def inputFilePathsPiPiPol(
+  cfg:          AnalysisConfig,
+  dataType:     AnalysisConfig.DataType,
+  dataPeriod:   str,
+  tBinLabel:    str,
+  beamPolLabel: str
+) -> tuple[str, ...]:
+  """Generates input file paths based on data type, data period, t bin label, and beam polarization label for polarized pi+ pi- data"""
+  if dataType == AnalysisConfig.DataType.REAL_DATA:
+    return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
+  elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+    return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_accepted*.root", )
+  elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+    return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_thrown*.root", )
+  else:
+    raise ValueError(f"Unknown data type: {dataType}")
+
 CFG_POLARIZED_PIPI = AnalysisConfig(
   dataDirBaseName    = "./dataPhotoProdPiPi/polarized",
   dataPeriods        = (
@@ -436,9 +519,10 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
   ),
   inputDataFormats   = {
     AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
-    # AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
-    # AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
+  _inputFilePaths    = inputFilePathsPiPiPol,  # use custom function to generate input file paths for polarized data
   dataFileName       = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/data_flat_0.0.root",
   psAccFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat.root",
   psGenFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_gen_flat.root",
