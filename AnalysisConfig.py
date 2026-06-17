@@ -212,7 +212,7 @@ class AnalysisConfig:
     TLORENTZVECTORS = 3  # TLorentzVector for each particle
     FSROOT          = 4  # FSROOT format
 
-  # defaults are for unpolarized gamma + p -> (pi+ pi-) p data
+  # defaults are for unpolarized gamma p -> (pi+ pi-) p data
   method:                   AnalysisConfig.MethodType  = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   frame:                    CoordSysType               = CoordSysType.HF  # coordinate system, in which moments are calculated
   subsystem:                SubsystemInfo              = SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
@@ -225,7 +225,7 @@ class AnalysisConfig:
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
   )
-  dataDirBaseName:          str                        = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data
+  dataDirBaseName:          str                        = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data  #TODO turn into property and determine value depending on other member variables
   dataPeriods:              tuple[str, ...]            = (  # labels of data periods to process
     "2017_01",
     "2018_08",
@@ -241,7 +241,10 @@ class AnalysisConfig:
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   })
-  treeName:                 str                        = "PiPi"  # name of tree to read from data and MC files
+  inputTreeName:            str                        = "kin"  # name of tree to read from input data and MC files
+
+  treeName:                 str                        = "PiPi"  # name of tree to read from converted data and MC files  #TODO fix name
+
   # Spring 2017 low-energy data
   dataFileName:             str                        = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze  #TODO remove?
   psAccFileName:            str | None                 = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC  #TODO remove?
@@ -326,7 +329,7 @@ class AnalysisConfig:
     createOutFileDir: bool = False,
   ) -> None:
     """Creates output directory and initializes member variables; needs to be called before passing the config to any consumer"""
-    if not isinstance(self.maxL, int):
+    if isinstance(self.maxL, tuple):
       assert self.maxL[0] <= self.maxL[1], f"Maximum L for physical moments {self.maxL[0]=} must be smaller than or equal to maximum L for measured moments {self.maxL[1]=}"
     self.massBinning.var = self.binVarMass
     if createOutFileDir:
@@ -389,7 +392,7 @@ class AnalysisConfig:
     return df
 
 
-# configurations for unpolarized gamma + p -> (pi+ pi-) p data in CLAS kinematic range
+# configurations for unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
@@ -409,7 +412,7 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
 )
 
 
-# configuration for polarized gamma + p -> (pi+ pi-) p data
+# configuration for polarized gamma p -> (pi+ pi-) p data
 CFG_POLARIZED_PIPI = AnalysisConfig(
   dataDirBaseName    = "./dataPhotoProdPiPi/polarized",
   dataPeriods        = (
@@ -446,7 +449,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
 )
 
 
-# configuration for unpolarized gamma + p -> (pi+ p) pi- data
+# configuration for unpolarized gamma p -> (pi+ p) pi- data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
   subsystem          = SubsystemInfo(  # pi+ p subsystem to analyze; pi+ is the analyzer
     lvALabel          = "pip",    # label of pi+ Lorentz-vector
@@ -473,7 +476,7 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
 )
 
 
-# configuration for Nizar's polarized gamma + p -> (eta pi0) p data, with eta -> gamma + gamma
+# configuration for Nizar's polarized gamma p -> (eta pi0) p data, with eta -> gamma gamma
 CFG_POLARIZED_ETAPI0 = AnalysisConfig(
   frame              = AnalysisConfig.CoordSysType.GJ,
   subsystem          = SubsystemInfo(  # eta pi0 subsystem to analyze; eta is the analyzer
@@ -518,22 +521,22 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
 )
 
 
-# configuration for Zach's polarized gamma + p -> (eta' pi0) p data, with eta' -> pi+ + pi- + eta and eta -> gamma + gamma
+# configuration for Zach's polarized gamma p -> (eta' pi0) p data, with eta' -> pi+ + pi- + eta and eta -> gamma gamma
 CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
   subsystem          = SubsystemInfo(  # eta' pi0 subsystem to analyze; eta' is the analyzer
     lvALabel          = "etap",    # label of eta' Lorentz-vector
     lvBLabel          = "pi0",     # label of pi0 Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
-    pairLabel         = "EtaPi0",
+    pairLabel         = "EtapPi0",
     ATLatexLabel      = "#it{#eta}'",
     BTLatexLabel      = "#it{#pi}^{0}",
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#pi}^{0}",
   ),
-  treeName           = "kin",
-  dataFileName       = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/data_flat_PARA_0.root",
-  psAccFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/phaseSpace_acc_flat_PARA_0.root",
-  psGenFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtaPi0/phaseSpace_gen_flat_PARA_0.root",
+  treeName           = "EtapPi0",
+  dataFileName       = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtapPi0/data_flat_PARA_0.root",
+  psAccFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtapPi0/phaseSpace_acc_flat_PARA_0.root",
+  psGenFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtapPi0/phaseSpace_gen_flat_PARA_0.root",
   polarization       = "beamPol",  # read polarization from tree column
   maxL               = 4,
   outFileDirBaseName = "./plotsPhotoProdEtapPi0",
@@ -547,19 +550,19 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
 )
 
 
-# configuration for Will's unpolarized gamma + p -> (eta' eta) p data
+# configuration for Will's unpolarized gamma p -> (eta' eta) p data
 CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   subsystem          = SubsystemInfo(  # eta' eta subsystem to analyze; eta' is the analyzer
     lvALabel          = "etap",    # label of eta' Lorentz-vector
     lvBLabel          = "eta",     # label of eta Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
-    pairLabel         = "EtaPEta",
+    pairLabel         = "EtapEta",
     ATLatexLabel      = "#it{#eta}'",
     BTLatexLabel      = "#it{#eta}",
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#eta}",
   ),
-  dataDirBaseName    = f"./dataPhotoProdEtaPEta/unpolarized",
+  dataDirBaseName    = f"./dataPhotoProdEtapEta/unpolarized",
   dataPeriods        = (
     "2017_01",
     "2018_01",
@@ -577,6 +580,8 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
   },
+  # inputTreeName      = "kin",  # for 2018_08 ALLT real data
+  inputTreeName      = "nt",
   treeName           = "EtapEta",
   dataFileName       = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/data_flat_Unpol.root",
   psAccFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_acc_flat_Unpol.root",
@@ -596,7 +601,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
 )
 
 
-# configuration for Kevin's gamma + p -> (K- K_S) Delta++ data
+# configuration for Kevin's gamma p -> (K- K_S) Delta++ data
 CFG_KEVIN = AnalysisConfig(
   subsystem          = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer
     lvALabel          = "K-",      # label of K- Lorentz-vector
@@ -608,7 +613,8 @@ CFG_KEVIN = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{K}^{#minus}#it{K}_{S}^{0}",
   ),
-  treeName                 = "ntFSGlueX_100_11100_angles",
+  inputTreeName            = "ntFSGlueX_100_11100_angles",
+  treeName                 = "KmKS",
   dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
   psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
   psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
