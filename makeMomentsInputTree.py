@@ -10,10 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from copy import deepcopy
-from dataclasses import (
-  dataclass,
-  field,
-)
 import functools
 import numpy as np
 import os
@@ -426,25 +422,6 @@ def reweightKinDistribution(
     canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
 
 
-@dataclass
-class DataSetInfo:
-  """Stores information about a data set"""
-  subsystem:            SubsystemInfo
-  inputType:            AnalysisConfig.DataType
-  inputFormat:          AnalysisConfig.DataFormat
-  dataPeriod:           str
-  tBinLabel:            str
-  inputFileNames:       tuple[str, ...] | tuple[tuple[str, ...], tuple[str, ...]]  # either a tuple of input file names for MC or a tuple with 2 tuples of input file names for real data (signal region, background region)
-  inputTreeName:        str
-  outputFileName:       str
-  outputTreeName:       str
-  outputColumns:        tuple[str, ...]
-  beamPolLabel:         str                = ""
-  beamPolInfo:          BeamPolInfo | None = None  # photon beam polarization
-  additionalColumnDefs: dict[str, str]     = field(default_factory=dict)
-  additionalFilterDefs: list[str]          = field(default_factory=list)
-
-
 if __name__ == "__main__":
   Utilities.printGitInfo()
   timer = Utilities.Timer()
@@ -475,7 +452,7 @@ if __name__ == "__main__":
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
   }
   # reweightMinusTDistribution = True
-  reweightMinusTDistribution = False
+  reweightAccPSMCMinusTDistribution = False
 
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # polarized gamma p -> (pi+ pi-) p data
   if False:  # cut away forward tracks in reconstructed data
@@ -498,7 +475,6 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_POLARIZED_KSKL)  # polarized gamma p -> (K_S K_L) p data from Gabriel's analysis
   # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
 
-  dataSets: list[DataSetInfo] = []
   print(f"Setting up subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
     print(f"Setting up data period '{dataPeriod}':")
@@ -510,79 +486,48 @@ if __name__ == "__main__":
         print(f"Setting up beam-polarization orientation '{beamPolLabel}'")
         for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
           print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-          dataSet = DataSetInfo(
-            subsystem            = cfg.subsystem,
-            inputType            = inputDataType,
-            inputFormat          = inputDataFormat,
-            dataPeriod           = dataPeriod,
-            tBinLabel            = tBinLabel,
-            beamPolLabel         = beamPolLabel,
+          inputFilePaths = cfg.inputFilePaths(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          df = ROOT.RDataFrame(cfg.inputTreeName, inputFilePaths)  # real data must contains combined signal and background data with correct event weights
+          print(f"Converting {inputDataType} data with {inputDataFormat} format for '{cfg.subsystem.pairLabel}' subsystem, "
+                f"'{dataPeriod}' period, '{tBinLabel}' t bin, and {beamPolLabel or 'no'} beam polarization from file(s) {inputFilePaths}")
+          lvs = lorentzVectors(inputDataFormat)
+          df = defineDataFrameColumns(
+            df                   = df,
+            lvTarget             = lvs["target"],
+            lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
+            lvRecoil             = lvs[cfg.subsystem.lvRecoilLabel],
+            lvA                  = lvs[cfg.subsystem.lvALabel],
+            lvB                  = lvs[cfg.subsystem.lvBLabel],
             beamPolInfo          = beamPolInfo,
-            inputFileNames       = cfg.inputFilePaths(inputDataType, dataPeriod, tBinLabel, beamPolLabel),
-            inputTreeName        = cfg.inputTreeName,
-            outputFileName       = cfg.outputFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel),
-            outputTreeName       = cfg.subsystem.pairLabel,
-            outputColumns        = outputColumnsUnpolarized + (() if beamPolInfo is None else outputColumnsPolarized),
+            frame                = cfg.frame,
             additionalColumnDefs = additionalColumnDefs[inputDataType],
             additionalFilterDefs = additionalFilterDefs[inputDataType],
-          )
-          dataSets.append(dataSet)
-
-  # process data sets
-  for dataSet in dataSets:
-    df = None
-    if dataSet.inputType == AnalysisConfig.DataType.REAL_DATA:
-      # combine signal and background region data with correct event weights into one RDataFrame
-      outputDataDirBaseName = os.path.dirname(dataSet.outputFileName)
-      df = (
-        Utilities.getDataFrameWithCorrectEventWeights(
-          dataSigRegionFileNames  = dataSet.inputFileNames[0],
-          dataBkgRegionFileNames  = dataSet.inputFileNames[1],
-          treeName                = dataSet.inputTreeName,
-          friendSigRegionFileName = f"{outputDataDirBaseName}/data_sig_{dataSet.beamPolLabel}.root.weights",
-          friendBkgRegionFileName = f"{outputDataDirBaseName}/data_bkg_{dataSet.beamPolLabel}.root.weights",
-        ) if len(dataSet.inputFileNames) == 2 else
-        ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames[0])  # if only one tuple of input file names is given, assume that it already contains combined signal and background data with correct event weights
-      )
-    elif dataSet.inputType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE or dataSet.inputType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      # read all MC files into one RDataFrame
-      df = ROOT.RDataFrame(dataSet.inputTreeName, dataSet.inputFileNames)
-    else:
-      raise RuntimeError(f"Unsupported input data type '{dataSet.inputType}'")
-    print(f"Converting {dataSet.inputType} data with {dataSet.inputFormat} format for '{dataSet.subsystem.pairLabel}' subsystem, "
-          f"'{dataSet.dataPeriod}' period, '{dataSet.tBinLabel}' t bin, and {dataSet.beamPolLabel or 'no'} beam polarization from file(s) {dataSet.inputFileNames}")
-    lvs = lorentzVectors(dataFormat = dataSet.inputFormat)
-    df = defineDataFrameColumns(
-      df                   = df,
-      lvTarget             = lvs["target"],
-      lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
-      lvRecoil             = lvs[dataSet.subsystem.lvRecoilLabel],
-      lvA                  = lvs[dataSet.subsystem.lvALabel],
-      lvB                  = lvs[dataSet.subsystem.lvBLabel],
-      beamPolInfo          = dataSet.beamPolInfo,
-      frame                = cfg.frame,
-      additionalColumnDefs = dataSet.additionalColumnDefs,
-      additionalFilterDefs = dataSet.additionalFilterDefs,
-    ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
-    outputColumns = dataSet.outputColumns + ("eventWeight", ) if df.HasColumn("eventWeight") else dataSet.outputColumns
-    if reweightMinusTDistribution and dataSet.inputType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      #TODO this is currently only implemented for the bin 0.1 < |t| < 0.2 GeV^2/c^2
-      # reweight -t distribution to match that of real data
-      outputFileNameReweighted = dataSet.outputFileName.replace(".root", ".reweighted_minusT.root")
-      reweightKinDistribution(
-        dataToWeight    = df,
-        treeName        = dataSet.outputTreeName,
-        binning         = HistAxisBinning(
-          nmbBins = 50, minVal = 0.1, maxVal = 0.2,
-          _var = KinematicBinningVariable(name= "minusT", label = "#minus#it{t}", unit = "GeV^{2}/#it{c}^{2}", nmbDigits = 3),
-        ),
-        targetDistrFrom = f"{outputDataDirBaseName}/data_flat_{dataSet.beamPolLabel}.root",
-        outFileName     = outputFileNameReweighted,
-        outputColumns   = outputColumns,
-      )
-    else:
-      print(f"Writing converted data to file '{dataSet.outputFileName}'")
-      df.Snapshot(dataSet.outputTreeName, dataSet.outputFileName, outputColumns)
+          ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
+          outputFileName = cfg.outputFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          outputTreeName = cfg.subsystem.pairLabel
+          outputColumns  = outputColumnsUnpolarized
+          if beamPolInfo is not None:
+            outputColumns += outputColumnsPolarized
+          if df.HasColumn("eventWeight"):
+            outputColumns += ("eventWeight", )
+          if reweightAccPSMCMinusTDistribution and inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+            #TODO this is currently only implemented for the bin 0.1 < |t| < 0.2 GeV^2
+            # reweight -t distribution to match that of real data
+            outputFileNameReweighted = outputFileName.replace(".root", ".reweighted_minusT.root")
+            reweightKinDistribution(
+              dataToWeight    = df,
+              treeName        = outputTreeName,
+              binning         = HistAxisBinning(
+                nmbBins = 50, minVal = 0.1, maxVal = 0.2,
+                _var = KinematicBinningVariable(name= "minusT", label = "#minus#it{t}", unit = "GeV^{2}/#it{c}^{2}", nmbDigits = 3),
+              ),
+              targetDistrFrom = f"{os.path.dirname(outputFileName)}/data_flat_{beamPolLabel}.root",
+              outFileName     = outputFileNameReweighted,
+              outputColumns   = outputColumns,
+            )
+          else:
+            print(f"Writing columns {outputColumns} to tree '{outputTreeName}' in file '{outputFileName}'")
+            df.Snapshot(outputTreeName, outputFileName, outputColumns)
 
   timer.stop("Total execution time")
   print(timer.summary)
