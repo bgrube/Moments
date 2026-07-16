@@ -27,6 +27,7 @@ from AnalysisConfig import (
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_ETAPPI0,
+  CFG_POLARIZED_KSKL,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
@@ -246,7 +247,8 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
+  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
@@ -259,45 +261,50 @@ if __name__ == "__main__":
   # cfg.massBinning = HistAxisBinning(nmbBins = 7, minVal = 0.60, maxVal = 0.88)  # mass range of SDME analysis
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
 
+  subsystemLabel  = cfg.subsystem.pairLabel
+  dataDirBaseName = cfg.dataDirBaseName
+  dataPeriods     = cfg.dataPeriods
+  tBinLabels      = cfg.tBinLabels
+  beamPolLabels   = cfg.beamPolLabels
   # subsystemLabel = "EtapEta"
   # subsystemLabel = "EtaPi0"
-  subsystemLabel = "EtapPi0"
+  # subsystemLabel = "EtapPi0"
   # subsystemLabel = "PiPi"  #TODO move into analysis config
   # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
-  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
-  dataPeriods = (
-    "merged",
-    # "2017_01_ver05",
-    # "2017_01",
-    # "2018_01",
-    # "2018_08",
-    # "2019_11",
-  )
-  tBinLabels = (
-    # "ALLT",
-    # "LOWT",
-    # "XSCUTS",
-    # "t010020",
-    # "t020032",
-    # "t032050",
-    # "t050075",
-    # "t075100",
-    "tbin_0.1_0.5",
-    # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
-    # "tbin_0.1_0.2",
-    # "tbin_0.2_0.3",
-    # "tbin_0.3_0.4",
-    # "tbin_0.4_0.5",
-  )
-  beamPolLabels = (
-    # "All",
-    "PARA_0",
-    "PARA_135",
-    "PERP_45",
-    "PERP_90",
-    # "AMO",
-    # "Unpol",
-  )
+  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
+  # dataPeriods = (
+  #   "merged",
+  #   # "2017_01_ver05",
+  #   # "2017_01",
+  #   # "2018_01",
+  #   # "2018_08",
+  #   # "2019_11",
+  # )
+  # tBinLabels = (
+  #   # "ALLT",
+  #   # "LOWT",
+  #   # "XSCUTS",
+  #   # "t010020",
+  #   # "t020032",
+  #   # "t032050",
+  #   # "t050075",
+  #   # "t075100",
+  #   "tbin_0.1_0.5",
+  #   # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
+  #   # "tbin_0.1_0.2",
+  #   # "tbin_0.2_0.3",
+  #   # "tbin_0.3_0.4",
+  #   # "tbin_0.4_0.5",
+  # )
+  # beamPolLabels = (
+  #   # "All",
+  #   "PARA_0",
+  #   "PARA_135",
+  #   "PERP_45",
+  #   "PERP_90",
+  #   # "AMO",
+  #   # "Unpol",
+  # )
   maxLs = (
     4,
     # (4, 6),
@@ -384,12 +391,12 @@ if __name__ == "__main__":
                 #   # ")",  # noSpikeOdd
                 #   "(0.100 < minusT and minusT < 0.114)",
                 # ),
-                # additionalColumnDefs = {},
-                additionalColumnDefs = {  # needed for Zach's data
-                  "mass"             : "(Double32_t)mass_EtaPrimePi",
-                  "beamPol"          : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].pol}",
-                  "beamPolPhiLabDeg" : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].PhiLab}",
-                },
+                additionalColumnDefs = {},
+                # additionalColumnDefs = {  # needed for Zach's data
+                #   "mass"             : "(Double32_t)mass_EtaPrimePi",
+                #   "beamPol"          : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].pol}",
+                #   "beamPolPhiLabDeg" : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].PhiLab}",
+                # },
               )
               timer.stop("Total execution time")
               print(timer.summary)
