@@ -261,82 +261,23 @@ if __name__ == "__main__":
   # cfg.massBinning = HistAxisBinning(nmbBins = 7, minVal = 0.60, maxVal = 0.88)  # mass range of SDME analysis
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
 
-  subsystemLabel  = cfg.subsystem.pairLabel
-  dataDirBaseName = cfg.dataDirBaseName
-  dataPeriods     = cfg.dataPeriods
-  tBinLabels      = cfg.tBinLabels
-  beamPolLabels   = cfg.beamPolLabels
-  # subsystemLabel = "EtapEta"
-  # subsystemLabel = "EtaPi0"
-  # subsystemLabel = "EtapPi0"
-  # subsystemLabel = "PiPi"  #TODO move into analysis config
-  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
-  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
-  # dataPeriods = (
-  #   "merged",
-  #   # "2017_01_ver05",
-  #   # "2017_01",
-  #   # "2018_01",
-  #   # "2018_08",
-  #   # "2019_11",
-  # )
-  # tBinLabels = (
-  #   # "ALLT",
-  #   # "LOWT",
-  #   # "XSCUTS",
-  #   # "t010020",
-  #   # "t020032",
-  #   # "t032050",
-  #   # "t050075",
-  #   # "t075100",
-  #   "tbin_0.1_0.5",
-  #   # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
-  #   # "tbin_0.1_0.2",
-  #   # "tbin_0.2_0.3",
-  #   # "tbin_0.3_0.4",
-  #   # "tbin_0.4_0.5",
-  # )
-  # beamPolLabels = (
-  #   # "All",
-  #   "PARA_0",
-  #   "PARA_135",
-  #   "PERP_45",
-  #   "PERP_90",
-  #   # "AMO",
-  #   # "Unpol",
-  # )
-  maxLs = (
-    4,
-    # (4, 6),
-    # (4, 8),
-    # (4, 12),
-    # (4, 16),
-    # (4, 20),
-    # 5,
-    # 6,
-    # 7,
-    # 8,
-    # (8, 16),
-    # (8, 20),
-    # 12,
-    # 16,
-    # 20,
-  )
   forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
   # forceIntegralMatrixCalculation = False
 
   ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
 
+  print(f"Calculating moments for subsystem '{cfg.subsystem}':")
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
-  for dataPeriod in dataPeriods:
-    for tBinLabel in tBinLabels:
-      for beamPolLabel in beamPolLabels:
-        cfg.dataFileName       = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/data_flat_{beamPolLabel}.root"
-        cfg.psAccFileName      = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-        cfg.psGenFileName      = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
+  for dataPeriod in cfg.dataPeriods:
+    for tBinLabel in cfg.tBinLabels:
+      for beamPolLabel in cfg.beamPolLabels:
+        #TODO need to define separate data class that handles this info and max_L
+        cfg.dataFileName       = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/data_flat_{beamPolLabel}.root"
+        cfg.psAccFileName      = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
+        cfg.psGenFileName      = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
         cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
         cfg.polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?
-        for maxL in maxLs:
+        for maxL in cfg.maxLs:
           print(f"Performing moment analysis for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           cfg.maxL = maxL
           cfg.init(createOutFileDir = True)

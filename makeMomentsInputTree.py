@@ -437,7 +437,6 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
 
-  #TODO merge code with loop over DataSetInfos below; remove DataSetInfo
   outputColumnsUnpolarized = ("theta", "phi", "mass", "minusT")
   outputColumnsPolarized   = ("beamPol", "beamPolPhiLabDeg", "Phi")
   #TODO move these two also into AnalysisConfig
