@@ -521,7 +521,7 @@ def makeAllPlots(
         print(f"Overlaying measured intensity distribution from file '{dataCfg.dataFileName}'")
         # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
         #TODO treat case where data do not contain "eventWeight" column
-        histIntMeas = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.treeName).Histo1D(
+        histIntMeas = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.convertedTreeName).Histo1D(
           ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
         ).GetValue()
         for binIndex, H000Meas in enumerate(H000s[0]):
@@ -540,9 +540,9 @@ def makeAllPlots(
     with timer.timeThis(f"Time to plot angular distributions"):
       print("Plotting angular distributions")
       # load all signal and phase-space data
-      data      = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA,             cfg.treeName)
-      dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  cfg.treeName)
-      dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.treeName)
+      data      = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA,             cfg.convertedTreeName)
+      dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  cfg.convertedTreeName)
+      dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.convertedTreeName)
       # plot total angular distribution
       plotAngularDistr(
         dataPsAcc         = dataPsAcc,
@@ -629,7 +629,7 @@ def makeAllPlots(
             plotLegend        = False,
           )
         # plot accepted phase-space moments in each mass bin
-        dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.treeName)
+        dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.convertedTreeName)
         for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
           binLabel = MomentCalculator.binLabel(HPhys)
           binTitle = MomentCalculator.binTitle(HPhys)

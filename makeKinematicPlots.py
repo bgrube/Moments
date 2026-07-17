@@ -579,7 +579,7 @@ if __name__ == "__main__":
             additionalColumnDefs = additionalColumnDefs[inputDataType],
             additionalFilterDefs = additionalFilterDefs[inputDataType],
           ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem {cfg.subsystem.pairLabel}" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
-          outputDirName = f"{cfg.outputDataDirBasePath(dataPeriod, tBinLabel)}/plots_{inputDataType.name}/{beamPolLabel}"
+          outputDirName = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/plots_{inputDataType.name}/{beamPolLabel}"
           if True:
           # if False:
             makePlots(

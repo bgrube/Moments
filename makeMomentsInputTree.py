@@ -479,7 +479,7 @@ if __name__ == "__main__":
     print(f"Setting up data period '{dataPeriod}':")
     for tBinLabel in cfg.tBinLabels:
       print(f"Setting up t bin '{tBinLabel}':")
-      os.makedirs(cfg.outputDataDirBasePath(dataPeriod, tBinLabel), exist_ok = True)
+      os.makedirs(cfg.convertedDataDirBasePath(dataPeriod, tBinLabel), exist_ok = True)
       for beamPolLabel in cfg.beamPolLabels:
         beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
         print(f"Setting up beam-polarization orientation '{beamPolLabel}'")
@@ -502,7 +502,7 @@ if __name__ == "__main__":
             additionalColumnDefs = additionalColumnDefs[inputDataType],
             additionalFilterDefs = additionalFilterDefs[inputDataType],
           ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
-          outputFileName = cfg.outputFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          outputFileName = cfg.convertedFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
           outputTreeName = cfg.subsystem.pairLabel
           outputColumns  = outputColumnsUnpolarized
           if beamPolInfo is not None:

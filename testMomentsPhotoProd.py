@@ -420,7 +420,7 @@ if __name__ == "__main__":
           massBinIndex         = 0,
           intensityFormula     = f"({intensityFormula}) * ({efficiencyFormulaGen})",
           weightedDataFileName = f"{outputDirName}/data.root",
-          cfg                  = AnalysisConfig(treeName = "data", polarization = beamPolarization),
+          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),
           seed                 = 1234567890,
         )
       t.stop()
@@ -461,7 +461,7 @@ if __name__ == "__main__":
           massBinIndex         = 0,
           intensityFormula     = efficiencyFormulaReco,
           weightedDataFileName = f"{outputDirName}/acceptedPhaseSpace.root",
-          cfg                  = AnalysisConfig(treeName = "data", polarization = beamPolarization),
+          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),
           seed                 = 1234567890,
         )
       t.stop()

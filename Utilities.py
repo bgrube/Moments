@@ -40,6 +40,7 @@ def print_command_line_arguments(args: argparse.Namespace) -> None:
   print("-------------------------------------------------------------------------------")
 
 
+#TODO is this really needed?
 def makeDirPath(dirPath: str) -> str:
   """Create path to directory and return directory path as given by argument"""
   try:

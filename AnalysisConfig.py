@@ -192,7 +192,7 @@ class DataConfig:
   psGenFileName:  str | None  # file with generated phase-space MC
   polarization:   float | str | None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
   maxL:           int | tuple[int, int]  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
-  outFileDirName: str  # base name of directory into which all output will be written
+  outFileDirName: str  # base name of directory, into which all output of the moment calculation will be written
 
   def __post_init__(self) -> None:
     """Checks that maximum L tuple has valid values"""
@@ -324,13 +324,13 @@ class AnalysisConfig:
     lvALabel          = "pip",     # label of pi+ Lorentz-vector
     lvBLabel          = "pim",     # label of pi- Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
-    pairLabel         = "PiPi",    #TODO treeName is identical
+    pairLabel         = "PiPi",
     ATLatexLabel      = "#it{#pi}^{#plus}",
     BTLatexLabel      = "#it{#pi}^{#minus}",
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
   )
-  dataDirBaseName:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data  #TODO turn into property and determine value depending on other member variables
+  dataDirBaseName:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data
   dataPeriods:              tuple[str, ...]                   = (  # labels of data periods to process
     "2017_01",
     "2018_08",
@@ -346,14 +346,14 @@ class AnalysisConfig:
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   })
-  inputTreeName:            str                               = "kin"  # name of tree to read from input data and MC files
-  treeName:                 str                               = "PiPi"  # name of tree to read from converted data and MC files  #TODO fix name
+  inputTreeName:            str                               = "kin"   # name of tree to read from input data
+  convertedTreeName:        str                               = "PiPi"  # name of tree to read from converted input data
   maxLs:                    tuple[int | tuple[int, int], ...] = (  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
     4,
     6,
     8,
   )
-  outFileDirBaseName:       str                               = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output will be written
+  outFileDirBaseName:       str                               = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
   # normalizeMoments:         bool                              = True
   normalizeMoments:         bool                              = False
   nmbBootstrapSamples:      int                               = 0
@@ -388,7 +388,7 @@ class AnalysisConfig:
     )
   )
 
-  def inputDataDirBasePath(  #TODO improve naming
+  def inputDataDirBasePath(
     self,
     dataPeriod: str,
     tBinLabel:  str,
@@ -397,7 +397,7 @@ class AnalysisConfig:
     return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/input"
 
   @staticmethod
-  def _default_inputFilePaths(  #TODO improve naming
+  def _default_inputFilePaths(
     cfg:          AnalysisConfig,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
@@ -421,7 +421,7 @@ class AnalysisConfig:
         compare         = False,
     )
 
-  def inputFilePaths(  #TODO improve naming
+  def inputFilePaths(
     self,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
@@ -431,34 +431,34 @@ class AnalysisConfig:
     """Returns file paths of input data based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePaths` member"""
     return self._inputFilePaths(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
 
-  def outputDataDirBasePath(  #TODO improve naming
+  def convertedDataDirBasePath(
     self,
     dataPeriod: str,
     tBinLabel:  str,
   ) -> str:
-    """Generates base path of directory with converted output data"""
+    """Generates base path of directory with converted input data"""
     return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
 
-  def outputFilePath(  #TODO improve naming
+  def convertedFilePath(
     self,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
     tBinLabel:    str,
     beamPolLabel: str,
   ) -> str:
-    """Generates path of output file based on data type, data period, t bin label, and beam polarization label"""
+    """Generates path of converted input file based on data type, data period, t bin label, and beam polarization label"""
     if dataType == AnalysisConfig.DataType.REAL_DATA:
-      return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
+      return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_acc_flat_{beamPolLabel}.root"
+      return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_acc_flat_{beamPolLabel}.root"
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_gen_flat_{beamPolLabel}.root"
+      return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_gen_flat_{beamPolLabel}.root"
     else:
       raise ValueError(f"Unknown data type: {dataType}")
 
   @property
   def outFileNamePrefix(self) -> str:
-    """Returns name prefix prepended to output file names"""
+    """Returns name prefix prepended to moment output file names"""
     return "norm" if self.normalizeMoments else "unnorm"
 
   def dataConfig(
@@ -614,7 +614,7 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
-  treeName           = "EtaPi0",
+  convertedTreeName  = "EtaPi0",
   maxLs              = (
     4,
     6,
@@ -647,7 +647,7 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#pi}^{0}",
   ),
-  treeName           = "EtapPi0",
+  convertedTreeName  = "EtapPi0",
   maxLs              = (
     4,
     6,
@@ -700,7 +700,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   },
   # inputTreeName      = "kin",  # for 2018_08 ALLT real data
   inputTreeName      = "nt",
-  treeName           = "EtapEta",
+  convertedTreeName  = "EtapEta",
   maxLs              = (
     4,
     6,
@@ -727,7 +727,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
 
 # configuration for Kevin's gamma p -> (K- K_S) Delta++ data
 CFG_KEVIN = AnalysisConfig(
-  subsystem          = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer
+  subsystem                = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer
     lvALabel          = "K-",      # label of K- Lorentz-vector
     lvBLabel          = "K_S",     # label of K_S Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -738,7 +738,7 @@ CFG_KEVIN = AnalysisConfig(
     pairTLatexLabel   = "#it{K}^{#minus}#it{K}_{S}^{0}",
   ),
   inputTreeName            = "ntFSGlueX_100_11100_angles",
-  treeName                 = "KmKS",
+  convertedTreeName        = "KmKS",
   # dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
   # psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
   # psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
@@ -794,7 +794,7 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
   },
   inputTreeName      = "flatTree",
-  treeName           = "KSKL",
+  convertedTreeName  = "KSKL",
   maxLs              = (
     4,
     6,

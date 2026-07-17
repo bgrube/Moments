@@ -77,7 +77,7 @@ def loadInputData(
   if isinstance(inputDataDef, AnalysisConfig.DataType) or (isinstance(inputDataDef, tuple) and len(inputDataDef) == 4):
     if isinstance(inputDataDef, AnalysisConfig.DataType):
       print(f"Loading data of type '{inputDataDef}'")
-      dataToWeight = dataCfg.loadData(inputDataDef, cfg.treeName)
+      dataToWeight = dataCfg.loadData(inputDataDef, cfg.convertedTreeName)
     elif isinstance(inputDataDef, tuple):
       print(f"Loading raw data in tree '{inputDataDef[0]}' from file '{inputDataDef[1]}'")
       dataToWeight = ROOT.RDataFrame(inputDataDef[0], inputDataDef[1])
@@ -173,8 +173,8 @@ def weightDataWithIntensityFormula(
   )
   # write unweighted data to file and read data back to ensure that random columns are filled only once
   tmpFileName = f"{weightedDataFileName}.tmp"
-  dataToWeight.Snapshot(cfg.treeName, tmpFileName)
-  dataToWeight = ROOT.RDataFrame(cfg.treeName, tmpFileName)
+  dataToWeight.Snapshot(cfg.convertedTreeName, tmpFileName)
+  dataToWeight = ROOT.RDataFrame(cfg.convertedTreeName, tmpFileName)
   # determine range of weight values
   minIntensityWeight = dataToWeight.Min("intensityWeight").GetValue()
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
@@ -194,9 +194,9 @@ def weightDataWithIntensityFormula(
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{weightedDataFileName}'")
   # weightedData.Snapshot(cfg.treeName, weightedDataFileName, originalColumns + ["intensityWeight"])
-  weightedData.Snapshot(cfg.treeName, weightedDataFileName)  # write original columns + columns defined here
+  weightedData.Snapshot(cfg.convertedTreeName, weightedDataFileName)  # write original columns + columns defined here
   subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  # remove temporary file
-  return ROOT.RDataFrame(cfg.treeName, weightedDataFileName)
+  return ROOT.RDataFrame(cfg.convertedTreeName, weightedDataFileName)
 
 
 #TODO ist this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
@@ -380,8 +380,8 @@ if __name__ == "__main__":
               reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
                 reweightKinDistribution(
-                  dataToWeight    = ROOT.RDataFrame(cfg.treeName, mergedFileName),  # load merged data file created in step above
-                  treeName        = cfg.treeName,
+                  dataToWeight    = ROOT.RDataFrame(cfg.convertedTreeName, mergedFileName),  # load merged data file created in step above
+                  treeName        = cfg.convertedTreeName,
                   binning         = massBinningForWeighting,
                   targetDistrFrom = dataCfg.dataFileName,  # match measured mass distribution
                   # targetDistrFrom = momentResults,  # match acceptance-corrected mass distribution, i.e. H_0(0, 0)

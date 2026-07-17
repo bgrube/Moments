@@ -70,20 +70,20 @@ def calculateAllMoments(
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
     dataSamples: dict[str | None, ROOT.RDataFrame] = {  # dict: key = data sample label
-      None : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.treeName, additionalCuts, additionalColumnDefs),
+      None : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.convertedTreeName, additionalCuts, additionalColumnDefs),
     } if cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS else {
-      "Sig" : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIGNAL, cfg.treeName, additionalCuts, additionalColumnDefs),    # select events in signal region (mixture of signal and background)
-      "Bkg" : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIDEBAND, cfg.treeName, additionalCuts, additionalColumnDefs),  # select events in sideband regions (ideally, pure background)
+      "Sig" : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIGNAL, cfg.convertedTreeName, additionalCuts, additionalColumnDefs),    # select events in signal region (mixture of signal and background)
+      "Bkg" : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIDEBAND, cfg.convertedTreeName, additionalCuts, additionalColumnDefs),  # select events in sideband regions (ideally, pure background)
     }
     #TODO: implement event range limit
     # if limitToDataEntryRange is not None:
     #   print(f"Limiting analysis to entry range [{limitToDataEntryRange[0]}, {limitToDataEntryRange[1]}) of real data")
     #   data = data.Range(*limitToDataEntryRange)
     # use same MC events for all real-data samples
-    dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, cfg.treeName, additionalCuts, additionalColumnDefs)
+    dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, cfg.convertedTreeName, additionalCuts, additionalColumnDefs)
     if cfg.limitNmbPsAccEvents > 0 and dataPsAcc is not None:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
-    dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.treeName, additionalCuts, additionalColumnDefs)
+    dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.convertedTreeName, additionalCuts, additionalColumnDefs)
     for labelDataSample, dataSample in dataSamples.items():
       if dataSample is None:
         print(f"No real-data events for type '{labelDataSample}'. Skipping.")
