@@ -296,7 +296,7 @@ class AnalysisConfig:
     )
   )
 
-  def inputDataDirBasePath(
+  def inputDataDirBasePath(  #TODO improve naming
     self,
     dataPeriod: str,
     tBinLabel:  str,
@@ -312,7 +312,7 @@ class AnalysisConfig:
     tBinLabel:    str,
     beamPolLabel: str
   ) -> tuple[str, ...]:  #TODO is tuple really needed here?
-    """Default function that generates input file paths based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePaths` member"""
+    """Default function that returns file paths of input data based on data type, data period, t bin label, and beam polarization label"""
     # one input file for each data type
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
@@ -329,16 +329,17 @@ class AnalysisConfig:
         compare         = False,
     )
 
-  def inputFilePaths(
+  def inputFilePaths(  #TODO improve naming
     self,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
     tBinLabel:    str,
     beamPolLabel: str,
   ) -> tuple[str, ...]:
+    """Returns file paths of input data based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePaths` member"""
     return self._inputFilePaths(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
 
-  def outputDataDirBasePath(
+  def outputDataDirBasePath(  #TODO improve naming
     self,
     dataPeriod: str,
     tBinLabel:  str,
@@ -346,13 +347,14 @@ class AnalysisConfig:
     """Generates base path of directory with converted output data"""
     return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
 
-  def outputFilePath(
+  def outputFilePath(  #TODO improve naming
     self,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
     tBinLabel:    str,
     beamPolLabel: str,
   ) -> str:
+    """Generates path of output file based on data type, data period, t bin label, and beam polarization label"""
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       return f"{self.outputDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
