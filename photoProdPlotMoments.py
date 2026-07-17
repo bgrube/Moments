@@ -242,13 +242,13 @@ def makeAllPlots(
     ) if compareTo == ComparisonMomentsType.PWA
     else
     (
-      readMomentResultsClas(momentIndices, cfg.binVarMass),
+      readMomentResultsClas(momentIndices, cfg.massBinning.var),
       "CLAS",
       ROOT.kGray + 2,
     ) if compareTo == ComparisonMomentsType.CLAS
     else
     (
-      readMomentResultsJpac(momentIndices, cfg.binVarMass),
+      readMomentResultsJpac(momentIndices, cfg.massBinning.var),
       "JPAC",
       ROOT.kBlue + 1,
     ) if compareTo == ComparisonMomentsType.JPAC
@@ -271,7 +271,7 @@ def makeAllPlots(
   momentResultsJpac = None
   if compareTo == ComparisonMomentsType.CLAS and momentResultsCompare is not None and not cfg.normalizeMoments:
     # overlay also JPAC moments, if moments are compared to CLAS values
-    momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.binVarMass)
+    momentResultsJpac = readMomentResultsJpac(momentIndices, cfg.massBinning.var)
   # normalize or scale moments
   if momentResultsCompare is not None and not cfg.normalizeMoments:
     if normalizeComparisonMoments:
@@ -464,7 +464,7 @@ def makeAllPlots(
           chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
           histChi2 = ROOT.TH1D(
             f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
-            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {dataCfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
+            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.massBinning.var.label}, #it{{L}}_{{max}} = {dataCfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
             len(chi2Values), 0, len(chi2Values)
           )
           for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
@@ -717,7 +717,6 @@ if __name__ == "__main__":
       for beamPolLabel in cfg.beamPolLabels:
         for maxL in cfg.maxLs:
           print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          cfg.init()
           dataCfg = cfg.dataConfig(
             dataPeriod   = dataPeriod,
             tBinLabel    = tBinLabel,

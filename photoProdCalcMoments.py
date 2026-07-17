@@ -91,7 +91,7 @@ def calculateAllMoments(
       print(f"Loaded {dataSample.Count().GetValue()} real-data events" + (f" of type '{labelDataSample}'" if labelDataSample is not None else ""))
       for massBinIndex, massBinCenter in enumerate(cfg.massBinning):
         massBinRange = cfg.massBinning.binValueRange(massBinIndex)
-        print(f"Preparing {cfg.binVarMass.name} bin [{massBinIndex + 1} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.binVarMass.unit} with range {massBinRange} {cfg.binVarMass.unit}")
+        print(f"Preparing {cfg.massBinning.var.name} bin [{massBinIndex + 1} of {len(cfg.massBinning)}] at {massBinCenter} {cfg.massBinning.var.unit} with range {massBinRange} {cfg.massBinning.var.unit}")
         massBinFilter = cfg.massBinning.binFilter(massBinIndex)
         print(f"Applying filter '{massBinFilter}' to select kinematic bin")
         dataInBin = dataSample.Filter(massBinFilter)
@@ -122,7 +122,7 @@ def calculateAllMoments(
             indicesMeas          = dataCfg.momentIndicesMeas,
             indicesPhys          = dataCfg.momentIndicesPhys,
             dataSet              = dataSet,
-            binCenters           = {cfg.binVarMass : massBinCenter},
+            binCenters           = {cfg.massBinning.var : massBinCenter},
             integralFileBaseName = f"{dataCfg.outFileDirName}/integralMatrix",
             flipSignOfWeights    = (labelDataSample == "Bkg"),  # flip sign of weights for background events
           )
@@ -136,9 +136,9 @@ def calculateAllMoments(
     with timer.timeThis(f"Time to calculate integral matrices for {len(momentCalculatorsFirstSample)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating acceptance integral matrices for {len(momentCalculatorsFirstSample)} bins using {nmbOpenMpThreads} OpenMP threads")
       momentCalculatorsFirstSample.calculateIntegralMatrices(forceIntegralMatrixCalculation)
-      print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{momentCalculatorsFirstSample[0].integralMatrix}")
+      print(f"Acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.massBinning.var.unit}:\n{momentCalculatorsFirstSample[0].integralMatrix}")
       # eigenVals, _ = momentCalculatorsFirstSample[0].integralMatrix.eigenDecomp
-      # print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.binVarMass.unit}:\n{np.sort(eigenVals)}")
+      # print(f"Sorted eigenvalues of acceptance integral matrix for first bin at {cfg.massBinning[0]} {cfg.massBinning.var.unit}:\n{np.sort(eigenVals)}")
     # assign integral matrices to `MomentCalculators` for other data samples
     labelsOtherSamples = (label for label in momentCalculators.keys() if label is not labelFirstSample)
     for labelDataSample in labelsOtherSamples:
@@ -269,13 +269,11 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
 
   print(f"Calculating moments for subsystem '{cfg.subsystem}':")
-  outFileDirBaseNameCommon = cfg.outFileDirBaseName
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
       for beamPolLabel in cfg.beamPolLabels:
         for maxL in cfg.maxLs:
           print(f"Performing moment analysis for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          cfg.init()
           dataCfg = cfg.dataConfig(
             dataPeriod   = dataPeriod,
             tBinLabel    = tBinLabel,

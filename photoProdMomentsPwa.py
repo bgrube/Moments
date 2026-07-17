@@ -118,7 +118,7 @@ if __name__ == "__main__":
       for maxL in maxLs:
         print(f"Calculating moment values from partial-wave amplitudes for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
         cfg.maxL = maxL
-        cfg.init(createOutFileDir = True)
+        # cfg.init(createOutFileDir = True)
         thisSourceFileName = os.path.basename(__file__)
         logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
         print(f"Writing output to log file '{logFileName}'")
@@ -199,7 +199,7 @@ if __name__ == "__main__":
               dataFileName = pwaAmplitudesFileName,
               maxL         = cfg.maxLPhys,
               waves        = waves,
-              binVarMass   = cfg.binVarMass,
+              binVarMass   = cfg.massBinning.var,
               normalize    = cfg.normalizeMoments
             )
             print(f"Writing PWA moments to file '{momentResultsFileName}'")

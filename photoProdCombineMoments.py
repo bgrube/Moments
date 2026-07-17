@@ -98,12 +98,12 @@ if __name__ == "__main__":
           # for dataPeriod in dataPeriods:
           for beamPolLabel in beamPolLabels:
             cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
-            cfg.init()
+            # cfg.init()
             momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
           # combining moment results
           cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{labelCombined}"
           # cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{labelCombined}/{tBinLabel}/{beamPolLabel}"
-          cfg.init(createOutFileDir = True)
+          # cfg.init(createOutFileDir = True)
           thisSourceFileName = os.path.basename(__file__)
           logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")

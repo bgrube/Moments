@@ -126,7 +126,6 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg.outFileDirBaseName += ".ideal"
-  cfg.init()
   # cfg.polarization = None  # treat data as unpolarized
 
   # normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first fit result

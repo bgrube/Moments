@@ -374,20 +374,17 @@ class AnalysisConfig:
   plotCovarianceMatrices:   bool                              = False
   limitNmbPsAccEvents:      int                               = 0
   # limitNmbPsAccEvents:      int                               = 100000
-  binVarMass:               KinematicBinningVariable          = field(
-    default_factory = lambda: KinematicBinningVariable(
-      name      = "mass",
-      label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
-      unit      = "GeV/#it{c}^{2}",
-      nmbDigits = 3,
-    )
-  )
   massBinning:              HistAxisBinning                   = field(
     default_factory = lambda: HistAxisBinning(  # same binning as used by CLAS
-      nmbBins = 100,
-      minVal  = 0.4,   # [GeV]
-      maxVal  = 1.4,   # [GeV]
-      _var    = None,  # set by init()  #TODO why keep a separate binVarMass member instead of using binning.var?
+      nmbBins = 100,  # 10 MeV wide bins
+      minVal  = 0.4,  # [GeV]
+      maxVal  = 1.4,  # [GeV]
+      _var    = KinematicBinningVariable(
+        name      = "mass",
+        label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+        unit      = "GeV/#it{c}^{2}",
+        nmbDigits = 3,
+      ),
     )
   )
 
@@ -464,14 +461,6 @@ class AnalysisConfig:
     """Returns name prefix prepended to output file names"""
     return "norm" if self.normalizeMoments else "unnorm"
 
-  #TODO remove
-  def init(
-    self,
-    # createOutFileDir: bool = False,
-  ) -> None:
-    """Creates output directory and initializes member variables; needs to be called before passing the config to any consumer"""
-    self.massBinning.var = self.binVarMass
-
   def dataConfig(
     self,
     dataPeriod:   str,
@@ -484,7 +473,7 @@ class AnalysisConfig:
       dataFileName       = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/data_flat_{beamPolLabel}.root",
       psAccFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_acc_flat_{beamPolLabel}.root",
       psGenFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_gen_flat_{beamPolLabel}.root",
-      polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?
+      polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?; use BeamPolInfo
       maxL               =  maxL,
       outFileDirName     = f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}",
     )
@@ -583,13 +572,17 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
     8,
   ),
   outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
-  binVarMass         = KinematicBinningVariable(
-    name      = "mass",
-    label     = "#it{m}_{#it{#pi}^{#plus}#it{p}}",
-    unit      = "GeV/#it{c}^{2}",
-    nmbDigits = 3,
+  massBinning        = HistAxisBinning(
+    nmbBins = 75,   # 20 MeV wide bins
+    minVal  = 1.1,  # [GeV]
+    maxVal  = 2.6,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#pi}^{#plus}#it{p}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
   ),
-  massBinning        = HistAxisBinning(nmbBins = 75, minVal = 1.1, maxVal = 2.6),
 )
 
 
@@ -628,13 +621,17 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     8,
   ),
   outFileDirBaseName = "./plotsPhotoProdEtaPi0",
-  binVarMass         = KinematicBinningVariable(
-    name      = "mass",
-    label     = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
-    unit      = "GeV/#it{c}^{2}",
-    nmbDigits = 3,
+  massBinning        = HistAxisBinning(
+    nmbBins = 17,    # 40 MeV wide bins
+    minVal  = 1.04,  # [GeV]
+    maxVal  = 1.72,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
   ),
-  massBinning        = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72),  # 40 MeV wide bins
 )
 
 
@@ -657,13 +654,17 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
     8,
   ),
   outFileDirBaseName = "./plotsPhotoProdEtapPi0",
-  binVarMass         = KinematicBinningVariable(
-    name      = "mass",
-    label     = "#it{m}_{#it{#eta}'#it{#pi}^{0}}",
-    unit      = "GeV/#it{c}^{2}",
-    nmbDigits = 3,
+  massBinning        = HistAxisBinning(
+    nmbBins = 20,   # 40 MeV wide bins
+    minVal  = 1.2,  # [GeV]
+    maxVal  = 2.0,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#eta}'#it{#pi}^{0}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
   ),
-  massBinning        = HistAxisBinning(nmbBins = 20, minVal = 1.2, maxVal = 2.0),  # 40 MeV wide bins
 )
 
 
@@ -707,14 +708,20 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   ),
   outFileDirBaseName = "./plotsPhotoProdEtapEta",
   # plotMomentsInBins  = True,
-  binVarMass         = KinematicBinningVariable(
-    name      = "mass",
-    label     = "#it{m}_{#it{#eta}'#it{#eta}}",
-    unit      = "GeV/#it{c}^{2}",
-    nmbDigits = 3,
+  massBinning        = HistAxisBinning(
+    # nmbBins = 8,    # 250 MeV wide bins
+    # minVal  = 1.5,  # [GeV]
+    # maxVal  = 3.5,  # [GeV]
+    nmbBins = 15,   # 100 MeV wide bins
+    minVal  = 1.5,  # [GeV]
+    maxVal  = 3.0,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#eta}'#it{#eta}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
   ),
-  # massBinning        = HistAxisBinning(nmbBins = 8, minVal = 1.5, maxVal = 3.5),  # 250 MeV wide bins
-  massBinning        = HistAxisBinning(nmbBins = 15, minVal = 1.5, maxVal = 3.0),  # 100 MeV wide bins
 )
 
 
@@ -737,7 +744,7 @@ CFG_KEVIN = AnalysisConfig(
   # psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
   # polarization             = "beamPol",  # read polarization from tree column
   # maxL                     = 4,
-  maxLs              = (
+  maxLs                    = (
     4,
     6,
     8,
@@ -746,13 +753,17 @@ CFG_KEVIN = AnalysisConfig(
   # normalizeMoments         = True,
   # plotAngularDistributions = True,
   # plotAccIntegralMatrices  = True,
-  binVarMass               = KinematicBinningVariable(
-    name      = "mass",
-    label     = "#it{m}_{#it{K}^{#minus}#it{K}_{S}^{0}}",
-    unit      = "GeV/#it{c}^{2}",
-    nmbDigits = 3,
+  massBinning              = HistAxisBinning(
+    nmbBins = 20,   # 40 MeV wide bins; original binning: 200 bins in [0.6, 2.6] GeV
+    minVal  = 1.0,  # [GeV]
+    maxVal  = 1.8,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{K}^{#minus}#it{K}_{S}^{0}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
   ),
-  massBinning              = HistAxisBinning(nmbBins = 20, minVal = 1.0, maxVal = 1.8),  # original binning: 200 bins in [0.6, 2.6] GeV
 )
 
 
@@ -790,11 +801,15 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     8,
   ),
   outFileDirBaseName = "./plotsPhotoProdKSKL",
-  binVarMass         = KinematicBinningVariable(
-    name      = "mass",
-    label     = "#it{m}_{#it{K}_{S}^{0}#it{K}_{L}^{0}}",
-    unit      = "GeV/#it{c}^{2}",
-    nmbDigits = 3,
+  massBinning        = HistAxisBinning(
+    nmbBins = 70,   # 20 MeV wide bins
+    minVal  = 1.2,  # [GeV]
+    maxVal  = 2.6,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{K}_{S}^{0}#it{K}_{L}^{0}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
   ),
-  massBinning        = HistAxisBinning(nmbBins = 70, minVal = 1.2, maxVal = 2.6),  # 20 MeV wide bins
 )
