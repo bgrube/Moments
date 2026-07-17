@@ -731,7 +731,8 @@ if __name__ == "__main__":
             timer = Utilities.Timer()
             ROOT.gROOT.SetBatch(True)
             setupPlotStyle()
-            print(f"Using configuration:\n{cfg}")
+            print(f"Using analysis configuration:\n{cfg}")
+            print(f"Using dataset configuration:\n{dataCfg}")
             timer.start("Total execution time")
             makeAllPlots(
               cfg                         = cfg,

@@ -93,7 +93,8 @@ if __name__ == "__main__":
             Utilities.printGitInfo()
             timer = Utilities.Timer()
             timer.start("Total execution time")
-            print(f"Using configuration:\n{cfg}")
+            print(f"Using analysis configuration:\n{cfg}")
+            print(f"Using dataset configuration:\n{dataCfg}")
 
             print(f"Combining moments from {momentResultsFileNames}")
             momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)

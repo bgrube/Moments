@@ -322,7 +322,8 @@ if __name__ == "__main__":
             Utilities.printGitInfo()
             timer = Utilities.Timer()
             setupPlotStyle()
-            print(f"Using configuration:\n{cfg}")
+            print(f"Using analysis configuration:\n{cfg}")
+            print(f"Using dataset configuration:\n{dataCfg}")
             timer.start("Total execution time")
             momentResultsFileName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
             print(f"Reading moments from file '{momentResultsFileName}'")

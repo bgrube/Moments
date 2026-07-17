@@ -474,6 +474,7 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_POLARIZED_KSKL)  # polarized gamma p -> (K_S K_L) p data from Gabriel's analysis
   # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
 
+  print(f"Using analysis configuration:\n{cfg}")
   print(f"Setting up subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
     print(f"Setting up data period '{dataPeriod}':")

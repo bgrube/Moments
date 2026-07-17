@@ -292,7 +292,8 @@ if __name__ == "__main__":
             print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
             with threadController.limit(limits = 4):
               print(f"State of ThreadpoolController after setting number of threads:\n{threadController.info()}")
-              print(f"Using configuration:\n{cfg}")
+              print(f"Using analysis configuration:\n{cfg}")
+              print(f"Using dataset configuration:\n{dataCfg}")
               timer.start("Total execution time")
               calculateAllMoments(
                 cfg                            = cfg,
