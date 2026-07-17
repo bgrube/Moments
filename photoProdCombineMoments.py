@@ -22,6 +22,7 @@ from AnalysisConfig import (
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_PWA,
+  DataConfig,
 )
 import Utilities
 
@@ -51,61 +52,42 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta pi0 data
 
-  dataPeriods = (
-    "merged",
-    # "2017_01",
-    # "2018_01",
-    # "2018_08",
-    # "2019_11",
-  )
-  tBinLabels = (
-    # "LOWT",
-    # "XSCUTS",
-    # "tbin_0.1_0.2",
-    # "tbin_0.2_0.3",
-    # "tbin_0.3_0.4",
-    # "tbin_0.4_0.5",
-    "tbin_0.1_0.5",
-  )
-  beamPolLabels = ("Unpol", )
-  dataSetsToCombine = {
+  beamPolsToCombine = {
     # "0_90"      : ("PARA_0",   "PERP_90"),
     # "-45_45"    : ("PARA_135", "PERP_45"),
     # "0_-45"     : ("PARA_0",   "PARA_135"),
     # "45_90"     : ("PERP_45",  "PERP_90"),
     "allOrient" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
   }
-  maxLs = (
-    4,
-    # 5,
-    # 6,
-    # 7,
-    # 8,
-  )
   momentsFileName = "_moments_phys.pkl"
 
-  # labelCombined = "merged"
   outFileDirBaseNameCommon = cfg.outFileDirBaseName
-  for dataPeriod in dataPeriods:
-  # for beamPolLabel in beamPolLabels:
-    for tBinLabel in tBinLabels:
-      for maxL in maxLs:
-        cfg.maxL = maxL
-        for labelCombined, beamPolLabels in dataSetsToCombine.items():
+  for dataPeriod in cfg.dataPeriods:
+    for tBinLabel in cfg.tBinLabels:
+      for maxL in cfg.maxLs:
+        for labelCombined, beamPolLabels in beamPolsToCombine.items():
           print(f"Combining moments for data sets '{beamPolLabels}' for data period '{dataPeriod}', t bin '{tBinLabel}', and L_max = {maxL}")
           # constructing input file names
           momentResultsFileNames = []
           # for dataPeriod in dataPeriods:
           for beamPolLabel in beamPolLabels:
-            cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
-            # cfg.init()
-            momentResultsFileNames.append(f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
+            dataCfg = cfg.dataConfig(
+              dataPeriod   = dataPeriod,
+              tBinLabel    = tBinLabel,
+              beamPolLabel = beamPolLabel,
+              maxL         = maxL,
+            )
+            momentResultsFileNames.append(f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
           # combining moment results
-          cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{labelCombined}"
-          # cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{labelCombined}/{tBinLabel}/{beamPolLabel}"
-          # cfg.init(createOutFileDir = True)
+          dataCfg = cfg.dataConfig(
+            dataPeriod   = dataPeriod,
+            tBinLabel    = tBinLabel,
+            beamPolLabel = labelCombined,
+            maxL         = maxL,
+          )
+          dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
@@ -116,7 +98,7 @@ if __name__ == "__main__":
             print(f"Combining moments from {momentResultsFileNames}")
             momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
             momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
-            momentResultsCombinedFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}"
+            momentResultsCombinedFileName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}"
             print(f"Writing combined moments to file '{momentResultsCombinedFileName}'")
             momentResultsCombined.savePickle(momentResultsCombinedFileName)
 
