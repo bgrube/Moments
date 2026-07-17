@@ -30,12 +30,14 @@ from AnalysisConfig import (
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_ETAPPI0,
+  CFG_POLARIZED_KSKL,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
   CFG_UNPOLARIZED_PIPP,
+  DataConfig,
 )
 import MomentCalculator
 from MomentCalculator import (
@@ -202,6 +204,7 @@ class ComparisonMomentsType(Enum):
 
 def makeAllPlots(
   cfg:                         AnalysisConfig,
+  dataCfg:                     DataConfig,
   timer:                       Utilities.Timer = Utilities.Timer(),
   scaleFactorPhysicalMoments:  float           = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
   compareTo:                   ComparisonMomentsType | tuple[str, str] | None = None,
@@ -215,9 +218,9 @@ def makeAllPlots(
 ) -> None:
   """Generates all plots for the given analysis configuration and writes them to output files"""
   # load moments from files
-  momentIndices = MomentIndices(cfg.maxLPhys)  #TODO why is polarization not needed here? can we use cfg.momentIndicesPhys instead?
+  momentIndices = MomentIndices(dataCfg.maxLPhys)  #TODO why is polarization not needed here? can we use cfg.momentIndicesPhys instead?
   #TODO move this into AnalysisConfig?
-  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
+  momentResultsFileBaseName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   momentResultsMeas = None
   if os.path.exists(f"{momentResultsFileBaseName}_meas.pkl"):
     print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
@@ -306,7 +309,7 @@ def makeAllPlots(
             HData             = HPhys,
             normalizedMoments = cfg.normalizeMoments,
             HTruth            = HComp,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
             legendLabels      = ("Moment", momentResultsCompareLabel),
             plotTruthUncert   = plotComparisonMomentsUncert,
             truthColor        = momentResultsCompareColor,
@@ -317,14 +320,14 @@ def makeAllPlots(
               HData             = HMeas,
               normalizedMoments = cfg.normalizeMoments,
               HTruth            = None,
-              outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
+              outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
               plotLegend        = False,
             )
         if cfg.plotCovarianceMatrices:
           #TODO also plot correlation matrices
           plotMomentsCovMatrices(
             HData             = HPhys,
-            pdfFileNamePrefix = f"{cfg.outFileDirName}/covMatrix_{binLabel}_",
+            pdfFileNamePrefix = f"{dataCfg.outFileDirName}/covMatrix_{binLabel}_",
             axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
             plotTitle         = f"{binLabel}: ",
           )
@@ -332,20 +335,20 @@ def makeAllPlots(
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
             HTruth            = HComp,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
             HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
             HTruth            = HComp,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
             HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
             graphTitle        = binTitle,
           )
       if compareTo is not None and cfg.plotMomentsInBins:
@@ -356,7 +359,7 @@ def makeAllPlots(
             _, ndf = chi2ValuesInMassBins[0][momentIndex][momentPart]  # assume that ndf is the same for all mass bins
             histChi2 = ROOT.TH1D(
               f"{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_chi2_H{momentIndex}_{momentPart}",
-              f"#LT#it{{#chi}}^{{2}}/ndf#GT for all {momentPart}[#it{{H}}_{{{momentIndex}}}], #it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
+              f"#LT#it{{#chi}}^{{2}}/ndf#GT for all {momentPart}[#it{{H}}_{{{momentIndex}}}], #it{{L}}_{{max}} = {dataCfg.maxL};{cfg.massBinning.axisTitle};#it{{#chi}}^{{2}}/(ndf = {ndf})",
               *cfg.massBinning.astuple
             )
             for massBinIndex in range(len(chi2ValuesInMassBins)):
@@ -376,7 +379,7 @@ def makeAllPlots(
             line.SetLineColor(ROOT.kGray + 1)
             line.SetLineStyle(ROOT.kDashed)
             line.DrawLine(cfg.massBinning.minVal, 1, cfg.massBinning.maxVal, 1)
-            canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
+            canv.SaveAs(f"{dataCfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot mass dependences of all moments
       chi2ValuesForMoments: dict[QnMomentIndex, dict[str, tuple[float, float] | tuple[None, None]]] = {}  # key: quantum-number index of moment; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
@@ -417,7 +420,7 @@ def makeAllPlots(
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
           momentResultsTrue = momentResultsCompare,
-          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_",
+          outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_",
           outFileType       = outFileType,
           histTitle         = qnIndex.title,
           plotLegend        = True,
@@ -448,7 +451,7 @@ def makeAllPlots(
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,
             momentResultsTrue = None,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -461,7 +464,7 @@ def makeAllPlots(
           chi2Values: dict[QnMomentIndex, tuple[float, float] | tuple[None, None]] = {qnIndex : value[momentPart] for qnIndex, value in chi2ValuesForMoments.items() if qnIndex.momentIndex == momentIndex}
           histChi2 = ROOT.TH1D(
             f"{cfg.outFileNamePrefix}_chi2_H{momentIndex}_{momentPart}",
-            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {cfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
+            f"{momentPart}[#it{{H}}_{{{momentIndex}}}]: #LT#it{{#chi}}^{{2}}/ndf#GT for all {cfg.binVarMass.label}, #it{{L}}_{{max}} = {dataCfg.maxL};;#it{{#chi}}^{{2}}/(ndf = {ndf})",
             len(chi2Values), 0, len(chi2Values)
           )
           for binIndex, (qnIndex, (chi2, ndf)) in enumerate(chi2Values.items()):
@@ -481,7 +484,7 @@ def makeAllPlots(
           line.SetLineColor(ROOT.kGray + 1)
           line.SetLineStyle(ROOT.kDashed)
           line.DrawLine(0, 1, len(chi2Values), 1)
-          canv.SaveAs(f"{cfg.outFileDirName}/{histChi2.GetName()}.pdf")
+          canv.SaveAs(f"{dataCfg.outFileDirName}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
       if momentResultsMeas is not None:
@@ -507,17 +510,18 @@ def makeAllPlots(
         canv = ROOT.TCanvas()
         histRatio.SetMarkerStyle(ROOT.kFullCircle)
         histRatio.SetMarkerSize(0.75)
-        histRatio.SetTitle(f"#it{{L}}_{{max}} = {cfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
+        histRatio.SetTitle(f"#it{{L}}_{{max}} = {dataCfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
         # histRatio.SetMaximum(0.15)
         histRatio.Draw("PEX0")
-        canv.SaveAs(f"{cfg.outFileDirName}/{histRatio.GetName()}.pdf")
+        canv.SaveAs(f"{dataCfg.outFileDirName}/{histRatio.GetName()}.pdf")
 
-      if not cfg.dataFileName or not os.path.exists(cfg.dataFileName):
-        print(f"Warning: cannot find data file '{cfg.dataFileName=}'. Cannot overlay H_0^meas(0, 0) and measured distribution.")
+      if not dataCfg.dataFileName or not os.path.exists(dataCfg.dataFileName):
+        print(f"Warning: cannot find data file '{dataCfg.dataFileName=}'. Cannot overlay H_0^meas(0, 0) and measured distribution.")
       elif cfg.plotMeasuredMoments:
-        print(f"Overlaying measured intensity distribution from file '{cfg.dataFileName}'")
+        print(f"Overlaying measured intensity distribution from file '{dataCfg.dataFileName}'")
         # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-        histIntMeas = cfg.loadData(AnalysisConfig.DataType.REAL_DATA).Histo1D(
+        #TODO treat case where data do not contain "eventWeight" column
+        histIntMeas = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.treeName).Histo1D(
           ROOT.RDF.TH1DModel("intensity_meas", f";{cfg.massBinning.axisTitle};Events", *cfg.massBinning.astuple), "mass", "eventWeight"
         ).GetValue()
         for binIndex, H000Meas in enumerate(H000s[0]):
@@ -527,7 +531,7 @@ def makeAllPlots(
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
           momentLabel       = H000Index.label,
-          outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
+          outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
           histTitle         = H000Index.title,
           legendLabels      = ("Measured Moment", "Measured Intensity"),
         )
@@ -536,16 +540,16 @@ def makeAllPlots(
     with timer.timeThis(f"Time to plot angular distributions"):
       print("Plotting angular distributions")
       # load all signal and phase-space data
-      data      = cfg.loadData(AnalysisConfig.DataType.REAL_DATA)
-      dataPsAcc = cfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE)
-      dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
+      data      = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA,             cfg.treeName)
+      dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  cfg.treeName)
+      dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.treeName)
       # plot total angular distribution
       plotAngularDistr(
         dataPsAcc         = dataPsAcc,
         dataPsGen         = dataPsGen,
         dataSignalAcc     = data,
         dataSignalGen     = None,
-        outFileNamePrefix = f"{cfg.outFileDirName}/angDistr_total_",
+        outFileNamePrefix = f"{dataCfg.outFileDirName}/angDistr_total_",
       )
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         # load data for mass bin
@@ -561,7 +565,7 @@ def makeAllPlots(
             dataPsGen         = None,
             # dataPsGen         = dataPsGenInBin,
             dataSignalGen     = None,
-            outFileNamePrefix = f"{cfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
             nmbBins2D         = 20,
           )
 
@@ -581,10 +585,10 @@ def makeAllPlots(
             polarization   = "beamPol" if HPhys.indices.polarized else None,
           ),
         )  # dummy matrix without dataset
-        accIntMatrix.load(f"{cfg.outFileDirName}/integralMatrix_{binLabel}.npy")
+        accIntMatrix.load(f"{dataCfg.outFileDirName}/integralMatrix_{binLabel}.npy")
         plotComplexMatrix(
           complexMatrix     = accIntMatrix.matrixNormalized,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrix_{binLabel}_",
+          pdfFileNamePrefix = f"{dataCfg.outFileDirName}/accMatrix_{binLabel}_",
           axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
           zRangeAbs         = 1.2,
@@ -592,7 +596,7 @@ def makeAllPlots(
         )
         plotComplexMatrix(
           complexMatrix     = accIntMatrix.inverse,
-          pdfFileNamePrefix = f"{cfg.outFileDirName}/accMatrixInv_{binLabel}_",
+          pdfFileNamePrefix = f"{dataCfg.outFileDirName}/accMatrixInv_{binLabel}_",
           axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
           zRangeAbs         = 5,
@@ -620,12 +624,12 @@ def makeAllPlots(
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,
             momentLabel       = qnIndex.label,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
         # plot accepted phase-space moments in each mass bin
-        dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE)
+        dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.treeName)
         for massBinIndex, HPhys in enumerate(momentResultsAccPsPhys):
           binLabel = MomentCalculator.binLabel(HPhys)
           binTitle = MomentCalculator.binTitle(HPhys)
@@ -637,7 +641,7 @@ def makeAllPlots(
             HData             = HMeas,
             normalizedMoments = cfg.normalizeMoments,
             HTruth            = None,
-            outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
+            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
             plotLegend        = False,
             forceYaxisRange   = (-0.1, +0.1) if cfg.normalizeMoments else (None, None),
           )
@@ -664,7 +668,8 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
+  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
@@ -685,65 +690,11 @@ if __name__ == "__main__":
   # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
   # compareTo = ("./plotsPhotoProdPiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "w/o Cut")
   # compareTo = ("./plotsPhotoProdPiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
+  plotCompareUncert = True
+  # plotCompareUncert = False
   #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
 
-  # subsystemLabel = "EtapEta"
-  # subsystemLabel = "EtaPi0"
-  subsystemLabel = "EtapPi0"
-  # subsystemLabel = "PiPi"  #TODO move into analysis config
-  # dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/unpolarized"
-  dataDirBaseName = f"./dataPhotoProd{subsystemLabel}/polarized"
-  dataPeriods = (
-    "merged",
-    # "2017_01",
-    # "2017_01_ver05",
-    # "2018_08",
-  )
-  tBinLabels = (
-    # "ALLT",
-    # "LOWT",
-    # "XSCUTS",
-    # "t010020",
-    # "t020032",
-    # "t032050",
-    # "t050075",
-    # "t075100",
-    # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
-    # "tbin_0.1_0.2",
-    # "tbin_0.2_0.3",
-    # "tbin_0.3_0.4",
-    # "tbin_0.4_0.5",
-    "tbin_0.1_0.5",
-  )
-  beamPolLabels = (
-    # "All",
-    "allOrient",
-    # "PARA_0",
-    # "PARA_135",
-    # "PERP_45",
-    # "PERP_90",
-    # "AMO",
-    # "Unpol",
-  )
-  maxLs = (
-    4,
-    # (4, 6),
-    # (4, 8),
-    # (4, 12),
-    # (4, 16),
-    # (4, 20),
-    # 5,
-    # 6,
-    # 8,
-    # (8, 16),
-    # (8, 20),
-    # 12,
-    # 16,
-    # 20,
-  )
-  plotCompareUncert = True
-  # plotCompareUncert = False
   scaleFactorPhysicalMoments = 1.0  # no scaling
   # scaleFactorPhysicalMoments = 0.5  # account for phi <> 0 cut
   yAxisUnit = ""
@@ -757,19 +708,24 @@ if __name__ == "__main__":
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
   # cfg.plotMomentsInBins = True
+  cfg.plotAccIntegralMatrices = True
+  cfg.plotMeasuredMoments = True
 
-  outFileDirBaseNameCommon = cfg.outFileDirBaseName
-  for dataPeriod in dataPeriods:
-    for tBinLabel in tBinLabels:
-      for beamPolLabel in beamPolLabels:
-        cfg.dataFileName       = f"{dataDirBaseName}/{dataPeriod}/{tBinLabel}/{subsystemLabel}/data_flat_{beamPolLabel}.root"
-        cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
-        for maxL in maxLs:
-          print(f"Plotting '{subsystemLabel}' moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          cfg.maxL = maxL
+  print(f"Calculating moments for subsystem '{cfg.subsystem}':")
+  for dataPeriod in cfg.dataPeriods:
+    for tBinLabel in cfg.tBinLabels:
+      for beamPolLabel in cfg.beamPolLabels:
+        for maxL in cfg.maxLs:
+          print(f"Plotting moments for t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           cfg.init()
+          dataCfg = cfg.dataConfig(
+            dataPeriod   = dataPeriod,
+            tBinLabel    = tBinLabel,
+            beamPolLabel = beamPolLabel,
+            maxL         = maxL,
+          )
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
@@ -780,6 +736,7 @@ if __name__ == "__main__":
             timer.start("Total execution time")
             makeAllPlots(
               cfg                         = cfg,
+              dataCfg                     = dataCfg,
               timer                       = timer,
               scaleFactorPhysicalMoments  = scaleFactorPhysicalMoments,
               compareTo                   = compareTo,
