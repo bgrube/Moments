@@ -8,6 +8,7 @@ Usage: Run this module as a script to generate kinematic plots.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 import functools
 import os
@@ -22,6 +23,7 @@ from AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
+  CFG_POLARIZED_KSKL,
   defineOverwriteRDataFrame,
   SubsystemInfo,
 )
@@ -50,16 +52,18 @@ print = functools.partial(print, flush = True)
 def defineColumnsForPlots(
   df:                   ROOT.RDataFrame,
   inputDataFormat:      AnalysisConfig.DataFormat,
-  subSystem:            SubsystemInfo,
+  subsystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   additionalColumnDefs: dict[str, str] = {},  # additional columns to define
   additionalFilterDefs: list[str]      = [],  # additional filter conditions to apply
 ) -> ROOT.RDataFrame:
   """Defines RDataFrame columns for kinematic plots"""
   lvs = lorentzVectors(dataFormat = inputDataFormat)
-  ALabel      = subSystem.lvALabel
-  BLabel      = subSystem.lvBLabel
-  recoilLabel = subSystem.lvRecoilLabel
+  lvTarget = lvs["target"]
+  lvBeam   = lvs["beam"]
+  lvRecoil = lvs[subsystem.lvRecoilLabel]
+  lvA      = lvs[subsystem.lvALabel]
+  lvB      = lvs[subsystem.lvBLabel]
   for frame in (AnalysisConfig.CoordSysType.HF, AnalysisConfig.CoordSysType.GJ):
     #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
     #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
@@ -69,44 +73,47 @@ def defineColumnsForPlots(
     #  particle A is the analyzer, particle B is the other particle in the pair, and the recoil is the third particle in the final state
     df = defineDataFrameColumns(
       df                   = df,
-      lvTarget             = lvs["target"],
-      lvBeam               = lvs["beam"],  #TODO "beam" for GJ pi+- p baryon system is p_target
-      lvRecoil             = lvs[recoilLabel],
-      lvA                  = lvs[ALabel],
-      lvB                  = lvs[BLabel],
+      lvTarget             = lvTarget,
+      lvBeam               = lvBeam,  #TODO "beam" for GJ pi+- p baryon system is p_target
+      lvRecoil             = lvRecoil,
+      lvA                  = lvA,
+      lvB                  = lvB,
       beamPolInfo          = beamPolInfo,
       frame                = frame,
       additionalColumnDefs = additionalColumnDefs,
       additionalFilterDefs = additionalFilterDefs,
-      colNameSuffix        = subSystem.pairLabel,
+      colNameSuffix        = subsystem.pairLabel,
     )
     # define additional columns for subsystem
     if beamPolInfo is not None:
       df = (
-        df.Define(f"Psi{frame.name}{subSystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subSystem.pairLabel} - phi{frame.name}{subSystem.pairLabel}) * TMath::RadToDeg())")
+        df.Define(f"Psi{frame.name}{subsystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subsystem.pairLabel} - phi{frame.name}{subsystem.pairLabel}) * TMath::RadToDeg())")
       )
   # define additional columns that are independent of subsystem
-  df = defineOverwriteRDataFrame(df, f"mass{subSystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subSystem.pairLabel}, 2)")
-  df = defineOverwriteRDataFrame(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs['beam']}).E()")
+  df = defineOverwriteRDataFrame(df, f"mass{subsystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subsystem.pairLabel}, 2)")
+  df = defineOverwriteRDataFrame(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvBeam}).E()")
   # track kinematics
-  df = defineOverwriteRDataFrame(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).P()")
-  df = defineOverwriteRDataFrame(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).X()")
-  df = defineOverwriteRDataFrame(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Y()")
-  df = defineOverwriteRDataFrame(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Z()")
-  df = defineOverwriteRDataFrame(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).P()")
-  df = defineOverwriteRDataFrame(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).X()")
-  df = defineOverwriteRDataFrame(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Y()")
-  df = defineOverwriteRDataFrame(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Z()")
-  df = defineOverwriteRDataFrame(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).P()")
-  df = defineOverwriteRDataFrame(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).X()")
-  df = defineOverwriteRDataFrame(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Y()")
-  df = defineOverwriteRDataFrame(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Z()")
-  df = defineOverwriteRDataFrame(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).Theta() * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).Theta()      * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).Theta()      * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[recoilLabel]}).phi()   * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[ALabel]}).phi()        * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvs[BLabel]}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).Z()")
+  df = defineOverwriteRDataFrame(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).Z()")
+  df = defineOverwriteRDataFrame(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).Z()")
+  df = defineOverwriteRDataFrame(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvRecoil}).Theta() * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvA}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvB}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvRecoil}).phi()   * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvA}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvB}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "massRecoil",        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).M()")
+  df = defineOverwriteRDataFrame(df, "massA",             f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).M()")
+  df = defineOverwriteRDataFrame(df, "massB",             f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).M()")
   # print(f"!!! {df.GetDefinedColumnNames()=}")
   return df
 
@@ -210,25 +217,30 @@ def decomposeHistEvenOdd(
 def bookHistograms(
   df:                   ROOT.RDataFrame,
   inputDataType:        AnalysisConfig.DataType,
-  subSystem:            SubsystemInfo,
+  subsystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   subsystemMassBinning: HistAxisBinning | None = None,  # if not None, histograms will be booked in bins of the subsystem mass
 ) -> tuple[HistListType, list[str]]:
   """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
-  print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subSystem}'")
+  print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subsystem}'")
   # applyWeights = (inputDataType == AnalysisConfig.DataType.REAL_DATA and df.HasColumn("eventWeight"))
   applyWeights = df.HasColumn("eventWeight")
+  if applyWeights:
+    print(f"Applying event weights from column 'eventWeight'")
+  else:
+    print(f"Not applying event weights; 'eventWeight' column does not exist")
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
   histNamesEvenOdd: list[str] = []
   histDefs: list[HistogramDefinition] = []
-  pairLabel    = subSystem.pairLabel
-  ATLatex      = subSystem.ATLatexLabel
-  BTLatex      = subSystem.BTLatexLabel
-  recoilTLatex = subSystem.recoilTLatexLabel
+  pairLabel    = subsystem.pairLabel
+  ATLatex      = subsystem.ATLatexLabel
+  BTLatex      = subsystem.BTLatexLabel
+  recoilTLatex = subsystem.recoilTLatexLabel
   # define histograms that are independent of subsystem
   if True:
   # if False:
-    if pairLabel == "PiPi" or pairLabel == "EtaPi0":  # although histograms are independent of subsystem; use mesonic subsystem to define them
+    #TODO only make plots for two-body subsystems, which could be meson or baryon subsystem
+    if pairLabel == "PiPi" or pairLabel == "EtaPi0" or pairLabel == "KSKL":  # although histograms are independent of subsystem; use mesonic subsystem to define them
       for filter, title, histNameSuffix in [
         ("",                           "",              ""                        ),  # all data
         (f"(phiHF{pairLabel}Deg > 0)", "#phi_{HF} > 0", f"_phiHF{pairLabel}DegPos"),
@@ -236,6 +248,7 @@ def bookHistograms(
       ]:
         histDefs += [
           # 1D histograms
+          #TODO use recoil latex
           HistogramDefinition(f"Ebeam{histNameSuffix}",             title + ";E_{beam} [GeV];"                      + yAxisLabel, ((100,   8,    9  ), ), ("Ebeam",             ), filter),
           HistogramDefinition(f"momLabRecoil{histNameSuffix}",      title + ";p_{p} [GeV];"                         + yAxisLabel, ((100,   0,    1  ), ), ("momLabRecoil",      ), filter),
           HistogramDefinition(f"momLabXRecoil{histNameSuffix}",     title + ";p_{x}^{p} [GeV];"                     + yAxisLabel, ((100,  -0.5, +0.5), ), ("momLabXRecoil",     ), filter),
@@ -248,12 +261,16 @@ def bookHistograms(
           HistogramDefinition(f"momLabB{histNameSuffix}",           title + f";p_{{{BTLatex}}} [GeV];"              + yAxisLabel, ((100,   0,   10  ), ), ("momLabB",           ), filter),
           HistogramDefinition(f"momLabXB{histNameSuffix}",          title + f";p_{{x}}^{{{BTLatex}}} [GeV];"        + yAxisLabel, ((100,  -0.8, +0.8), ), ("momLabXB",          ), filter),
           HistogramDefinition(f"momLabYB{histNameSuffix}",          title + f";p_{{y}}^{{{BTLatex}}} [GeV];"        + yAxisLabel, ((100,  -0.8, +0.8), ), ("momLabYB",          ), filter),
+          HistogramDefinition(f"momLabZB{histNameSuffix}",          title + f";p_{{z}}^{{{BTLatex}}} [GeV];"        + yAxisLabel, ((100,  -1,   +9  ), ), ("momLabZB",          ), filter),
           HistogramDefinition(f"thetaLabRecoilDeg{histNameSuffix}", title + ";#theta_{p}^{lab} [deg];"              + yAxisLabel, ((100,   0,   80  ), ), ("thetaLabRecoilDeg", ), filter),
           HistogramDefinition(f"thetaLabADeg{histNameSuffix}",      title + f";#theta_{{{ATLatex}}}^{{lab}} [deg];" + yAxisLabel, ((100,   0,   80  ), ), ("thetaLabADeg",      ), filter),
           HistogramDefinition(f"thetaLabBDeg{histNameSuffix}",      title + f";#theta_{{{BTLatex}}}^{{lab}} [deg];" + yAxisLabel, ((100,   0,   80  ), ), ("thetaLabBDeg",      ), filter),
           HistogramDefinition(f"phiLabRecoilDeg{histNameSuffix}",   title + ";#phi_{p}^{lab} [deg];"                + yAxisLabel, ((72, -180, +180  ), ), ("phiLabRecoilDeg",   ), filter),
           HistogramDefinition(f"phiLabADeg{histNameSuffix}",        title + f";#phi_{{{ATLatex}}}^{{lab}} [deg];"   + yAxisLabel, ((72, -180, +180  ), ), ("phiLabADeg",        ), filter),
           HistogramDefinition(f"phiLabBDeg{histNameSuffix}",        title + f";#phi_{{{BTLatex}}}^{{lab}} [deg];"   + yAxisLabel, ((72, -180, +180  ), ), ("phiLabBDeg",        ), filter),
+          HistogramDefinition(f"massRecoil{histNameSuffix}",        title + ";m_{p} [GeV];"                         + yAxisLabel, ((100,   0.8,  1.8), ), ("massRecoil",        ), filter),
+          HistogramDefinition(f"massA{histNameSuffix}",             title + f";m_{{{ATLatex}}} [GeV];"              + yAxisLabel, ((100,   0,    1  ), ), ("massA",             ), filter),
+          HistogramDefinition(f"massB{histNameSuffix}",             title + f";m_{{{BTLatex}}} [GeV];"              + yAxisLabel, ((100,   0,    1  ), ), ("massB",             ), filter),
           # 2D histograms
           HistogramDefinition(f"momLabYRecoilVsMomLabXRecoil{histNameSuffix}",       title + ";p_{x}^{p} [GeV];p_{y}^{p} [GeV];",                                      ((100, -0.5, +0.5), (100,  -0.5, +0.5)), ("momLabXRecoil",     "momLabYRecoil"     ), filter),
           HistogramDefinition(f"momLabYAVsMomLabXA{histNameSuffix}",                 title + f";p_{{x}}^{{{ATLatex}}} [GeV];p_{{y}}^{{{ATLatex}}} [GeV];",             ((100, -0.8, +0.8), (100,  -0.8, +0.8)), ("momLabXA",          "momLabYA"          ), filter),
@@ -266,7 +283,7 @@ def bookHistograms(
           HistogramDefinition(f"phiLabBDegVsThetaLabBDeg{histNameSuffix}",           title + f";#theta_{{{BTLatex}}}^{{lab}} [deg];#phi_{{{BTLatex}}}^{{lab}} [deg];", ((100,  0,   30  ), (72, -180, +180  )), ("thetaLabBDeg",      "phiLabBDeg"        ), filter),
         ]
   # define subsystem-dependent histograms
-  pairTLatex = subSystem.pairTLatexLabel
+  pairTLatex = subsystem.pairTLatexLabel
   # title = pairTLatex
   title = ""
   if True:
@@ -278,8 +295,8 @@ def bookHistograms(
       HistogramDefinition(f"phiHF{pairLabel}Deg",   f"{title};#phi_{{HF}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiHF{pairLabel}Deg",   )),
       HistogramDefinition(f"phiGJ{pairLabel}Deg",   f"{title};#phi_{{GJ}} [deg];" + yAxisLabel, (( 72, -180, +180), ), (f"phiGJ{pairLabel}Deg",   )),
       # 2D histograms
-      HistogramDefinition(f"anglesHF{pairLabel}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg")),
-      HistogramDefinition(f"anglesGJ{pairLabel}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((100, -1, +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg")),
+      HistogramDefinition(f"anglesHF{pairLabel}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg")),
+      HistogramDefinition(f"anglesGJ{pairLabel}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg")),
     ]
     if beamPolInfo is not None:
       histDefs += [
@@ -301,7 +318,7 @@ def bookHistograms(
         f"Phi{pairLabel}DegVsPhiHF{pairLabel}DegVsCosThetaHF{pairLabel}",
         f"Phi{pairLabel}DegVsPhiGJ{pairLabel}DegVsCosThetaGJ{pairLabel}",
       ]
-  if pairLabel == "PiPi" or pairLabel == "EtaPi0":  # plots for mesonic subsystem
+  if pairLabel == "PiPi" or pairLabel == "EtaPi0" or pairLabel == "KSKL":  # plots for mesonic subsystem
     if True:
     # if False:
       histDefs += [
@@ -466,14 +483,14 @@ def makePlots(
 
 def makeAnglesHFCorrelationPlot(
   df:                   ROOT.RDataFrame,
-  subSystem:            SubsystemInfo,
+  subsystem:            SubsystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
   outputDirName:        str,  # directory to save output plot in
   histNameSuffix:       str = "",
   additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
 ) -> None:
   """Produces 2D correlation plot of helicity-frame angles with given RDataFrame column"""
-  print(f"Generating correlation plot of helicity-frame angles with '{kinVarNameCorr}' for {subSystem.pairLabel} subsystem")
+  print(f"Generating correlation plot of helicity-frame angles with '{kinVarNameCorr}' for {subsystem.pairLabel} subsystem")
   if not df.HasColumn(kinVarNameCorr):
     print(f"Warning: input RDataFrame does not have column '{kinVarNameCorr}'. Cannot generate correlation plot.")
     return
@@ -484,8 +501,8 @@ def makeAnglesHFCorrelationPlot(
   applyWeights = df.HasColumn("eventWeight")
   if applyWeights:
     print("Applying event weights")
-  pairLabel = subSystem.pairLabel
-  pairTLatexLabel = subSystem.pairTLatexLabel
+  pairLabel = subsystem.pairLabel
+  pairTLatexLabel = subsystem.pairTLatexLabel
   xColName = f"cosThetaHF{pairLabel}"
   yColName = f"phiHF{pairLabel}Deg"
   # fill 2D histogram in helicity-frame angles with average values of kinVarNameCorr
@@ -536,209 +553,94 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES_NIZAR)
 
-  # # parameters for polarized pi+ pi- data
-  # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-  #   SubSystemInfo(pairLabel = "PiPi",   lvALabel = "pip", lvBLabel = "pim",    lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi"       ),
-  #   # SubSystemInfo(pairLabel = "PipP",   lvALabel = "pip", lvBLabel = "recoil", lvRecoilLabel = "pim",    pairTLatexLabel = "p#pi^{#plus}" ),
-  #   # SubSystemInfo(pairLabel = "PimP",   lvALabel = "pim", lvBLabel = "recoil", lvRecoilLabel = "pip",    pairTLatexLabel = "p{{BTLatexLabel}}"),
-  # )
-  # dataDirBasePath = "./dataPhotoProdPiPi/polarized"
-  # inputDataDirName = "Alex"  # subdirectory in where data files are stored
-  # dataPeriods = (
-  #   # "2017_01",
-  #   "2017_01_ver05",
-  #   # "2018_08",
-  # )
-  # tBinLabels    = (
-  #   "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
-  #   # "tbin_0.1_0.2",
-  #   # "tbin_0.2_0.3",
-  #   # "tbin_0.3_0.4",
-  #   # "tbin_0.4_0.5",
-  # )
-  # beamPolLabels = (
-  #   "PARA_0",
-  #   # "PARA_135",
-  #   # "PERP_45",
-  #   # "PERP_90",
-  #   # "AMO",
-  # )
-  # useSeparateBackgroundFiles = True  # if True, signal and background regions are stored in separate input files
-  # massBinning = None  # do not generate plots in mass bins
-  # additionalColumnDefs = {}
-  # additionalFilterDefs = []
-  # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
-
-  # parameters for polarized eta pi0 data
-  subSystems: tuple[SubsystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-    SubsystemInfo(
-      pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
-      lvALabel      = "eta",    ATLatexLabel      = "#eta",
-      lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
-      lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
-    ),
-  )
-  dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
-  inputDataDirName = "Nizar"  # subdirectory in where data files are stored
-  dataPeriods = (
-    "merged",
-  )
-  tBinLabels = (
-    "t010020",
-    "t020032",
-    "t032050",
-    "t050075",
-    "t075100",
-  )
-  beamPolLabels = (
-    "All",
-  )
-  BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
-  BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
-  useSeparateBackgroundFiles = False
-  massBinning = HistAxisBinning(nmbBins = 17, minVal  = 1.04, maxVal  = 1.72)  # generate plots in these bins
-  additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
-  additionalFilterDefs = []
-
-  # # parameters for unpolarized eta' eta data
-  # subSystems: tuple[SubSystemInfo, ...] = (  # particle pairs to analyze; particle A is the analyzer
-  #   SubSystemInfo(
-  #     pairLabel     = "EtapEta", pairTLatexLabel   = "#eta'#eta",
-  #     lvALabel      = "etap",    ATLatexLabel      = "#eta'",
-  #     lvBLabel      = "eta",     BTLatexLabel      = "#eta",
-  #     lvRecoilLabel = "recoil",  recoilTLatexLabel = "p",
-  #   ),
-  # )
-  # dataDirBasePath = "./dataPhotoProdEtapEta/unpolarized"
-  # inputDataDirName = "Will"  # subdirectory in where data files are stored
-  # dataPeriods = (
-  #   "2017_01",
-  #   "2018_01",
-  #   "2018_08",
-  #   "2019_11",
-  # )
-  # tBinLabels = (
-  #   # "ALLT",
-  #   # "LOWT",
-  #   "XSCUTS",
-  # )
-  # beamPolLabels = ("Unpol", )
-  # useSeparateBackgroundFiles = False
-  # massBinning = None  # do not generate plots in mass bins
-  # additionalColumnDefs = {}
-  # additionalFilterDefs = []
-
-  # treeName = "nt"
-  treeName = "kin"
-  inputDataFormats: dict[AnalysisConfig.DataType, AnalysisConfig.DataFormat] = {
-    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.AMPTOOLS,
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
-    # AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.FSROOT,
-    # AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.FSROOT,
-    # AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.FSROOT,
+  additionalColumnDefs = {  # additional columns for each data type
+    AnalysisConfig.DataType.REAL_DATA             : {},
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : {},
+  }
+  additionalFilterDefs = {  # additional filters for each data type
+    AnalysisConfig.DataType.REAL_DATA             : [],
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : [],
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
   }
 
-  for dataPeriod in dataPeriods:
+  # parameters for polarized K_S K_L data
+  cfg = deepcopy(CFG_POLARIZED_KSKL)
+  # massBinning = HistAxisBinning(nmbBins = 17, minVal  = 1.04, maxVal  = 1.72)  # generate plots in these bins
+  massBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins
+  additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
+  # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
+  # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
+  # useSeparateBackgroundFiles = True  # if True, signal and background regions are stored in separate input files
+  useSeparateBackgroundFiles = False
+  # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
+  # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
+
+  print(f"Using analysis configuration:\n{cfg}")
+  print(f"Generating plots for subsystem '{cfg.subsystem}':")
+  for dataPeriod in cfg.dataPeriods:
     print(f"Generating plots for data period '{dataPeriod}':")
-    for tBinLabel in tBinLabels:
+    for tBinLabel in cfg.tBinLabels:
       print(f"Generating plots for t bin '{tBinLabel}':")
-      inputDataDirPath = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/{inputDataDirName}"
-      for inputDataType, inputDataFormat in inputDataFormats.items():
-        print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
-        for beamPolLabel in beamPolLabels:  #TODO process only 1 orientation for MC data
-          beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
-          print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
-          df = None
-          if inputDataType == AnalysisConfig.DataType.REAL_DATA:
-            # combine signal and background region data with correct event weights into one RDataFrame
-            df = (
-              Utilities.getDataFrameWithCorrectEventWeights(
-                # dataSigRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_signal_{beamPolLabel}.root", ),  #TODO remove 'amptools_' from name
-                # dataBkgRegionFileNames  = (f"{inputDataDirPath}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
-                dataSigRegionFileNames  = (f"{inputDataDirPath}/tree_signal_{beamPolLabel}.root", ),
-                dataBkgRegionFileNames  = (f"{inputDataDirPath}/tree_bkgnd_{beamPolLabel}.root",  ),
-                treeName                = treeName,
-                friendSigRegionFileName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/data_sig_{beamPolLabel}.root.weights",
-                friendBkgRegionFileName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/data_bkg_{beamPolLabel}.root.weights",
-              ) if useSeparateBackgroundFiles else
-              # ROOT.RDataFrame(treeName, f"{inputDataDirPath}/amptools_tree_data_{beamPolLabel}.root")
-              ROOT.RDataFrame(treeName, f"{inputDataDirPath}/tree_data_{beamPolLabel}.root")
+      for beamPolLabel in cfg.beamPolLabels:  #TODO process only 1 orientation for MC data
+        beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
+        print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
+        for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
+          print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
+          inputFilePaths = cfg.inputFilePaths(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          df = ROOT.RDataFrame(cfg.inputTreeName, inputFilePaths)  # real data must contains combined signal and background data with correct event weights
+          dfSubsystem = defineColumnsForPlots(
+            df                   = df,
+            inputDataFormat      = inputDataFormat,
+            subsystem            = cfg.subsystem,
+            beamPolInfo          = beamPolInfo,
+            additionalColumnDefs = additionalColumnDefs[inputDataType],
+            additionalFilterDefs = additionalFilterDefs[inputDataType],
+          ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem {cfg.subsystem.pairLabel}" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
+          outputDirName = f"{cfg.outputDataDirBasePath(dataPeriod, tBinLabel)}/plots_{inputDataType.name}/{beamPolLabel}"
+          if True:
+          # if False:
+            makePlots(
+              *bookHistograms(
+                df                   = dfSubsystem,
+                inputDataType        = inputDataType,
+                subsystem            = cfg.subsystem,
+                beamPolInfo          = beamPolInfo,
+                subsystemMassBinning = massBinning,
+              ),
+              outputDirName = outputDirName,
             )
-          elif inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-            # inputFileNamePattern = f"{inputDataDirPath}/amptools_tree_accepted*.root"
-            # inputFileNamePattern = f"{inputDataDirPath}/tree_accepted*.root"  #TODO pattern does not work if signal and background files exist for accepted PS
-            inputFileNamePattern = f"{inputDataDirPath}/tree_accepted_{beamPolLabel}.root"
-            print(f"Loading accepted phase space data from '{inputFileNamePattern}'")
-            df = ROOT.RDataFrame(treeName, inputFileNamePattern)
-          elif inputDataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-            # inputFileNamePattern = f"{inputDataDirPath}/amptools_tree_thrown*.root"
-            # inputFileNamePattern = f"{inputDataDirPath}/tree_thrown*.root"
-            inputFileNamePattern = f"{inputDataDirPath}/tree_thrown_{beamPolLabel}.root"
-            print(f"Loading generated phase space data from '{inputFileNamePattern}'")
-            df = ROOT.RDataFrame(treeName, inputFileNamePattern)
-          else:
-            raise RuntimeError(f"Unsupported input data type '{inputDataType}'")
-          for subSystem in subSystems:
-            print(f"Generating plots for subsystem '{subSystem}':")
-            dfSubSystem = defineColumnsForPlots(
-              df                   = df,
-              inputDataFormat      = inputDataFormat,
-              subSystem            = subSystem,
-              beamPolInfo          = beamPolInfo,
-              additionalColumnDefs = (
-                additionalColumnDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                {}  # no additional variables for MC truth
-              ),
-              additionalFilterDefs = (
-                additionalFilterDefs if inputDataType == AnalysisConfig.DataType.REAL_DATA or inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE else
-                []  # no additional selection cuts for MC truth
-              ),
-            ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem {subSystem.pairLabel}" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
-            outputDirName = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}/{subSystem.pairLabel}/plots_{inputDataType.name}/{beamPolLabel}"
-            if True:
-            # if False:
-              makePlots(
-                *bookHistograms(
-                  df                   = dfSubSystem,
-                  inputDataType        = inputDataType,
-                  subSystem            = subSystem,
-                  beamPolInfo          = beamPolInfo,
-                  subsystemMassBinning = massBinning,
-                ),
-                outputDirName = outputDirName,
+          # if True:
+          if False:
+            additionalFilterDefs = ["(0.72 < massPiPi and massPiPi < 0.76)", ]  # select mass bin at rho(770) peak
+            outputDirName = f"{outputDirName}/anglesHFCorrelations"
+            print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
+            lvs = lorentzVectors(dataFormat = inputDataFormat)
+            dfSubsystem = dfSubsystem.Define(f"massPipP", f"(Double32_t)massPair({lvs['pip']}, {lvs['recoil']})")
+            dfSubsystem = dfSubsystem.Define(f"massPimP", f"(Double32_t)massPair({lvs['pim']}, {lvs['recoil']})")
+            for kinVarNameCorr in [
+              # "Ebeam",
+              # "momLabRecoil",
+              "momLabA",
+              "momLabB",
+              # "thetaLabRecoilDeg",
+              "thetaLabADeg",
+              "thetaLabBDeg",
+              "phiLabRecoilDeg",
+              "phiLabADeg",
+              "phiLabBDeg",
+              # f"Phi{cfg.subsystem.pairLabel}Deg",
+              # f"PsiHF{cfg.subsystem.pairLabel}Deg",
+              # "massPipP",
+              # "massPimP",
+            ]:
+              makeAnglesHFCorrelationPlot(
+                df                   = dfSubsystem,
+                subsystem            = cfg.subsystem,
+                kinVarNameCorr       = kinVarNameCorr,
+                outputDirName        = outputDirName,
+                additionalFilterDefs = additionalFilterDefs,
               )
-            # if True:
-            if False:
-              additionalFilterDefs = ["(0.72 < massPiPi and massPiPi < 0.76)", ]  # select mass bin at rho(770) peak
-              outputDirName = f"{outputDirName}/anglesHFCorrelations"
-              print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
-              lvs = lorentzVectors(dataFormat = inputDataFormat)
-              dfSubSystem = dfSubSystem.Define(f"massPipP", f"(Double32_t)massPair({lvs['pip']}, {lvs['recoil']})")
-              dfSubSystem = dfSubSystem.Define(f"massPimP", f"(Double32_t)massPair({lvs['pim']}, {lvs['recoil']})")
-              for kinVarNameCorr in [
-                # "Ebeam",
-                # "momLabRecoil",
-                "momLabA",
-                "momLabB",
-                # "thetaLabRecoilDeg",
-                "thetaLabADeg",
-                "thetaLabBDeg",
-                "phiLabRecoilDeg",
-                "phiLabADeg",
-                "phiLabBDeg",
-                # f"Phi{subSystem.pairLabel}Deg",
-                # f"PsiHF{subSystem.pairLabel}Deg",
-                # "massPipP",
-                # "massPimP",
-              ]:
-                makeAnglesHFCorrelationPlot(
-                  df                   = dfSubSystem,
-                  subSystem            = subSystem,
-                  kinVarNameCorr       = kinVarNameCorr,
-                  outputDirName        = outputDirName,
-                  additionalFilterDefs = additionalFilterDefs,
-                )
 
   timer.stop("Total execution time")
   print(timer.summary)
