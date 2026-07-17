@@ -30,7 +30,6 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
   defineOverwriteRDataFrame,
-  SubsystemInfo,
 )
 from MomentCalculator import (
   KinematicBinningVariable,

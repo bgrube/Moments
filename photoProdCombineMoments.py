@@ -22,7 +22,6 @@ from AnalysisConfig import (
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_PWA,
-  DataConfig,
 )
 import Utilities
 

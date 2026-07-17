@@ -12,7 +12,6 @@ Usage: Run this module as a script to generate the output files.
 from __future__ import annotations
 
 import functools
-import os
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`

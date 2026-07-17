@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import ctypes
 import functools
-import os
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
