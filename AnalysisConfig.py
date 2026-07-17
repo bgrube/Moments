@@ -185,6 +185,108 @@ class SubsystemInfo:
 
 
 @dataclass
+class DataConfig:
+  """Stores configuration parameters for the input data to `MomentCalculator` and provides methods to load the data"""
+  dataFileName:   str         # file with real data to analyze
+  psAccFileName:  str | None  # file with accepted phase-space MC
+  psGenFileName:  str | None  # file with generated phase-space MC
+  polarization:   float | str | None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
+  maxL:           int | tuple[int, int]  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
+  outFileDirName: str  # base name of directory into which all output will be written
+
+  def __post_init__(self) -> None:
+    """Checks that maximum L tuple has valid values"""
+    if isinstance(self.maxL, tuple):
+      assert self.maxL[0] <= self.maxL[1], f"Maximum L for physical moments {self.maxL[0]=} must be smaller than or equal to maximum L for measured moments {self.maxL[1]=}"
+
+  @property
+  def maxLPhys(self) -> int:
+    """Returns maximum L of physical moments"""
+    return self.maxL if isinstance(self.maxL, int) else self.maxL[0]
+
+  @property
+  def maxLMeas(self) -> int:
+    """Returns maximum L of measured moments"""
+    return self.maxL if isinstance(self.maxL, int) else self.maxL[1]
+
+  @property
+  def momentIndicesPhys(self) -> MomentIndices:
+    """Returns moment indices for physical moments"""
+    return MomentIndices(maxL = self.maxLPhys, polarized = (self.polarization is not None))
+
+  @property
+  def momentIndicesMeas(self) -> MomentIndices:
+    """Returns moment indices for measured moments"""
+    return MomentIndices(maxL = self.maxLMeas, polarized = (self.polarization is not None))
+
+  @property
+  def momentIndices(self) -> tuple[MomentIndices, MomentIndices]:
+    """Returns moment indices for physical and measured moments"""
+    return (self.momentIndicesPhys, self.momentIndicesMeas)
+
+  def createOutFileDir(self) -> None:
+    """Creates output directory if it does not exist yet"""
+    Utilities.makeDirPath(self.outFileDirName)
+
+  def loadData(
+    self,
+    dataType:             AnalysisConfig.DataType,
+    treeName:             str,
+    additionalCuts:       Iterable[str]  = (),  # optional additional cuts to be applied to loaded data
+    additionalColumnDefs: dict[str, str] = {},  # additional columns to define
+  ) -> ROOT.RDataFrame | None:
+    """Returns a ROOT RDataFrame for given data type, applies optional additional cuts, and defines optional additional columns"""
+    df = None
+    if dataType == AnalysisConfig.DataType.REAL_DATA:
+      print(f"Loading real data from tree '{treeName}' in file '{self.dataFileName}'")
+      df = ROOT.RDataFrame(treeName, self.dataFileName)
+    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIGNAL:
+      print(f"Loading real-data signal events with weight = 1 from tree '{treeName}' in file '{self.dataFileName}'")
+      df = ROOT.RDataFrame(treeName, self.dataFileName)
+      if "eventWeight" in df.GetColumnNames():
+        df = df.Filter("eventWeight == 1")
+      # if there is no `eventWeight` column assume all events have weight 1
+    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
+      df = ROOT.RDataFrame(treeName, self.dataFileName)
+      if "eventWeight" in df.GetColumnNames():
+        df = df.Filter("eventWeight < 0")
+        if df.Count().GetValue() > 0:
+          print(f"Loading real-data sideband events with weight < 0 from tree '{treeName}' in file '{self.dataFileName}'")
+        else:
+          df = None  # no events with weight < 0
+      else:
+        # if there is no `eventWeight` column assume all events have weight 1 and hence there are no sideband events
+        df = None
+    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+      if self.psGenFileName is None:
+        print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
+        df = None
+      else:
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{self.psGenFileName}'")
+        df = ROOT.RDataFrame(treeName, self.psGenFileName)
+    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+      if self.psAccFileName is None:
+        print("??? Warning: File name for accepted phase-space data was not provided. Assuming perfect acceptance.")
+        df = None
+      else:
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{self.psAccFileName}'")
+        df = ROOT.RDataFrame(treeName, self.psAccFileName)
+    else:
+      raise ValueError(f"Unknown data type: {dataType}")
+    # add additional columns if requested
+    if df is not None and additionalColumnDefs:
+      for columnName, columnFormula in additionalColumnDefs.items():
+        print(f"Defining additional column '{columnName}' = '{columnFormula}'")
+        df = defineOverwriteRDataFrame(df, columnName, columnFormula)
+    # apply additional cuts
+    if df is not None:
+      for cut in additionalCuts:
+        print(f"Applying additional cut: '{cut}'")
+        df = df.Filter(cut)
+    return df
+
+
+@dataclass
 class AnalysisConfig:
   """Stores configuration parameters for the moment analysis; defaults are for unpolarized pi+pi- analysis"""
 
@@ -246,13 +348,6 @@ class AnalysisConfig:
   })
   inputTreeName:            str                               = "kin"  # name of tree to read from input data and MC files
   treeName:                 str                               = "PiPi"  # name of tree to read from converted data and MC files  #TODO fix name
-
-  # Spring 2017 low-energy data
-  dataFileName:             str                               = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/data_flat.root"  # file with real data to analyze  #TODO remove?
-  psAccFileName:            str | None                        = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_acc_flat.root"  # file with accepted phase-space MC  #TODO remove?
-  psGenFileName:            str | None                        = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PiPi/phaseSpace_gen_flat.root"  # file with generated phase-space MC  #TODO remove?
-  polarization:             float | str | None                = None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
-  maxL:                     int | tuple[int, int]             = 8  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments) #TODO remove
   maxLs:                    tuple[int | tuple[int, int], ...] = (  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
     4,
     6,
@@ -365,106 +460,34 @@ class AnalysisConfig:
       raise ValueError(f"Unknown data type: {dataType}")
 
   @property
-  def maxLPhys(self) -> int:
-    """Returns maximum L of physical moments"""
-    return self.maxL if isinstance(self.maxL, int) else self.maxL[0]
-
-  @property
-  def maxLMeas(self) -> int:
-    """Returns maximum L of measured moments"""
-    return self.maxL if isinstance(self.maxL, int) else self.maxL[1]
-
-  @property
-  def momentIndicesPhys(self) -> MomentIndices:
-    """Returns moment indices for physical moments"""
-    return MomentIndices(maxL = self.maxLPhys, polarized = (self.polarization is not None))
-
-  @property
-  def momentIndicesMeas(self) -> MomentIndices:
-    """Returns moment indices for measured moments"""
-    return MomentIndices(maxL = self.maxLMeas, polarized = (self.polarization is not None))
-
-  @property
-  def momentIndices(self) -> tuple[MomentIndices, MomentIndices]:
-    """Returns moment indices for physical and measured moments"""
-    return (self.momentIndicesPhys, self.momentIndicesMeas)
-
-  @property
-  def outFileDirName(self) -> str:
-    """Returns name of directory into which all output will be written"""
-    return f"{self.outFileDirBaseName}.maxL_{self.maxL if isinstance(self.maxL, int) else f'{self.maxL[0]}_{self.maxL[1]}'}"
-
-  @property
   def outFileNamePrefix(self) -> str:
     """Returns name prefix prepended to output file names"""
     return "norm" if self.normalizeMoments else "unnorm"
 
+  #TODO remove
   def init(
     self,
-    createOutFileDir: bool = False,
+    # createOutFileDir: bool = False,
   ) -> None:
     """Creates output directory and initializes member variables; needs to be called before passing the config to any consumer"""
-    if isinstance(self.maxL, tuple):
-      assert self.maxL[0] <= self.maxL[1], f"Maximum L for physical moments {self.maxL[0]=} must be smaller than or equal to maximum L for measured moments {self.maxL[1]=}"
     self.massBinning.var = self.binVarMass
-    if createOutFileDir:
-      Utilities.makeDirPath(self.outFileDirName)
 
-  def loadData(
+  def dataConfig(
     self,
-    dataType:             AnalysisConfig.DataType,
-    additionalCuts:       Iterable[str] | None = None,  # optional additional cuts to be applied to loaded data
-    additionalColumnDefs: dict[str, str]       = {},    # additional columns to define
-  ) -> ROOT.RDataFrame | None:
-    """Returns a ROOT RDataFrame with given data type, applies optional additional cuts, and defines optional additional columns"""
-    df = None
-    if dataType == AnalysisConfig.DataType.REAL_DATA:
-      print(f"Loading real data from tree '{self.treeName}' in file '{self.dataFileName}'")
-      df = ROOT.RDataFrame(self.treeName, self.dataFileName)
-    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIGNAL:
-      print(f"Loading real-data signal events with weight = 1 from tree '{self.treeName}' in file '{self.dataFileName}'")
-      df = ROOT.RDataFrame(self.treeName, self.dataFileName)
-      if "eventWeight" in df.GetColumnNames():
-        df = df.Filter("eventWeight == 1")
-      # if there is no `eventWeight` column assume all events have weight 1
-    elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
-      df = ROOT.RDataFrame(self.treeName, self.dataFileName)
-      if "eventWeight" in df.GetColumnNames():
-        df = df.Filter("eventWeight < 0")
-        if df.Count().GetValue() > 0:
-          print(f"Loading real-data sideband events with weight < 0 from tree '{self.treeName}' in file '{self.dataFileName}'")
-        else:
-          df = None  # no events with weight < 0
-      else:
-        # if there is no `eventWeight` column assume all events have weight 1 and hence there are no sideband events
-        df = None
-    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      if self.psGenFileName is None:
-        print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
-        df = None
-      else:
-        print(f"Loading generated phase-space data from tree '{self.treeName}' in file '{self.psGenFileName}'")
-        df = ROOT.RDataFrame(self.treeName, self.psGenFileName)
-    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      if self.psAccFileName is None:
-        print("??? Warning: File name for accepted phase-space data was not provided. Assuming perfect acceptance.")
-        df = None
-      else:
-        print(f"Loading accepted phase-space data from tree '{self.treeName}' in file '{self.psAccFileName}'")
-        df = ROOT.RDataFrame(self.treeName, self.psAccFileName)
-    else:
-      raise ValueError(f"Unknown data type: {dataType}")
-    # add additional columns if requested
-    if df is not None and additionalColumnDefs:
-      for columnName, columnFormula in additionalColumnDefs.items():
-        print(f"Defining additional column '{columnName}' = '{columnFormula}'")
-        df = defineOverwriteRDataFrame(df, columnName, columnFormula)
-    # apply additional cuts
-    if df is not None and additionalCuts is not None:
-      for cut in additionalCuts:
-        print(f"Applying additional cut: '{cut}'")
-        df = df.Filter(cut)
-    return df
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str,
+    maxL:         int | tuple[int, int],
+  ) -> DataConfig:
+    """Returns a `DataConfig` object for given data period, t bin label, and beam polarization label"""
+    return DataConfig(
+      dataFileName       = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/data_flat_{beamPolLabel}.root",
+      psAccFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_acc_flat_{beamPolLabel}.root",
+      psGenFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_gen_flat_{beamPolLabel}.root",
+      polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?
+      maxL               =  maxL,
+      outFileDirName     = f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}",
+    )
 
 
 # configurations for unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
@@ -478,9 +501,9 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
   # psAccFileName      = None,  # no file with accepted phase-space MC
   # psGenFileName      = None,  # no file with generated phase-space MC
-  dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
-  psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
-  psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
+  # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
+  # psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
+  # psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
   # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
@@ -532,11 +555,6 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
   _inputFilePaths    = inputFilePathsPiPiPol,  # use custom function to generate input file paths for polarized data
-  dataFileName       = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/data_flat_0.0.root",
-  psAccFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_acc_flat.root",
-  psGenFileName      = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PiPi/phaseSpace_gen_flat.root",
-  polarization       = "beamPol",  # read polarization from tree column
-  maxL               = 4,
   maxLs              = (
     4,
     6,
@@ -559,10 +577,6 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
     recoilTLatexLabel = "#it{#pi}^{#minus}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{p}",
   ),
-  dataFileName       = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/data_flat.root",
-  psAccFileName      = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/phaseSpace_acc_flat.root",
-  psGenFileName      = "./dataPhotoProdPiPi/unpolarized/2017_01/tbin_0.4_0.5/PipP/phaseSpace_gen_flat.root",
-  maxL               = 4,
   maxLs              = (
     4,
     6,
@@ -608,11 +622,6 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
   treeName           = "EtaPi0",
-  dataFileName       = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/data_flat_All.root",
-  psAccFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_acc_flat_All.root",
-  psGenFileName      = "./dataPhotoProdEtaPi0/polarized/merged/t010020/EtaPi0/phaseSpace_gen_flat_All.root",
-  polarization       = "beamPol",  # read polarization from tree column
-  maxL               = 4,
   maxLs              = (
     4,
     6,
@@ -642,11 +651,6 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
     pairTLatexLabel   = "#it{#eta}'#it{#pi}^{0}",
   ),
   treeName           = "EtapPi0",
-  dataFileName       = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtapPi0/data_flat_PARA_0.root",
-  psAccFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtapPi0/phaseSpace_acc_flat_PARA_0.root",
-  psGenFileName      = "./dataPhotoProdEtapPi0/polarized/merged/tbin_0.1_0.5/EtapPi0/phaseSpace_gen_flat_PARA_0.root",
-  polarization       = "beamPol",  # read polarization from tree column
-  maxL               = 4,
   maxLs              = (
     4,
     6,
@@ -696,11 +700,6 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   # inputTreeName      = "kin",  # for 2018_08 ALLT real data
   inputTreeName      = "nt",
   treeName           = "EtapEta",
-  dataFileName       = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/data_flat_Unpol.root",
-  psAccFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_acc_flat_Unpol.root",
-  psGenFileName      = "./dataPhotoProdEtapEta/unpolarized/2018_08/ALLT/EtapEta/phaseSpace_gen_flat_Unpol.root",
-  polarization       = None,  # unpolarized photoproduction
-  maxL               = 4,
   maxLs              = (
     4,
     6,
@@ -733,11 +732,11 @@ CFG_KEVIN = AnalysisConfig(
   ),
   inputTreeName            = "ntFSGlueX_100_11100_angles",
   treeName                 = "KmKS",
-  dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
-  psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
-  psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
-  polarization             = "beamPol",  # read polarization from tree column
-  maxL                     = 4,
+  # dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
+  # psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
+  # psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
+  # polarization             = "beamPol",  # read polarization from tree column
+  # maxL                     = 4,
   maxLs              = (
     4,
     6,
@@ -785,11 +784,6 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
   },
   inputTreeName      = "flatTree",
   treeName           = "KSKL",
-  dataFileName       = "./dataPhotoProdKSKL/polarized/merged/AllT/KSKL/data_flat_PARA_0.root",
-  psAccFileName      = "./dataPhotoProdKSKL/polarized/merged/AllT/KSKL/phaseSpace_acc_flat_PARA_0.root",
-  psGenFileName      = "./dataPhotoProdKSKL/polarized/merged/AllT/KSKL/phaseSpace_gen_flat_PARA_0.root",
-  polarization       = "beamPol",  # read polarization from tree column
-  maxL               = 4,
   maxLs              = (
     4,
     6,

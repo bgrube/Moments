@@ -34,6 +34,7 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
   CFG_UNPOLARIZED_PIPP,
+  DataConfig,
 )
 from MomentCalculator import (
   DataSet,
@@ -51,11 +52,12 @@ print = functools.partial(print, flush = True)
 
 def calculateAllMoments(
   cfg:                            AnalysisConfig,
+  dataCfg:                        DataConfig,
   timer:                          Utilities.Timer        = Utilities.Timer(),
   forceIntegralMatrixCalculation: bool                   = True,  # if `True` integral matrices are recalculated even if pickled versions exist
   limitToDataEntryRange:          tuple[int, int] | None = None,  # for debugging: limit analysis to entry range [begin, end) of real-data data tree
-  additionalCuts:                 Iterable[str] | None   = None,  # optional additional cuts to be applied to real and accepted phase-space data
-  additionalColumnDefs:           dict[str, str]         = {},    # additional columns to define
+  additionalCuts:                 Iterable[str]          = (),  # optional additional cuts to be applied to real and accepted phase-space data
+  additionalColumnDefs:           dict[str, str]         = {},  # additional columns to define
 ) -> None:
   """Performs the moment analysis for the given configuration"""
   # setup MomentCalculators for all data samples and mass bins
@@ -68,20 +70,20 @@ def calculateAllMoments(
   assert len(cfg.massBinning) > 0, f"Need at least one mass bin, but found {len(cfg.massBinning)}"
   with timer.timeThis(f"Time to load data and setup MomentCalculators for {len(cfg.massBinning)} bins"):
     dataSamples: dict[str | None, ROOT.RDataFrame] = {  # dict: key = data sample label
-      None : cfg.loadData(AnalysisConfig.DataType.REAL_DATA, additionalCuts, additionalColumnDefs),
+      None : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.treeName, additionalCuts, additionalColumnDefs),
     } if cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS else {
-      "Sig" : cfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIGNAL, additionalCuts, additionalColumnDefs),    # select events in signal region (mixture of signal and background)
-      "Bkg" : cfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIDEBAND, additionalCuts, additionalColumnDefs),  # select events in sideband regions (ideally, pure background)
+      "Sig" : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIGNAL, cfg.treeName, additionalCuts, additionalColumnDefs),    # select events in signal region (mixture of signal and background)
+      "Bkg" : dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA_SIDEBAND, cfg.treeName, additionalCuts, additionalColumnDefs),  # select events in sideband regions (ideally, pure background)
     }
     #TODO: implement event range limit
     # if limitToDataEntryRange is not None:
     #   print(f"Limiting analysis to entry range [{limitToDataEntryRange[0]}, {limitToDataEntryRange[1]}) of real data")
     #   data = data.Range(*limitToDataEntryRange)
     # use same MC events for all real-data samples
-    dataPsAcc = cfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, additionalCuts, additionalColumnDefs)
+    dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, cfg.treeName, additionalCuts, additionalColumnDefs)
     if cfg.limitNmbPsAccEvents > 0 and dataPsAcc is not None:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
-    dataPsGen = cfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, additionalColumnDefs = additionalColumnDefs)
+    dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.treeName, additionalCuts, additionalColumnDefs)
     for labelDataSample, dataSample in dataSamples.items():
       if dataSample is None:
         print(f"No real-data events for type '{labelDataSample}'. Skipping.")
@@ -113,15 +115,15 @@ def calculateAllMoments(
           data           = dataInBin,
           phaseSpaceData = dataPsAccInBin,
           nmbGenEvents   = nmbPsGenEvents or nmbPsAccEvents or 0,
-          polarization   = cfg.polarization,
+          polarization   = dataCfg.polarization,
         )
         momentCalculators[labelDataSample].append(
           MomentCalculator(
-            indicesMeas          = cfg.momentIndicesMeas,
-            indicesPhys          = cfg.momentIndicesPhys,
+            indicesMeas          = dataCfg.momentIndicesMeas,
+            indicesPhys          = dataCfg.momentIndicesPhys,
             dataSet              = dataSet,
             binCenters           = {cfg.binVarMass : massBinCenter},
-            integralFileBaseName = f"{cfg.outFileDirName}/integralMatrix",
+            integralFileBaseName = f"{dataCfg.outFileDirName}/integralMatrix",
             flipSignOfWeights    = (labelDataSample == "Bkg"),  # flip sign of weights for background events
           )
         )
@@ -144,7 +146,7 @@ def calculateAllMoments(
         if len(momentCalculators[labelDataSample]) > 0:  # if data sample exists
           momentCalculators[labelDataSample][massBinIndex]._integralMatrix = momentCalculatorsFirstSample[massBinIndex].integralMatrix
 
-  momentResultsFileBaseName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
+  momentResultsFileBaseName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
     # calculate moments of accepted phase-space data
     if cfg.method in {AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS, AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS}:
@@ -271,18 +273,18 @@ if __name__ == "__main__":
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
       for beamPolLabel in cfg.beamPolLabels:
-        #TODO need to define separate data class that handles this info and max_L
-        cfg.dataFileName       = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/data_flat_{beamPolLabel}.root"
-        cfg.psAccFileName      = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/phaseSpace_acc_flat_{beamPolLabel}.root"
-        cfg.psGenFileName      = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/phaseSpace_gen_flat_{beamPolLabel}.root"
-        cfg.outFileDirBaseName = f"{outFileDirBaseNameCommon}/{dataPeriod}/{tBinLabel}/{beamPolLabel}"
-        cfg.polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?
         for maxL in cfg.maxLs:
           print(f"Performing moment analysis for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          cfg.maxL = maxL
-          cfg.init(createOutFileDir = True)
+          cfg.init()
+          dataCfg = cfg.dataConfig(
+            dataPeriod   = dataPeriod,
+            tBinLabel    = tBinLabel,
+            beamPolLabel = beamPolLabel,
+            maxL         = maxL,
+          )
+          dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{cfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
@@ -296,9 +298,10 @@ if __name__ == "__main__":
               timer.start("Total execution time")
               calculateAllMoments(
                 cfg                            = cfg,
+                dataCfg                        = dataCfg,
                 timer                          = timer,
                 forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
-                additionalCuts                 = None,
+                additionalCuts                 = (),
                 # additionalCuts                 = (
                 #   # "not isInEfficiencyHoles(cosTheta, phiDeg)",  # holes
                 #   # "not ((cosTheta > 0.8) and (-100 < phiDeg and phiDeg < +100))",
