@@ -331,7 +331,7 @@ if __name__ == "__main__":
     lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
   )
   dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
-  inputDataDirName = "Nizar"  # subdirectory in where data files are stored
+  inputDataDirName = "input"  # subdirectory in where data files are stored
   dataPeriods = ("merged", )
   tBinLabels = (
     # "t010020",
@@ -371,19 +371,11 @@ if __name__ == "__main__":
         weightedDataDirPath  = f"{dataDirPath}/{subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
         weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms}_reweighted.root"
         dataToOverlay = DataToOverlay(
-          realData   = (
-            Utilities.getDataFrameWithCorrectEventWeights(
-              dataSigRegionFileNames  = (f"{dataDirPath}/{inputDataDirName}/amptools_tree_signal_{beamPolLabel}.root", ),
-              dataBkgRegionFileNames  = (f"{dataDirPath}/{inputDataDirName}/amptools_tree_bkgnd_{beamPolLabel}.root",  ),
-              treeName                = "kin",
-              friendSigRegionFileName = f"{dataDirPath}/data_sig_{beamPolLabel}.root.weights",
-              friendBkgRegionFileName = f"{dataDirPath}/data_bkg_{beamPolLabel}.root.weights",
-            ) if useSeparateBackgroundFiles else
-            ROOT.RDataFrame(treeName, f"{dataDirPath}/{inputDataDirName}/amptools_tree_data_{beamPolLabel}.root")
-          ),
+          realData   = ROOT.RDataFrame(treeName, f"{dataDirPath}/{inputDataDirName}/tree_data_{beamPolLabel}.root"),
           weightedMc = ROOT.RDataFrame(subsystem.pairLabel, weightedDataFilePath),
         )
-        print(f"Loaded weighted-MC data from '{weightedDataFilePath}'; '{dataDirPath}/{inputDataDirName}/amptools_tree_data_{beamPolLabel}.root'")
+        print(f"Loaded real data from '{dataDirPath}/{inputDataDirName}/tree_data_{beamPolLabel}.root'")
+        print(f"Loaded weighted-MC data from '{weightedDataFilePath}'")
         # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
         for dataToOverlayField in fields(dataToOverlay):
           df = getattr(dataToOverlay, dataToOverlayField.name)  # get value of class member with name `dataToOverlayField.name`
