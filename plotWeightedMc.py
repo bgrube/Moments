@@ -81,7 +81,7 @@ def adjustStatsBox(canv: ROOT.TCanvas) -> None:
 
 def makePlots(
   dataToOverlay:         DataToOverlay,
-  subSystem:             SubsystemInfo,
+  subsystem:             SubsystemInfo,
   outputDirName:         str = ".",
   pdfFileNameSuffix:     str = "",
   yAxisLabel:            str = "RF-Sideband Subtracted Combos",
@@ -93,11 +93,11 @@ def makePlots(
   """Overlays 1D distributions and compares 2D distributions from real data and weighted Monte Carlo"""
   histsToOverlay = HistsToOverlay()
   # loop over members of `DataToOverlay` and book histograms for `realData` and `weightedMc`
-  pairLabel    = subSystem.pairLabel
-  pairTLatex   = subSystem.pairTLatexLabel
-  ATLatex      = subSystem.ATLatexLabel
-  BTLatex      = subSystem.BTLatexLabel
-  recoilTLatex = subSystem.recoilTLatexLabel
+  pairLabel    = subsystem.pairLabel
+  pairTLatex   = subsystem.pairTLatexLabel
+  ATLatex      = subsystem.ATLatexLabel
+  BTLatex      = subsystem.BTLatexLabel
+  recoilTLatex = subsystem.recoilTLatexLabel
   for dataToOverlayField in fields(dataToOverlay):
     # define histograms
     label = dataToOverlayField.name
@@ -319,12 +319,12 @@ if __name__ == "__main__":
   # massMin           = 0.28  # [GeV]
   # massBinWidth      = 0.04  # [GeV]
   # nmbBins           = 50
-  # subSystem         = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
+  # subsystem         = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
   # useIntensityTerms = "allTerms"
   # # useIntensityTerms = "parityConserving"
   # # useIntensityTerms = "parityViolating"
 
-  subSystem = SubsystemInfo(
+  subsystem = SubsystemInfo(
     pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
     lvALabel      = "eta",    ATLatexLabel      = "#eta",
     lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
@@ -357,7 +357,7 @@ if __name__ == "__main__":
     "realData"   : {"eventWeight" : "weightASBS"},  # use this column as event weights for real data
     "weightedMc" : {},                              # no additional columns to define for weighted MC
   }
-  additionalFilterDefs = [f"(({massBinning.minVal} < mass{subSystem.pairLabel}) && (mass{subSystem.pairLabel} < {massBinning.maxVal}))"]
+  additionalFilterDefs = [f"(({massBinning.minVal} < mass{subsystem.pairLabel}) && (mass{subsystem.pairLabel} < {massBinning.maxVal}))"]
 
   for dataPeriod in dataPeriods:
     print(f"Generating plots for data period '{dataPeriod}':")
@@ -368,7 +368,7 @@ if __name__ == "__main__":
         print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
         # load data in AMPTOOLS format
         dataDirPath          = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}"
-        weightedDataDirPath  = f"{dataDirPath}/{subSystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
+        weightedDataDirPath  = f"{dataDirPath}/{subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
         weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms}_reweighted.root"
         dataToOverlay = DataToOverlay(
           realData   = (
@@ -381,7 +381,7 @@ if __name__ == "__main__":
             ) if useSeparateBackgroundFiles else
             ROOT.RDataFrame(treeName, f"{dataDirPath}/{inputDataDirName}/amptools_tree_data_{beamPolLabel}.root")
           ),
-          weightedMc = ROOT.RDataFrame(subSystem.pairLabel, weightedDataFilePath),
+          weightedMc = ROOT.RDataFrame(subsystem.pairLabel, weightedDataFilePath),
         )
         print(f"Loaded weighted-MC data from '{weightedDataFilePath}'; '{dataDirPath}/{inputDataDirName}/amptools_tree_data_{beamPolLabel}.root'")
         # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
@@ -390,7 +390,7 @@ if __name__ == "__main__":
           df = defineColumnsForPlots(
             df                   = df,
             inputDataFormat      = AnalysisConfig.DataFormat.AMPTOOLS,
-            subSystem            = subSystem,
+            subsystem            = subsystem,
             beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
             additionalColumnDefs = additionalColumnDefs[dataToOverlayField.name],
             additionalFilterDefs = additionalFilterDefs,  # apply additional filters to both real data and weighted MC
@@ -402,7 +402,7 @@ if __name__ == "__main__":
         os.makedirs(plotDirName, exist_ok = True)
         makePlots(
           dataToOverlay = dataToOverlay,
-          subSystem     = subSystem,
+          subsystem     = subsystem,
           outputDirName = plotDirName,
           nmbBinsAzim   = nmbBinsAzim,
           nmbBinsOther  = nmbBinsOther,
@@ -414,10 +414,10 @@ if __name__ == "__main__":
             massBinMin = massBinning.minVal + massBinIndex * massBinning.binWidth
             massBinMax = massBinMin + massBinning.binWidth
             print(f"Overlaying histograms for mass bin {massBinIndex} with range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
-            massRangeFilter = f"(({massBinMin} < mass{subSystem.pairLabel}) && (mass{subSystem.pairLabel} < {massBinMax}))"
+            massRangeFilter = f"(({massBinMin} < mass{subsystem.pairLabel}) && (mass{subsystem.pairLabel} < {massBinMax}))"
             makePlots(
               dataToOverlay     = dataToOverlay.filter(massRangeFilter),
-              subSystem         = subSystem,
+              subsystem         = subsystem,
               outputDirName     = plotDirName,
               pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
               nmbBinsAzim       = nmbBinsAzim,
