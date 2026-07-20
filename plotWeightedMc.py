@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import (
   dataclass,
   field,
@@ -17,6 +18,8 @@ ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from AnalysisConfig import (
   AnalysisConfig,
   BEAM_POL_INFOS,
+  CFG_POLARIZED_PIPI,
+  CFG_POLARIZED_ETAPI0,
   SubsystemInfo,
 )
 from makeKinematicPlots import (
@@ -298,58 +301,13 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
 
-  # dataPeriods = (
-  #   # "2017_01",
-  #   "2018_08",
-  # )
-  # tBinLabels = (
-  #   "tbin_0.1_0.2",
-  #   # "tbin_0.2_0.3",
-  #   # "tbin_0.3_0.4",
-  #   # "tbin_0.4_0.5",
-  # )
-  # beamPolLabels = (
-  #   "PARA_0",
-  #   # "PARA_135",
-  #   # "PERP_45",
-  #   # "PERP_90",
-  # )
-  # maxL              = 4
-  # # maxL              = 8
-  # massMin           = 0.28  # [GeV]
-  # massBinWidth      = 0.04  # [GeV]
-  # nmbBins           = 50
-  # subsystem         = SubSystemInfo(pairLabel = "PiPi", lvALabel = "pip", lvBLabel = "pim", lvRecoilLabel = "recoil", pairTLatexLabel = "#pi#pi")
-  # useIntensityTerms = "allTerms"
-  # # useIntensityTerms = "parityConserving"
-  # # useIntensityTerms = "parityViolating"
 
-  subsystem = SubsystemInfo(
-    pairLabel     = "EtaPi0", pairTLatexLabel   = "#eta#pi^{0}",
-    lvALabel      = "eta",    ATLatexLabel      = "#eta",
-    lvBLabel      = "pi0",    BTLatexLabel      = "#pi^{0}",
-    lvRecoilLabel = "recoil", recoilTLatexLabel = "p",
-  )
-  dataDirBasePath = "./dataPhotoProdEtaPi0/polarized"
-  inputDataDirName = "input"  # subdirectory in where data files are stored
-  dataPeriods = ("merged", )
-  tBinLabels = (
-    # "t010020",
-    # "t020032",
-    # "t032050",
-    "t050075",
-    # "t075100",
-  )
-  beamPolLabels = ("All", )
-  maxL = 4
-  # maxL = 8
-  useIntensityTerms = "allTerms"  #TODO use MomentResult.IntensityTermsType
-  # useIntensityTerms = "parityConserving"
-  # useIntensityTerms = "parityViolating"
+  # cfg = deepcopy(CFG_POLARIZED_PIPI)
+  # massBinning  = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)
+
+  cfg = deepcopy(CFG_POLARIZED_ETAPI0)
   BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
   BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
-  treeName = "kin"
-  useSeparateBackgroundFiles = False
   nmbBinsAzim  = 36  # number of bins for angular variables
   nmbBinsOther = 50  # number of bins for other variables
   massBinning  = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72)
@@ -357,62 +315,70 @@ if __name__ == "__main__":
     "realData"   : {"eventWeight" : "weightASBS"},  # use this column as event weights for real data
     "weightedMc" : {},                              # no additional columns to define for weighted MC
   }
-  additionalFilterDefs = [f"(({massBinning.minVal} < mass{subsystem.pairLabel}) && (mass{subsystem.pairLabel} < {massBinning.maxVal}))"]
+  additionalFilterDefs = [f"(({massBinning.minVal} < mass{cfg.subsystem.pairLabel}) && (mass{cfg.subsystem.pairLabel} < {massBinning.maxVal}))"]
 
-  for dataPeriod in dataPeriods:
+  useIntensityTerms = "allTerms"  #TODO use MomentResult.IntensityTermsType
+  # useIntensityTerms = "parityConserving"
+  # useIntensityTerms = "parityViolating"
+
+  print(f"Using analysis configuration:\n{cfg}")
+  print(f"Generating weighted MC plots for subsystem '{cfg.subsystem}':")
+  for dataPeriod in cfg.dataPeriods:
     print(f"Generating plots for data period '{dataPeriod}':")
-    for tBinLabel in tBinLabels:
+    for tBinLabel in cfg.tBinLabels:
       print(f"Generating plots for t bin '{tBinLabel}':")
-      for beamPolLabel in beamPolLabels:
+      for beamPolLabel in cfg.beamPolLabels:
         beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
         print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
-        # load data in AMPTOOLS format
-        dataDirPath          = f"{dataDirBasePath}/{dataPeriod}/{tBinLabel}"
-        weightedDataDirPath  = f"{dataDirPath}/{subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
-        weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms}_reweighted.root"
-        dataToOverlay = DataToOverlay(
-          realData   = ROOT.RDataFrame(treeName, f"{dataDirPath}/{inputDataDirName}/tree_data_{beamPolLabel}.root"),
-          weightedMc = ROOT.RDataFrame(subsystem.pairLabel, weightedDataFilePath),
-        )
-        print(f"Loaded real data from '{dataDirPath}/{inputDataDirName}/tree_data_{beamPolLabel}.root'")
-        print(f"Loaded weighted-MC data from '{weightedDataFilePath}'")
-        # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
-        for dataToOverlayField in fields(dataToOverlay):
-          df = getattr(dataToOverlay, dataToOverlayField.name)  # get value of class member with name `dataToOverlayField.name`
-          df = defineColumnsForPlots(
-            df                   = df,
-            inputDataFormat      = AnalysisConfig.DataFormat.AMPTOOLS,
-            subsystem            = subsystem,
-            beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
-            additionalColumnDefs = additionalColumnDefs[dataToOverlayField.name],
-            additionalFilterDefs = additionalFilterDefs,  # apply additional filters to both real data and weighted MC
+        inputFilePaths = cfg.inputFilePaths(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel)
+        for maxL in cfg.maxLs:
+          print(f"Generating plots for L_max = {maxL}:")
+          #TODO move these paths to `AnalysisConfig`?
+          weightedDataDirPath  = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/weightedMc.maxL_{maxL}/{beamPolLabel}"
+          weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms}_reweighted.root"
+          print(f"Loading input data of type '{AnalysisConfig.DataType.REAL_DATA}' from '{inputFilePaths}'")
+          print(f"Loading weighted-MC data from '{weightedDataFilePath}'")
+          dataToOverlay = DataToOverlay(
+            realData   = ROOT.RDataFrame(cfg.inputTreeName, inputFilePaths),
+            weightedMc = ROOT.RDataFrame(cfg.subsystem.pairLabel, weightedDataFilePath),
           )
-          setattr(dataToOverlay, dataToOverlayField.name, df)  # set value of class member with name `dataToOverlayField.name`
-        # plot overlays for full mass range and for individual mass bins
-        plotDirName = f"{weightedDataDirPath}/plots_{useIntensityTerms}"
-        print(f"Overlaying histograms for full mass range and writing plots into '{plotDirName}'")
-        os.makedirs(plotDirName, exist_ok = True)
-        makePlots(
-          dataToOverlay = dataToOverlay,
-          subsystem     = subsystem,
-          outputDirName = plotDirName,
-          nmbBinsAzim   = nmbBinsAzim,
-          nmbBinsOther  = nmbBinsOther,
-          massBinning   = massBinning.astuple,
-        )
-        if True:
-        # if False:
-          for massBinIndex in range(massBinning.nmbBins):
-            massBinMin = massBinning.minVal + massBinIndex * massBinning.binWidth
-            massBinMax = massBinMin + massBinning.binWidth
-            print(f"Overlaying histograms for mass bin {massBinIndex} with range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
-            massRangeFilter = f"(({massBinMin} < mass{subsystem.pairLabel}) && (mass{subsystem.pairLabel} < {massBinMax}))"
-            makePlots(
-              dataToOverlay     = dataToOverlay.filter(massRangeFilter),
-              subsystem         = subsystem,
-              outputDirName     = plotDirName,
-              pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
-              nmbBinsAzim       = nmbBinsAzim,
-              nmbBinsOther      = nmbBinsOther,
-              massBinning       = massBinning.astuple,
+          # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
+          for dataToOverlayField in fields(dataToOverlay):
+            df = getattr(dataToOverlay, dataToOverlayField.name)  # get value of class member with name `dataToOverlayField.name`
+            df = defineColumnsForPlots(
+              df                   = df,
+              inputDataFormat      = AnalysisConfig.DataFormat.AMPTOOLS,
+              subsystem            = cfg.subsystem,
+              beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
+              additionalColumnDefs = additionalColumnDefs[dataToOverlayField.name],
+              additionalFilterDefs = additionalFilterDefs,  # apply additional filters to both real data and weighted MC
             )
+            setattr(dataToOverlay, dataToOverlayField.name, df)  # set value of class member with name `dataToOverlayField.name`
+          # plot overlays for full mass range and for individual mass bins
+          plotDirName = f"{weightedDataDirPath}/plots_{useIntensityTerms}"
+          print(f"Overlaying histograms for full mass range and writing plots into '{plotDirName}'")
+          os.makedirs(plotDirName, exist_ok = True)
+          makePlots(
+            dataToOverlay = dataToOverlay,
+            subsystem     = cfg.subsystem,
+            outputDirName = plotDirName,
+            nmbBinsAzim   = nmbBinsAzim,
+            nmbBinsOther  = nmbBinsOther,
+            massBinning   = massBinning.astuple,
+          )
+          # if True:
+          if False:
+            for massBinIndex in range(massBinning.nmbBins):
+              massBinMin = massBinning.minVal + massBinIndex * massBinning.binWidth
+              massBinMax = massBinMin + massBinning.binWidth
+              print(f"Overlaying histograms for mass bin {massBinIndex} with range [{massBinMin:.2f}, {massBinMax:.2f}] GeV")
+              massRangeFilter = f"(({massBinMin} < mass{cfg.subsystem.pairLabel}) && (mass{cfg.subsystem.pairLabel} < {massBinMax}))"
+              makePlots(
+                dataToOverlay     = dataToOverlay.filter(massRangeFilter),
+                subsystem         = cfg.subsystem,
+                outputDirName     = plotDirName,
+                pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
+                nmbBinsAzim       = nmbBinsAzim,
+                nmbBinsOther      = nmbBinsOther,
+                massBinning       = massBinning.astuple,
+              )

@@ -570,6 +570,7 @@ if __name__ == "__main__":
         for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
           print(f"Generating plots for input data type '{inputDataType}' in format '{inputDataFormat}'")
           inputFilePaths = cfg.inputFilePaths(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          print(f"Loading input data of type '{inputDataType}' from '{inputFilePaths}'")
           df = ROOT.RDataFrame(cfg.inputTreeName, inputFilePaths)  # real data must contains combined signal and background data with correct event weights
           dfSubsystem = defineColumnsForPlots(
             df                   = df,
