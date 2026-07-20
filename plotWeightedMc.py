@@ -34,6 +34,7 @@ from makeMomentsInputTree import (
   CPP_CODE_MASSPAIR,
   CPP_CODE_TWO_BODY_ANGLES,
 )
+from MomentCalculator import MomentResult
 from PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
@@ -317,9 +318,9 @@ if __name__ == "__main__":
   }
   additionalFilterDefs = [f"(({massBinning.minVal} < mass{cfg.subsystem.pairLabel}) && (mass{cfg.subsystem.pairLabel} < {massBinning.maxVal}))"]
 
-  useIntensityTerms = "allTerms"  #TODO use MomentResult.IntensityTermsType
-  # useIntensityTerms = "parityConserving"
-  # useIntensityTerms = "parityViolating"
+  useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL
+  # useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.PARITY_CONSERVING
+  # useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.PARITY_VIOLATING
 
   print(f"Using analysis configuration:\n{cfg}")
   print(f"Generating weighted MC plots for subsystem '{cfg.subsystem}':")
@@ -335,7 +336,7 @@ if __name__ == "__main__":
           print(f"Generating plots for L_max = {maxL}:")
           #TODO move these paths to `AnalysisConfig`?
           weightedDataDirPath  = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/weightedMc.maxL_{maxL}/{beamPolLabel}"
-          weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms}_reweighted.root"
+          weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms.value}_reweighted.root"
           print(f"Loading input data of type '{AnalysisConfig.DataType.REAL_DATA}' from '{inputFilePaths}'")
           print(f"Loading weighted-MC data from '{weightedDataFilePath}'")
           dataToOverlay = DataToOverlay(
@@ -355,7 +356,7 @@ if __name__ == "__main__":
             )
             setattr(dataToOverlay, dataToOverlayField.name, df)  # set value of class member with name `dataToOverlayField.name`
           # plot overlays for full mass range and for individual mass bins
-          plotDirName = f"{weightedDataDirPath}/plots_{useIntensityTerms}"
+          plotDirName = f"{weightedDataDirPath}/plots_{useIntensityTerms.value}"
           print(f"Overlaying histograms for full mass range and writing plots into '{plotDirName}'")
           os.makedirs(plotDirName, exist_ok = True)
           makePlots(
