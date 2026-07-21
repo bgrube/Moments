@@ -1,5 +1,5 @@
 """
-This module defines the input parameters for the various moment analyses
+This module defines the parameters for the various moment analyses
 """
 
 from __future__ import annotations
@@ -186,7 +186,7 @@ class SubsystemInfo:
 
 @dataclass
 class DataConfig:
-  """Stores configuration parameters for the input data to `MomentCalculator` and provides methods to load the data"""
+  """Stores parameters of data for moment calculation and provides methods to load the data"""
   dataFileName:   str         # file with real data to analyze
   psAccFileName:  str | None  # file with accepted phase-space MC
   psGenFileName:  str | None  # file with generated phase-space MC
@@ -302,7 +302,7 @@ class AnalysisConfig:
     GJ = 1  # Gottfried-Jackson frame
 
   class DataType(Enum):
-    """Enumerates used input data types"""
+    """Enumerates used data types"""
     REAL_DATA             = 0
     REAL_DATA_SIGNAL      = 1  # real data in signal region
     REAL_DATA_SIDEBAND    = 2  # real data in sideband region(s)
@@ -310,7 +310,7 @@ class AnalysisConfig:
     ACCEPTED_PHASE_SPACE  = 4
 
   class DataFormat(Enum):
-    """Enumerates formats of input data files"""
+    """Enumerates input formats of data files"""
     ALEX            = 0  # Alex' data format  #TODO improve naming
     AMPTOOLS        = 1  # AmpTools format
     JPAC_MC         = 2  # MC truth data in JPAC text format
@@ -330,7 +330,7 @@ class AnalysisConfig:
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
   )
-  dataDirBaseName:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for input data
+  dataDirBaseName:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for data
   dataPeriods:              tuple[str, ...]                   = (  # labels of data periods to process
     "2017_01",
     "2018_08",
@@ -341,13 +341,13 @@ class AnalysisConfig:
   beamPolLabels:            tuple[str, ...]                   = (  # labels of beam polarizations to process, e.g. "PARA_0"; use "AMO" or "Unpol" for unpolarized data  #TODO store list of BeamPolInfos and generate labels with a function
     "Unpol",
   )
-  inputDataFormats:         dict[DataType, DataFormat]        = field(default_factory = lambda: {  # data formats for each input data type
+  inputDataFormats:         dict[DataType, DataFormat]        = field(default_factory = lambda: {  # input data formats for each data type
     AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.ALEX,
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   })
-  inputTreeName:            str                               = "kin"   # name of tree to read from input data
-  convertedTreeName:        str                               = "PiPi"  # name of tree to read from converted input data
+  inputTreeName:            str                               = "kin"   # name of tree for data in input format; must contain Lorentz-vectors of all particles
+  convertedTreeName:        str                               = "PiPi"  # name of tree for data in converted format
   maxLs:                    tuple[int | tuple[int, int], ...] = (  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
     4,
     6,
@@ -393,7 +393,7 @@ class AnalysisConfig:
     dataPeriod: str,
     tBinLabel:  str,
   ) -> str:
-    """Generates base path of directory with input data"""
+    """Generates base path of directory with data in input format"""
     return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/input"
 
   @staticmethod
@@ -404,7 +404,7 @@ class AnalysisConfig:
     tBinLabel:    str,
     beamPolLabel: str
   ) -> tuple[str, ...]:  #TODO is tuple really needed here?
-    """Default function that returns file paths of input data based on data type, data period, t bin label, and beam polarization label"""
+    """Default function that returns path of data file in input format based on data type, data period, t bin label, and beam polarization label"""
     # one input file for each data type
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
@@ -428,7 +428,7 @@ class AnalysisConfig:
     tBinLabel:    str,
     beamPolLabel: str,
   ) -> tuple[str, ...]:
-    """Returns file paths of input data based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePaths` member"""
+    """Returns file path of data file in input format based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePath` member"""
     return self._inputFilePaths(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
 
   def convertedDataDirBasePath(
@@ -436,7 +436,7 @@ class AnalysisConfig:
     dataPeriod: str,
     tBinLabel:  str,
   ) -> str:
-    """Generates base path of directory with converted input data"""
+    """Generates base path of directory with data in converted format"""
     return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
 
   def convertedFilePath(
@@ -446,7 +446,7 @@ class AnalysisConfig:
     tBinLabel:    str,
     beamPolLabel: str,
   ) -> str:
-    """Generates path of converted input file based on data type, data period, t bin label, and beam polarization label"""
+    """Generates path of data file in converted format based on data type, data period, t bin label, and beam polarization label"""
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
@@ -468,7 +468,7 @@ class AnalysisConfig:
     beamPolLabel: str,
     maxL:         int | tuple[int, int],
   ) -> DataConfig:
-    """Returns a `DataConfig` object for given data period, t bin label, and beam polarization label"""
+    """Returns a `DataConfig` object for data in converted format for a given data period, t bin label, and beam polarization label"""
     return DataConfig(
       dataFileName       = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/data_flat_{beamPolLabel}.root",
       psAccFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_acc_flat_{beamPolLabel}.root",
@@ -507,7 +507,7 @@ def inputFilePathsPiPiPol(
   tBinLabel:    str,
   beamPolLabel: str
 ) -> tuple[str, ...]:
-  """Generates input file paths based on data type, data period, t bin label, and beam polarization label for polarized pi+ pi- data"""
+  """Returns path of data file in input format based on data type, data period, t bin label, and beam polarization label for polarized pi+ pi- data"""
   if dataType == AnalysisConfig.DataType.REAL_DATA:
     return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
   elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
@@ -543,7 +543,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
-  _inputFilePaths    = inputFilePathsPiPiPol,  # use custom function to generate input file paths for polarized data
+  _inputFilePaths    = inputFilePathsPiPiPol,  # use custom function to generate paths of data files in input format for polarized data
   maxLs              = (
     4,
     6,
