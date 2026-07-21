@@ -397,39 +397,39 @@ class AnalysisConfig:
     return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/input"
 
   @staticmethod
-  def _default_inputFilePaths(
+  def _default_inputFilePath(
     cfg:          AnalysisConfig,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
     tBinLabel:    str,
     beamPolLabel: str
-  ) -> tuple[str, ...]:  #TODO is tuple really needed here?
+  ) -> str:
     """Default function that returns path of data file in input format based on data type, data period, t bin label, and beam polarization label"""
     # one input file for each data type
     if dataType == AnalysisConfig.DataType.REAL_DATA:
-      return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
+      return f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root"
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_accepted_{beamPolLabel}.root", )
+      return f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_accepted_{beamPolLabel}.root"
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_thrown_{beamPolLabel}.root", )
+      return f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_thrown_{beamPolLabel}.root"
     else:
       raise ValueError(f"Unknown data type: {dataType}")
 
-  _inputFilePaths: Callable[[AnalysisConfig, AnalysisConfig.DataType, str, str, str], tuple[str, ...]] = field(
-        default_factory = lambda: AnalysisConfig._default_inputFilePaths,
+  _inputFilePath: Callable[[AnalysisConfig, AnalysisConfig.DataType, str, str, str], str] = field(
+        default_factory = lambda: AnalysisConfig._default_inputFilePath,
         repr            = False,
         compare         = False,
     )
 
-  def inputFilePaths(
+  def inputFilePath(
     self,
     dataType:     AnalysisConfig.DataType,
     dataPeriod:   str,
     tBinLabel:    str,
     beamPolLabel: str,
-  ) -> tuple[str, ...]:
+  ) -> str:
     """Returns file path of data file in input format based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePath` member"""
-    return self._inputFilePaths(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
+    return self._inputFilePath(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
 
   def convertedDataDirBasePath(
     self,
@@ -518,20 +518,20 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
 
 
 # configuration for polarized gamma p -> (pi+ pi-) p data
-def inputFilePathsPiPiPol(
+def inputFilePathPiPiPol(
   cfg:          AnalysisConfig,
   dataType:     AnalysisConfig.DataType,
   dataPeriod:   str,
   tBinLabel:    str,
   beamPolLabel: str
-) -> tuple[str, ...]:
+) -> str:
   """Returns path of data file in input format based on data type, data period, t bin label, and beam polarization label for polarized pi+ pi- data"""
   if dataType == AnalysisConfig.DataType.REAL_DATA:
-    return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root", )
+    return f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_data_{beamPolLabel}.root"
   elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-    return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_accepted*.root", )
+    return f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_accepted*.root"
   elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-    return (f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_thrown*.root", )
+    return f"{cfg.inputDataDirBasePath(dataPeriod, tBinLabel)}/tree_thrown*.root"
   else:
     raise ValueError(f"Unknown data type: {dataType}")
 
@@ -561,7 +561,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.AMPTOOLS,
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
-  _inputFilePaths    = inputFilePathsPiPiPol,  # use custom function to generate paths of data files in input format for polarized data
+  _inputFilePath     = inputFilePathPiPiPol,  # use custom function to generate paths of data files in input format for polarized data
   maxLs              = (
     4,
     6,

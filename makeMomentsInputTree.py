@@ -485,10 +485,10 @@ if __name__ == "__main__":
         print(f"Setting up beam-polarization orientation '{beamPolLabel}'")
         for inputDataType, inputDataFormat in cfg.inputDataFormats.items():
           print(f"Setting up input data type '{inputDataType}' with format '{inputDataFormat}':")
-          inputFilePaths = cfg.inputFilePaths(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
-          df = ROOT.RDataFrame(cfg.inputTreeName, inputFilePaths)  # real data must contains combined signal and background data with correct event weights
+          inputFilePath = cfg.inputFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          df = ROOT.RDataFrame(cfg.inputTreeName, inputFilePath)  # real data must contains combined signal and background data with correct event weights
           print(f"Converting {inputDataType} data with {inputDataFormat} format for '{cfg.subsystem.pairLabel}' subsystem, "
-                f"'{dataPeriod}' period, '{tBinLabel}' t bin, and {beamPolLabel or 'no'} beam polarization from file(s) {inputFilePaths}")
+                f"'{dataPeriod}' period, '{tBinLabel}' t bin, and {beamPolLabel or 'no'} beam polarization from file(s) {inputFilePath}")
           lvs = lorentzVectors(inputDataFormat)
           df = defineDataFrameColumns(
             df                   = df,

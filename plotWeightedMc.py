@@ -331,16 +331,16 @@ if __name__ == "__main__":
       for beamPolLabel in cfg.beamPolLabels:
         beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
         print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
-        inputFilePaths = cfg.inputFilePaths(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel)
+        inputFilePath = cfg.inputFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel)
         for maxL in cfg.maxLs:
           print(f"Generating plots for L_max = {maxL}:")
           #TODO move these paths to `AnalysisConfig`?
           weightedDataDirPath  = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/weightedMc.maxL_{maxL}/{beamPolLabel}"
           weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms.value}_reweighted.root"
-          print(f"Loading input data of type '{AnalysisConfig.DataType.REAL_DATA}' from '{inputFilePaths}'")
+          print(f"Loading input data of type '{AnalysisConfig.DataType.REAL_DATA}' from '{inputFilePath}'")
           print(f"Loading weighted-MC data from '{weightedDataFilePath}'")
           dataToOverlay = DataToOverlay(
-            realData   = ROOT.RDataFrame(cfg.inputTreeName, inputFilePaths),
+            realData   = ROOT.RDataFrame(cfg.inputTreeName, inputFilePath),
             weightedMc = ROOT.RDataFrame(cfg.subsystem.pairLabel, weightedDataFilePath),
           )
           # loop over members of `DataToOverlay` and define columns needed for plotting for `realData` and `weightedMc`
