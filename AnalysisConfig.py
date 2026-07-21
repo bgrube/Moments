@@ -483,7 +483,17 @@ class AnalysisConfig:
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
-  massBinning        = HistAxisBinning(nmbBins = 56, minVal = 0.28, maxVal = 1.40),  # binning used in PWA of unpolarized data
+  massBinning        = HistAxisBinning(  # binning used in PWA of unpolarized data
+    nmbBins = 56,    # 20 MeV wide bins
+    minVal  = 0.28,  # [GeV]
+    maxVal  = 1.40,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
+  ),
 )
 CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.root"  # Lukasz's data
@@ -494,8 +504,16 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
   # psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
   outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
-  # massBinning        = HistAxisBinning(nmbBins = 25, minVal = 0.4, maxVal = 1.40),
-  # massBinning        = HistAxisBinning(nmbBins = 2, minVal = 0.4, maxVal = 0.42),
+  # massBinning        = HistAxisBinning(
+  #   nmbBins = 25, minVal = 0.4, maxVal = 1.40,
+  #   # nmbBins = 2, minVal = 0.4, maxVal = 0.42
+  #   _var    = KinematicBinningVariable(
+  #     name      = "mass",
+  #     label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+  #     unit      = "GeV/#it{c}^{2}",
+  #     nmbDigits = 3,
+  #   ),
+  # ),
 )
 
 
@@ -550,7 +568,20 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     8,
   ),
   outFileDirBaseName = "./plotsPhotoProdPiPiPol",
-  massBinning        = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28),  # binning used in PWA of polarized data
+  massBinning        = HistAxisBinning(
+    # nmbBins = 50,    # 40 MeV wide bins used in PWA of polarized data
+    # minVal  = 0.28,  # [GeV]
+    # maxVal  = 2.28,  # [GeV]
+    nmbBins = 7,     # 40 MeV wide bins in mass range of SDME analysis; for 2017_01_ver05 data
+    minVal  = 0.60,  # [GeV]
+    maxVal  = 0.88,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
+  ),
 )
 
 
