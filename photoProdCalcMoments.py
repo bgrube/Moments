@@ -123,7 +123,7 @@ def calculateAllMoments(
             indicesPhys          = dataCfg.momentIndicesPhys,
             dataSet              = dataSet,
             binCenters           = {cfg.massBinning.var : massBinCenter},
-            integralFileBaseName = f"{dataCfg.outFileDirName}/integralMatrix",
+            integralFileBaseName = f"{dataCfg.outFileDirPath}/integralMatrix",
             flipSignOfWeights    = (labelDataSample == "Bkg"),  # flip sign of weights for background events
           )
         )
@@ -146,7 +146,7 @@ def calculateAllMoments(
         if len(momentCalculators[labelDataSample]) > 0:  # if data sample exists
           momentCalculators[labelDataSample][massBinIndex]._integralMatrix = momentCalculatorsFirstSample[massBinIndex].integralMatrix
 
-  momentResultsFileBaseName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
+  momentResultsFileBaseName = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments"
   if cfg.calcAccPsMoments:
     # calculate moments of accepted phase-space data
     if cfg.method in {AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS, AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS}:
@@ -282,7 +282,7 @@ if __name__ == "__main__":
           )
           dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()

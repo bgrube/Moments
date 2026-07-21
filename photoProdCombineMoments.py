@@ -76,7 +76,7 @@ if __name__ == "__main__":
               beamPolLabel = beamPolLabel,
               maxL         = maxL,
             )
-            momentResultsFileNames.append(f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}")
+            momentResultsFileNames.append(f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}")
           # combining moment results
           dataCfg = cfg.dataConfig(
             dataPeriod   = dataPeriod,
@@ -86,7 +86,7 @@ if __name__ == "__main__":
           )
           dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
@@ -98,7 +98,7 @@ if __name__ == "__main__":
             print(f"Combining moments from {momentResultsFileNames}")
             momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
             momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
-            momentResultsCombinedFileName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}{momentsFileName}"
+            momentResultsCombinedFileName = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}"
             print(f"Writing combined moments to file '{momentResultsCombinedFileName}'")
             momentResultsCombined.savePickle(momentResultsCombinedFileName)
 

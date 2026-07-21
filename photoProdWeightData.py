@@ -325,7 +325,7 @@ if __name__ == "__main__":
             print(f"Using analysis configuration:\n{cfg}")
             print(f"Using dataset configuration:\n{dataCfg}")
             timer.start("Total execution time")
-            momentResultsFileName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+            momentResultsFileName = f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)}/{cfg.outFileNamePrefix}_moments_phys.pkl"
             print(f"Reading moments from file '{momentResultsFileName}'")
             momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
             for massBinIndexForWeighting, massBinCenterForWeighting in enumerate(massBinningForWeighting):

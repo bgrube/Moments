@@ -105,7 +105,7 @@ if __name__ == "__main__":
           )
           dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
@@ -179,8 +179,8 @@ if __name__ == "__main__":
                 ]
 
               print(f"Calculating PWA moments")
-              momentResultsFileName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
-              # momentResultsFileName = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl"
+              momentResultsFileName = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
+              # momentResultsFileName = f"{cfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl"
               momentResultsPwa: MomentResultsKinematicBinning = readMomentResultsPwa(
                 dataFileName = pwaAmplitudesFileName,
                 maxL         = dataCfg.maxLPhys,

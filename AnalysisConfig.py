@@ -187,12 +187,12 @@ class SubsystemInfo:
 @dataclass
 class DataConfig:
   """Stores parameters of data for moment calculation and provides methods to load the data"""
-  dataFileName:   str         # file with real data to analyze
-  psAccFileName:  str | None  # file with accepted phase-space MC
-  psGenFileName:  str | None  # file with generated phase-space MC
+  dataFilePath:   str         # file path of real data to analyze
+  psAccFilePath:  str | None  # file path of accepted phase-space MC
+  psGenFilePath:  str | None  # file path of generated phase-space MC
   polarization:   float | str | None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
   maxL:           int | tuple[int, int]  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
-  outFileDirName: str  # base name of directory, into which all output of the moment calculation will be written
+  outFileDirPath: str  # base path of directory, into which all output of the moment calculation will be written
 
   def __post_init__(self) -> None:
     """Checks that maximum L tuple has valid values"""
@@ -226,7 +226,7 @@ class DataConfig:
 
   def createOutFileDir(self) -> None:
     """Creates output directory if it does not exist yet"""
-    Utilities.makeDirPath(self.outFileDirName)
+    Utilities.makeDirPath(self.outFileDirPath)
 
   def loadData(
     self,
@@ -238,39 +238,39 @@ class DataConfig:
     """Returns a ROOT RDataFrame for given data type, applies optional additional cuts, and defines optional additional columns"""
     df = None
     if dataType == AnalysisConfig.DataType.REAL_DATA:
-      print(f"Loading real data from tree '{treeName}' in file '{self.dataFileName}'")
-      df = ROOT.RDataFrame(treeName, self.dataFileName)
+      print(f"Loading real data from tree '{treeName}' in file '{self.dataFilePath}'")
+      df = ROOT.RDataFrame(treeName, self.dataFilePath)
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIGNAL:
-      print(f"Loading real-data signal events with weight = 1 from tree '{treeName}' in file '{self.dataFileName}'")
-      df = ROOT.RDataFrame(treeName, self.dataFileName)
+      print(f"Loading real-data signal events with weight = 1 from tree '{treeName}' in file '{self.dataFilePath}'")
+      df = ROOT.RDataFrame(treeName, self.dataFilePath)
       if "eventWeight" in df.GetColumnNames():
         df = df.Filter("eventWeight == 1")
       # if there is no `eventWeight` column assume all events have weight 1
     elif dataType == AnalysisConfig.DataType.REAL_DATA_SIDEBAND:
-      df = ROOT.RDataFrame(treeName, self.dataFileName)
+      df = ROOT.RDataFrame(treeName, self.dataFilePath)
       if "eventWeight" in df.GetColumnNames():
         df = df.Filter("eventWeight < 0")
         if df.Count().GetValue() > 0:
-          print(f"Loading real-data sideband events with weight < 0 from tree '{treeName}' in file '{self.dataFileName}'")
+          print(f"Loading real-data sideband events with weight < 0 from tree '{treeName}' in file '{self.dataFilePath}'")
         else:
           df = None  # no events with weight < 0
       else:
         # if there is no `eventWeight` column assume all events have weight 1 and hence there are no sideband events
         df = None
     elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      if self.psGenFileName is None:
+      if self.psGenFilePath is None:
         print("??? Warning: File name for generated phase-space data was not provided. Acceptance may not be calculated correctly.")
         df = None
       else:
-        print(f"Loading generated phase-space data from tree '{treeName}' in file '{self.psGenFileName}'")
-        df = ROOT.RDataFrame(treeName, self.psGenFileName)
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{self.psGenFilePath}'")
+        df = ROOT.RDataFrame(treeName, self.psGenFilePath)
     elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      if self.psAccFileName is None:
+      if self.psAccFilePath is None:
         print("??? Warning: File name for accepted phase-space data was not provided. Assuming perfect acceptance.")
         df = None
       else:
-        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{self.psAccFileName}'")
-        df = ROOT.RDataFrame(treeName, self.psAccFileName)
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{self.psAccFilePath}'")
+        df = ROOT.RDataFrame(treeName, self.psAccFilePath)
     else:
       raise ValueError(f"Unknown data type: {dataType}")
     # add additional columns if requested
@@ -470,12 +470,12 @@ class AnalysisConfig:
   ) -> DataConfig:
     """Returns a `DataConfig` object for data in converted format for a given data period, t bin label, and beam polarization label"""
     return DataConfig(
-      dataFileName       = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/data_flat_{beamPolLabel}.root",
-      psAccFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_acc_flat_{beamPolLabel}.root",
-      psGenFileName      = f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}/phaseSpace_gen_flat_{beamPolLabel}.root",
-      polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  #TODO why is this needed? shouldn't this be set in AnalysisConfig already?; use BeamPolInfo
+      dataFilePath       = self.convertedFilePath(AnalysisConfig.DataType.REAL_DATA,             dataPeriod, tBinLabel, beamPolLabel),
+      psAccFilePath      = self.convertedFilePath(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  dataPeriod, tBinLabel, beamPolLabel),
+      psGenFilePath      = self.convertedFilePath(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, dataPeriod, tBinLabel, beamPolLabel),
+      polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  # if beam was polarized, converted data are expected to have `beamPol` column with polarization value
       maxL               =  maxL,
-      outFileDirName     = f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}",
+      outFileDirPath     = f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}",
     )
 
 

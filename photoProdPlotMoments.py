@@ -220,7 +220,7 @@ def makeAllPlots(
   # load moments from files
   momentIndices = MomentIndices(dataCfg.maxLPhys)  #TODO why is polarization not needed here? can we use cfg.momentIndicesPhys instead?
   #TODO move this into AnalysisConfig?
-  momentResultsFileBaseName = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_moments"
+  momentResultsFileBaseName = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments"
   momentResultsMeas = None
   if os.path.exists(f"{momentResultsFileBaseName}_meas.pkl"):
     print(f"Reading measured moments from file '{momentResultsFileBaseName}_meas.pkl'")
@@ -309,7 +309,7 @@ def makeAllPlots(
             HData             = HPhys,
             normalizedMoments = cfg.normalizeMoments,
             HTruth            = HComp,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_phys_{binLabel}_",
             legendLabels      = ("Moment", momentResultsCompareLabel),
             plotTruthUncert   = plotComparisonMomentsUncert,
             truthColor        = momentResultsCompareColor,
@@ -320,14 +320,14 @@ def makeAllPlots(
               HData             = HMeas,
               normalizedMoments = cfg.normalizeMoments,
               HTruth            = None,
-              outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
+              outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_meas_{binLabel}_",
               plotLegend        = False,
             )
         if cfg.plotCovarianceMatrices:
           #TODO also plot correlation matrices
           plotMomentsCovMatrices(
             HData             = HPhys,
-            pdfFileNamePrefix = f"{dataCfg.outFileDirName}/covMatrix_{binLabel}_",
+            pdfFileNamePrefix = f"{dataCfg.outFileDirPath}/covMatrix_{binLabel}_",
             axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
             plotTitle         = f"{binLabel}: ",
           )
@@ -335,20 +335,20 @@ def makeAllPlots(
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
             HTruth            = HComp,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
             HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
             HTruth            = HComp,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{binLabel}_",
             histTitle         = binTitle,
             HTruthLabel       = momentResultsCompareLabel,
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{binLabel}_",
             graphTitle        = binTitle,
           )
       if compareTo is not None and cfg.plotMomentsInBins:
@@ -379,7 +379,7 @@ def makeAllPlots(
             line.SetLineColor(ROOT.kGray + 1)
             line.SetLineStyle(ROOT.kDashed)
             line.DrawLine(cfg.massBinning.minVal, 1, cfg.massBinning.maxVal, 1)
-            canv.SaveAs(f"{dataCfg.outFileDirName}/{histChi2.GetName()}.pdf")
+            canv.SaveAs(f"{dataCfg.outFileDirPath}/{histChi2.GetName()}.pdf")
 
       # plot mass dependences of all moments
       chi2ValuesForMoments: dict[QnMomentIndex, dict[str, tuple[float, float] | tuple[None, None]]] = {}  # key: quantum-number index of moment; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
@@ -420,7 +420,7 @@ def makeAllPlots(
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
           momentResultsTrue = momentResultsCompare,
-          outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_phys_",
+          outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_phys_",
           outFileType       = outFileType,
           histTitle         = qnIndex.title,
           plotLegend        = True,
@@ -451,7 +451,7 @@ def makeAllPlots(
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,
             momentResultsTrue = None,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_meas_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -484,7 +484,7 @@ def makeAllPlots(
           line.SetLineColor(ROOT.kGray + 1)
           line.SetLineStyle(ROOT.kDashed)
           line.DrawLine(0, 1, len(chi2Values), 1)
-          canv.SaveAs(f"{dataCfg.outFileDirName}/{histChi2.GetName()}.pdf")
+          canv.SaveAs(f"{dataCfg.outFileDirPath}/{histChi2.GetName()}.pdf")
 
       # plot ratio of measured and physical value for Re[H_0(0, 0)]; estimates efficiency
       if momentResultsMeas is not None:
@@ -513,12 +513,12 @@ def makeAllPlots(
         histRatio.SetTitle(f"#it{{L}}_{{max}} = {dataCfg.maxL};{cfg.massBinning.axisTitle};" + "#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
         # histRatio.SetMaximum(0.15)
         histRatio.Draw("PEX0")
-        canv.SaveAs(f"{dataCfg.outFileDirName}/{histRatio.GetName()}.pdf")
+        canv.SaveAs(f"{dataCfg.outFileDirPath}/{histRatio.GetName()}.pdf")
 
-      if not dataCfg.dataFileName or not os.path.exists(dataCfg.dataFileName):
-        print(f"Warning: cannot find data file '{dataCfg.dataFileName=}'. Cannot overlay H_0^meas(0, 0) and measured distribution.")
+      if not dataCfg.dataFilePath or not os.path.exists(dataCfg.dataFilePath):
+        print(f"Warning: cannot find data file '{dataCfg.dataFilePath=}'. Cannot overlay H_0^meas(0, 0) and measured distribution.")
       elif cfg.plotMeasuredMoments:
-        print(f"Overlaying measured intensity distribution from file '{dataCfg.dataFileName}'")
+        print(f"Overlaying measured intensity distribution from file '{dataCfg.dataFilePath}'")
         # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
         #TODO treat case where data do not contain "eventWeight" column
         histIntMeas = dataCfg.loadData(AnalysisConfig.DataType.REAL_DATA, cfg.convertedTreeName).Histo1D(
@@ -531,7 +531,7 @@ def makeAllPlots(
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
           momentLabel       = H000Index.label,
-          outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_meas_intensity_",
+          outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_meas_intensity_",
           histTitle         = H000Index.title,
           legendLabels      = ("Measured Moment", "Measured Intensity"),
         )
@@ -549,7 +549,7 @@ def makeAllPlots(
         dataPsGen         = dataPsGen,
         dataSignalAcc     = data,
         dataSignalGen     = None,
-        outFileNamePrefix = f"{dataCfg.outFileDirName}/angDistr_total_",
+        outFileNamePrefix = f"{dataCfg.outFileDirPath}/angDistr_total_",
       )
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         # load data for mass bin
@@ -565,7 +565,7 @@ def makeAllPlots(
             dataPsGen         = None,
             # dataPsGen         = dataPsGenInBin,
             dataSignalGen     = None,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/angDistr_{MomentCalculator.binLabel(HPhys)}_",
             nmbBins2D         = 20,
           )
 
@@ -585,10 +585,10 @@ def makeAllPlots(
             polarization   = "beamPol" if HPhys.indices.polarized else None,
           ),
         )  # dummy matrix without dataset
-        accIntMatrix.load(f"{dataCfg.outFileDirName}/integralMatrix_{binLabel}.npy")
+        accIntMatrix.load(f"{dataCfg.outFileDirPath}/integralMatrix_{binLabel}.npy")
         plotComplexMatrix(
           complexMatrix     = accIntMatrix.matrixNormalized,
-          pdfFileNamePrefix = f"{dataCfg.outFileDirName}/accMatrix_{binLabel}_",
+          pdfFileNamePrefix = f"{dataCfg.outFileDirPath}/accMatrix_{binLabel}_",
           axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
           zRangeAbs         = 1.2,
@@ -596,7 +596,7 @@ def makeAllPlots(
         )
         plotComplexMatrix(
           complexMatrix     = accIntMatrix.inverse,
-          pdfFileNamePrefix = f"{dataCfg.outFileDirName}/accMatrixInv_{binLabel}_",
+          pdfFileNamePrefix = f"{dataCfg.outFileDirPath}/accMatrixInv_{binLabel}_",
           axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
           zRangeAbs         = 5,
@@ -624,7 +624,7 @@ def makeAllPlots(
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,
             momentLabel       = qnIndex.label,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{cfg.massBinning.var.name}_accPs_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -641,7 +641,7 @@ def makeAllPlots(
             HData             = HMeas,
             normalizedMoments = cfg.normalizeMoments,
             HTruth            = None,
-            outFileNamePrefix = f"{dataCfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
+            outFileNamePrefix = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{binLabel}_accPs_",
             plotLegend        = False,
             forceYaxisRange   = (-0.1, +0.1) if cfg.normalizeMoments else (None, None),
           )
@@ -660,7 +660,7 @@ def makeAllPlots(
               HData             = HPhys,
               normalizedMoments = cfg.normalizeMoments,
               HTruth            = HTruthPs,
-              outFileNamePrefix = f"{cfg.outFileDirName}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
+              outFileNamePrefix = f"{cfg.outFileDirPath}/{cfg.outFileNamePrefix}_{binLabel}_accPsCorr_"
             )
 
 
@@ -724,7 +724,7 @@ if __name__ == "__main__":
             maxL         = maxL,
           )
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
           print(f"Writing output to log file '{logFileName}'")
           with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
