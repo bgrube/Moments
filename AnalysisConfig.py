@@ -431,6 +431,33 @@ class AnalysisConfig:
     """Returns file path of data file in input format based on data type, data period, t bin label, and beam polarization label; can be overwritten by providing a different function to the `_inputFilePath` member"""
     return self._inputFilePath(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
 
+  def outFileDirPath(
+    self,
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str,
+    maxL:         int | tuple[int, int],
+  ) -> str:
+    """Generates path of directory, into which all output of the moment calculation will be written"""
+    return f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}"
+
+  def getConfigInputData(
+    self,
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str,
+    maxL:         int | tuple[int, int],
+  ) -> DataConfig:
+    """Returns a `DataConfig` object for data files in input format for a given data period, t bin label, and beam polarization label"""
+    return DataConfig(
+      dataFilePath       = self.inputFilePath(AnalysisConfig.DataType.REAL_DATA,             dataPeriod, tBinLabel, beamPolLabel),
+      psAccFilePath      = self.inputFilePath(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  dataPeriod, tBinLabel, beamPolLabel),
+      psGenFilePath      = self.inputFilePath(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, dataPeriod, tBinLabel, beamPolLabel),
+      polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  # if beam was polarized, converted data are expected to have `beamPol` column with polarization value
+      maxL               = maxL,
+      outFileDirPath     = self.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL),
+    )
+
   def convertedDataDirBasePath(
     self,
     dataPeriod: str,
@@ -461,7 +488,7 @@ class AnalysisConfig:
     """Returns name prefix prepended to moment output file names"""
     return "norm" if self.normalizeMoments else "unnorm"
 
-  def dataConfig(
+  def getConfigConvertedData(
     self,
     dataPeriod:   str,
     tBinLabel:    str,
@@ -475,7 +502,7 @@ class AnalysisConfig:
       psGenFilePath      = self.convertedFilePath(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, dataPeriod, tBinLabel, beamPolLabel),
       polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  # if beam was polarized, converted data are expected to have `beamPol` column with polarization value
       maxL               =  maxL,
-      outFileDirPath     = f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}",
+      outFileDirPath     = self.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL),
     )
 
 

@@ -70,7 +70,7 @@ if __name__ == "__main__":
           momentResultsFileNames = []
           # for dataPeriod in dataPeriods:
           for beamPolLabel in beamPolLabels:
-            dataCfg = cfg.dataConfig(
+            dataCfg = cfg.getConfigConvertedData(
               dataPeriod   = dataPeriod,
               tBinLabel    = tBinLabel,
               beamPolLabel = beamPolLabel,
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             )
             momentResultsFileNames.append(f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}")
           # combining moment results
-          dataCfg = cfg.dataConfig(
+          dataCfg = cfg.getConfigConvertedData(
             dataPeriod   = dataPeriod,
             tBinLabel    = tBinLabel,
             beamPolLabel = labelCombined,

@@ -97,7 +97,7 @@ if __name__ == "__main__":
       for beamPolLabel in cfg.beamPolLabels:
         for maxL in cfg.maxLs:
           print(f"Calculating moment values from partial-wave amplitudes for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          dataCfg = cfg.dataConfig(
+          dataCfg = cfg.getConfigConvertedData(
             dataPeriod   = dataPeriod,
             tBinLabel    = tBinLabel,
             beamPolLabel = beamPolLabel,

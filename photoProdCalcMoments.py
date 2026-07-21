@@ -260,7 +260,6 @@ if __name__ == "__main__":
   # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
-  # cfg.massBinning = HistAxisBinning(nmbBins = 7, minVal = 0.60, maxVal = 0.88)  # mass range of SDME analysis
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
 
   forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
@@ -274,7 +273,7 @@ if __name__ == "__main__":
       for beamPolLabel in cfg.beamPolLabels:
         for maxL in cfg.maxLs:
           print(f"Performing moment analysis for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          dataCfg = cfg.dataConfig(
+          dataCfg = cfg.getConfigConvertedData(
             dataPeriod   = dataPeriod,
             tBinLabel    = tBinLabel,
             beamPolLabel = beamPolLabel,
