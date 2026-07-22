@@ -320,15 +320,17 @@ class AnalysisConfig:
   # defaults are for unpolarized gamma p -> (pi+ pi-) p data
   method:                   AnalysisConfig.MethodType         = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
   frame:                    CoordSysType                      = CoordSysType.HF  # coordinate system, in which moments are calculated
-  subsystem:                SubsystemInfo                     = SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
-    lvALabel          = "pip",     # label of pi+ Lorentz-vector
-    lvBLabel          = "pim",     # label of pi- Lorentz-vector
-    lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
-    pairLabel         = "PiPi",
-    ATLatexLabel      = "#it{#pi}^{#plus}",
-    BTLatexLabel      = "#it{#pi}^{#minus}",
-    recoilTLatexLabel = "#it{p}",
-    pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
+  subsystem:                SubsystemInfo                     = field(default_factory = lambda:
+    SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
+      lvALabel          = "pip",     # label of pi+ Lorentz-vector
+      lvBLabel          = "pim",     # label of pi- Lorentz-vector
+      lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
+      pairLabel         = "PiPi",
+      ATLatexLabel      = "#it{#pi}^{#plus}",
+      BTLatexLabel      = "#it{#pi}^{#minus}",
+      recoilTLatexLabel = "#it{p}",
+      pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
+    )
   )
   dataDirBaseName:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for data
   dataPeriods:              tuple[str, ...]                   = (  # labels of data periods to process
@@ -374,8 +376,8 @@ class AnalysisConfig:
   plotCovarianceMatrices:   bool                              = False
   limitNmbPsAccEvents:      int                               = 0
   # limitNmbPsAccEvents:      int                               = 100000
-  massBinning:              HistAxisBinning                   = field(
-    default_factory = lambda: HistAxisBinning(  # same binning as used by CLAS
+  massBinning:              HistAxisBinning                   = field(default_factory = lambda:
+    HistAxisBinning(  # same binning as used by CLAS
       nmbBins = 100,  # 10 MeV wide bins
       minVal  = 0.4,  # [GeV]
       maxVal  = 1.4,  # [GeV]
