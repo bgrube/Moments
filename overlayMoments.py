@@ -18,6 +18,7 @@ from MomentCalculator import (
 from AnalysisConfig import (
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
+  CFG_POLARIZED_KSKL,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_CLAS,
@@ -120,7 +121,8 @@ if __name__ == "__main__":
   # define what to overlay
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
-  cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
@@ -128,27 +130,8 @@ if __name__ == "__main__":
   # cfg.outFileDirBaseName += ".ideal"
   # cfg.polarization = None  # treat data as unpolarized
 
-  # normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first fit result
-  normToFirstResult = False
-  dataPeriods = (
-    "merged",
-    # "2017_01",
-    # "2017_01_ver05",
-    # "2018_08",
-  )
-  tBinLabels = (
-    "LOWT",
-    # "t010020",
-    # "t020032",
-    # "t032050",
-    # "t050075",
-    # "t075100",
-    # "tbin_0.100_0.114",  # lowest |t| bin of SDME analysis
-    # "tbin_0.1_0.2",
-    # "tbin_0.2_0.3",
-    # "tbin_0.3_0.4",
-    # "tbin_0.4_0.5",
-  )
+  normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first fit result
+  # normToFirstResult = False
   crossSectionScaleFactors = {
     # [ub / GeV^3] = 1 / ([40 MeV mass bin width] * [0.1 GeV^2 t bin width] * L)
     "2017_01" : 1.0 / (0.04 * 0.1 * 21.360196 * 1e6),  #  L(Spring 2017) = 21.360196 pb^{-1}
@@ -156,66 +139,40 @@ if __name__ == "__main__":
   }
 
 
-  for dataPeriod in dataPeriods:
-    for tBinLabel in tBinLabels:
+  for dataPeriod in cfg.dataPeriods:
+    for tBinLabel in cfg.tBinLabels:
       # scale factors to match Spring 2017 H_0(0, 0) integral for L_max = 4
       scaleFactor_2018_08_allOrient = 0.4916841615225002 if tBinLabel == "tbin_0.1_0.2" else \
                                       0.5159984154089572 if tBinLabel == "tbin_0.2_0.3" else \
                                       None
       scaleFactor_2018_08_PARA_0 = 1.8352200424810305  # scale factor to match Spring 2017 H_0(0, 0) integral for L_max = 4
       scaleFactor_2018_08_AMO = 7.241007048362434  # scale factor to match Fall 2018 PARA 0 H_0(0, 0) integral for L_max = 4
-      fitResults: tuple[tuple[str, str, float | None], ...] = (  # tuple: (<directory name>, <legend label>, optional: <scale factor>); last fit result defines which moments are plotted
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4",          "Acc. Corr. Reco.", None),
-        # (f"{cfg.outFileDirBaseName}.accTruth/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4", "Acc. Corr. Truth", None),
-        # (f"{cfg.outFileDirBaseName}.weightedMc.maxL_4/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4",          "Acc. Corr. Reco.", None),
-        # (f"{cfg.outFileDirBaseName}.weightedMc.accTruth.maxL_4/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4", "Acc. Corr. Truth", None),
+      fitResults: tuple[tuple[str, str, str, float | None], ...] = (  # tuple: (<moment type>, <directory name>, <legend label>, optional: <scale factor>); last fit result defines which moments are plotted
+        # eta pi0
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4",     "GJ, L_{max} = 4", None),
+        # ("phys", f"{cfg.outFileDirBaseName}.bak/{dataPeriod}/{tBinLabel}/All.maxL_4", "HF, L_{max} = 4", None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4", "Physical", None),
+        # ("meas", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4", "Measured", None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_5", "L_{max} = 5", None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_6", "L_{max} = 6", None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_7", "L_{max} = 7", None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_8", "L_{max} = 8", None),
         #
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4",       "Fall 2018, Old MC", None),
-        # (f"{cfg.outFileDirBaseName}.oldMc/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4", "Fall 2018, New MC", None),
-        # (f"{cfg.outFileDirBaseName}/2017_01/{tBinLabel}/PARA_0.maxL_4",            "Spring 2017",       2.1646133913963),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/PARA_0.maxL_4",            "Fall 2018",         2.1646133913963),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_4",  "L_{max} = 4",  None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_8",  "L_{max} = 8",  None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_12", "L_{max} = 12", None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_16", "L_{max} = 16", None),
-        #
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_4", "Spring 2017, L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/PARA_0.maxL_4",         "Fall 2018 PARA 0, L_{max} = 4",   scaleFactor_2018_08_PARA_0),  # scale factor to match Spring 2017 H_0(0, 0) integral
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_8", "Spring 2017, L_{max} = 8", None),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/PARA_0.maxL_8",         "Fall 2018 PARA 0, L_{max} = 8",   scaleFactor_2018_08_PARA_0),  # use same scale factor as for L_max = 4
-        #
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/PARA_0.maxL_4", "PARA 0, L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/AMO.maxL_4",    "AMO, L_{max} = 4",    scaleFactor_2018_08_AMO),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/PARA_0.maxL_8", "PARA 0, L_{max} = 8", None),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/AMO.maxL_8",    "AMO, L_{max} = 8",    scaleFactor_2018_08_AMO),
-        # #
-        # (f"{cfg.outFileDirBaseName}.SDME/2017_01/tbin_0.1_0.2/PARA_0.maxL_4",     "ver04, L_{max} = 4", 0.1791785678624324),  # normalized to H_0(0, 0) for ver05, L_max = 4
-        # (f"{cfg.outFileDirBaseName}.SDME/{dataPeriod}/{tBinLabel}/PARA_0.maxL_4", "ver05, L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}.SDME/2017_01/tbin_0.1_0.2/PARA_0.maxL_8",     "ver04, L_{max} = 8", 0.1791785678624324),
-        # (f"{cfg.outFileDirBaseName}.SDME/{dataPeriod}/{tBinLabel}/PARA_0.maxL_8", "ver05, L_{max} = 8", None),
-        #
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/allOrient.maxL_4", "Spring 2017, L_{max} = 4", crossSectionScaleFactors[dataPeriod]),
-        # (f"{cfg.outFileDirBaseName}/2018_08/{tBinLabel}/allOrient.maxL_4",      "Fall 2018, L_{max} = 4",   crossSectionScaleFactors["2018_08"]),
-        #
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4",     "GJ, L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}.bak/{dataPeriod}/{tBinLabel}/All.maxL_4", "HF, L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_4", "L_{max} = 4", None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_5", "L_{max} = 5", None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_6", "L_{max} = 6", None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_7", "L_{max} = 7", None),
-        # (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/All.maxL_8", "L_{max} = 8", None),
-        #
-        (f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/Unpol.maxL_4", "LOWT",   None),
-        (f"{cfg.outFileDirBaseName}/{dataPeriod}/XSCUTS/Unpol.maxL_4",      "XSCUTS", None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/Unpol.maxL_4", "LOWT",   None),
+        # ("phys", f"{cfg.outFileDirBaseName}/{dataPeriod}/XSCUTS/Unpol.maxL_4",      "XSCUTS", None),
+        # K_S K_L
+        ("phys", cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = "PARA_0", maxL = 4), "L_{max} = 4", None),
+        ("phys", cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = "PARA_0", maxL = 6), "L_{max} = 6", None),
+        ("phys", cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = "PARA_0", maxL = 8), "L_{max} = 8", None),
       )
       outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}.overlay")
       # outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{tBinLabel}.overlay")
 
       # load moment results
       momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
-      for fitResultDirName, fitResultLabel, scaleFactor in fitResults:
+      for momentType, fitResultDirName, fitResultLabel, scaleFactor in fitResults:
         print(f"Loading moment results from directory {fitResultDirName}")
-        momentResultsPhysFileName = f"{fitResultDirName}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+        momentResultsPhysFileName = f"{fitResultDirName}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
         try:
           momentResultsPhys = MomentResultsKinematicBinning.loadPickle(momentResultsPhysFileName)
         except FileNotFoundError as e:
@@ -240,7 +197,7 @@ if __name__ == "__main__":
           print(f"Applying scale factor {scaleFactor} to fit result '{label}'")
 
       # plot kinematic dependences of all moments
-      lastLabel = fitResults[-1][1]
+      lastLabel = fitResults[-1][2]
       for qnIndex in momentResultsToOverlay[lastLabel][0][0].indices.qnIndices:
         overlayMoments1D(
           momentResultsToOverlay = momentResultsToOverlay,
