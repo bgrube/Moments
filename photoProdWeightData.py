@@ -60,13 +60,11 @@ import Utilities
 print = functools.partial(print, flush = True)
 
 
-def loadInputData(
-  inputDataDef:     AnalysisConfig.DataType | tuple[str, str, SubsystemInfo, AnalysisConfig.CoordSysType] | int,
-    # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-    # if `tuple`, a tuple (<tree name>, <file name>, <subsystem info>, <coordinate system type>) for raw data is expected
-    # if `int`, phase-space distribution in angles is generated with given number of events
+def loadDataToWeight(
+  inputDataDef:     tuple[AnalysisConfig.DataType, bool] | int,
+    # if `tuple`: a tuple (<data type>, <weight input data>) is expected; if the boolean is True, the input data are weighted, otherwise the converted data
+    # if `int`: phase-space distribution in angles is generated with given number of events
   cfg:              AnalysisConfig,
-  dataCfg:          DataConfig,
   massBinning:      HistAxisBinning,  # mass binning used for weighting
   massBinIndex:     int,              # index of mass bin to load/generate data for
   beamPolInfo:      BeamPolInfo | None = None,  # beam polarization information needed for raw data files
@@ -74,13 +72,18 @@ def loadInputData(
 ) -> tuple[ROOT.RDataFrame, int, list[str]]:
   """Loads data specified by `inputDataDef` and returns them as RDataFrame and the number of input events."""
   dataToWeight = None
-  if isinstance(inputDataDef, AnalysisConfig.DataType) or (isinstance(inputDataDef, tuple) and len(inputDataDef) == 4):
-    if isinstance(inputDataDef, AnalysisConfig.DataType):
-      print(f"Loading data of type '{inputDataDef}'")
-      dataToWeight = dataCfg.loadData(inputDataDef, cfg.convertedTreeName)
-    elif isinstance(inputDataDef, tuple):
-      print(f"Loading raw data in tree '{inputDataDef[0]}' from file '{inputDataDef[1]}'")
-      dataToWeight = ROOT.RDataFrame(inputDataDef[0], inputDataDef[1])
+  if (isinstance(inputDataDef, tuple) and (len(inputDataDef) == 2)
+      and isinstance(inputDataDef[0], AnalysisConfig.DataType) and isinstance(inputDataDef[1], bool)):
+    dataType: AnalysisConfig.DataType = inputDataDef[0]
+    weightInputData: bool             = inputDataDef[1]
+    if weightInputData:
+      inputFilePath = cfg.inputFilePath(dataType, dataPeriod, tBinLabel, beamPolLabel)
+      print(f"Loading input data of type '{dataType}' in tree '{cfg.inputTreeName}' from file '{inputFilePath}'")
+      dataToWeight = ROOT.RDataFrame(cfg.inputTreeName, inputFilePath)  # real data must contains combined signal and background data with correct event weights
+    else:
+      convertedFilePath = cfg.convertedFilePath(dataType, dataPeriod, tBinLabel, beamPolLabel)
+      print(f"Loading input data of type '{dataType}' in tree '{cfg.convertedTreeName}' from file '{convertedFilePath}'")
+      dataToWeight = ROOT.RDataFrame(cfg.convertedTreeName, convertedFilePath)
     assert dataToWeight is not None, f"Could not load data of type '{inputDataDef}'"
     if limitNmbEventsTo is not None:
       print(f"Limiting total number of input events (before binning) to {limitNmbEventsTo}")
@@ -88,19 +91,17 @@ def loadInputData(
     originalColumns = list(dataToWeight.GetColumnNames())
     if isinstance(inputDataDef, tuple):
       # define columns needed to calculate intensity
-      subsystem = inputDataDef[2]
-      frame     = inputDataDef[3]
       assert beamPolInfo is not None, "Beam polarization information must be provided when loading raw data from file"
       lvs = lorentzVectors(dataFormat = AnalysisConfig.DataFormat.AMPTOOLS)
       dataToWeight = defineDataFrameColumns(
         df          = dataToWeight,
         lvTarget    = lvs["target"],
         lvBeam      = lvs["beam"],
-        lvRecoil    = lvs[subsystem.lvRecoilLabel],
-        lvA         = lvs[subsystem.lvALabel],
-        lvB         = lvs[subsystem.lvBLabel],
+        lvRecoil    = lvs[cfg.subsystem.lvRecoilLabel],
+        lvA         = lvs[cfg.subsystem.lvALabel],
+        lvB         = lvs[cfg.subsystem.lvBLabel],
         beamPolInfo = beamPolInfo,
-        frame       = frame,
+        frame       = cfg.frame,
       )
     kinematicBinFilter: str = massBinning.binFilter(massBinIndex)
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
@@ -121,17 +122,13 @@ def loadInputData(
           # add no-op filter that just prints a log message when event loop is running
           .Filter('if (rdfentry_ == 0) { cout << "Running event loop in `loadInputData()`" << endl; } return true;')
     )
-    if dataCfg.polarization is not None:
+    if beamPolInfo is not None:
       # polarized case: add Phi and polarization columns
       dataToWeight = (
         dataToWeight.Define("PhiDeg", "(Double32_t)gRandom->Uniform(-180, +180)")
                     .Define("Phi",    "(Double32_t)(PhiDeg * TMath::DegToRad())")
       )
-      if isinstance(dataCfg.polarization, float):
-        dataToWeight = dataToWeight.Define("beamPol", f"(Double32_t){dataCfg.polarization}")
-      elif isinstance(dataCfg.polarization, str):
-        assert beamPolInfo is not None, f"Beam polarization information must be provided when generating phase-space data with {dataCfg.polarization=}"
-        dataToWeight = dataToWeight.Define(dataCfg.polarization, f"(Double32_t){beamPolInfo.pol}")
+      dataToWeight = dataToWeight.Define("beamPol", f"(Double32_t){beamPolInfo.pol}")
     #TODO is a snapshot necessary here to fill random columns only once?
     return dataToWeight, nmbGenPsEvents, list(dataToWeight.GetColumnNames())
   else:
@@ -139,16 +136,14 @@ def loadInputData(
 
 
 def weightDataWithIntensityFormula(
-  inputDataDef:         AnalysisConfig.DataType | tuple[str, str, SubsystemInfo, AnalysisConfig.CoordSysType] | int,
-    # if `AnalysisConfig.DataType` instance, the file corresponding to `DataType` is loaded
-    # if `tuple`, a tuple (<tree name>, <file name>, <subsystem info>, <coordinate system type>) for raw data is expected
-    # if `int`, phase-space distribution in angles is generated with given number of events
+  inputDataDef:     tuple[AnalysisConfig.DataType, bool] | int,
+    # if `tuple`: a tuple (<data type>, <weight input data>) is expected; if the boolean is True, the input data are weighted, otherwise the converted data
+    # if `int`: phase-space distribution in angles is generated with given number of events
   massBinning:          HistAxisBinning,  # mass binning used for weighting
   massBinIndex:         int,  # index of mass bin to generate data for
   intensityFormula:     str,  # intensity formula as function of theta [rad] phi [rad], and Phi [rad] that defines distribution of events
   weightedDataFileName: str,  # ROOT file to which weighted events are written
   cfg:                  AnalysisConfig,
-  dataCfg:              DataConfig,
   seed:                 int                = 123456789,  # seed for rejection sampling and for generating phase-space events
   beamPolInfo:          BeamPolInfo | None = None,       # beam polarization information needed for raw data files
   limitNmbEventsTo:     int | None         = None,       # if `int`, limits number of events to read from tree
@@ -156,10 +151,9 @@ def weightDataWithIntensityFormula(
   """Weights input data specified by `inputDataDef` and `massBinIndex` with given intensity formula and writes data to `outFileName`"""
   ROOT.gRandom.SetSeed(seed)
   # load input data
-  dataToWeight, nmbInputEvents, originalColumns = loadInputData(
+  dataToWeight, nmbInputEvents, originalColumns = loadDataToWeight(
     inputDataDef     = inputDataDef,
     cfg              = cfg,
-    dataCfg          = dataCfg,
     massBinning      = massBinning,
     massBinIndex     = massBinIndex,
     beamPolInfo      = beamPolInfo,
@@ -168,13 +162,14 @@ def weightDataWithIntensityFormula(
   print(f"Calculating event weights using formula\n{intensityFormula}")
   # add columns for intensity weight and random number in [0, 1]
   dataToWeight = (
-    dataToWeight.Define("intensityWeight",      f"(Double32_t){intensityFormula}")
-                .Define("intensityWeightRndNmb", "(Double32_t)gRandom->Rndm()")  # random number in [0, 1] for each event
+    dataToWeight.Define("intensityWeight",      f"(Double32_t){intensityFormula}")  # intensity weight for each event
+                .Define("intensityWeightRndNmb", "(Double32_t)gRandom->Rndm()")     # random number in [0, 1] for each event
   )
   # write unweighted data to file and read data back to ensure that random columns are filled only once
   tmpFileName = f"{weightedDataFileName}.tmp"
-  dataToWeight.Snapshot(cfg.convertedTreeName, tmpFileName)
-  dataToWeight = ROOT.RDataFrame(cfg.convertedTreeName, tmpFileName)
+  treeName = cfg.inputTreeName if (isinstance(inputDataDef, tuple) and inputDataDef[1]) else cfg.convertedTreeName
+  dataToWeight.Snapshot(treeName, tmpFileName)
+  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)
   # determine range of weight values
   minIntensityWeight = dataToWeight.Min("intensityWeight").GetValue()
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
@@ -193,28 +188,29 @@ def weightDataWithIntensityFormula(
         f"weighting efficiency is {nmbWeightedEvents / nmbInputEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{weightedDataFileName}'")
-  # weightedData.Snapshot(cfg.treeName, weightedDataFileName, originalColumns + ["intensityWeight"])
-  weightedData.Snapshot(cfg.convertedTreeName, weightedDataFileName)  # write original columns + columns defined here
+  # weightedData.Snapshot(treeName, weightedDataFileName, originalColumns + ["intensityWeight"])  # write original columns and intensity weight
+  weightedData.Snapshot(treeName, weightedDataFileName)  # write original columns + columns defined here
   subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  # remove temporary file
-  return ROOT.RDataFrame(cfg.convertedTreeName, weightedDataFileName)
+  return ROOT.RDataFrame(treeName, weightedDataFileName)
 
 
-#TODO ist this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
+#TODO is this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
 def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
-  beamPolInfo:       BeamPolInfo,
+  beamPolInfo:       BeamPolInfo | None,
   outputDirName:     str,
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
 ) -> None:
   """Draws intensity function in given mass bin and writes PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex}")
+  polarization = beamPolInfo.pol if beamPolInfo is not None else None
   if True:
     # draw intensity function as 3D plot
     # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     intensityFormula = momentResults.intensityFormula(
-      polarization      = beamPolInfo.pol,
+      polarization      = polarization,
       thetaFormula      = "std::acos(x)",
       phiFormula        = "TMath::DegToRad() * y",
       PhiFormula        = "TMath::DegToRad() * z",
@@ -237,7 +233,7 @@ def plotIntensityFcn(
     cosTheta = 0.0  # fixed value of cos(theta)_HF
     # formula uses variables: x = phi in [-180, +180] deg; y = Phi in [-180, +180] deg
     intensityFormulaFixedCosTheta = momentResults.intensityFormula(
-      polarization      = beamPolInfo.pol,
+      polarization      = polarization,
       thetaFormula      = f"std::acos({cosTheta})",
       phiFormula        = "TMath::DegToRad() * x",
       PhiFormula        = "TMath::DegToRad() * y",
@@ -263,42 +259,39 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
 
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)   # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # BEAM_POL_INFOS["merged"]["All"] = BeamPolInfo(  # read beam polarization info from input tree
+  #   pol    = "Pol",
+  #   PhiLab = "BeamAngle",
+  # )
 
   useIntensityTerms      = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
   # useIntensityTerms    = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
   # useIntensityTerms    = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
-  # weight accepted phase-space data in raw data format for generating kinematic plots in mass bins
-  weightedDataFileBaseName = f"phaseSpace_acc_weighted_raw_{useIntensityTerms.value}"
-  reweightMassDistribution = True
-  limitNmbEventsTo         = None  # limit number of events to read from input tree
-  # # weight accepted phase-space data in MomentCalculator format for input-output studies with acceptance correction
-  # inputDataDef             = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+
+  # weight accepted phase-space data in input format for generating kinematic plots in mass bins
+  inputDataDef = (AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, True)
+  weightedDataFileBaseName = f"phaseSpace_acc_weighted_input_{useIntensityTerms.value}"
+  # # weight accepted phase-space data in converted format for input-output studies with acceptance correction
+  # inputDataDef = (AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, False)
   # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
-  # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
-  # limitNmbEventsTo         = None  # limit number of events to read from input tree
-  # # weight generated phase-space data in MomentCalculator format for input-output studies without acceptance correction
+  # # weight generated phase-space data in converted format for input-output studies without acceptance correction
   # # inputDataDef             = 100000  # generate phase-space distribution in angles with given number of events
-  # inputDataDef             = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
+  # inputDataDef             = (AnalysisConfig.DataType.GENERATED_PHASE_SPACE, False)
   # weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
-  # reweightMassDistribution = True  # reweight mass distribution after weighting with intensity function
   # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
 
-  inputDataDef: tuple[str, str, SubsystemInfo, AnalysisConfig.CoordSysType] = ("kin", "Nizar/amptools_tree_accepted_All.root", cfg.subsystem, cfg.frame)  #TODO use dataclass instead of tuple
-  BEAM_POL_INFOS["merged"]["All"] = BeamPolInfo(  # read beam polarization info from input tree
-    pol    = "Pol",
-    PhiLab = "BeamAngle",
-  )
-  # cfg.polarization = None  # treat data as unpolarized
-  # makeIntensityFcnPlots = True  # draw intensity function in each mass bin
-  makeIntensityFcnPlots = False
-  massBinningForWeighting = deepcopy(cfg.massBinning)  # same binning as for moment values
-  # massBinningForWeighting = HistAxisBinning(nmbBins = 250, minVal = 0.28, maxVal = 2.28)  # finer binning than for moment values
-  # massBinningForWeighting = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
+  reweightMassDistribution = True
+  limitNmbEventsTo         = None  # limit number of events to read from input tree
+  # makeIntensityFcnPlots    = True  # draw intensity function in each mass bin
+  makeIntensityFcnPlots    = False
+  massBinningForWeighting  = deepcopy(cfg.massBinning)  # same binning as for moment values
+  massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
+  # massBinningForWeighting  = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
 
   print(f"Generating weighted MC for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
@@ -306,12 +299,6 @@ if __name__ == "__main__":
       for beamPolLabel in cfg.beamPolLabels:
         for maxL in cfg.maxLs:
           print(f"Generating weighted MC for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          dataCfg = cfg.dataConfig(
-            dataPeriod   = dataPeriod,
-            tBinLabel    = tBinLabel,
-            beamPolLabel = beamPolLabel,
-            maxL         = maxL,
-          )
           thisSourceFileName = os.path.basename(__file__)
           # create directory, into which weighted data will be written
           weightedDataDirName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
@@ -323,7 +310,6 @@ if __name__ == "__main__":
             timer = Utilities.Timer()
             setupPlotStyle()
             print(f"Using analysis configuration:\n{cfg}")
-            print(f"Using dataset configuration:\n{dataCfg}")
             timer.start("Total execution time")
             momentResultsFileName = f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)}/{cfg.outFileNamePrefix}_moments_phys.pkl"
             print(f"Reading moments from file '{momentResultsFileName}'")
@@ -335,17 +321,13 @@ if __name__ == "__main__":
               assert massBinIndexForMoments is not None, f"Could not find bin for mass value of {massBinCenterForWeighting} {cfg.massBinning.var.unit}"
               momentResultsForBin = momentResults[massBinIndexForMoments]
               print(f"Weighting events with intensity function using moment values in mass bin {massBinIndexForMoments} at {momentResultsForBin.binCenters[cfg.massBinning.var]:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
+              beamsPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
               weightDataWithIntensityFormula(
-                inputDataDef         = (
-                  inputDataDef[0],
-                  f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{inputDataDef[1]}",
-                  inputDataDef[2],
-                  inputDataDef[3],
-                ) if isinstance(inputDataDef, tuple) else inputDataDef,
+                inputDataDef         = inputDataDef,
                 massBinning          = massBinningForWeighting,
                 massBinIndex         = massBinIndexForWeighting,
                 intensityFormula     = momentResultsForBin.intensityFormula(
-                  polarization      = "beamPol",  # read polarization from tree column
+                  polarization      = "beamPol" if beamsPolInfo is not None else None,
                   thetaFormula      = "theta",
                   phiFormula        = "phi",
                   PhiFormula        = "Phi",
@@ -353,16 +335,15 @@ if __name__ == "__main__":
                 ),
                 weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndexForWeighting}.root",
                 cfg                  = cfg,
-                dataCfg              = dataCfg,
                 seed                 = 12345 + massBinIndexForWeighting,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
-                beamPolInfo          = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] if isinstance(inputDataDef, tuple) else None,  #TODO is it correct to use no polarization info when weighting phase-space data?
+                beamPolInfo          = beamsPolInfo,
                 limitNmbEventsTo     = limitNmbEventsTo,
               )
               if makeIntensityFcnPlots:
                 plotIntensityFcn(
                   momentResults     = momentResultsForBin,
                   massBinIndex      = massBinIndexForWeighting,
-                  beamPolInfo       = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],  #TODO consistency of polarization value is only ensured for raw data
+                  beamPolInfo       = beamsPolInfo,
                   outputDirName     = weightedDataDirName,
                   useIntensityTerms = useIntensityTerms,
                 )
@@ -377,14 +358,15 @@ if __name__ == "__main__":
 
             if reweightMassDistribution:
               # reweight mass distribution of merged file
+              treeName           = cfg.inputTreeName if (isinstance(inputDataDef, tuple) and inputDataDef[1]) else cfg.convertedTreeName
               reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
                 reweightKinDistribution(
-                  dataToWeight    = ROOT.RDataFrame(cfg.convertedTreeName, mergedFileName),  # load merged data file created in step above
-                  treeName        = cfg.convertedTreeName,
+                  dataToWeight    = ROOT.RDataFrame(treeName, mergedFileName),  # load merged data file created in step above
                   binning         = massBinningForWeighting,
-                  targetDistrFrom = dataCfg.dataFileName,  # match measured mass distribution
-                  # targetDistrFrom = momentResults,  # match acceptance-corrected mass distribution, i.e. H_0(0, 0)
+                  treeName        = cfg.convertedTreeName,
+                  targetDistrFrom = cfg.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel),  # match measured mass distribution
+                  # targetDistrFrom = momentResults,  # match acceptance-corrected mass distribution given by H_0(0, 0)
                   outFileName     = reweightedFileName,
                 )
 
