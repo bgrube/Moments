@@ -90,7 +90,7 @@ def makePlots(
   pdfFileNameSuffix:     str = "",
   yAxisLabel:            str = "RF-Sideband Subtracted Combos",
   weightedMcScaleFactor: float | None = None,  # if float, all weighted-MC histograms are scaled by this factor; if None, each weighted-MC histogram is scaled to integral of corresponding real-data histogram
-  nmbBinsAzim:           int = 72,   # number of bins for angular variables
+  nmbBinsAzim:           int = 72,   # number of bins for azimuthal variables
   nmbBinsOther:          int = 100,  # number of bins for other variables
   massBinning:           tuple[int, float, float] = (50, 0.28, 2.28),  # binning for mass variable in histograms of distributions in X rest frame
 ) -> None:
@@ -201,91 +201,100 @@ def makePlots(
       # hists.append(bookHistogram(df, histDef, applyWeights = (dataToOverlayField.name == "realData" and df.HasColumn("eventWeight"))))
       hists.append(bookHistogram(df, histDef, applyWeights = df.HasColumn("eventWeight")))
     setattr(histsToOverlay, dataToOverlayField.name, hists)
-  for histRealData, histWeightedMc in zip(histsToOverlay.realData, histsToOverlay.weightedMc):
-    print(f"Comparing histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
-    if weightedMcScaleFactor is None:
-      # compute scale factor from integrals
+  outRootFilePath = f"{outputDirPath}/plots.root"
+  with ROOT.TFile.Open(outRootFilePath, "RECREATE"):
+    print(f"Writing histograms to '{outRootFilePath}'")
+    for histRealData, histWeightedMc in zip(histsToOverlay.realData, histsToOverlay.weightedMc):
+      print(f"Comparing histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
       weightedMcIntegral = histWeightedMc.Integral()
-      if weightedMcIntegral != 0:
-        weightedMcScaleFactor = histRealData.Integral() / weightedMcIntegral
-      else:
-        print(f"??? Warning: weighted-MC histogram '{histWeightedMc.GetName()}' has zero integral, cannot normalize to real data!")
-    if weightedMcScaleFactor is not None:
-      print(f"Scaling weighted-MC histogram '{histWeightedMc.GetName()}' by factor {weightedMcScaleFactor:.6f}'")
-      histWeightedMc.Scale(weightedMcScaleFactor)  # scale weighted MC either by computed or given factor
-    histRealData.SetMinimum  (0)
-    histWeightedMc.SetMinimum(0)  # needs to be set after Scale()
-    # generate plots
-    ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
-    if histRealData.GetDimension() == 1:
-      # generate 1D overlay plots
-      print(f"Overlaying 1D histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
-      print("(under-, overflow) fractions: "
-            f"'{histRealData.GetName()  }' = ({histRealData.GetBinContent(0)                            / histRealData.Integral()}, "
-                                            f"{histRealData.GetBinContent(histRealData.GetNbinsX() + 1) / histRealData.Integral()})"
-            f" and '{histWeightedMc.GetName()}' = ({histWeightedMc.GetBinContent(0)                              / histWeightedMc.Integral()}, "
-                                                 f"{histWeightedMc.GetBinContent(histWeightedMc.GetNbinsX() + 1) / histWeightedMc.Integral()})")
-      ROOT.gStyle.SetOptStat(False)
-      canv = ROOT.TCanvas()
-      histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
-      histRealData.SetTitle  ("Real data")
-      histWeightedMc.SetTitle("Weighted MC")
-      histRealData.SetLineColor  (ROOT.kRed + 1)
-      histWeightedMc.SetLineColor(ROOT.kBlue + 1)
-      histRealData.SetMarkerColor  (ROOT.kRed + 1)
-      histWeightedMc.SetMarkerColor(ROOT.kBlue + 1)
-      histWeightedMc.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
-      histStack.Add(histWeightedMc.GetValue(), "HIST E")
-      histStack.Add(histRealData.GetValue(),   "E")
-      histStack.Draw("NOSTACK")
-      histStack.SetMaximum(1.1 * max(histRealData.GetMaximum(), histWeightedMc.GetMaximum()))
-      histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
-      histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
-      canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
-      histStack.SetTitle(f"#it{{#chi}}^{{2}}/bin = {histWeightedMc.Chi2Test(histRealData.GetValue(), 'WW P CHI2/NDF'):.2g}")
+      if weightedMcScaleFactor is None:
+        # compute scale factor from integrals
+        if weightedMcIntegral != 0:
+          weightedMcScaleFactor = histRealData.Integral() / weightedMcIntegral
+        else:
+          print(f"??? Warning: weighted-MC histogram '{histWeightedMc.GetName()}' has zero integral, cannot normalize to real data!")
+      if weightedMcScaleFactor is not None:
+        print(f"Scaling weighted-MC histogram '{histWeightedMc.GetName()}' by factor {weightedMcScaleFactor:.6f}'")
+        histWeightedMc.Scale(weightedMcScaleFactor)  # scale weighted MC either by computed or given factor
+      histRealData.SetMinimum  (0)
+      histWeightedMc.SetMinimum(0)  # needs to be set after Scale()
+      # generate plots
+      ROOT.TH1.SetDefaultSumw2(True)  # use sqrt(sum of squares of weights) as uncertainty
+      if histRealData.GetDimension() == 1:
+        # generate 1D overlay plots
+        print(f"Overlaying 1D histograms '{histRealData.GetName()}' and '{histWeightedMc.GetName()}'")
+        realDataIntegral = histRealData.Integral()
+        if realDataIntegral != 0 and weightedMcIntegral != 0:
+          print("(under-, overflow) fractions: "
+                f"'{histRealData.GetName()  }' = ({histRealData.GetBinContent(0)                            / realDataIntegral}, "
+                                                f"{histRealData.GetBinContent(histRealData.GetNbinsX() + 1) / realDataIntegral})"
+                f" and '{histWeightedMc.GetName()}' = ({histWeightedMc.GetBinContent(0)                              / weightedMcIntegral}, "
+                                                    f"{histWeightedMc.GetBinContent(histWeightedMc.GetNbinsX() + 1) / weightedMcIntegral})")
+        ROOT.gStyle.SetOptStat(False)
+        canv = ROOT.TCanvas()
+        histStack = ROOT.THStack(histWeightedMc.GetName(), histWeightedMc.GetTitle())
+        histRealData.SetTitle  ("Real data")
+        histWeightedMc.SetTitle("Weighted MC")
+        histRealData.SetLineColor  (ROOT.kRed + 1)
+        histWeightedMc.SetLineColor(ROOT.kBlue + 1)
+        histRealData.SetMarkerColor  (ROOT.kRed + 1)
+        histWeightedMc.SetMarkerColor(ROOT.kBlue + 1)
+        histWeightedMc.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
+        histStack.Add(histWeightedMc.GetValue(), "HIST E")
+        histStack.Add(histRealData.GetValue(),   "E")
+        histStack.Draw("NOSTACK")
+        histStack.SetMaximum(1.1 * max(histRealData.GetMaximum(), histWeightedMc.GetMaximum()))
+        histStack.GetXaxis().SetTitle(histWeightedMc.GetXaxis().GetTitle())
+        histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
+        canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
+        histStack.SetTitle(f"#it{{#chi}}^{{2}}/bin = {histWeightedMc.Chi2Test(histRealData.GetValue(), 'WW P CHI2/NDF'):.2g}")
         canv.SaveAs(f"{outputDirPath}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
-    elif histRealData.GetDimension() == 2:
-      # generate 2D comparison plots
-      histRealData.SetTitle  ("Real data")
-      histWeightedMc.SetTitle("Weighted MC")
-      print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
-      ROOT.gStyle.SetOptStat("i")
-      canv = ROOT.TCanvas()
-      maxZ = histRealData.GetMaximum()
-      histRealData.SetMaximum(maxZ)
-      histRealData.Draw("COLZ")
-      adjustStatsBox(canv)
+        histStack.Write()
+      elif histRealData.GetDimension() == 2:
+        # generate 2D comparison plots
+        histRealData.SetTitle  ("Real data")
+        histWeightedMc.SetTitle("Weighted MC")
+        print(f"Plotting real-data 2D histogram '{histRealData.GetName()}'")
+        ROOT.gStyle.SetOptStat("i")
+        canv = ROOT.TCanvas()
+        maxZ = histRealData.GetMaximum()
+        histRealData.SetMaximum(maxZ)
+        histRealData.Draw("COLZ")
+        adjustStatsBox(canv)
         canv.SaveAs(f"{outputDirPath}/{histRealData.GetName()}{pdfFileNameSuffix}.pdf")
-      print(f"Plotting weighted-MC 2D histogram '{histWeightedMc.GetName()}'")
-      canv = ROOT.TCanvas()
-      histWeightedMc.SetMaximum(maxZ)
-      histWeightedMc.Draw("COLZ")
-      adjustStatsBox(canv)
+        histRealData.Write()
+        print(f"Plotting weighted-MC 2D histogram '{histWeightedMc.GetName()}'")
+        canv = ROOT.TCanvas()
+        histWeightedMc.SetMaximum(maxZ)
+        histWeightedMc.Draw("COLZ")
+        adjustStatsBox(canv)
         canv.SaveAs(f"{outputDirPath}/{histWeightedMc.GetName()}{pdfFileNameSuffix}.pdf")
-      print(f"Plotting pulls of 2D histograms '{histRealData.GetName()}' - '{histWeightedMc.GetName()}'")
-      ROOT.gStyle.SetOptStat(False)
-      histPulls = histRealData.Clone(f"{histWeightedMc.GetName()}_pulls")
-      histPulls.Add(histWeightedMc.GetValue(), -1)  # real data - weighted MC
-      # divide each bin by its uncertainty to get pull
-      for xBin in range(1, histPulls.GetNbinsX() + 1):
-        for yBin in range(1, histPulls.GetNbinsY() + 1):
-          binError = histPulls.GetBinError(xBin, yBin)
-          if binError > 0:
-            histPulls.SetBinContent(xBin, yBin, histPulls.GetBinContent(xBin, yBin) / binError)
-          else:
-            histPulls.SetBinContent(xBin, yBin, 0)
-      histPulls.SetTitle("(Real data#minusWeighted MC)/#sigma_{Real data}")
-      canv = ROOT.TCanvas()
-      # draw pull plot with pos/neg color palette and symmetric z axis
-      ROOT.gStyle.SetPalette(ROOT.kLightTemperature)
-      zRange = max(abs(histPulls.GetMinimum()), abs(histPulls.GetMaximum()))
-      histPulls.SetMinimum(-zRange)
-      histPulls.SetMaximum(+zRange)
-      histPulls.Draw("COLZ")
+        histWeightedMc.Write()
+        print(f"Plotting pulls of 2D histograms '{histRealData.GetName()}' - '{histWeightedMc.GetName()}'")
+        ROOT.gStyle.SetOptStat(False)
+        histPulls = histRealData.Clone(f"{histWeightedMc.GetName()}_pulls")
+        histPulls.Add(histWeightedMc.GetValue(), -1)  # real data - weighted MC
+        # divide each bin by its uncertainty to get pull
+        for xBin in range(1, histPulls.GetNbinsX() + 1):
+          for yBin in range(1, histPulls.GetNbinsY() + 1):
+            binError = histPulls.GetBinError(xBin, yBin)
+            if binError > 0:
+              histPulls.SetBinContent(xBin, yBin, histPulls.GetBinContent(xBin, yBin) / binError)
+            else:
+              histPulls.SetBinContent(xBin, yBin, 0)
+        histPulls.SetTitle("(Real data#minusWeighted MC)/#sigma_{Real data}")
+        canv = ROOT.TCanvas()
+        # draw pull plot with pos/neg color palette and symmetric z axis
+        ROOT.gStyle.SetPalette(ROOT.kLightTemperature)
+        zRange = max(abs(histPulls.GetMinimum()), abs(histPulls.GetMaximum()))
+        histPulls.SetMinimum(-zRange)
+        histPulls.SetMaximum(+zRange)
+        histPulls.Draw("COLZ")
         canv.SaveAs(f"{outputDirPath}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
-      ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
-    else:
-      raise RuntimeError(f"Unsupported histogram type '{histRealData.ClassName()}'")
+        histPulls.Write()
+        ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+      else:
+        raise RuntimeError(f"Unsupported histogram type '{histRealData.ClassName()}'")
 
 
 if __name__ == "__main__":
