@@ -27,7 +27,7 @@ if __name__ == "__main__":
   parser.add_argument("--sigFilePath",         type = str,                          help = "Path to ROOT file with signal events")
   parser.add_argument("--bkgFilePath",         type = str,                          help = "Path to ROOT file with background events")
   parser.add_argument("--inTreeName",          type = str,                          help = "Name of tree in input files")
-  parser.add_argument("--outFileName",         type = str,                          help = "Path of output ROOT file")
+  parser.add_argument("--outFilePath",         type = str,                          help = "Path of output ROOT file")
   parser.add_argument("--outTreeName",         type = str, default = None,          help = "Name of the output tree (default: name of input tree)")
   parser.add_argument("--sigWeightFormula",    type = str, default = "1.0",         help = "Formula for calculating the event weight for signal events (default: '%(default)s')")
   parser.add_argument("--bkgWeightFormula",    type = str, default = "-1.0",        help = "Formula for calculating the event weight for background events (default: '%(default)s')")
@@ -45,8 +45,8 @@ if __name__ == "__main__":
     bkgRegionWeightFormula  = args.bkgWeightFormula,
     weightColNameOutput     = args.weightColNameOutput,
   )
-  print(f"Writing merged tree '{args.outTreeName}' to file '{args.outFileName}'")
-  mergedDf = mergedDf.Snapshot(args.outTreeName, args.outFileName)
+  print(f"Writing merged tree '{args.outTreeName}' to file '{args.outFilePath}'")
+  mergedDf = mergedDf.Snapshot(args.outTreeName, args.outFilePath)
 
   timer.stop("Total execution time")
   print(timer.summary)
