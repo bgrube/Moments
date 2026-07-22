@@ -302,24 +302,31 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
 
 
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)
-  # massBinning  = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)
-
-  cfg = deepcopy(CFG_POLARIZED_ETAPI0)
-  BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
-  BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
-  nmbBinsAzim  = 36  # number of bins for angular variables
-  nmbBinsOther = 50  # number of bins for other variables
-  massBinning  = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72)
+  cfg = deepcopy(CFG_POLARIZED_PIPI)
+  massBinning  = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)
   additionalColumnDefs = {
-    "realData"   : {"eventWeight" : "weightASBS"},  # use this column as event weights for real data
-    "weightedMc" : {},                              # no additional columns to define for weighted MC
+    "realData"   : {},  # no additional columns to define for real data
+    "weightedMc" : {},  # no additional columns to define for weighted MC
   }
-  additionalFilterDefs = [f"(({massBinning.minVal} < mass{cfg.subsystem.pairLabel}) && (mass{cfg.subsystem.pairLabel} < {massBinning.maxVal}))"]
+  additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)"]
+  nmbBinsAzim  = 72   # number of bins for azimuthal variables
+  nmbBinsOther = 100  # number of bins for other variables
 
-  useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL
-  # useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.PARITY_CONSERVING
-  # useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.PARITY_VIOLATING
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)
+  # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
+  # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
+  # massBinning  = HistAxisBinning(nmbBins = 17, minVal = 1.04, maxVal = 1.72)
+  # additionalColumnDefs = {
+  #   "realData"   : {"eventWeight" : "weightASBS"},  # use this column as event weights for real data
+  #   "weightedMc" : {},                              # no additional columns to define for weighted MC
+  # }
+  # additionalFilterDefs = [f"(({massBinning.minVal} < mass{cfg.subsystem.pairLabel}) && (mass{cfg.subsystem.pairLabel} < {massBinning.maxVal}))"]
+  # nmbBinsAzim  = 36  # number of bins for azimuthal variables
+  # nmbBinsOther = 50  # number of bins for other variables
+
+  useIntensityTerms = MomentResult.IntensityTermsType.ALL
+  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING
+  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING
 
   print(f"Using analysis configuration:\n{cfg}")
   print(f"Generating weighted MC plots for subsystem '{cfg.subsystem}':")
@@ -328,7 +335,7 @@ if __name__ == "__main__":
     for tBinLabel in cfg.tBinLabels:
       print(f"Generating plots for t bin '{tBinLabel}':")
       for beamPolLabel in cfg.beamPolLabels:
-        beamPolInfo = BEAM_POL_INFOS[dataPeriod][beamPolLabel]
+        beamPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
         print(f"Generating plots for beam-polarization orientation '{beamPolLabel}': {beamPolInfo}")
         inputFilePath = cfg.inputFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel)
         for maxL in cfg.maxLs:
@@ -349,7 +356,7 @@ if __name__ == "__main__":
               df                   = df,
               inputDataFormat      = AnalysisConfig.DataFormat.AMPTOOLS,
               subsystem            = cfg.subsystem,
-              beamPolInfo          = BEAM_POL_INFOS[dataPeriod][beamPolLabel],
+              beamPolInfo          = beamPolInfo,
               additionalColumnDefs = additionalColumnDefs[dataToOverlayField.name],
               additionalFilterDefs = additionalFilterDefs,  # apply additional filters to both real data and weighted MC
             )
