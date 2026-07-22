@@ -327,12 +327,13 @@ def reweightData(
   weightsHist = targetDistr.Clone("weightsHist")
   weightsHist.SetTitle("Weights")
   weightsHist.Divide(currentDistr)
-  if True:
-  # if False:
+  # if True:
+  if False:
     # save plots of distributions
     for hist in (currentDistr, targetDistr, weightsHist):
       canv = ROOT.TCanvas()
       hist.Draw()
+      #TODO write files into correct output directory
       canv.SaveAs(f"{hist.GetName()}.root")
   # add columns for rejection sampling to input data
   declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
@@ -360,8 +361,8 @@ def reweightData(
 
 def reweightKinDistribution(
   dataToWeight:    ROOT.RDataFrame,  # data to reweight
-  treeName:        str,              # name of TTree holding the data
   binning:         HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
+  treeName:        str,              # name of TTree holding the data
   targetDistrFrom: str | MomentResultsKinematicBinning,  # construct target distribution from given data file name or from H_0(0, 0) in given moment results
   outFileName:     str,  # name of file to write data into
   outputColumns:   Sequence[str] = (),  # columns to write into output file; if empty, all columns are written
