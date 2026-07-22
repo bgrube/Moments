@@ -24,6 +24,7 @@ from AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
   CFG_POLARIZED_KSKL,
+  CFG_POLARIZED_PIPI,
   defineOverwriteRDataFrame,
   SubsystemInfo,
 )
@@ -269,15 +270,16 @@ def bookHistograms(
         HistogramDefinition(f"massA{histNameSuffix}",             title + f";m_{{{ATLatex}}} [GeV];"                   + yAxisLabel, ((100,   0,    1  ), ), ("massA",             ), filter),
         HistogramDefinition(f"massB{histNameSuffix}",             title + f";m_{{{BTLatex}}} [GeV];"                   + yAxisLabel, ((100,   0,    1  ), ), ("massB",             ), filter),
         # 2D histograms
-        HistogramDefinition(f"momLabYRecoilVsMomLabXRecoil{histNameSuffix}",       title + f";p_{{x}}^{{{recoilTLatex}}} [GeV];p_{{y}}^{{{recoilTLatex}}} [GeV];",             ((100, -0.5, +0.5), (100,  -0.5, +0.5)), ("momLabXRecoil",     "momLabYRecoil"     ), filter),
-        HistogramDefinition(f"momLabYAVsMomLabXA{histNameSuffix}",                 title + f";p_{{x}}^{{{ATLatex}}} [GeV];p_{{y}}^{{{ATLatex}}} [GeV];",                       ((100, -0.8, +0.8), (100,  -0.8, +0.8)), ("momLabXA",          "momLabYA"          ), filter),
-        HistogramDefinition(f"momLabYBVsMomLabXB{histNameSuffix}",                 title + f";p_{{x}}^{{{BTLatex}}} [GeV];p_{{y}}^{{{BTLatex}}} [GeV];",                       ((100, -0.8, +0.8), (100,  -0.8, +0.8)), ("momLabXB",          "momLabYB"          ), filter),
-        HistogramDefinition(f"thetaLabRecoilDegVsMomLabRecoil{histNameSuffix}",    title + f";p_{{{recoilTLatex}}} [GeV];#theta_{{{recoilTLatex}}}^{{lab}} [deg]",             ((100,  0,    1  ), (100,  60,   80  )), ("momLabRecoil",      "thetaLabRecoilDeg" ), filter),
-        HistogramDefinition(f"thetaLabADegVsMomLabA{histNameSuffix}",              title + f";p_{{{ATLatex}}} [GeV];#theta_{{{ATLatex}}}^{{lab}} [deg]",                       ((100,  0,   10  ), (100,   0,   30  )), ("momLabA",           "thetaLabADeg"      ), filter),
-        HistogramDefinition(f"thetaLabBDegVsMomLabB{histNameSuffix}",              title + f";p_{{{BTLatex}}} [GeV];#theta_{{{BTLatex}}}^{{lab}} [deg]",                       ((100,  0,   10  ), (100,   0,   30  )), ("momLabB",           "thetaLabBDeg"      ), filter),
-        HistogramDefinition(f"phiLabRecoilDegVsThetaLabRecoilDeg{histNameSuffix}", title + f";#theta_{{{recoilTLatex}}}^{{lab}} [deg];#phi_{{{recoilTLatex}}}^{{lab}} [deg];", ((100, 60,   80  ), (72, -180, +180  )), ("thetaLabRecoilDeg", "phiLabRecoilDeg"   ), filter),
-        HistogramDefinition(f"phiLabADegVsThetaLabADeg{histNameSuffix}",           title + f";#theta_{{{ATLatex}}}^{{lab}} [deg];#phi_{{{ATLatex}}}^{{lab}} [deg];",           ((100,  0,   30  ), (72, -180, +180  )), ("thetaLabADeg",      "phiLabADeg"        ), filter),
-        HistogramDefinition(f"phiLabBDegVsThetaLabBDeg{histNameSuffix}",           title + f";#theta_{{{BTLatex}}}^{{lab}} [deg];#phi_{{{BTLatex}}}^{{lab}} [deg];",           ((100,  0,   30  ), (72, -180, +180  )), ("thetaLabBDeg",      "phiLabBDeg"        ), filter),
+        HistogramDefinition(f"momLabYRecoilVsMomLabXRecoil{histNameSuffix}",       title + f";p_{{x}}^{{{recoilTLatex}}} [GeV];p_{{y}}^{{{recoilTLatex}}} [GeV];",             ((100,  -0.5, +0.5), (100,  -0.5, +0.5)), ("momLabXRecoil",     "momLabYRecoil"     ), filter),
+        HistogramDefinition(f"momLabYAVsMomLabXA{histNameSuffix}",                 title + f";p_{{x}}^{{{ATLatex}}} [GeV];p_{{y}}^{{{ATLatex}}} [GeV];",                       ((100,  -0.8, +0.8), (100,  -0.8, +0.8)), ("momLabXA",          "momLabYA"          ), filter),
+        HistogramDefinition(f"momLabYBVsMomLabXB{histNameSuffix}",                 title + f";p_{{x}}^{{{BTLatex}}} [GeV];p_{{y}}^{{{BTLatex}}} [GeV];",                       ((100,  -0.8, +0.8), (100,  -0.8, +0.8)), ("momLabXB",          "momLabYB"          ), filter),
+        HistogramDefinition(f"thetaLabRecoilDegVsMomLabRecoil{histNameSuffix}",    title + f";p_{{{recoilTLatex}}} [GeV];#theta_{{{recoilTLatex}}}^{{lab}} [deg]",             ((100,   0,    1  ), (100,  60,   80  )), ("momLabRecoil",      "thetaLabRecoilDeg" ), filter),
+        HistogramDefinition(f"thetaLabADegVsMomLabA{histNameSuffix}",              title + f";p_{{{ATLatex}}} [GeV];#theta_{{{ATLatex}}}^{{lab}} [deg]",                       ((100,   0,   10  ), (100,   0,   30  )), ("momLabA",           "thetaLabADeg"      ), filter),
+        HistogramDefinition(f"thetaLabBDegVsMomLabB{histNameSuffix}",              title + f";p_{{{BTLatex}}} [GeV];#theta_{{{BTLatex}}}^{{lab}} [deg]",                       ((100,   0,   10  ), (100,   0,   30  )), ("momLabB",           "thetaLabBDeg"      ), filter),
+        HistogramDefinition(f"phiLabRecoilDegVsThetaLabRecoilDeg{histNameSuffix}", title + f";#theta_{{{recoilTLatex}}}^{{lab}} [deg];#phi_{{{recoilTLatex}}}^{{lab}} [deg];", ((100,  60,   80  ), (72, -180, +180  )), ("thetaLabRecoilDeg", "phiLabRecoilDeg"   ), filter),
+        HistogramDefinition(f"phiLabBDegVsphiLabADeg{histNameSuffix}",             title + f";#phi_{{{ATLatex}}}^{{lab}} [deg];#phi_{{{BTLatex}}}^{{lab}} [deg];",             ((72, -180, +180  ), (72, -180, +180  )), ("phiLabADeg",        "phiLabBDeg"        ), filter),
+        HistogramDefinition(f"phiLabADegVsThetaLabADeg{histNameSuffix}",           title + f";#theta_{{{ATLatex}}}^{{lab}} [deg];#phi_{{{ATLatex}}}^{{lab}} [deg];",           ((100,   0,   30  ), (72, -180, +180  )), ("thetaLabADeg",      "phiLabADeg"        ), filter),
+        HistogramDefinition(f"phiLabBDegVsThetaLabBDeg{histNameSuffix}",           title + f";#theta_{{{BTLatex}}}^{{lab}} [deg];#phi_{{{BTLatex}}}^{{lab}} [deg];",           ((100,   0,   30  ), (72, -180, +180  )), ("thetaLabBDeg",      "phiLabBDeg"        ), filter),
       ]
 
   # define histograms for angular distributions of the subsystem
@@ -295,6 +297,8 @@ def bookHistograms(
       # 2D histograms
       HistogramDefinition(f"anglesHF{pairLabel}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg")),
       HistogramDefinition(f"anglesGJ{pairLabel}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg")),
+      HistogramDefinition(f"phiHF{pairLabel}DegVsPhiLabADeg", f"{title};#phi_{{{ATLatex}}}^{{lab}} [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"phiLabADeg", f"phiHF{pairLabel}Deg")),
+      HistogramDefinition(f"phiHF{pairLabel}DegVsPhiLabBDeg", f"{title};#phi_{{{BTLatex}}}^{{lab}} [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"phiLabBDeg", f"phiHF{pairLabel}Deg")),
     ]
     if beamPolInfo is not None:
       histDefs += [
@@ -546,15 +550,17 @@ if __name__ == "__main__":
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
   }
 
-  # parameters for polarized K_S K_L data
-  cfg = deepcopy(CFG_POLARIZED_KSKL)
-  # massBinning = HistAxisBinning(nmbBins = 17, minVal  = 1.04, maxVal  = 1.72)  # generate plots in these bins
-  subsystemMassBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins
-  additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
+  cfg = deepcopy(CFG_POLARIZED_PIPI)
+  subsystemMassBinning = None  # do not generate plots in mass bins
+  additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
+    AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"],
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"],
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"],
+  }
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)
+  # subsystemMassBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins; generate plots for these mass bins
+  # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
   # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
-  # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"]  #kinematic range used in SDME analysis
-  # useSeparateBackgroundFiles = True  # if True, signal and background regions are stored in separate input files
-  useSeparateBackgroundFiles = False
   # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
   # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
 
