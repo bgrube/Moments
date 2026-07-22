@@ -285,10 +285,10 @@ def defineDataFrameColumns(
   return df
 
 
-def readDataJpac(inputFileName: str) -> ROOT.RDataFrame:
+def readDataJpac(inputFilePath: str) -> ROOT.RDataFrame:
   """Reads JPAC data from an ASCII file into a ROOT RDataFrame"""
-  print(f"Reading file '{inputFileName}'")
-  pandasDf = pd.read_csv(inputFileName, sep = r"\s+")
+  print(f"Reading file '{inputFilePath}'")
+  pandasDf = pd.read_csv(inputFilePath, sep = r"\s+")
   pandasDf["t"]  *= -1.0  # flip sign of t to make it positive
   pandasDf["phi"] = np.degrees(pandasDf["phi"])  # convert to angle to degrees
   pandasDf.loc[pandasDf["phi"] > 180, "phi"] -= 360  # shift phi angle into [-180, +180] deg range by applying (if phi > 180 then phi -= 360)
@@ -341,9 +341,9 @@ def reweightData(
     dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
                 .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
   )
-  tmpFileName = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
-  dataToWeight.Snapshot(treeName, tmpFileName)  # write unweighted data to temporary file to ensure that random column is filled only once
-  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)  # read data back from temporary file
+  tmpFilePath = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
+  dataToWeight.Snapshot(treeName, tmpFilePath)  # write unweighted data to temporary file to ensure that random column is filled only once
+  dataToWeight = ROOT.RDataFrame(treeName, tmpFilePath)  # read data back from temporary file
   nmbEvents = dataToWeight.Count().GetValue()  # number of events before reweighting
   # determine maximum weight
   maxWeight = dataToWeight.Max("reweightingWeight").GetValue()
@@ -355,7 +355,7 @@ def reweightData(
   )
   nmbWeightedEvents = reweightedData.Count().GetValue()
   print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
-  # subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  #TODO this does not work as the RDataFrame based on this file is passed to the calling code
+  # subprocess.run(f"rm --force --verbose {tmpFilePath}", shell = True)  #TODO this does not work as the RDataFrame based on this file is passed to the calling code
   return reweightedData
 
 
@@ -364,7 +364,7 @@ def reweightKinDistribution(
   binning:         HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
   treeName:        str,              # name of TTree holding the data
   targetDistrFrom: str | MomentResultsKinematicBinning,  # construct target distribution from given data file name or from H_0(0, 0) in given moment results
-  outFileName:     str,  # name of file to write data into
+  outFilePath:     str,  # name of file to write data into
   outputColumns:   Sequence[str] = (),  # columns to write into output file; if empty, all columns are written
 ) -> None:
   """Reweights distribution of given kinematic variable of given data according to the kinematic distribution of data in given file name or according to kinematic dependence of H_0(0, 0) in given moment results"""
@@ -399,8 +399,8 @@ def reweightKinDistribution(
     variableName = binning.var.name,
     targetDistr  = targetDistr,
   )
-  print(f"Writing reweighted data to file '{outFileName}'")
-  reweightedData.Snapshot(treeName, outFileName, originalColumns if not outputColumns else outputColumns)
+  print(f"Writing reweighted data to file '{outFilePath}'")
+  reweightedData.Snapshot(treeName, outFilePath, originalColumns if not outputColumns else outputColumns)
   if True:
   # if False:
     # overlay target distribution and distribution after reweighting
@@ -419,7 +419,7 @@ def reweightKinDistribution(
     canv = ROOT.TCanvas()
     histStack.Draw("NOSTACK")
     canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-    canv.SaveAs(f"{outFileName}.{binning.var.name}.pdf")
+    canv.SaveAs(f"{outFilePath}.{binning.var.name}.pdf")
 
 
 if __name__ == "__main__":
@@ -503,7 +503,7 @@ if __name__ == "__main__":
             additionalColumnDefs = additionalColumnDefs[inputDataType],
             additionalFilterDefs = additionalFilterDefs[inputDataType],
           ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
-          outputFileName = cfg.convertedFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
+          outputFilePath = cfg.convertedFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
           outputTreeName = cfg.subsystem.pairLabel
           outputColumns  = outputColumnsUnpolarized
           if beamPolInfo is not None:
@@ -513,7 +513,7 @@ if __name__ == "__main__":
           if reweightAccPSMCMinusTDistribution and inputDataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
             #TODO this is currently only implemented for the bin 0.1 < |t| < 0.2 GeV^2
             # reweight -t distribution to match that of real data
-            outputFileNameReweighted = outputFileName.replace(".root", ".reweighted_minusT.root")
+            reweightedFilePath = outputFilePath.replace(".root", ".reweighted_minusT.root")
             reweightKinDistribution(
               dataToWeight    = df,
               treeName        = outputTreeName,
@@ -521,13 +521,13 @@ if __name__ == "__main__":
                 nmbBins = 50, minVal = 0.1, maxVal = 0.2,
                 _var = KinematicBinningVariable(name= "minusT", label = "#minus#it{t}", unit = "GeV^{2}/#it{c}^{2}", nmbDigits = 3),
               ),
-              targetDistrFrom = f"{os.path.dirname(outputFileName)}/data_flat_{beamPolLabel}.root",
-              outFileName     = outputFileNameReweighted,
+              targetDistrFrom = f"{os.path.dirname(outputFilePath)}/data_flat_{beamPolLabel}.root",
+              outFilePath     = reweightedFilePath,
               outputColumns   = outputColumns,
             )
           else:
-            print(f"Writing columns {outputColumns} to tree '{outputTreeName}' in file '{outputFileName}'")
-            df.Snapshot(outputTreeName, outputFileName, outputColumns)
+            print(f"Writing columns {outputColumns} to tree '{outputTreeName}' in file '{outputFilePath}'")
+            df.Snapshot(outputTreeName, outputFilePath, outputColumns)
 
   timer.stop("Total execution time")
   print(timer.summary)

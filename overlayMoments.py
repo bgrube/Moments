@@ -165,18 +165,18 @@ if __name__ == "__main__":
         ("phys", cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = "PARA_0", maxL = 6), "L_{max} = 6", None),
         ("phys", cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = "PARA_0", maxL = 8), "L_{max} = 8", None),
       )
-      outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{dataPeriod}/{tBinLabel}.overlay")
-      # outputDirName = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{tBinLabel}.overlay")
+      outputDirPath = Utilities.makeDirPath(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}.overlay")
+      # outputDirPath = Utilities.makeDirPath(f"{cfg.outFileDirBaseName}/{tBinLabel}.overlay")
 
       # load moment results
       momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
-      for momentType, fitResultDirName, fitResultLabel, scaleFactor in fitResults:
-        print(f"Loading moment results from directory {fitResultDirName}")
-        momentResultsPhysFileName = f"{fitResultDirName}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
+      for momentType, fitResultDirPath, fitResultLabel, scaleFactor in fitResults:
+        print(f"Loading moment results from directory {fitResultDirPath}")
+        momentResultsPhysFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
         try:
-          momentResultsPhys = MomentResultsKinematicBinning.loadPickle(momentResultsPhysFileName)
+          momentResultsPhys = MomentResultsKinematicBinning.loadPickle(momentResultsPhysFilePath)
         except FileNotFoundError as e:
-          print(f"Cannot not find file '{momentResultsPhysFileName}'. Skipping directory '{fitResultDirName}'")
+          print(f"Cannot not find file '{momentResultsPhysFilePath}'. Skipping directory '{fitResultDirPath}'")
           continue
         momentResultsToOverlay[fitResultLabel] = (momentResultsPhys, scaleFactor)
 
@@ -204,7 +204,7 @@ if __name__ == "__main__":
           qnIndex                = qnIndex,
           binning                = cfg.massBinning,
           normalizedMoments      = cfg.normalizeMoments,
-          pdfFileNamePrefix      = f"{outputDirName}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
+          pdfFileNamePrefix      = f"{outputDirPath}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
           # styleIndexOffset       = 1,
           # styleIndexStride       = 2,
           # yAxisUnit              = " [#mub/GeV^{3}]",

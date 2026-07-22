@@ -83,20 +83,20 @@ def genDataFromIntensityFormula(
   intensityFcn.SetNpy(100)
   intensityFcn.SetNpz(100)
   # intensityFcn.SetMinimum(0)  # may be negative in pathological cases
-  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileBasePath}_intensity.pdf")
+  drawTF3(intensityFcn, **TH3_ANG_PLOT_KWARGS, outFilePath = f"{outFileBasePath}_intensity.pdf")
   #TODO check for negative intensity values for wave set containing only P_+1^+ wave
 
   # if file with generated data already exists, read it and return RDataFrame
-  fileName = f"{outFileBasePath}.root"
-  if not regenerateData and os.path.exists(fileName):
-    print(f"Reading generated MC data from existing file at '{fileName}'")
-    df = ROOT.RDataFrame(treeName, fileName)
+  filePath = f"{outFileBasePath}.root"
+  if not regenerateData and os.path.exists(filePath):
+    print(f"Reading generated MC data from existing file at '{filePath}'")
+    df = ROOT.RDataFrame(treeName, filePath)
     nmbEvents = df.Count().GetValue()
-    print(f"File '{fileName}' contains {nmbEvents} events")
+    print(f"File '{filePath}' contains {nmbEvents} events")
     return df
 
   # else generate data and write to file
-  print(f"Generating {nmbEvents} events and writing them to '{fileName}'")
+  print(f"Generating {nmbEvents} events and writing them to '{filePath}'")
   # Use TF3.GetRandom3() to generate random data points in angular space
   RootUtilities.declareInCpp(**{intensityFcn.GetName(): intensityFcn})  # use Python object in C++
   randomPointFcnCpp = f"""
@@ -122,7 +122,7 @@ def genDataFromIntensityFormula(
     print(f"Adding additional column '{colName}' with definitions '{colDefinitions}'")
     df = df.Define(colName, colDefinitions)
     columnsToWrite.append(colName)
-  return df.Snapshot(treeName, fileName, ROOT.std.vector[ROOT.std.string](columnsToWrite))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
+  return df.Snapshot(treeName, filePath, ROOT.std.vector[ROOT.std.string](columnsToWrite))  # snapshot is needed or else the `dataPoint` column would be regenerated for every triggered loop
 
 
 def genData(
@@ -145,7 +145,7 @@ def genData(
   efficiencyFcn.SetNpy(100)
   efficiencyFcn.SetNpz(100)
   drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, maxVal = 1.0,
-    outFileName = f"{outFileBasePath}_efficiency.pdf")
+    outFilePath = f"{outFileBasePath}_efficiency.pdf")
 
   # construct TF3 for intensity distribution in Eq. (171)
   # x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
@@ -233,8 +233,8 @@ if __name__ == "__main__":
   # ROOT.gStyle.SetOptStat(False)
 
   # set parameters of test case
-  # outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd")
-  outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.accFull.phys.holes.maxL_4")
+  # outputDirPath         = Utilities.makeDirPath("./plotsTestPhotoProd")
+  outputDirPath         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.accFull.phys.holes.maxL_4")
   # nmbDataEvents         = 1000
   # nmbAccPsEvents        = 1000000
   nmbDataEvents         = 10000000
@@ -271,9 +271,9 @@ if __name__ == "__main__":
 
   # redirect all console output below into log file
   thisSourceFileName = os.path.basename(__file__)
-  logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
-  print(f"Writing output to log file '{logFileName}'")
-  with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):
+  logFilePath = f"{outputDirPath}/{os.path.splitext(thisSourceFileName)[0]}.log"
+  print(f"Writing output to log file '{logFilePath}'")
+  with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):
     Utilities.printGitInfo()
     timer = Utilities.Timer()
     ROOT.gInterpreter.Declare(BIN_CONTENT_3D_FUNCTOR_CPP)
@@ -296,10 +296,10 @@ if __name__ == "__main__":
       # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
       accPsHistNameGen = "accPs3D"  # accFull
       # accPsHistNameGen = "accPs3D_even"  # accEven
-      accPsFileNameGen = f"./dataPhotoProdPiPi/{accPsHistNameGen}.root"
-      accPsFileGen = ROOT.TFile.Open(accPsFileNameGen, "READ")
+      accPsFilePathGen = f"./dataPhotoProdPiPi/{accPsHistNameGen}.root"
+      accPsFileGen = ROOT.TFile.Open(accPsFilePathGen, "READ")
       accPSHistGen = accPsFileGen[accPsHistNameGen]
-      print(f"Using 3D acceptance histogram '{accPSHistGen.GetName()}' in file '{accPsFileNameGen}' to generate events: min = {accPSHistGen.GetMinimum()}, max = {accPSHistGen.GetMaximum()}")
+      print(f"Using 3D acceptance histogram '{accPSHistGen.GetName()}' in file '{accPsFilePathGen}' to generate events: min = {accPSHistGen.GetMinimum()}, max = {accPSHistGen.GetMaximum()}")
       accPSHistGenFunctor = ROOT.BinContent3DFunctor(accPSHistGen)
       RootUtilities.declareInCpp(accPSHistGenFunctor = accPSHistGenFunctor)  # make Python object available to use in C++
       efficiencyFormula = f"(1 / {accPSHistGen.GetMaximum()}) * PyVars::accPSHistGenFunctor({xVar}, {yVar}, {zVar})"
@@ -353,10 +353,10 @@ if __name__ == "__main__":
       # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
       # accPsHistNameReco = "accPs3D"  # detuneAccFull
       # # accPsHistNameReco = "accPs3D_even"  # detuneAccEven
-      # accPsFileNameReco = f"./dataPhotoProdPiPi/{accPsHistNameReco}.root"
-      # accPsFileReco = ROOT.TFile.Open(accPsFileNameReco, "READ")
+      # accPsFilePathReco = f"./dataPhotoProdPiPi/{accPsHistNameReco}.root"
+      # accPsFileReco = ROOT.TFile.Open(accPsFilePathReco, "READ")
       # accPSHistReco = accPsFileReco[accPsHistNameReco]
-      # print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFileNameReco}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
+      # print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFilePathReco}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
       # accPSHistRecoFunctor = ROOT.BinContent3DFunctor(accPSHistReco)
       # RootUtilities.declareInCpp(accPSHistRecoFunctor = accPSHistRecoFunctor)  # make Python object available to use in C++
       # efficiencyFormulaReco = f"(1 / {accPSHistReco.GetMaximum()}) * PyVars::accPSHistRecoFunctor({xVar}, {yVar}, {zVar})"
@@ -376,9 +376,9 @@ if __name__ == "__main__":
       # calculate true moment values and generate data
       t = timer.start("Time to generate MC data")
       # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
-      momentResultsFileName = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_{maxL}/unnorm_moments_phys.pkl"
-      print(f"Reading moments from file '{momentResultsFileName}'")
-      HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)[11]  # pick [0.72, 0.76] GeV bin
+      momentResultsFilePath = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_{maxL}/unnorm_moments_phys.pkl"
+      print(f"Reading moments from file '{momentResultsFilePath}'")
+      HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)[11]  # pick [0.72, 0.76] GeV bin
       if True:
       # if False:
         # set all unphysical parts of moment values to zero
@@ -400,7 +400,7 @@ if __name__ == "__main__":
           polarization      = beamPolarization,
           # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
           inputData         = HTruth,
-          outFileBasePath   = f"{outputDirName}/data",
+          outFileBasePath   = f"{outputDirPath}/data",
           efficiencyFormula = efficiencyFormulaGen,  #TODO transform variables to (x, y, z)
           regenerateData    = False,
         )
@@ -419,7 +419,7 @@ if __name__ == "__main__":
           massBinning          = massBinning,
           massBinIndex         = 0,
           intensityFormula     = f"({intensityFormula}) * ({efficiencyFormulaGen})",
-          weightedDataFileName = f"{outputDirName}/data.root",
+          weightedDataFilePath = f"{outputDirPath}/data.root",
           cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),
           seed                 = 1234567890,
         )
@@ -442,7 +442,7 @@ if __name__ == "__main__":
                           ("theta", "std::acos(x)"), ("phi", "TMath::DegToRad() * y"), ("Phi", "TMath::DegToRad() * z")):
             formula = formula.replace(old, new)
           fcn = ROOT.TF3(label, formula, -1, +1, -180, +180, -180, +180)
-          drawTF3(fcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/{label}.pdf")
+          drawTF3(fcn, **TH3_ANG_PLOT_KWARGS, outFilePath = f"{outputDirPath}/{label}.pdf")
       # raise SystemExit("STOP")
 
       # generate accepted phase-space data
@@ -451,7 +451,7 @@ if __name__ == "__main__":
         dataAccPs = genDataFromIntensityFormula(
           nmbEvents        = nmbAccPsEvents,
           intensityFormula = efficiencyFormulaReco,
-          outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
+          outFileBasePath  = f"{outputDirPath}/acceptedPhaseSpace",
           regenerateData   = False,
         )
       else:
@@ -460,7 +460,7 @@ if __name__ == "__main__":
           massBinning          = massBinning,
           massBinIndex         = 0,
           intensityFormula     = efficiencyFormulaReco,
-          weightedDataFileName = f"{outputDirName}/acceptedPhaseSpace.root",
+          weightedDataFilePath = f"{outputDirPath}/acceptedPhaseSpace.root",
           cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),
           seed                 = 1234567890,
         )
@@ -496,8 +496,8 @@ if __name__ == "__main__":
             hist.GetYaxis().SetTitleOffset(2)
             hist.GetZaxis().SetTitleOffset(1.5)
             hist.Draw("BOX2Z")
-          canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
-          canv.SaveAs(f"{outputDirName}/{hist.GetName()}.root")
+          canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.pdf")
+          canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.root")
 
       # setup moment calculator
       momentIndices = MomentIndices(maxL)
@@ -516,7 +516,7 @@ if __name__ == "__main__":
             indicesMeas          = momentIndices,
             indicesPhys          = momentIndices,
             dataSet              = dataSet,
-            integralFileBaseName = f"{outputDirName}/integralMatrix",
+            integralFileBaseName = f"{outputDirPath}/integralMatrix",
             binCenters           = {binVarMass : massBinCenter},
           )
         )
@@ -532,8 +532,8 @@ if __name__ == "__main__":
       # plot acceptance integral matrices for all kinematic bins
       for HData in moments:
         label = binLabel(HData)
-        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirName}/I_acc_{label}")
-        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirName}/I_inv_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirPath}/I_acc_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirPath}/I_inv_{label}")
       t.stop()
 
       # calculate moments from data
@@ -553,7 +553,7 @@ if __name__ == "__main__":
           HData             = HPhys,
           normalizedMoments = False,
           HTruth            = momentResultsTruth[massBinIndex],
-          outFileNamePrefix = f"{outputDirName}/h{binLabel(HPhys)}_",
+          outFileNamePrefix = f"{outputDirPath}/h{binLabel(HPhys)}_",
         )
       if False:
         # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
@@ -564,7 +564,7 @@ if __name__ == "__main__":
             binning           = massBinning,
             normalizedMoments = False,
             momentResultsTrue = momentResultsTruth,
-            outFileNamePrefix = f"{outputDirName}/h",
+            outFileNamePrefix = f"{outputDirPath}/h",
             histTitle         = qnIndex.title,
           )
       t.stop()

@@ -167,7 +167,7 @@ def generateDataLegPolLC(
   canv.SaveAs(f"{outFileNamePrefix}hLegendrePolLC.pdf")
   # generate random data that follow linear combination of legendre polynomials
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{legendrePolLC.GetName()}.root"
+  filePath = f"{outFileNamePrefix}{legendrePolLC.GetName()}.root"
   RootUtilities.declareInCpp(legendrePolLC = legendrePolLC)
   df = (
     ROOT.RDataFrame(nmbEvents)
@@ -176,7 +176,7 @@ def generateDataLegPolLC(
         # add no-op filter that logs when event loop is running
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataLegPolLC()" << endl; } return true;')
         # need to snapshot or else the `cosTheta` column would be regenerated for every triggered loop
-        .Snapshot(treeName, fileName)
+        .Snapshot(treeName, filePath)
   )
   return df
 
@@ -244,7 +244,7 @@ def generateDataSphHarmLC(
   canv.SaveAs(f"{outFileNamePrefix}hSphericalHarmlLC.pdf")
   # generate random data that follow linear combination of of spherical harmonics
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{sphericalHarmLC.GetName()}.root"
+  filePath = f"{outFileNamePrefix}{sphericalHarmLC.GetName()}.root"
   RootUtilities.declareInCpp(sphericalHarmLC = sphericalHarmLC)
   df = (
     ROOT.RDataFrame(nmbEvents)
@@ -256,7 +256,7 @@ def generateDataSphHarmLC(
         # add no-op filter that logs when event loop is running
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataSphHarmLC()" << endl; } return true;')
         # need to snapshot or else the `point` column would be regenerated for every triggered loop
-        .Snapshot(treeName, fileName)
+        .Snapshot(treeName, filePath)
   )
   return df
 
@@ -374,10 +374,10 @@ def calculateSphHarmMoments(
       (np.absolute(I_inv), f"{pdfFileNamePrefix}I_inv_abs.pdf"),
       (np.angle(I_inv),    f"{pdfFileNamePrefix}I_inv_arg.pdf"),
     ]
-    for matrix, pdfFileName in matricesToPlot:
+    for matrix, pdfFilePath in matricesToPlot:
       fig, ax = plt.subplots()
       fig.colorbar(ax.matshow(matrix), ax = ax)
-      plt.savefig(pdfFileName)
+      plt.savefig(pdfFilePath)
     plt.close("all")
     H_phys = I_inv @ H_meas
     # linear uncertainty propagation
@@ -472,7 +472,7 @@ def generateDataPwd(
   canv.SaveAs(f"{outFileNamePrefix}hIntensity.pdf")
   # generate random data that follow intensity given by partial-wave amplitudes
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
+  filePath = f"{outFileNamePrefix}{intensityFcn.GetName()}.root"
   RootUtilities.declareInCpp(intensityFcn = intensityFcn)
   df = (
     ROOT.RDataFrame(nmbEvents)
@@ -484,7 +484,7 @@ def generateDataPwd(
         # add no-op filter that logs when event loop is running
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateDataPwd()" << endl; } return true;')
         # need to snapshot or else the `point` column would be regenerated for every triggered loop
-        .Snapshot(treeName, fileName)
+        .Snapshot(treeName, filePath)
   )
   return df
 
@@ -605,7 +605,7 @@ def generateData2BodyPS(
   canv.SaveAs(f"{outFileNamePrefix}hEfficiency.pdf")
   # generate isotropic distributions in cos theta and phi and weight with efficiency function
   treeName = "data"
-  fileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
+  filePath = f"{outFileNamePrefix}{efficiencyFcn.GetName()}.root"
   RootUtilities.declareInCpp(efficiencyFcn = efficiencyFcn)
   df = (
     ROOT.RDataFrame(nmbEvents)
@@ -617,9 +617,9 @@ def generateData2BodyPS(
         # add no-op filter that logs when event loop is running
         .Filter('if (rdfentry_ == 0) { cout << "Running event loop in generateData2BodyPS()" << endl; } return true;')
         # need to snapshot or else the `point` column would be regenerated for every triggered loop
-        .Snapshot(treeName, fileName)
+        .Snapshot(treeName, filePath)
   )
-  return ROOT.RDataFrame(treeName, fileName)
+  return ROOT.RDataFrame(treeName, filePath)
 
 
 def calcIntegralMatrix(
@@ -668,7 +668,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirName    = Utilities.makeDirPath("./plotsTestDiffractive")
+    outFileDirPath    = Utilities.makeDirPath("./plotsTestDiffractive")
     nmbEvents         = 1000
     nmbMcEvents       = 1000000
     # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
@@ -716,7 +716,7 @@ if __name__ == "__main__":
       ),
     }
     inputMoments: list[float] = calculateInputPwdMoments(prodAmps, maxEll = maxEll)
-    dataPwaModel = generateDataPwd(nmbEvents, prodAmps, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/")
+    dataPwaModel = generateDataPwd(nmbEvents, prodAmps, efficiencyFormula, outFileNamePrefix = f"{outFileDirPath}/")
     # print("!!!", dataModel.AsNumpy())
 
     # plot data
@@ -729,29 +729,29 @@ if __name__ == "__main__":
       hist = dataPwaModel.Histo1D(ROOT.RDF.TH1DModel("hData", ";cos#theta", 100, -1, +1), "cosTheta")
       hist.SetMinimum(0)
       hist.Draw()
-    canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
+    canv.SaveAs(f"{outFileDirPath}/{hist.GetName()}.pdf")
 
     # calculate moments
-    dataAcceptedPS = generateData2BodyPS(nmbMcEvents, efficiencyFormula, outFileNamePrefix = f"{outFileDirName}/")
+    dataAcceptedPS = generateData2BodyPS(nmbMcEvents, efficiencyFormula, outFileNamePrefix = f"{outFileDirPath}/")
     integralMatrix = calcIntegralMatrix(dataAcceptedPS, maxEll = maxEll, nmbEvents = nmbMcEvents)
     print("Moments of accepted phase-space data")
-    calculateSphHarmMoments(dataAcceptedPS, maxEll = maxEll, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
+    calculateSphHarmMoments(dataAcceptedPS, maxEll = maxEll, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirPath}/")
     # calculateLegMoments(dataModel, maxDegree = maxOrder)
     print("Moments of data generated according to model")
     moments:    list[tuple[tuple[int, int], complex]]
     momentsCov: dict[tuple[int, ...], tuple[float, ...]]
-    moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxEll = maxEll, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirName}/")
+    moments, momentsCov = calculateSphHarmMoments(dataPwaModel, maxEll = maxEll, integralMatrix = integralMatrix, pdfFileNamePrefix = f"{outFileDirPath}/")
     # calculateWignerDMoments(dataModel, maxEll = maxOrder)
     #TODO check whether using Eq. (6) instead of Eq. (13) yields moments that fulfill Eqs. (11) and (12)
 
     # Re[H_i]
     measVals  = tuple((moment[1].real, math.sqrt(momentsCov[(*moment[0], *moment[0])][0]), (0, *moment[0])) for moment in moments)
     inputVals = tuple(inputMoment.real for inputMoment in inputMoments)
-    plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = False, pdfFileNamePrefix = f"{outFileDirName}/")
+    plotComparison(measVals, inputVals, realPart = True, useMomentSubscript = False, pdfFileNamePrefix = f"{outFileDirPath}/")
     # Im[H_i]
     measVals  = tuple((moment[1].imag, math.sqrt(momentsCov[(*moment[0], *moment[0])][1]), (0, *moment[0])) for moment in moments)
     inputVals = tuple(inputMoment.imag for inputMoment in inputMoments)
-    plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = False, pdfFileNamePrefix = f"{outFileDirName}/")
+    plotComparison(measVals, inputVals, realPart = False, useMomentSubscript = False, pdfFileNamePrefix = f"{outFileDirPath}/")
 
     timer.stop("Total execution time")
     print(timer.summary)

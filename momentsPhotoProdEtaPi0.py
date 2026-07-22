@@ -70,14 +70,14 @@ BEAM_POL_INFOS: tuple[BeamPolInfo, ...] = (
 
 
 def readPartialWaveAmplitudes(
-  csvFileName:       str,    # name of CSV file with partial-wave amplitudes
+  csvFilePath:       str,    # name of CSV file with partial-wave amplitudes
   massBinCenter:     float,  # [GeV]
   fitResultPlotDir:  str,    # directory with intensity plots generated from PWA fit result
   beamPolAngleLabel: str = "000",  # "total" for total data sample summed over polarization directions
 ) -> list[AmplitudeValue]:
   """Reads partial-wave amplitude values for given mass bin from CSV data"""
-  print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV from file '{csvFileName}'")
-  df = pd.read_csv(csvFileName, index_col = [0]).astype({"mass": float})
+  print(f"Reading partial-wave amplitudes for mass bin at {massBinCenter} GeV from file '{csvFilePath}'")
+  df = pd.read_csv(csvFilePath, index_col = [0]).astype({"mass": float})
   df = df.loc[np.isclose(df["mass"], massBinCenter)].drop(columns = ["mass"])  # select row for mass bin center
   # to calculate total amplitudes use amplitude values for 0 deg beam
   # polarization because for this dataset the scaling factor is 1
@@ -98,8 +98,8 @@ def readPartialWaveAmplitudes(
   # from the intensity plots generated from the PWA fit result.
   for key in ampSeries.index:
     waveName = key.split("::")[-1]
-    plotFileName = f"{fitResultPlotDir}/etapi_plot_{waveName}.root"
-    plotFile = ROOT.TFile.Open(plotFileName, "READ")  #TODO use with statement to ensure file gets closed
+    plotFilePath = f"{fitResultPlotDir}/etapi_plot_{waveName}.root"
+    plotFile = ROOT.TFile.Open(plotFilePath, "READ")  #TODO use with statement to ensure file gets closed
     waveIntensity = 0.0
     # for total intensity sum up intensities of all beam polarization directions
     for angleLabelHist in [beamPolInfo.datasetLabel for beamPolInfo in BEAM_POL_INFOS] if beamPolAngleLabel == "total" else [angleLabel]:
@@ -156,12 +156,12 @@ if __name__ == "__main__":
     # beamPolAngleLabel        = "135"
     beamPolAngleLabel        = "total"
     fileNamePattern          = "*" if beamPolAngleLabel == "total" else beamPolAngleLabel
-    dataFileName             = f"./dataPhotoProdEtaPi0/data_{fileNamePattern}_flat.root"
-    psAccFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_acc_{fileNamePattern}_flat.root"
-    psGenFileName            = f"./dataPhotoProdEtaPi0/phaseSpace_gen_{fileNamePattern}_flat.root"
-    pwAmpsFileName           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
+    dataFilePath             = f"./dataPhotoProdEtaPi0/data_{fileNamePattern}_flat.root"
+    psAccFilePath            = f"./dataPhotoProdEtaPi0/phaseSpace_acc_{fileNamePattern}_flat.root"
+    psGenFilePath            = f"./dataPhotoProdEtaPi0/phaseSpace_gen_{fileNamePattern}_flat.root"
+    pwAmpsFilePath           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
     fitResultPlotDir         = "./dataPhotoProdEtaPi0/intensityPlots/010020"
-    outFileDirName           = Utilities.makeDirPath(f"./plotsPhotoProdEtaPi0_{beamPolAngleLabel}")
+    outFileDirPath           = Utilities.makeDirPath(f"./plotsPhotoProdEtaPi0_{beamPolAngleLabel}")
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
     normalizeMoments         = False
@@ -194,13 +194,13 @@ if __name__ == "__main__":
 
         # load data for mass bin
         massBinFilter = massBinning.binFilter(massBinIndex)
-        print(f"Loading real data from tree '{treeName}' in file '{dataFileName}' and applying filter {massBinFilter}")
-        dataInBin = ROOT.RDataFrame(treeName, dataFileName).Filter(massBinFilter)
+        print(f"Loading real data from tree '{treeName}' in file '{dataFilePath}' and applying filter {massBinFilter}")
+        dataInBin = ROOT.RDataFrame(treeName, dataFilePath).Filter(massBinFilter)
         print(f"Loaded {dataInBin.Count().GetValue()} data events; {dataInBin.Sum('eventWeight').GetValue()} background subtracted events")
-        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {massBinFilter}")
-        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFileName).Filter(massBinFilter)
-        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFileName}' and applying filter {massBinFilter}")
-        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFileName).Filter(massBinFilter)
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFilePath}' and applying filter {massBinFilter}")
+        dataPsAccInBin = ROOT.RDataFrame(treeName, psAccFilePath).Filter(massBinFilter)
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psAccFilePath}' and applying filter {massBinFilter}")
+        dataPsGenInBin = ROOT.RDataFrame(treeName, psGenFilePath).Filter(massBinFilter)
         nmbPsGenEvents.append(dataPsGenInBin.Count().GetValue())
         assert nmbPsGenEvents[-1] == dataPsGenInBin.Sum("eventWeight").GetValue(), f"Event number mismatch: {nmbPsGenEvents[-1]=} vs. {dataPsGenInBin.Sum('eventWeight').GetValue()=}"
         nmbPsAccEvents = dataPsAccInBin.Sum("eventWeight").GetValue()
@@ -210,7 +210,7 @@ if __name__ == "__main__":
               f" -> efficiency = {nmbPsAccEvents / nmbPsGenEvents[-1]:.3f}")
 
         # calculate moments from PWA fits result
-        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFileName, massBinCenter, fitResultPlotDir, beamPolAngleLabel), tolerance = 1e-7)
+        amplitudeSet = AmplitudeSet(amps = readPartialWaveAmplitudes(pwAmpsFilePath, massBinCenter, fitResultPlotDir, beamPolAngleLabel), tolerance = 1e-7)
         HPwa: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = normalizeMoments, printMomentFormulas = False)
         print(f"Moment values from partial-wave analysis:\n{HPwa}")
 
@@ -227,7 +227,7 @@ if __name__ == "__main__":
             indicesPhys          = momentIndices,
             dataSet              = dataSet,
             binCenters           = {binVarMass : massBinCenter},
-            integralFileBaseName = f"{outFileDirName}/integralMatrix",
+            integralFileBaseName = f"{outFileDirPath}/integralMatrix",
           )
         )
         # setup moment calculator to hold moment values from PWA result
@@ -248,7 +248,7 @@ if __name__ == "__main__":
             dataPsGen         = dataPsGenInBin,
             dataSignalAcc     = dataInBin,
             dataSignalGen     = None,
-            outFileNamePrefix = f"{outFileDirName}/angDistr_{binLabel(momentsInBins[-1])}_",
+            outFileNamePrefix = f"{outFileDirPath}/angDistr_{binLabel(momentsInBins[-1])}_",
           )
     moments    = MomentCalculatorsKinematicBinning(momentsInBins)
     momentsPwa = MomentCalculatorsKinematicBinning(momentsInBinsPwa)
@@ -266,7 +266,7 @@ if __name__ == "__main__":
           label = binLabel(momentResultInBin)
           plotComplexMatrix(
             complexMatrix     = momentResultInBin.integralMatrix.matrixNormalized,
-            pdfFileNamePrefix = f"{outFileDirName}/accMatrix_{label}_",
+            pdfFileNamePrefix = f"{outFileDirPath}/accMatrix_{label}_",
             axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
             plotTitle         = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
             zRangeAbs         = 1.5,
@@ -274,7 +274,7 @@ if __name__ == "__main__":
           )
           plotComplexMatrix(
             complexMatrix     = momentResultInBin.integralMatrix.inverse,
-            pdfFileNamePrefix = f"{outFileDirName}/accMatrixInv_{label}_",
+            pdfFileNamePrefix = f"{outFileDirPath}/accMatrixInv_{label}_",
             axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
             plotTitle         = f"{label}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
             zRangeAbs         = 115,
@@ -305,14 +305,14 @@ if __name__ == "__main__":
             HData             = momentResultInBin.HMeas,
             normalizedMoments = normalizeMoments,
             HTruth            = None,
-            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPs_",
+            outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{label}_accPs_",
             plotLegend        = False,
           )
           # plotMomentsInBin(
           #   HData             = momentResultInBin.HPhys,
           #   normalizedMoments = normalizeMoments,
           #   HTruth            = HTruthPs,
-          #   outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_accPsCorr_",
+          #   outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{label}_accPsCorr_",
           # )
         # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
@@ -322,7 +322,7 @@ if __name__ == "__main__":
             binning           = massBinning,
             normalizedMoments = normalizeMoments,
             momentLabel       = qnIndex.label,
-            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{massBinning.var.name}_accPs_",
+            outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{massBinning.var.name}_accPs_",
             histTitle         = qnIndex.title,
             plotLegend        = False,
           )
@@ -331,33 +331,33 @@ if __name__ == "__main__":
     with timer.timeThis(f"Time to calculate moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads"):
       print(f"Calculating moments of real data for {len(moments)} bins using {nmbOpenMpThreads} OpenMP threads")
       moments.calculateMoments(normalize = normalizeMoments, nmbBootstrapSamples = nmbBootstrapSamples)
-      momentsPwa.momentResultsPhys.savePickle(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
-      moments.momentResultsMeas.savePickle   (f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
-      moments.momentResultsPhys.savePickle   (f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      momentsPwa.momentResultsPhys.savePickle(f"{outFileDirPath}/{namePrefix}_moments_true.pkl")
+      moments.momentResultsMeas.savePickle   (f"{outFileDirPath}/{namePrefix}_moments_meas.pkl")
+      moments.momentResultsPhys.savePickle   (f"{outFileDirPath}/{namePrefix}_moments_phys.pkl")
 
     #TODO move into separate plotting script
     with timer.timeThis(f"Time to plot moments of real data"):
       if plotAngularDistributions:
         print("Plotting total angular distributions")
         # load all signal and phase-space data
-        print(f"Loading real data from tree '{treeName}' in file '{dataFileName}'")
-        data = ROOT.RDataFrame(treeName, dataFileName)
-        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFileName}'")
-        dataPsAcc = ROOT.RDataFrame(treeName, psAccFileName)
-        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFileName}'")
-        dataPsGen = ROOT.RDataFrame(treeName, psGenFileName)
+        print(f"Loading real data from tree '{treeName}' in file '{dataFilePath}'")
+        data = ROOT.RDataFrame(treeName, dataFilePath)
+        print(f"Loading accepted phase-space data from tree '{treeName}' in file '{psAccFilePath}'")
+        dataPsAcc = ROOT.RDataFrame(treeName, psAccFilePath)
+        print(f"Loading generated phase-space data from tree '{treeName}' in file '{psGenFilePath}'")
+        dataPsGen = ROOT.RDataFrame(treeName, psGenFilePath)
         plotAngularDistr(
           dataPsAcc         = dataPsAcc,
           dataPsGen         = dataPsGen,
           dataSignalAcc     = data,
           dataSignalGen     = None,
-          outFileNamePrefix = f"{outFileDirName}/angDistr_total_",
+          outFileNamePrefix = f"{outFileDirPath}/angDistr_total_",
         )
 
       # load moment results from files
-      momentResultsTrue = MomentResultsKinematicBinning.loadPickle(f"{outFileDirName}/{namePrefix}_moments_true.pkl")
-      momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{outFileDirName}/{namePrefix}_moments_meas.pkl")
-      momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{outFileDirName}/{namePrefix}_moments_phys.pkl")
+      momentResultsTrue = MomentResultsKinematicBinning.loadPickle(f"{outFileDirPath}/{namePrefix}_moments_true.pkl")
+      momentResultsMeas = MomentResultsKinematicBinning.loadPickle(f"{outFileDirPath}/{namePrefix}_moments_meas.pkl")
+      momentResultsPhys = MomentResultsKinematicBinning.loadPickle(f"{outFileDirPath}/{namePrefix}_moments_phys.pkl")
 
       # plot moments in each kinematic bin
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
@@ -372,20 +372,20 @@ if __name__ == "__main__":
           HData             = HPhys,
           normalizedMoments = normalizeMoments,
           HTruth            = HTruth,
-          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+          outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{label}_",
           legendLabels      = ("Moment", "PWA Result"),
         )
         plotMomentsInBin(
           HData             = HMeas,
           normalizedMoments = normalizeMoments,
           HTruth            = None,
-          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_{label}_",
+          outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_meas_{label}_",
           plotLegend        = False,
         )
         #TODO also plot correlation matrices
         plotMomentsCovMatrices(
           HData             = HPhys,
-          pdfFileNamePrefix = f"{outFileDirName}/covMatrix_{label}_",
+          pdfFileNamePrefix = f"{outFileDirPath}/covMatrix_{label}_",
           axisTitles        = ("Physical Moment Index", "Physical Moment Index"),
           plotTitle         = f"{label}: ",
         )
@@ -394,17 +394,17 @@ if __name__ == "__main__":
           plotMomentsBootstrapDistributions1D(
             HData             = HPhys,
             HTruth            = HTruth,
-            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{label}_",
             histTitle         = title)
           plotMomentsBootstrapDistributions2D(
             HData             = HPhys,
             HTruth            = HTruth,
-            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{label}_",
             histTitle         = title,
           )
           plotMomentsBootstrapDiffInBin(
             HData             = HPhys,
-            outFileNamePrefix = f"{outFileDirName}/{namePrefix}_{label}_",
+            outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{label}_",
             graphTitle        = title,
           )
 
@@ -416,7 +416,7 @@ if __name__ == "__main__":
           binning           = massBinning,
           normalizedMoments = normalizeMoments,
           momentResultsTrue = momentResultsTrue,
-          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_",
+          outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_",
           histTitle         = qnIndex.title,
           legendLabels      = ("Moment", "PWA Result"),
         )
@@ -426,7 +426,7 @@ if __name__ == "__main__":
           binning           = massBinning,
           normalizedMoments = normalizeMoments,
           momentResultsTrue = None,
-          outFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_",
+          outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_meas_",
           histTitle         = qnIndex.title,
           plotLegend        = False,
         )
@@ -458,10 +458,10 @@ if __name__ == "__main__":
       histRatio.SetXTitle(massBinning.axisTitle)
       histRatio.SetYTitle("#it{H}_{0}^{meas}(0, 0) / #it{H}_{0}^{phys}(0, 0)")
       histRatio.Draw("PEX0")
-      canv.SaveAs(f"{outFileDirName}/{histRatio.GetName()}.pdf")
+      canv.SaveAs(f"{outFileDirPath}/{histRatio.GetName()}.pdf")
 
       # overlay H_0^meas(0, 0) and measured intensity distribution; must be identical
-      histIntMeas = ROOT.RDataFrame(treeName, dataFileName) \
+      histIntMeas = ROOT.RDataFrame(treeName, dataFilePath) \
                         .Histo1D(
                           ROOT.RDF.TH1DModel("intensity_meas", f";{massBinning.axisTitle};Events", *massBinning.astuple), "mass", "eventWeight"
                         ).GetValue()
@@ -472,7 +472,7 @@ if __name__ == "__main__":
         binning           = massBinning,
         normalizedMoments = normalizeMoments,
         momentLabel       = H000Index.label,
-        outFileNamePrefix = f"{outFileDirName}/{namePrefix}_meas_intensity_",
+        outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_meas_intensity_",
         histTitle         = H000Index.title,
         legendLabels      = ("Measured Moment", "Measured Intensity"),
       )
@@ -500,7 +500,7 @@ if __name__ == "__main__":
       histRatioPwa.GetXaxis().SetRangeUser(1.04, 1.72)
       histRatioPwa.SetYTitle("Ratio of Measured and Produced Intensity")
       histRatioPwa.Draw("PEX0")
-      canv.SaveAs(f"{outFileDirName}/{histRatioPwa.GetName()}.pdf")
+      canv.SaveAs(f"{outFileDirPath}/{histRatioPwa.GetName()}.pdf")
       for histIntensity in histsIntensity:
         canv = ROOT.TCanvas()
         histIntensity.SetMarkerStyle(ROOT.kFullCircle)
@@ -509,7 +509,7 @@ if __name__ == "__main__":
         histIntensity.GetXaxis().SetRangeUser(1.04, 1.72)
         histIntensity.SetYTitle("Intensity")
         histIntensity.Draw("PEX0")
-        canv.SaveAs(f"{outFileDirName}/{histIntensity.GetName()}.pdf")
+        canv.SaveAs(f"{outFileDirPath}/{histIntensity.GetName()}.pdf")
       # overlay efficiencies from moments and PWA intensities
       histEff = ROOT.THStack("efficiency", f";{histRatio.GetXaxis().GetTitle()};Efficiency")
       histRatio.SetLineColor(ROOT.kRed + 1)
@@ -528,7 +528,7 @@ if __name__ == "__main__":
       histEff.GetXaxis().SetLimits(1.04, 1.72)
       histEff.SetMaximum(0.18)
       canv.BuildLegend(0.7, 0.85, 0.99, 0.99)
-      canv.SaveAs(f"{outFileDirName}/{histEff.GetName()}.pdf")
+      canv.SaveAs(f"{outFileDirPath}/{histEff.GetName()}.pdf")
 
       # overlay intensity from partial-wave amplitudes and the total intensity from AmpTools; must be identical
       HVals = []
@@ -551,7 +551,7 @@ if __name__ == "__main__":
         binning           = massBinning,
         normalizedMoments = normalizeMoments,
         momentLabel       = H000Index.label,
-        outFileNamePrefix = f"{outFileDirName}/amptools_intensity_",
+        outFileNamePrefix = f"{outFileDirPath}/amptools_intensity_",
         histTitle         = H000Index.title,
         legendLabels      = ("AmpTools Intensity", "My Intensity"),
       )

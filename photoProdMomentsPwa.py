@@ -43,17 +43,17 @@ print = functools.partial(print, flush = True)
 
 
 def readMomentResultsPwa(
-  dataFileName: str,
+  dataFilePath: str,
   maxL:         int,  # maximum L quantum number of moments
   waves:        list[tuple[str, QnWaveIndex]],  # wave labels and quantum numbers
   binVarMass:   KinematicBinningVariable,       # binning variable for mass bins
   normalize:    bool = False,
 ) -> MomentResultsKinematicBinning:
   """Reads the partial-amplitude values from the PWA fit and calculates the corresponding moments"""
-  print(f"Reading partial-wave amplitude values from file '{dataFileName}'")
+  print(f"Reading partial-wave amplitude values from file '{dataFilePath}'")
   waveLabels = [wave[0] for wave in waves]
   amplitudesDf = pd.read_csv(
-    dataFileName,
+    dataFilePath,
     sep   = r"\s+",  # values are whitespace separated
     names = ["mass", ] + waveLabels,
   )
@@ -105,9 +105,9 @@ if __name__ == "__main__":
           )
           dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-          print(f"Writing output to log file '{logFileName}'")
-          with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          logFilePath = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          print(f"Writing output to log file '{logFilePath}'")
+          with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
             ROOT.gROOT.SetBatch(True)
@@ -121,14 +121,14 @@ if __name__ == "__main__":
               print(f"Using analysis configuration:\n{cfg}")
               print(f"Using dataset configuration:\n{dataCfg}")
 
-              pwaAmplitudesFileName = None
+              pwaAmplitudesFilePath = None
               waves: list[tuple[str, QnWaveIndex]] = []
 
               #TODO add this info to AnalysisConfig?
               if dataCfg.polarization is None:
                 # unpolarized data
-                pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
-                # pwaAmplitudesFileName = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+                pwaAmplitudesFilePath = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
+                # pwaAmplitudesFilePath = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
                 waves = [  # order must match columns in file with partial-wave amplitudes
                   ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
                   # P-waves
@@ -152,8 +152,8 @@ if __name__ == "__main__":
                 ]
               else:
                 # polarized data
-                # pwaAmplitudesFileName = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD.txt"
-                pwaAmplitudesFileName = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD_100M.txt"
+                # pwaAmplitudesFilePath = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD.txt"
+                pwaAmplitudesFilePath = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD_100M.txt"
                 waves = [  # order must match columns in file with partial-wave amplitudes
                   # S-waves
                   ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),
@@ -179,17 +179,17 @@ if __name__ == "__main__":
                 ]
 
               print(f"Calculating PWA moments")
-              momentResultsFileName = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
-              # momentResultsFileName = f"{cfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl"
+              momentResultsFilePath = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments_pwa_SPD.pkl"
+              # momentResultsFilePath = f"{cfg.outFileDirPath}/{cfg.outFileNamePrefix}_moments_pwa_SPDF.pkl"
               momentResultsPwa: MomentResultsKinematicBinning = readMomentResultsPwa(
-                dataFileName = pwaAmplitudesFileName,
+                dataFilePath = pwaAmplitudesFilePath,
                 maxL         = dataCfg.maxLPhys,
                 waves        = waves,
                 binVarMass   = cfg.massBinning.var,
                 normalize    = cfg.normalizeMoments
               )
-              print(f"Writing PWA moments to file '{momentResultsFileName}'")
-              momentResultsPwa.savePickle(momentResultsFileName)
+              print(f"Writing PWA moments to file '{momentResultsFilePath}'")
+              momentResultsPwa.savePickle(momentResultsFilePath)
 
               timer.stop("Total execution time")
               print(timer.summary)

@@ -60,14 +60,14 @@ if __name__ == "__main__":
   }
   momentsFileName = "_moments_phys.pkl"
 
-  outFileDirBaseNameCommon = cfg.outFileDirBaseName
+  outFileDirBasePathCommon = cfg.outFileDirBasePath
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
       for maxL in cfg.maxLs:
         for labelCombined, beamPolLabels in beamPolsToCombine.items():
           print(f"Combining moments for data sets '{beamPolLabels}' for data period '{dataPeriod}', t bin '{tBinLabel}', and L_max = {maxL}")
           # constructing input file names
-          momentResultsFileNames = []
+          momentResultsFilePaths = []
           # for dataPeriod in dataPeriods:
           for beamPolLabel in beamPolLabels:
             dataCfg = cfg.getConfigConvertedData(
@@ -76,7 +76,7 @@ if __name__ == "__main__":
               beamPolLabel = beamPolLabel,
               maxL         = maxL,
             )
-            momentResultsFileNames.append(f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}")
+            momentResultsFilePaths.append(f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}")
           # combining moment results
           dataCfg = cfg.getConfigConvertedData(
             dataPeriod   = dataPeriod,
@@ -86,21 +86,21 @@ if __name__ == "__main__":
           )
           dataCfg.createOutFileDir()
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-          print(f"Writing output to log file '{logFileName}'")
-          with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          logFilePath = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          print(f"Writing output to log file '{logFilePath}'")
+          with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
             timer.start("Total execution time")
             print(f"Using analysis configuration:\n{cfg}")
             print(f"Using dataset configuration:\n{dataCfg}")
 
-            print(f"Combining moments from {momentResultsFileNames}")
-            momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFileName) for momentResultsFileName in momentResultsFileNames)
+            print(f"Combining moments from {momentResultsFilePaths}")
+            momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFilePath) for momentResultsFilePath in momentResultsFilePaths)
             momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
-            momentResultsCombinedFileName = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}"
-            print(f"Writing combined moments to file '{momentResultsCombinedFileName}'")
-            momentResultsCombined.savePickle(momentResultsCombinedFileName)
+            momentResultsCombinedFilePath = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}"
+            print(f"Writing combined moments to file '{momentResultsCombinedFilePath}'")
+            momentResultsCombined.savePickle(momentResultsCombinedFilePath)
 
             timer.stop("Total execution time")
             print(timer.summary)

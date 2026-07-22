@@ -38,8 +38,8 @@ if __name__ == "__main__":
   Utilities.print_command_line_arguments(args)
 
   mergedDf: ROOT.RDataFrame = Utilities.getDataFrameWithCorrectEventWeights(
-    dataSigRegionFileNames  = (args.sigFilePath, ),
-    dataBkgRegionFileNames  = (args.bkgFilePath, ),
+    dataSigRegionFilePaths  = (args.sigFilePath, ),
+    dataBkgRegionFilePaths  = (args.bkgFilePath, ),
     treeName                = args.inTreeName,
     sigRegionWeightFormula  = args.sigWeightFormula,
     bkgRegionWeightFormula  = args.bkgWeightFormula,

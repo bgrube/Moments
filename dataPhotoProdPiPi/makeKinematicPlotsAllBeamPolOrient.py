@@ -41,7 +41,7 @@ if __name__ == "__main__":
   assert ROOT.gROOT.LoadMacro(f"{os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C") == 0, f"Error loading {os.environ['FSROOT']}/rootlogon.FSROOT.sharedLib.C"
   assert ROOT.gROOT.LoadMacro("../rootlogon.C") == 0, "Error loading '../rootlogon.C'"
 
-  dataDirName = "./polarized"
+  dataDirPath = "./polarized"
   # data sets to process
   dataPeriods = (
     # "2017_01",
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     for tBinLabel in tBinLabels:
       for subsystem in subsystems:
         # generate real-data plots for all beam-polarization orientations combined
-        plotBaseDir = f"{dataDirName}/{dataPeriod}/{tBinLabel}/{subsystem}"
+        plotBaseDir = f"{dataDirPath}/{dataPeriod}/{tBinLabel}/{subsystem}"
         # # `hadd` ROOT files with plots for real data for all beam-polarization orientations
         # sourcePlotFileNames = tuple(f"{plotBaseDir}/plots_REAL_DATA/{beamPolLabel}/plots.root" for beamPolLabel in beamPolLabels)
         # mergedPlotFileName  = f"{plotBaseDir}/plots_REAL_DATA/plots.root"

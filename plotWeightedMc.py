@@ -86,7 +86,7 @@ def adjustStatsBox(canv: ROOT.TCanvas) -> None:
 def makePlots(
   dataToOverlay:         DataToOverlay,
   subsystem:             SubsystemInfo,
-  outputDirName:         str = ".",
+  outputDirPath:         str = ".",
   pdfFileNameSuffix:     str = "",
   yAxisLabel:            str = "RF-Sideband Subtracted Combos",
   weightedMcScaleFactor: float | None = None,  # if float, all weighted-MC histograms are scaled by this factor; if None, each weighted-MC histogram is scaled to integral of corresponding real-data histogram
@@ -243,7 +243,7 @@ def makePlots(
       histStack.GetYaxis().SetTitle(histWeightedMc.GetYaxis().GetTitle())
       canv.BuildLegend(0.75, 0.85, 0.99, 0.99)
       histStack.SetTitle(f"#it{{#chi}}^{{2}}/bin = {histWeightedMc.Chi2Test(histRealData.GetValue(), 'WW P CHI2/NDF'):.2g}")
-      canv.SaveAs(f"{outputDirName}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
+        canv.SaveAs(f"{outputDirPath}/{histStack.GetName()}{pdfFileNameSuffix}.pdf")
     elif histRealData.GetDimension() == 2:
       # generate 2D comparison plots
       histRealData.SetTitle  ("Real data")
@@ -255,13 +255,13 @@ def makePlots(
       histRealData.SetMaximum(maxZ)
       histRealData.Draw("COLZ")
       adjustStatsBox(canv)
-      canv.SaveAs(f"{outputDirName}/{histRealData.GetName()}{pdfFileNameSuffix}.pdf")
+        canv.SaveAs(f"{outputDirPath}/{histRealData.GetName()}{pdfFileNameSuffix}.pdf")
       print(f"Plotting weighted-MC 2D histogram '{histWeightedMc.GetName()}'")
       canv = ROOT.TCanvas()
       histWeightedMc.SetMaximum(maxZ)
       histWeightedMc.Draw("COLZ")
       adjustStatsBox(canv)
-      canv.SaveAs(f"{outputDirName}/{histWeightedMc.GetName()}{pdfFileNameSuffix}.pdf")
+        canv.SaveAs(f"{outputDirPath}/{histWeightedMc.GetName()}{pdfFileNameSuffix}.pdf")
       print(f"Plotting pulls of 2D histograms '{histRealData.GetName()}' - '{histWeightedMc.GetName()}'")
       ROOT.gStyle.SetOptStat(False)
       histPulls = histRealData.Clone(f"{histWeightedMc.GetName()}_pulls")
@@ -282,7 +282,7 @@ def makePlots(
       histPulls.SetMinimum(-zRange)
       histPulls.SetMaximum(+zRange)
       histPulls.Draw("COLZ")
-      canv.SaveAs(f"{outputDirName}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
+        canv.SaveAs(f"{outputDirPath}/{histPulls.GetName()}{pdfFileNameSuffix}.pdf")
       ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
     else:
       raise RuntimeError(f"Unsupported histogram type '{histRealData.ClassName()}'")
@@ -336,7 +336,7 @@ if __name__ == "__main__":
           print(f"Generating plots for L_max = {maxL}:")
           #TODO move these paths to `AnalysisConfig`?
           weightedDataDirPath  = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/weightedMc.maxL_{maxL}/{beamPolLabel}"
-          weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_raw_{useIntensityTerms.value}_reweighted.root"
+          weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_input_{useIntensityTerms.value}_reweighted.root"
           print(f"Loading input data of type '{AnalysisConfig.DataType.REAL_DATA}' from '{inputFilePath}'")
           print(f"Loading weighted-MC data from '{weightedDataFilePath}'")
           dataToOverlay = DataToOverlay(
@@ -356,13 +356,13 @@ if __name__ == "__main__":
             )
             setattr(dataToOverlay, dataToOverlayField.name, df)  # set value of class member with name `dataToOverlayField.name`
           # plot overlays for full mass range and for individual mass bins
-          plotDirName = f"{weightedDataDirPath}/plots_{useIntensityTerms.value}"
-          print(f"Overlaying histograms for full mass range and writing plots into '{plotDirName}'")
-          os.makedirs(plotDirName, exist_ok = True)
+          plotDirPath = f"{weightedDataDirPath}/plots_{useIntensityTerms.value}"
+          print(f"Overlaying histograms for full mass range and writing plots into '{plotDirPath}'")
+          os.makedirs(plotDirPath, exist_ok = True)
           makePlots(
             dataToOverlay = dataToOverlay,
             subsystem     = cfg.subsystem,
-            outputDirName = plotDirName,
+            outputDirPath = plotDirPath,
             nmbBinsAzim   = nmbBinsAzim,
             nmbBinsOther  = nmbBinsOther,
             massBinning   = massBinning.astuple,
@@ -377,7 +377,7 @@ if __name__ == "__main__":
               makePlots(
                 dataToOverlay     = dataToOverlay.filter(massRangeFilter),
                 subsystem         = cfg.subsystem,
-                outputDirName     = plotDirName,
+                outputDirPath     = plotDirPath,
                 pdfFileNameSuffix = f"_{massBinMin:.2f}_{massBinMax:.2f}",
                 nmbBinsAzim       = nmbBinsAzim,
                 nmbBinsOther      = nmbBinsOther,

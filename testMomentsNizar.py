@@ -38,12 +38,12 @@ def weightAccPhaseSpaceWithIntensity(
   polarization:          float,         # photon-beam polarization
   partialWaveAmplitudes: AmplitudeSet,  # partial-wave amplitudes
   isSignal:              bool,          # flag to indicate whether signal or background intensity is being applied
-  accPhaseSpaceFileName: str,           # name of file with accepted phase-space MC data
+  accPhaseSpaceFilePath: str,           # name of file with accepted phase-space MC data
   accPhaseSpaceTreeName: str = "kin",   # name of tree with accepted phase-space MC data
 ):
   """Weight accepted phase-space MC data with intensity calculated from partial-wave amplitudes"""
   # read accepted phase-space MC data
-  accPhaseSpaceData = ROOT.RDataFrame(accPhaseSpaceTreeName, accPhaseSpaceFileName)
+  accPhaseSpaceData = ROOT.RDataFrame(accPhaseSpaceTreeName, accPhaseSpaceFilePath)
   nmbAccPhaseSpaceEvents = accPhaseSpaceData.Count().GetValue()
   # construct formula for intensity calculation
   intensityFormula = partialWaveAmplitudes.intensityFormula(
@@ -79,9 +79,9 @@ def weightAccPhaseSpaceWithIntensity(
     data = data.Define("massPi0", f"gRandom->Uniform({massPi0Mean - 5.5 * massPi0Sigma}, {massPi0Mean + 5.5 * massPi0Sigma})") \
                .Define("massEta", f"gRandom->Uniform({massEtaMean - 6.0 * massEtaSigma}, {massEtaMean + 6.0 * massEtaSigma})")
   # write weighted data to file
-  outFileName = f"{accPhaseSpaceFileName}.intensityWeighted.{'sig' if isSignal else 'bkg'}"
-  print(f"Writing accepted phase-space data that were weighted with intensity function to file {outFileName}")
-  data.Snapshot(accPhaseSpaceTreeName, f"{outFileName}")
+  outFilePath = f"{accPhaseSpaceFilePath}.intensityWeighted.{'sig' if isSignal else 'bkg'}"
+  print(f"Writing accepted phase-space data that were weighted with intensity function to file {outFilePath}")
+  data.Snapshot(accPhaseSpaceTreeName, f"{outFilePath}")
 
 
 if __name__ == "__main__":
@@ -97,8 +97,8 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    accPhaseSpaceFileName = "./dataTestNizar/F2017_1_selected_TestMomentFit_data_flat.root"
-    outFileDirName        = makeDirPath("./plotsTestNizar")
+    accPhaseSpaceFilePath = "./dataTestNizar/F2017_1_selected_TestMomentFit_data_flat.root"
+    outFileDirPath        = makeDirPath("./plotsTestNizar")
     nmbPwaMcEvents        = 10000    # number of "data" events to generate from partial-wave amplitudes
     nmbPsMcEvents         = 1000000  # number of phase-space events to generate
     beamPolarization      = 1.0      # polarization of photon beam
@@ -156,8 +156,8 @@ if __name__ == "__main__":
     t = timer.start("Time to generate MC data from partial waves")
     HTruth: MomentResult = amplitudeSetSig.photoProdMomentResult(maxL, normalize = True)
     print(f"True moment values\n{HTruth}")
-    HTruthJsonFileName = f"{outFileDirName}/trueMomentValues.json"
-    print(f"Writing true moment values to file {outFileDirName}/{HTruthJsonFileName}")
+    HTruthJsonFilePath = f"{outFileDirPath}/trueMomentValues.json"
+    print(f"Writing true moment values to file {outFileDirPath}/{HTruthJsonFilePath}")
     # convert MomentResult objects to tuple of dictionaries and write to JSON file
     momentMemberVarsToRemove = ("binCenters", "label", "bsSamples", "uncertRe", "uncertIm")
     HTruthDicts: list[dict[str, Any]] = []
@@ -174,14 +174,14 @@ if __name__ == "__main__":
           else:
             HTruthDict[key] = value
       HTruthDicts.append(HTruthDict)
-    with open(HTruthJsonFileName, "w") as HTruthJsonFile:
+    with open(HTruthJsonFilePath, "w") as HTruthJsonFile:
       json.dump(HTruthDicts, HTruthJsonFile, indent = 4, default = str)
     dataPwaModel = genData(
       nmbEvents         = nmbPwaMcEvents,
       polarization      = beamPolarization,
       inputData         = amplitudeSetSig,
       efficiencyFormula = None,
-      outFileNamePrefix = f"{outFileDirName}/",
+      outFileNamePrefix = f"{outFileDirPath}/",
       regenerateData    = True,
     )
     t.stop()
@@ -196,14 +196,14 @@ if __name__ == "__main__":
     hist.GetYaxis().SetTitleOffset(2)
     hist.GetZaxis().SetTitleOffset(1.5)
     hist.Draw("BOX2Z")
-    canv.SaveAs(f"{outFileDirName}/{hist.GetName()}.pdf")
+    canv.SaveAs(f"{outFileDirPath}/{hist.GetName()}.pdf")
 
     # generate phase-space data for perfect acceptance
     t = timer.start("Time to generate phase-space MC data")
     dataAcceptedPs = genDataFromIntensityFormula(
       nmbEvents        = nmbPsMcEvents,
       intensityFormula = "(1)",
-      outFileBasePath  = f"{outFileDirName}/acceptedPhaseSpace",
+      outFileBasePath  = f"{outFileDirPath}/acceptedPhaseSpace",
       regenerateData   = True,
     )
     t.stop()
@@ -214,13 +214,13 @@ if __name__ == "__main__":
       polarization          = beamPolarization,
       partialWaveAmplitudes = amplitudeSetSig,
       isSignal              = True,
-      accPhaseSpaceFileName = accPhaseSpaceFileName,
+      accPhaseSpaceFilePath = accPhaseSpaceFilePath,
     )
     weightAccPhaseSpaceWithIntensity(
       polarization          = beamPolarization,
       partialWaveAmplitudes = amplitudeSetBkg,
       isSignal              = False,
-      accPhaseSpaceFileName = accPhaseSpaceFileName,
+      accPhaseSpaceFilePath = accPhaseSpaceFilePath,
     )
     t.stop()
 

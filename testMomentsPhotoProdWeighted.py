@@ -51,7 +51,7 @@ def genSigAndBkgDataFromWaves(
   amplitudeSetSig:   AmplitudeSet,        # partial-wave amplitudes for signal distribution
   amplitudeSetBkg:   AmplitudeSet,        # partial-wave amplitudes for background distribution
   polarization:      float | None,        # photon-beam polarization
-  outputDirName:     str,                 # name of output directory
+  outputDirPath:     str,                 # name of output directory
   efficiencyFormula: str | None = None,   # detection efficiency used to generate data
   regenerateData:    bool       = False,  # if set data are regenerated although .root files exist
 ) -> tuple[ROOT.RDataFrame, ROOT.RDataFrame, ROOT.RDataFrame]:
@@ -63,7 +63,7 @@ def genSigAndBkgDataFromWaves(
     polarization      = polarization,
     inputData         = amplitudeSetSig,
     efficiencyFormula = efficiencyFormula,
-    outFileNamePrefix = f"{outputDirName}/",
+    outFileNamePrefix = f"{outputDirPath}/",
     nameSuffix        = "Sig",
     regenerateData    = regenerateData,
     additionalColDefs = (("discrVariable", "gRandom->Gaus(0, 0.1)"), ),
@@ -75,7 +75,7 @@ def genSigAndBkgDataFromWaves(
     polarization      = polarization,
     inputData         = amplitudeSetBkg,
     efficiencyFormula = efficiencyFormula,
-    outFileNamePrefix = f"{outputDirName}/",
+    outFileNamePrefix = f"{outputDirPath}/",
     nameSuffix        = "Bkg",
     regenerateData    = regenerateData,
     additionalColDefs = (("discrVariable", "gRandom->Uniform(0, 2) - 1"), ),
@@ -95,7 +95,7 @@ def genSigAndBkgDataFromWaves(
       return 0.0;
   """
   dataPwaModelTot = (
-    ROOT.RDataFrame(treeName, (f"{outputDirName}/dataSig.root", f"{outputDirName}/dataBkg.root"))
+    ROOT.RDataFrame(treeName, (f"{outputDirPath}/dataSig.root", f"{outputDirPath}/dataBkg.root"))
         .Define("eventWeight", eventWeightFormula)
   )
 
@@ -123,10 +123,10 @@ def genSigAndBkgDataFromWaves(
     box.SetFillColorAlpha(ROOT.kBlack, 0.15)
     box.DrawBox(bounds[0], canv.GetUymin(), bounds[1], canv.GetUymax())
   legend.Draw()
-  canv.SaveAs(f"{outputDirName}/{histStack.GetName()}.pdf")
+  canv.SaveAs(f"{outputDirPath}/{histStack.GetName()}.pdf")
   hist = dataPwaModelTot.Histo1D(ROOT.RDF.TH1DModel("discrVariableSimSbSubtr", ";Discriminating variable;Count / 0.02", 100, -1, +1), "discrVariable", "eventWeight")
   hist.Draw()
-  canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+  canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.pdf")
 
   # plot angular distributions of data generated from partial-wave amplitudes
   histBinning = (TH3_ANG_NMB_BINS, -1, +1, TH3_ANG_NMB_BINS, -180, +180, TH3_ANG_NMB_BINS, -180, +180)
@@ -152,7 +152,7 @@ def genSigAndBkgDataFromWaves(
     hist.GetZaxis().SetTitleOffset(1.5)
     hist.Draw("BOX2Z")
     print(f"Integral of histogram '{hist.GetName()}' = {hist.Integral()}")
-    canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.pdf")
   print(f"Sum of weights = {dataPwaModelTot.Sum('eventWeight').GetValue()}")
 
   return dataPwaModelTot, dataPwaModelSig, dataPwaModelBkg
@@ -172,7 +172,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outputDirName         = Utilities.makeDirPath("./plotsTestPhotoProdWeighted")
+    outputDirPath         = Utilities.makeDirPath("./plotsTestPhotoProdWeighted")
     nmbPwaMcEventsSig     = 1000
     nmbPwaMcEventsBkg     = 1000
     # nmbPwaMcEventsSig     = 10000000
@@ -251,7 +251,7 @@ if __name__ == "__main__":
         amplitudeSetSig   = amplitudeSetSig,
         amplitudeSetBkg   = amplitudeSetBkg,
         polarization      = beamPolarization,
-        outputDirName     = outputDirName,
+        outputDirPath     = outputDirPath,
         efficiencyFormula = efficiencyFormula,
         regenerateData    = True,
       )
@@ -261,7 +261,7 @@ if __name__ == "__main__":
       dataAcceptedPs = genDataFromIntensityFormula(
         nmbEvents        = nmbAcceptedPsMcEvents,
         intensityFormula = efficiencyFormula,
-        outFileBasePath  = f"{outputDirName}/acceptedPhaseSpace",
+        outFileBasePath  = f"{outputDirPath}/acceptedPhaseSpace",
         regenerateData   = True,
       )
 
@@ -291,7 +291,7 @@ if __name__ == "__main__":
           indicesMeas          = momentIndices,
           indicesPhys          = momentIndices,
           dataSet              = dataSet,
-          integralFileBaseName = f"{outputDirName}/integralMatrix",
+          integralFileBaseName = f"{outputDirPath}/integralMatrix",
           binCenters           = {binVarMass : massBinCenter},
         )
       )
@@ -318,8 +318,8 @@ if __name__ == "__main__":
       # plot acceptance integral matrices for all kinematic bins
       for momentsInBin in moments:
         label = binLabel(momentsInBin)
-        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirName}/I_acc_{label}")
-        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirName}/I_inv_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirPath}/I_acc_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirPath}/I_inv_{label}")
 
     # calculate moments of data generated from partial-wave amplitudes
     with timer.timeThis(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads"):
@@ -330,10 +330,10 @@ if __name__ == "__main__":
       # plot moments in each kinematic bin
       namePrefix = "norm" if normalizeMoments else "unnorm"
       label = binLabel(moments[0])
-      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, outFileNamePrefix = f"{outputDirName}/{namePrefix}_{label}_")
+      plotMomentsInBin(moments[0].HPhys, normalizeMoments, HTruth, outFileNamePrefix = f"{outputDirPath}/{namePrefix}_{label}_")
       if nmbBootstrapSamples > 0:
-        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, outFileNamePrefix = f"{outputDirName}/{namePrefix}_{label}_")
-        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,         outFileNamePrefix = f"{outputDirName}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDistributions1D(moments[0].HPhys, HTruth, outFileNamePrefix = f"{outputDirPath}/{namePrefix}_{label}_")
+        plotMomentsBootstrapDiffInBin      (moments[0].HPhys,         outFileNamePrefix = f"{outputDirPath}/{namePrefix}_{label}_")
 
     timer.stop("Total execution time")
     print(timer.summary)

@@ -41,7 +41,7 @@ def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
   beamPolInfo:       BeamPolInfo,
-  outputDirName:     str,
+  outputDirPath:     str,
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
   coorsysLabel:      str                             = "HF",
@@ -70,7 +70,7 @@ def plotIntensityFcn(
     histFcn, minVal, maxVal = drawTF3(
       fcn                = intensityFcn,
       binnings           = binnings,
-      outFileName        = f"{outputDirName}/{intensityFcn.GetName()}.png",
+      outFilePath        = f"{outputDirPath}/{intensityFcn.GetName()}.png",
       histTitle          = f"Intensity Function;cos#theta_{{{coorsysLabel}}};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = True,
     )
@@ -82,7 +82,7 @@ def plotIntensityFcn(
     histFcnNeg, _, _ = drawTF3(
       fcn                = intensityFcnNeg,
       binnings           = binnings,
-      outFileName        = f"{outputDirName}/{intensityFcnNeg.GetName()}.png",
+      outFilePath        = f"{outputDirPath}/{intensityFcnNeg.GetName()}.png",
       histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coorsysLabel}}};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = False,
     )
@@ -97,14 +97,14 @@ def plotIntensityFcn(
     # histProj.SetMinimum(-zRange)
     # histProj.SetMaximum(+zRange)
     histProj.Draw("COLZ")
-    canv.SaveAs(f"{outputDirName}/{histProj.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirPath}/{histProj.GetName()}.pdf")
     ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
     histProjNeg = histFcnNeg.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
     canv = ROOT.TCanvas()
     histProjNeg.SetTitle(f"Intensity Function Projection, Negative Part;{histFcnNeg.GetXaxis().GetTitle()};{histFcnNeg.GetYaxis().GetTitle()}")
     histProjNeg.SetMinimum(0)
     histProjNeg.Draw("COLZ")
-    canv.SaveAs(f"{outputDirName}/{histProjNeg.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirPath}/{histProjNeg.GetName()}.pdf")
   if False:
     # draw intensity as function of phi and Phi for fixed cos(theta) value
     cosTheta = 0.0  # fixed value of cos(theta)
@@ -123,7 +123,7 @@ def plotIntensityFcn(
     intensityFcnFixedCosTheta.SetMinimum(0)
     canv = ROOT.TCanvas()
     intensityFcnFixedCosTheta.Draw("COLZ")
-    canv.SaveAs(f"{outputDirName}/{intensityFcnFixedCosTheta.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirPath}/{intensityFcnFixedCosTheta.GetName()}.pdf")
 
 
 if __name__ == "__main__":
@@ -152,9 +152,9 @@ if __name__ == "__main__":
 
   maxL = 4
 
-  momentResultsFileName = f"./{plotsDirPath}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL}/unnorm_moments_phys.pkl"
-  print(f"Reading moments from file '{momentResultsFileName}'")
-  momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
+  momentResultsFilePath = f"./{plotsDirPath}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL}/unnorm_moments_phys.pkl"
+  print(f"Reading moments from file '{momentResultsFilePath}'")
+  momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
   for useIntensityTerms in (
     MomentResult.IntensityTermsType.ALL,
     MomentResult.IntensityTermsType.PARITY_CONSERVING,
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         momentResults     = momentResultsForBin,
         massBinIndex      = massBinIndex,
         beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
-        outputDirName     = ".",
+        outputDirPath     = ".",
         nmbBinsPerAxis    = 50,
         useIntensityTerms = useIntensityTerms,
         coorsysLabel      = coordSysLabel,

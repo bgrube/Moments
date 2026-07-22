@@ -80,24 +80,24 @@ def readMomentResultsClas(
     tBinLabel:          str = "#: -T [GeV^2],,,0.4-0.5",
     # beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.4-3.6",
     beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.6-3.8",
-    csvDirName:         str = "./dataPhotoProdPiPiUnpol/HEPData-ins825040-v1-csv",
+    csvDirPath:         str = "./dataPhotoProdPiPiUnpol/HEPData-ins825040-v1-csv",
 ) -> MomentResultsKinematicBinning:
   """Reads the moment values in the for the given moment indices and from the CLAS analysis in PRD 80 (2009) 072005 published at https://www.hepdata.net/record/ins825040"""
-  csvFileNames = sorted(glob.glob(f"{csvDirName}/Table*.csv"))
+  csvFilePaths = sorted(glob.glob(f"{csvDirPath}/Table*.csv"))
   # each file contains the values for a given H(L, M) moment and a given t bin for all 4 beam-energy bins and all mass bins
   momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas dataframe with moment values in mass bins
   for qnMomentIndex in momentIndices.qnIndices:
-    for csvFileName in csvFileNames:
+    for csvFilePath in csvFilePaths:
       # first step: open file, read whole contents, and filter pick the file that contain the desired moment an the t bin
-      with open(csvFileName, "r") as csvFile:
+      with open(csvFilePath, "r") as csvFile:
         csvData = csvFile.read()
         momentLabel = f"YLM(LM={qnMomentIndex.L}{qnMomentIndex.M},P=3_4) [MUB/GEV**3]"
         if (momentLabel in csvData) and (tBinLabel in csvData):
-          print(f"Reading CLAS values for moment {qnMomentIndex.label} from file '{csvFileName}'")
+          print(f"Reading CLAS values for moment {qnMomentIndex.label} from file '{csvFilePath}'")
           # within each file there are sub-tables for the 4 beam-energy bins
           # second step: extract sub-table for the desired beam-energy bin
           tableStartPos = csvData.find(beamEnergyBinLabel)
-          assert tableStartPos >= 0, f"Could not find table for beam energy bin '{beamEnergyBinLabel}' in file '{csvFileName}'"
+          assert tableStartPos >= 0, f"Could not find table for beam energy bin '{beamEnergyBinLabel}' in file '{csvFilePath}'"
           tableEndPos = csvData.find("\n\n", tableStartPos)  # tables are separated by an empty line
           csvData = csvData[tableStartPos:tableEndPos if tableEndPos >= 0 else None]
           momentDf = pd.read_csv(
@@ -147,16 +147,16 @@ def readMomentResultsJpac(
     momentIndices: MomentIndices,  # moment indices to read
     binVarMass:    KinematicBinningVariable,  # binning variable for mass bins
     tBinLabel:     str = "t=0.40-0.50",
-    dataDirName:   str = "./dataPhotoProdPiPiUnpol/2406.08016",
+    dataDirPath:   str = "./dataPhotoProdPiPiUnpol/2406.08016",
 ) -> MomentResultsKinematicBinning:
   """Reads the moments values from the JPAC fit to the CLAS data in range 3.6 < E_gamma < 3.8 GeV as published in Figs. 6, 7, 13--16 in arXiv:2406.08016"""
   momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas dataframe with moment values in mass bins
   for qnMomentIndex in momentIndices.qnIndices:
-    dataFileName = f"{dataDirName}/Y{qnMomentIndex.L}{qnMomentIndex.M}{tBinLabel}.dat"
-    print(f"Reading JPAC values for moment {qnMomentIndex.label} from file '{dataFileName}'")
+    dataFilePath = f"{dataDirPath}/Y{qnMomentIndex.L}{qnMomentIndex.M}{tBinLabel}.dat"
+    print(f"Reading JPAC values for moment {qnMomentIndex.label} from file '{dataFilePath}'")
     try:
       momentDf = pd.read_csv(
-        dataFileName,
+        dataFilePath,
         sep      = r"\s+",  # values are whitespace separated
         skiprows = 1,       # first row with column names
         names    = ["mass", "moment", "uncert"],
@@ -167,7 +167,7 @@ def readMomentResultsJpac(
       momentDf["moment"] = momentDf["moment"].astype(complex)
       momentDfs[qnMomentIndex] = momentDf
     except FileNotFoundError as e:
-        print(f"Warning: file '{dataFileName}' not found. Skipping moment {qnMomentIndex.label}.")
+        print(f"Warning: file '{dataFilePath}' not found. Skipping moment {qnMomentIndex.label}.")
   # ensure that mass bins are the same in all dataframes
   dfs = list(momentDfs.values())
   massColumn = dfs[0]["mass"]
@@ -591,16 +591,16 @@ def makeAllPlots(
           pdfFileNamePrefix = f"{dataCfg.outFileDirPath}/accMatrix_{binLabel}_",
           axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
-          zRangeAbs         = 1.2,
-          zRangeImag        = 0.05,
+          zRangeAbs         = 1.0,
+          zRangeImag        = 0.1,
         )
         plotComplexMatrix(
           complexMatrix     = accIntMatrix.inverse,
           pdfFileNamePrefix = f"{dataCfg.outFileDirPath}/accMatrixInv_{binLabel}_",
           axisTitles        = ("Measured Moment Index", "Physical Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}^{-1}$, ",
-          zRangeAbs         = 5,
-          zRangeImag        = 0.3,
+          zRangeAbs         = 40,
+          zRangeImag        = 5,
         )
 
   if cfg.plotAccPsMoments:
@@ -669,18 +669,15 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
-  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.CLAS
   # compareTo = ComparisonMomentsType.JPAC
-  #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.PWA
-  #
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   # compareTo = ComparisonMomentsType.JPAC
-  #
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   compareTo = None
   # compareTo = ComparisonMomentsType.PWA
   # compareTo = ("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
@@ -708,8 +705,8 @@ if __name__ == "__main__":
   # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
   # cfg.polarization = None  # treat data as unpolarized
   # cfg.plotMomentsInBins = True
-  cfg.plotAccIntegralMatrices = True
-  cfg.plotMeasuredMoments = True
+  # cfg.plotAccIntegralMatrices = True
+  # cfg.plotMeasuredMoments = True
 
   print(f"Calculating moments for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
@@ -724,9 +721,9 @@ if __name__ == "__main__":
             maxL         = maxL,
           )
           thisSourceFileName = os.path.basename(__file__)
-          logFileName = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-          print(f"Writing output to log file '{logFileName}'")
-          with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          logFilePath = f"{dataCfg.outFileDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          print(f"Writing output to log file '{logFilePath}'")
+          with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
             ROOT.gROOT.SetBatch(True)

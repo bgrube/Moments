@@ -142,13 +142,13 @@ def weightDataWithIntensityFormula(
   massBinning:          HistAxisBinning,  # mass binning used for weighting
   massBinIndex:         int,  # index of mass bin to generate data for
   intensityFormula:     str,  # intensity formula as function of theta [rad] phi [rad], and Phi [rad] that defines distribution of events
-  weightedDataFileName: str,  # ROOT file to which weighted events are written
+  weightedDataFilePath: str,  # ROOT file to which weighted events are written
   cfg:                  AnalysisConfig,
   seed:                 int                = 123456789,  # seed for rejection sampling and for generating phase-space events
   beamPolInfo:          BeamPolInfo | None = None,       # beam polarization information needed for raw data files
   limitNmbEventsTo:     int | None         = None,       # if `int`, limits number of events to read from tree
 ) -> ROOT.RDataFrame:
-  """Weights input data specified by `inputDataDef` and `massBinIndex` with given intensity formula and writes data to `outFileName`"""
+  """Weights input data specified by `inputDataDef` and `massBinIndex` with given intensity formula and writes data to `weightedDataFilePath`"""
   ROOT.gRandom.SetSeed(seed)
   # load input data
   dataToWeight, nmbInputEvents, originalColumns = loadDataToWeight(
@@ -166,10 +166,10 @@ def weightDataWithIntensityFormula(
                 .Define("intensityWeightRndNmb", "(Double32_t)gRandom->Rndm()")     # random number in [0, 1] for each event
   )
   # write unweighted data to file and read data back to ensure that random columns are filled only once
-  tmpFileName = f"{weightedDataFileName}.tmp"
+  tmpFilePath = f"{weightedDataFilePath}.tmp"
   treeName = cfg.inputTreeName if (isinstance(inputDataDef, tuple) and inputDataDef[1]) else cfg.convertedTreeName
-  dataToWeight.Snapshot(treeName, tmpFileName)
-  dataToWeight = ROOT.RDataFrame(treeName, tmpFileName)
+  dataToWeight.Snapshot(treeName, tmpFilePath)
+  dataToWeight = ROOT.RDataFrame(treeName, tmpFilePath)
   # determine range of weight values
   minIntensityWeight = dataToWeight.Min("intensityWeight").GetValue()
   maxIntensityWeight = dataToWeight.Max("intensityWeight").GetValue()
@@ -187,11 +187,11 @@ def weightDataWithIntensityFormula(
   print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; "
         f"weighting efficiency is {nmbWeightedEvents / nmbInputEvents}")
   # write weighted data to file
-  print(f"Writing data weighted with intensity function to file '{weightedDataFileName}'")
-  # weightedData.Snapshot(treeName, weightedDataFileName, originalColumns + ["intensityWeight"])  # write original columns and intensity weight
-  weightedData.Snapshot(treeName, weightedDataFileName)  # write original columns + columns defined here
-  subprocess.run(f"rm --force --verbose {tmpFileName}", shell = True)  # remove temporary file
-  return ROOT.RDataFrame(treeName, weightedDataFileName)
+  print(f"Writing data weighted with intensity function to file '{weightedDataFilePath}'")
+  weightedData.Snapshot(treeName, weightedDataFilePath, originalColumns + ["intensityWeight", "mass"])  # write original columns and selected new columns
+  # weightedData.Snapshot(treeName, weightedDataFilePath)  # write original columns + all columns defined here; !NOTE! the `phi` columns may trigger the ROOT bug https://github.com/root-project/root/issues/22295
+  subprocess.run(f"rm --force --verbose {tmpFilePath}", shell = True)  # remove temporary file
+  return ROOT.RDataFrame(treeName, weightedDataFilePath)
 
 
 #TODO is this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
@@ -199,7 +199,7 @@ def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
   beamPolInfo:       BeamPolInfo | None,
-  outputDirName:     str,
+  outputDirPath:     str,
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
 ) -> None:
@@ -225,7 +225,7 @@ def plotIntensityFcn(
         HistAxisBinning(nmbBinsPerAxis, -180, +180),
         HistAxisBinning(nmbBinsPerAxis, -180, +180),
       ),
-      outFileName = f"{outputDirName}/{intensityFcn.GetName()}.pdf",
+      outFilePath = f"{outputDirPath}/{intensityFcn.GetName()}.pdf",
       histTitle   = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
     )
   if True:
@@ -246,7 +246,7 @@ def plotIntensityFcn(
     intensityFcnFixedCosTheta.SetMinimum(0)
     canv = ROOT.TCanvas()
     intensityFcnFixedCosTheta.Draw("COLZ")
-    canv.SaveAs(f"{outputDirName}/{intensityFcnFixedCosTheta.GetName()}.pdf")
+    canv.SaveAs(f"{outputDirPath}/{intensityFcnFixedCosTheta.GetName()}.pdf")
 
 
 if __name__ == "__main__":
@@ -269,9 +269,9 @@ if __name__ == "__main__":
   #   PhiLab = "BeamAngle",
   # )
 
-  useIntensityTerms      = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
-  # useIntensityTerms    = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
-  # useIntensityTerms    = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
+  useIntensityTerms = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
 
   # weight accepted phase-space data in input format for generating kinematic plots in mass bins
   inputDataDef = (AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, True)
@@ -301,19 +301,19 @@ if __name__ == "__main__":
           print(f"Generating weighted MC for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           thisSourceFileName = os.path.basename(__file__)
           # create directory, into which weighted data will be written
-          weightedDataDirName = f"{cfg.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
-          Utilities.makeDirPath(weightedDataDirName)
-          logFileName = f"{weightedDataDirName}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
-          print(f"Writing output to log file '{logFileName}'")
-          with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+          weightedDataDirPath = f"{cfg.dataDirBasePath}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
+          Utilities.makeDirPath(weightedDataDirPath)
+          logFilePath = f"{weightedDataDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{useIntensityTerms.value}.log"
+          print(f"Writing output to log file '{logFilePath}'")
+          with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
             setupPlotStyle()
             print(f"Using analysis configuration:\n{cfg}")
             timer.start("Total execution time")
-            momentResultsFileName = f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)}/{cfg.outFileNamePrefix}_moments_phys.pkl"
-            print(f"Reading moments from file '{momentResultsFileName}'")
-            momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFileName)
+            momentResultsFilePath = f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+            print(f"Reading moments from file '{momentResultsFilePath}'")
+            momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
             for massBinIndexForWeighting, massBinCenterForWeighting in enumerate(massBinningForWeighting):
               print(f"Weighting events at mass {massBinCenterForWeighting:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
               # find moment result corresponding to mass-bin center
@@ -333,7 +333,7 @@ if __name__ == "__main__":
                   PhiFormula        = "Phi",
                   useIntensityTerms = useIntensityTerms,
                 ),
-                weightedDataFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_bin_{massBinIndexForWeighting}.root",
+                weightedDataFilePath = f"{weightedDataDirPath}/{weightedDataFileBaseName}_bin_{massBinIndexForWeighting}.root",
                 cfg                  = cfg,
                 seed                 = 12345 + massBinIndexForWeighting,  # ensure rejection sampling and generated phase-space data in different mass bins are independent
                 beamPolInfo          = beamsPolInfo,
@@ -344,30 +344,30 @@ if __name__ == "__main__":
                   momentResults     = momentResultsForBin,
                   massBinIndex      = massBinIndexForWeighting,
                   beamPolInfo       = beamsPolInfo,
-                  outputDirName     = weightedDataDirName,
+                  outputDirPath     = weightedDataDirPath,
                   useIntensityTerms = useIntensityTerms,
                 )
 
             # merge trees with weighted MC data for individual mass bins into single file
-            mergedFileName  = f"{weightedDataDirName}/{weightedDataFileBaseName}.root"
+            mergedFilePath  = f"{weightedDataDirPath}/{weightedDataFileBaseName}.root"
             nmbParallelJobs = 10
             with timer.timeThis(f"Time to merge ROOT files from all mass bins using hadd with {nmbParallelJobs} parallel jobs"):
-              cmd = f"hadd -f -j {nmbParallelJobs} {mergedFileName} {weightedDataDirName}/{weightedDataFileBaseName}_bin_*.root"
+              cmd = f"hadd -f -j {nmbParallelJobs} {mergedFilePath} {weightedDataDirPath}/{weightedDataFileBaseName}_bin_*.root"
               print(f"Merging ROOT files from all mass bins: '{cmd}'")
               subprocess.run(cmd, shell = True)
 
             if reweightMassDistribution:
               # reweight mass distribution of merged file
               treeName           = cfg.inputTreeName if (isinstance(inputDataDef, tuple) and inputDataDef[1]) else cfg.convertedTreeName
-              reweightedFileName = f"{weightedDataDirName}/{weightedDataFileBaseName}_reweighted.root"
+              reweightedFilePath = f"{weightedDataDirPath}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
                 reweightKinDistribution(
-                  dataToWeight    = ROOT.RDataFrame(treeName, mergedFileName),  # load merged data file created in step above
+                  dataToWeight    = ROOT.RDataFrame(treeName, mergedFilePath),  # load merged data file created in step above
                   binning         = massBinningForWeighting,
                   treeName        = cfg.convertedTreeName,
                   targetDistrFrom = cfg.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel),  # match measured mass distribution
                   # targetDistrFrom = momentResults,  # match acceptance-corrected mass distribution given by H_0(0, 0)
-                  outFileName     = reweightedFileName,
+                  outFilePath     = reweightedFilePath,
                 )
 
             timer.stop("Total execution time")

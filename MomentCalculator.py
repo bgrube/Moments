@@ -1224,19 +1224,19 @@ class MomentResult:
 
   def savePickle(
     self,
-    pickleFileName: str,
+    pickleFilePath: str,
   ) -> None:
     """Saves `MomentResult` to pickle file"""
-    with open(pickleFileName, "wb") as file:
+    with open(pickleFilePath, "wb") as file:
       pickle.dump(self, file)
 
   @classmethod
   def loadPickle(
     cls,
-    pickleFileName: str,
+    pickleFilePath: str,
   ) -> MomentResult:
     """Loads `MomentResult` from pickle file"""
-    with open(pickleFileName, "rb") as file:
+    with open(pickleFilePath, "rb") as file:
       return pickle.load(file)
 
   def toJsonStr(self) -> str:
@@ -1537,22 +1537,22 @@ class MomentResultsKinematicBinning:
 
   def savePickle(
     self,
-    pickleFileName: str,
+    pickleFilePath: str,
   ) -> None:
     """Saves `MomentResultsKinematicBinning` to pickle file"""
-    with open(pickleFileName, "wb") as file:
+    with open(pickleFilePath, "wb") as file:
       pickle.dump(self, file)
-    print(f"Wrote moment results to file '{pickleFileName}'")
+    print(f"Wrote moment results to file '{pickleFilePath}'")
 
   @classmethod
   def loadPickle(
     cls,
-    pickleFileName: str,
+    pickleFilePath: str,
   ) -> MomentResultsKinematicBinning:
     """Loads `MomentResultsKinematicBinning` from pickle file"""
-    with open(pickleFileName, "rb") as file:
+    with open(pickleFilePath, "rb") as file:
       return pickle.load(file)
-    print(f"Loaded moment results from file '{pickleFileName}'")
+    print(f"Loaded moment results from file '{pickleFilePath}'")
 
   def toJsonStr(self) -> str:
     """Returns JSON string with valid moment values in all kinematic bins"""

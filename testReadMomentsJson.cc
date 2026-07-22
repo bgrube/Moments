@@ -39,11 +39,11 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
 
 int
 main() {
-	const std::string jsonFileName = "./test.json";
-	std::cout << "Reading moment values from JSON file '" << jsonFileName << "'" << std::endl;
-	std::ifstream inFile(jsonFileName);
+	const std::string jsonFilePath = "./test.json";
+	std::cout << "Reading moment values from JSON file '" << jsonFilePath << "'" << std::endl;
+	std::ifstream inFile(jsonFilePath);
 	if (not inFile) {
-		std::cerr << "Could not open file '" << jsonFileName << "' for reading." << std::endl;
+		std::cerr << "Could not open file '" << jsonFilePath << "' for reading." << std::endl;
 		return 1;
 	}
 	nlohmann::json json;
@@ -51,7 +51,7 @@ main() {
 
 	// MomentValues from JSON object
 	std::vector<MomentValue> moments = json.get<std::vector<MomentValue>>();
-	std::cout << "Read " << moments.size() << " moment values from JSON file '" << jsonFileName << "'" << std::endl;
+	std::cout << "Read " << moments.size() << " moment values from JSON file '" << jsonFilePath << "'" << std::endl;
 	for (const auto& m : moments) {
 		std::cout << "momentIndex = " << m.momentIndex
 		          << ", L = "         << m.L

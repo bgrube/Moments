@@ -293,14 +293,14 @@ def convertGraphToHist(
 
 def plotRealMatrix(
   matrix:      npt.NDArray[npt.Shape["*, *"], npt.Float64],  # matrix to plot
-  pdfFileName: str,  # name of output file
+  pdfFilePath: str,  # name of output file
   axisTitles:  tuple[str, str]                   = ("", ""),      # titles for x and y axes
   plotTitle:   str                               = "",            # title for plot
   zRange:      tuple[float | None, float | None] = (None, None),  # range for z-axis
   **kwargs:    Any,  # additional keyword arguments for plt.matshow()
 ) -> None:
   """Plots given matrix into PDF file with given name"""
-  print(f"Plotting matrix '{plotTitle}' and writing plot to '{pdfFileName}'")
+  print(f"Plotting matrix '{plotTitle}' and writing plot to '{pdfFilePath}'")
   fig, ax = plt.subplots()
   cax = ax.matshow(matrix, vmin = zRange[0], vmax = zRange[1], **kwargs)
   ax.xaxis.tick_bottom()
@@ -308,7 +308,7 @@ def plotRealMatrix(
   plt.title(plotTitle)
   plt.xlabel(axisTitles[0])
   plt.ylabel(axisTitles[1])
-  plt.savefig(pdfFileName, transparent = True)
+  plt.savefig(pdfFilePath, transparent = True)
   plt.close(fig)
 
 
@@ -337,7 +337,7 @@ def drawTF3(
   fcn:                ROOT.TF3,  # function to plot
   #TODO read binning ranges from fcn and just define number of points
   binnings:           tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
-  outFileName:        str,                  # name of output file to write
+  outFilePath:        str,                  # name of output file to write
   histTitle:          str          = "",    # histogram title
   minVal:             float | None = None,  # set minimum function value to plot
   maxVal:             float | None = None,  # set maximum function value to plot
@@ -347,7 +347,7 @@ def drawTF3(
   canv = ROOT.TCanvas()
   # fcn.Draw("BOX2Z") does not work; sigh
   # draw function "by hand" instead
-  histName = os.path.splitext(os.path.basename(outFileName))[0]
+  histName = os.path.splitext(os.path.basename(outFilePath))[0]
   histFcn = ROOT.TH3F(histName, histTitle if histTitle else fcn.GetTitle(), *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
   xAxis = histFcn.GetXaxis()
   yAxis = histFcn.GetYaxis()
@@ -383,7 +383,7 @@ def drawTF3(
   histFcn.GetYaxis().SetTitleOffset(2)
   histFcn.GetZaxis().SetTitleOffset(1.5)
   histFcn.Draw("BOX2Z")
-  canv.SaveAs(outFileName)
+  canv.SaveAs(outFilePath)
   return (histFcn, histMin, histMax)
 
 
@@ -988,7 +988,7 @@ def plotMomentsCovMatrices(
   for realParts, (label, title, covMatrixEst) in  covMatricesEst.items():
     plotRealMatrix(
       matrix      = covMatrixEst,
-      pdfFileName = f"{pdfFileNamePrefix}{label}.pdf",
+      pdfFilePath = f"{pdfFileNamePrefix}{label}.pdf",
       axisTitles  = axisTitles,
       plotTitle   = plotTitle + title,
       zRange      = zRange,
@@ -1005,7 +1005,7 @@ def plotMomentsCovMatrices(
       range = max(abs(np.min(covMatrixDiff)), abs(np.max(covMatrixDiff)))
       plotRealMatrix(
         matrix      = covMatrixDiff,
-        pdfFileName = f"{pdfFileNamePrefix}{label}_BSdiff.pdf",
+        pdfFilePath = f"{pdfFileNamePrefix}{label}_BSdiff.pdf",
         axisTitles  = axisTitles,
         plotTitle   = plotTitle + f"{title} BS Diff",
         zRange      = (-range, +range),

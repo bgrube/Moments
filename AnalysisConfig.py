@@ -332,7 +332,7 @@ class AnalysisConfig:
       pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
     )
   )
-  dataDirBaseName:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for data
+  dataDirBasePath:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for data
   dataPeriods:              tuple[str, ...]                   = (  # labels of data periods to process
     "2017_01",
     "2018_08",
@@ -355,7 +355,7 @@ class AnalysisConfig:
     6,
     8,
   )
-  outFileDirBaseName:       str                               = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
+  outFileDirBasePath:       str                               = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
   # normalizeMoments:         bool                              = True
   normalizeMoments:         bool                              = False
   nmbBootstrapSamples:      int                               = 0
@@ -396,7 +396,7 @@ class AnalysisConfig:
     tBinLabel:  str,
   ) -> str:
     """Generates base path of directory with data in input format"""
-    return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/input"
+    return f"{self.dataDirBasePath}/{dataPeriod}/{tBinLabel}/input"
 
   @staticmethod
   def _default_inputFilePath(
@@ -441,7 +441,7 @@ class AnalysisConfig:
     maxL:         int | tuple[int, int],
   ) -> str:
     """Generates path of directory, into which all output of the moment calculation will be written"""
-    return f"{self.outFileDirBaseName}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}"
+    return f"{self.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL if isinstance(maxL, int) else f'{maxL[0]}_{maxL[1]}'}"
 
   def getConfigInputData(
     self,
@@ -466,7 +466,7 @@ class AnalysisConfig:
     tBinLabel:  str,
   ) -> str:
     """Generates base path of directory with data in converted format"""
-    return f"{self.dataDirBaseName}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
+    return f"{self.dataDirBasePath}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
 
   def convertedFilePath(
     self,
@@ -511,7 +511,7 @@ class AnalysisConfig:
 # configurations for unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
-  outFileDirBaseName = "./plotsPhotoProdPiPiUnpolPwa",
+  outFileDirBasePath = "./plotsPhotoProdPiPiUnpolPwa",
   massBinning        = HistAxisBinning(  # binning used in PWA of unpolarized data
     nmbBins = 56,    # 20 MeV wide bins
     minVal  = 0.28,  # [GeV]
@@ -532,7 +532,7 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
   # psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
   # psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
-  outFileDirBaseName = "./plotsPhotoProdPiPiUnpolJPAC",
+  outFileDirBasePath = "./plotsPhotoProdPiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(
   #   nmbBins = 25, minVal = 0.4, maxVal = 1.40,
   #   # nmbBins = 2, minVal = 0.4, maxVal = 0.42
@@ -565,7 +565,7 @@ def inputFilePathPiPiPol(
     raise ValueError(f"Unknown data type: {dataType}")
 
 CFG_POLARIZED_PIPI = AnalysisConfig(
-  dataDirBaseName    = "./dataPhotoProdPiPi/polarized",
+  dataDirBasePath    = "./dataPhotoProdPiPi/polarized",
   dataPeriods        = (
     # "2017_01",
     "2017_01_ver05",  #!NOTE! SDME analysis: 0.60 < m_pipi < 0.88 GeV
@@ -596,7 +596,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName = "./plotsPhotoProdPiPiPol",
+  outFileDirBasePath = "./plotsPhotoProdPiPiPol",
   massBinning        = HistAxisBinning(
     # nmbBins = 50,    # 40 MeV wide bins used in PWA of polarized data
     # minVal  = 0.28,  # [GeV]
@@ -631,7 +631,7 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName = "./plotsPhotoProdPipPUnpol",
+  outFileDirBasePath = "./plotsPhotoProdPipPUnpol",
   massBinning        = HistAxisBinning(
     nmbBins = 75,   # 20 MeV wide bins
     minVal  = 1.1,  # [GeV]
@@ -659,7 +659,7 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}#it{#pi}^{0}",
   ),
-  dataDirBaseName    = "./dataPhotoProdEtaPi0/polarized",
+  dataDirBasePath    = "./dataPhotoProdEtaPi0/polarized",
   dataPeriods        = ("merged", ),  # merged Phase-I + Spring 2020 data with different polarization values
   tBinLabels         = (
     "t010020",
@@ -680,7 +680,7 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName = "./plotsPhotoProdEtaPi0",
+  outFileDirBasePath = "./plotsPhotoProdEtaPi0",
   massBinning        = HistAxisBinning(
     nmbBins = 17,    # 40 MeV wide bins
     minVal  = 1.04,  # [GeV]
@@ -713,7 +713,7 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName = "./plotsPhotoProdEtapPi0",
+  outFileDirBasePath = "./plotsPhotoProdEtapPi0",
   massBinning        = HistAxisBinning(
     nmbBins = 20,   # 40 MeV wide bins
     minVal  = 1.2,  # [GeV]
@@ -740,7 +740,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#eta}",
   ),
-  dataDirBaseName    = f"./dataPhotoProdEtapEta/unpolarized",
+  dataDirBasePath    = f"./dataPhotoProdEtapEta/unpolarized",
   dataPeriods        = (
     "2017_01",
     "2018_01",
@@ -766,7 +766,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName = "./plotsPhotoProdEtapEta",
+  outFileDirBasePath = "./plotsPhotoProdEtapEta",
   # plotMomentsInBins  = True,
   massBinning        = HistAxisBinning(
     # nmbBins = 8,    # 250 MeV wide bins
@@ -809,7 +809,7 @@ CFG_KEVIN = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName       = "./plotsTestKevin",
+  outFileDirBasePath       = "./plotsTestKevin",
   # normalizeMoments         = True,
   # plotAngularDistributions = True,
   # plotAccIntegralMatrices  = True,
@@ -839,7 +839,7 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{K}_{S}^{0}#it{K}_{L}^{0}",
   ),
-  dataDirBaseName    = "./dataPhotoProdKSKL/polarized",
+  dataDirBasePath    = "./dataPhotoProdKSKL/polarized",
   dataPeriods        = ("merged", ),  # merged Phase-I(?) data with different polarization values
   tBinLabels         = ("AllT", ),
   beamPolLabels      = (
@@ -860,7 +860,7 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBaseName = "./plotsPhotoProdKSKL",
+  outFileDirBasePath = "./plotsPhotoProdKSKL",
   massBinning        = HistAxisBinning(
     nmbBins = 70,   # 20 MeV wide bins
     minVal  = 1.2,  # [GeV]

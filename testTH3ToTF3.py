@@ -69,6 +69,6 @@ if __name__ == "__main__":
       HistAxisBinning(30, 0, 2),
       HistAxisBinning(30, 0, 3),
     ),
-    outFileName = f"testFunc.pdf",
-    # outFileName = f"testFunc.png",
+    outFilePath = f"testFunc.pdf",
+    # outFilePath = f"testFunc.png",
   )

@@ -11,7 +11,7 @@ import ROOT
 def makeComparisonPlotPosNegPhiHF(
   plotsFile:     ROOT.TFile,  # file containing histograms to plot
   histBaseName:  str,  # name of histogram to plot
-  outputDirName: str,  # directory to save output plot in
+  outputDirPath: str,  # directory to save output plot in
 ) -> None:
   """Generates comparison plot for positive and negative phi_HF"""
   print(f"Generating phi_HF < 0, phi_HF > 0 comparison plot for histogram '{histBaseName}'")
@@ -65,7 +65,7 @@ def makeComparisonPlotPosNegPhiHF(
     # histAsym.SetMaximum(+0.1)
     # histAsym.SetStats(False)
     # histAsym.Draw("COLZ")
-  canv.SaveAs(f"{outputDirName}/{histCompName}.pdf")
+  canv.SaveAs(f"{outputDirPath}/{histCompName}.pdf")
 
 
 if __name__ == "__main__":
@@ -96,8 +96,8 @@ if __name__ == "__main__":
   dataType = "REAL_DATA"
   # dataType = "ACCEPTED_PHASE_SPACE"
 
-  plotsDirName = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi/plots_{dataType}/{beamPolLabel}"
-  with ROOT.TFile.Open(f"{plotsDirName}/plots.root", "READ") as plotsFile:
+  plotsDirPath = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi/plots_{dataType}/{beamPolLabel}"
+  with ROOT.TFile.Open(f"{plotsDirPath}/plots.root", "READ") as plotsFile:
     for histBaseName in [
       "Ebeam",
       "momLabP",
@@ -128,5 +128,5 @@ if __name__ == "__main__":
       makeComparisonPlotPosNegPhiHF(
         plotsFile     = plotsFile,
         histBaseName  = histBaseName,
-        outputDirName = plotsDirName,
+        outputDirPath = plotsDirPath,
       )

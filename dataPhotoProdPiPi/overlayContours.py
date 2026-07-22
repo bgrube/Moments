@@ -27,7 +27,7 @@ def makeContourOverlayPlot(
   histBase:       ROOT.TH2,  # 2D histogram to draw as base
   histContours:   ROOT.TH2,  # 2D histogram to generate contours from
   contourPlotDef: ContourPlotDef,  # definition of contour plot
-  outputDirName:  str,  # directory to save output plot in
+  outputDirPath:  str,  # directory to save output plot in
 ) -> None:
   """Overlay contour lines derived from `histContours` over histogram given by `histBase`"""
   if histContours == ROOT.nullptr:
@@ -91,7 +91,7 @@ def makeContourOverlayPlot(
       levelLabel = f"{contourLevel:{contourPlotDef.labelFormat}}" if contourLevel >= 0 else f"#minus {abs(contourLevel):{contourPlotDef.labelFormat}}"
       levelLabel += contourPlotDef.labelUnit
       latex.DrawLatex(graph.GetPointX(pointIndex), graph.GetPointY(pointIndex), levelLabel)
-  canv.SaveAs(f"{outputDirName}/{histContours.GetName()}_contourOverlay.pdf")
+  canv.SaveAs(f"{outputDirPath}/{histContours.GetName()}_contourOverlay.pdf")
   ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
 
@@ -122,10 +122,10 @@ if __name__ == "__main__":
   # dataType = "REAL_DATA"
   dataType = "ACCEPTED_PHASE_SPACE"
 
-  plotsDirName = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi/plots_{dataType}/{beamPolLabel}"
-  with ROOT.TFile.Open(f"{plotsDirName}/plots.root", "READ") as plotsBaseFile:
+  plotsDirPath = f"./polarized/{dataPeriod}/{tBinLabel}/PiPi/plots_{dataType}/{beamPolLabel}"
+  with ROOT.TFile.Open(f"{plotsDirPath}/plots.root", "READ") as plotsBaseFile:
     histBase = plotsBaseFile.Get("anglesHFPiPi_0.72_0.76")
-    plotsContoursDir = f"{plotsDirName}/anglesHFCorrelations"
+    plotsContoursDir = f"{plotsDirPath}/anglesHFCorrelations"
     contourPlotDefs = [
       ContourPlotDef(
         histName    = "anglesHFPiPiCorr_Ebeam",
@@ -226,7 +226,7 @@ if __name__ == "__main__":
             histBase       = histBase,
             histContours   = plotsContoursFile.Get(contourPlotDef.histName),
             contourPlotDef = contourPlotDef,
-            outputDirName  = plotsContoursDir,
+            outputDirPath  = plotsContoursDir,
           )
       except OSError as error:
         print(f"Error opening contour file for histogram '{contourPlotDef.histName}': {error}; skipping.")

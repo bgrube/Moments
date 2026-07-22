@@ -70,18 +70,18 @@ def genAccepted2BodyPs(
   efficiencyFcn.SetNpx(100)
   efficiencyFcn.SetNpy(100)
   efficiencyFcn.SetNpz(100)
-  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", maxVal = 1.0)
+  drawTF3(efficiencyFcn, **TH3_ANG_PLOT_KWARGS, outFilePath = f"{outFileNamePrefix}{efficiencyFcn.GetName()}Reco.pdf", maxVal = 1.0)
 
   # don't regenerate data if file already exists
   treeName = "data"
-  outFileNameAccPs = f"{outFileNamePrefix}acceptedPhaseSpace.root"
-  if os.path.exists(outFileNameAccPs) and not regenerateData:
-    print(f"Reading accepted phase-space MC data from '{outFileNameAccPs}'")
-    return ROOT.RDataFrame(treeName, outFileNameAccPs)
+  accPsOutFilePath = f"{outFileNamePrefix}acceptedPhaseSpace.root"
+  if os.path.exists(accPsOutFilePath) and not regenerateData:
+    print(f"Reading accepted phase-space MC data from '{accPsOutFilePath}'")
+    return ROOT.RDataFrame(treeName, accPsOutFilePath)
 
   print(f"Generating {nmbGenEvents} events distributed according to two-body phase-space")
   # generate isotropic distributions in cos theta, phi, and Phi
-  outFileNamePs = f"{outFileNamePrefix}phaseSpace.root"
+  psOutFilePath = f"{outFileNamePrefix}phaseSpace.root"
   # C++ code that throws random point in angular space
   pointFcn = """
     const double cosTheta = gRandom->Uniform(-1, +1);
@@ -100,7 +100,7 @@ def genAccepted2BodyPs(
         # add no-op filter that logs when event loop is running
         .Filter('if (rdfentry_ == 0) { std::cout << "Running event loop in genData2BodyPs()" << std::endl; } return true;')
         # need to snapshot or else the `point` column would be regenerated for every triggered loop
-        .Snapshot(treeName, outFileNamePs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
+        .Snapshot(treeName, psOutFilePath, ROOT.std.vector[ROOT.std.string](columnsToWrite))
   )
 
   print(f"Weighting phase-space events with efficiency function '{efficiencyFormula}'")
@@ -112,11 +112,11 @@ def genAccepted2BodyPs(
   # determine maximum weight
   maxEfficiencyWeight = psAccData.Max("efficiencyWeight").GetValue()
   print(f"Maximum efficiency weight is {maxEfficiencyWeight}")
-  print(f"Weighting phase-space events with efficiency and writing accepted phase-space events to file '{outFileNameAccPs}'")
+  print(f"Weighting phase-space events with efficiency and writing accepted phase-space events to file '{accPsOutFilePath}'")
   psAccData = (
     psAccData.Define("acceptEvent", f"(bool)(rndNmb < (efficiencyWeight / {maxEfficiencyWeight}))")
              .Filter("acceptEvent == true")  # accept each event with probability efficiencyWeight / maxEfficiencyWeight
-             .Snapshot(treeName, outFileNameAccPs, ROOT.std.vector[ROOT.std.string](columnsToWrite))
+             .Snapshot(treeName, accPsOutFilePath, ROOT.std.vector[ROOT.std.string](columnsToWrite))
   )
   return psAccData
 
@@ -404,7 +404,7 @@ if __name__ == "__main__":
   nmbParallelFitProcesses = 200     # number of parallel processes to use for fitting
   applyEventWeights       = False   # if set, the events are weighted to subtract background
   disablePolarizedMoments = False   # if set, H_1 and H_2 are fixed to 0
-  outputDirName           = Utilities.makeDirPath("./plotsTestFitMoments")
+  outputDirPath           = Utilities.makeDirPath("./plotsTestFitMoments")
   startValueRandomSeed    = 123456789
   # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
   # efficiencyFormula = "1"  # perfect acceptance
@@ -478,9 +478,9 @@ if __name__ == "__main__":
   )
 
   thisSourceFileName = os.path.basename(__file__)
-  logFileName = f"{outputDirName}/{os.path.splitext(thisSourceFileName)[0]}.log"
-  print(f"Writing output to log file '{logFileName}'")
-  with open(logFileName, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+  logFilePath = f"{outputDirPath}/{os.path.splitext(thisSourceFileName)[0]}.log"
+  print(f"Writing output to log file '{logFilePath}'")
+  with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
   # if True:
     print(f"Using iminuit version {im.__version__}")
     Utilities.printGitInfo()
@@ -499,7 +499,7 @@ if __name__ == "__main__":
       dataAcceptedPs = genAccepted2BodyPs(
         nmbGenEvents      = nmbPsMcGenEvents,
         efficiencyFormula = efficiencyFormula,
-        outFileNamePrefix = f"{outputDirName}/",
+        outFileNamePrefix = f"{outputDirPath}/",
         # regenerateData    = True,
         regenerateData    = False,
       )
@@ -519,7 +519,7 @@ if __name__ == "__main__":
         amplitudeSetSig   = amplitudeSetSig,
         amplitudeSetBkg   = amplitudeSetBkg,
         polarization      = beamPolarization,
-        outputDirName     = outputDirName,
+        outputDirPath     = outputDirPath,
         efficiencyFormula = efficiencyFormula,
         # regenerateData    = True,
         regenerateData    = False,
@@ -527,8 +527,8 @@ if __name__ == "__main__":
       dataPwaModelSigRegion = dataPwaModel.Filter("eventWeight == 1.0")   # select events in signal region (mixture of signal and background)
       dataPwaModelBkgRegion = dataPwaModel.Filter("eventWeight == -0.5")  # select events in sideband regions (nearly pure background)
       # quick hack to ensure that dataPwaModelBkgRegion have also weight 1 by dropping the eventWeight column and re-adding it with value 1.0
-      dataPwaModelBkgRegion.Snapshot("data", f"{outputDirName}/foo.root", ["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"])
-      dataPwaModelBkgRegion = ROOT.RDataFrame("data", f"{outputDirName}/foo.root")
+      dataPwaModelBkgRegion.Snapshot("data", f"{outputDirPath}/foo.root", ["cosTheta", "theta", "phiDeg", "phi", "PhiDeg", "Phi"])
+      dataPwaModelBkgRegion = ROOT.RDataFrame("data", f"{outputDirPath}/foo.root")
       dataPwaModelBkgRegion = dataPwaModelBkgRegion.Define("eventWeight", "1.0")
       timer.stop("Time to generate MC data from partial waves")
 
@@ -558,7 +558,7 @@ if __name__ == "__main__":
         intensityTF3.SetNpy(100)
         intensityTF3.SetNpz(100)
         intensityTF3.SetMinimum(0)
-        drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, outFileName = f"{outputDirName}/{intensityTF3.GetName()}.pdf")
+        drawTF3(intensityTF3, **TH3_ANG_PLOT_KWARGS, outFilePath = f"{outputDirPath}/{intensityTF3.GetName()}.pdf")
         intensityTF3s[label] = intensityTF3
 
       timer.start("Time to construct model functions")
@@ -615,7 +615,7 @@ if __name__ == "__main__":
       # print(minuit.merrors)
       # # with timer.timeThis("Time needed by draw_mnmatrix"):
       # #   figure, axes = minuit.draw_mnmatrix()
-      # #   figure.savefig(f"{outputDirName}/minuit_mnmatrix.pdf")
+      # #   figure.savefig(f"{outputDirPath}/minuit_mnmatrix.pdf")
 
       # print("Plotting fit results")
       # HPhys = convertIminuitToMomentResult(minuit, HTruthSig.indices)
@@ -624,7 +624,7 @@ if __name__ == "__main__":
       #   normalizedMoments = False,
       #   HTruth            = HTruthSig,
       #   legendLabels      = ("Moment", "Truth"),
-      #   outFileNamePrefix = f"{outputDirName}/unnorm_phys_",
+      #   outFileNamePrefix = f"{outputDirPath}/unnorm_phys_",
       #   plotTruthUncert   = True,
       #   truthColor        = ROOT.kBlue + 1,
       # )
@@ -725,7 +725,7 @@ if __name__ == "__main__":
             normalizedMoments = False,
             HTruth            = HTruth,
             legendLabels      = ("Moment", "Truth"),
-            outFileNamePrefix = f"{outputDirName}/unnorm_phys2_{dataLabel}",
+            outFileNamePrefix = f"{outputDirPath}/unnorm_phys2_{dataLabel}",
             plotTruthUncert   = True,
             truthColor        = ROOT.kBlue + 1,
           )
@@ -747,7 +747,7 @@ if __name__ == "__main__":
               normalizedMoments = False,
               HTruth            = HTruth,
               legendLabels      = ("Moment", "Truth"),
-              outFileNamePrefix = f"{outputDirName}/unnorm_phys2_{dataLabel}",
+              outFileNamePrefix = f"{outputDirPath}/unnorm_phys2_{dataLabel}",
               plotTruthUncert   = True,
               truthColor        = ROOT.kBlue + 1,
             )
@@ -761,7 +761,7 @@ if __name__ == "__main__":
         normalizedMoments = False,
         HTruth            = HTruthSig,
         legendLabels      = ("Moment", "Truth"),
-        outFileNamePrefix = f"{outputDirName}/unnorm_phys2_subtracted_",
+        outFileNamePrefix = f"{outputDirPath}/unnorm_phys2_subtracted_",
         plotTruthUncert   = True,
         truthColor        = ROOT.kBlue + 1,
       )
