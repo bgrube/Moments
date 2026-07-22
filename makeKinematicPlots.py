@@ -394,7 +394,7 @@ def bookHistograms(
 
 def makePlot(
   hist:          HistType | HistRResultPtrType,
-  outputDirName: str,
+  outputDirPath: str,
 ) -> None:
   """Plots given histogram into PDF file in the given output directory"""
   print(f"Plotting histogram '{hist.GetName()}'")
@@ -423,13 +423,13 @@ def makePlot(
   # draw zero line
   if hist.GetDimension() == 1:
     drawHorizontalZeroLine(canv)
-  canv.SaveAs(f"{outputDirName}/{hist.GetName()}.pdf")
+  canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.pdf")
 
 
 def makePlots(
   hists:            HistListType,
   histNamesEvenOdd: list[str],
-  outputDirName:    str,
+  outputDirPath:    str,
 ) -> None:
   """Writes histograms to ROOT file and generates PDF plots"""
   for hist in hists:
@@ -454,15 +454,15 @@ def makePlots(
     histsOdd.append(histOdd)
   hists += histsEvenOdd
   # plot all histograms
-  os.makedirs(outputDirName, exist_ok = True)
-  outRootFileName = f"{outputDirName}/plots.root"
-  with ROOT.TFile.Open(outRootFileName, "RECREATE"):
-    print(f"Writing histograms to '{outRootFileName}'")
+  os.makedirs(outputDirPath, exist_ok = True)
+  outRootFilePath = f"{outputDirPath}/plots.root"
+  with ROOT.TFile.Open(outRootFilePath, "RECREATE"):
+    print(f"Writing histograms to '{outRootFilePath}'")
     for hist in hists:
       if   (isinstance(hist, (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D))                                                                and hist            in histsOdd) \
         or (isinstance(hist, (ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D])) and hist.GetValue() in histsOdd):
         ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
-      makePlot(hist, outputDirName)
+      makePlot(hist, outputDirPath)
       hist.Write()
       ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
 
@@ -471,7 +471,7 @@ def makeAnglesHFCorrelationPlot(
   df:                   ROOT.RDataFrame,
   subsystem:            SubsystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
-  outputDirName:        str,  # directory to save output plot in
+  outputDirPath:        str,  # directory to save output plot in
   histNameSuffix:       str = "",
   additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
 ) -> None:
@@ -517,9 +517,9 @@ def makeAnglesHFCorrelationPlot(
       print(f"Average value for column '{kinVarNameCorr}' in cell ({xBinIndex} = {xBinRange}, {yBinIndex} = {yBinRange}): {average}")
       histCorr.SetBinContent(xBinIndex, yBinIndex, average)
   # write plot PDF and ROOT file
-  os.makedirs(outputDirName, exist_ok = True)
-  makePlot(histCorr, outputDirName)
-  with ROOT.TFile.Open(f"{outputDirName}/{histCorr.GetName()}.root", "RECREATE"):
+  os.makedirs(outputDirPath, exist_ok = True)
+  makePlot(histCorr, outputDirPath)
+  with ROOT.TFile.Open(f"{outputDirPath}/{histCorr.GetName()}.root", "RECREATE"):
     histCorr.Write()
 
 
@@ -553,9 +553,9 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)
   subsystemMassBinning = None  # do not generate plots in mass bins
   additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
-    AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"],
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"],
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : ["(0.60 < massPiPi and massPiPi < 0.88)", "(0.100 < minusTPiPi and minusTPiPi < 0.114)"],
+    AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)"],
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)"],
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : ["(0.60 < massPiPi and massPiPi < 0.88)"],
   }
   # cfg = deepcopy(CFG_POLARIZED_KSKL)
   # subsystemMassBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins; generate plots for these mass bins
@@ -586,7 +586,7 @@ if __name__ == "__main__":
             additionalColumnDefs = additionalColumnDefs[inputDataType],
             additionalFilterDefs = additionalFilterDefs[inputDataType],
           ).Filter((f'if (rdfentry_ == 0) {{ std::cout << "Running event loop for subsystem {cfg.subsystem.pairLabel}" << std::endl; }} return true;'))  # no-op filter that logs when event loop is running
-          outputDirName = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/plots_{inputDataType.name}/{beamPolLabel}"
+          outputDirPath = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/plots_{inputDataType.name}/{beamPolLabel}"
           if True:
           # if False:
             makePlots(
@@ -597,14 +597,14 @@ if __name__ == "__main__":
                 beamPolInfo          = beamPolInfo,
                 subsystemMassBinning = subsystemMassBinning,
               ),
-              outputDirName = outputDirName,
+              outputDirPath = outputDirPath,
             )
           # if True:
           if False:
             # make correlation plots; currently only for rho(770) -> pi+ pi- subsystem
             additionalFilterDefs = ["(0.72 < massPiPi and massPiPi < 0.76)", ]  # select mass bin at rho(770) peak
-            outputDirName = f"{outputDirName}/anglesHFCorrelations"
-            print(f"Writing helicity-frame angles correlation plots to '{outputDirName}'")
+            outputDirPath = f"{outputDirPath}/anglesHFCorrelations"
+            print(f"Writing helicity-frame angles correlation plots to '{outputDirPath}'")
             lvs = lorentzVectors(dataFormat = inputDataFormat)
             dfSubsystem = dfSubsystem.Define(f"massPipP", f"(Double32_t)massPair({lvs['pip']}, {lvs['recoil']})")
             dfSubsystem = dfSubsystem.Define(f"massPimP", f"(Double32_t)massPair({lvs['pim']}, {lvs['recoil']})")
@@ -628,7 +628,7 @@ if __name__ == "__main__":
                 df                   = dfSubsystem,
                 subsystem            = cfg.subsystem,
                 kinVarNameCorr       = kinVarNameCorr,
-                outputDirName        = outputDirName,
+                outputDirPath        = outputDirPath,
                 additionalFilterDefs = additionalFilterDefs,
               )
 
