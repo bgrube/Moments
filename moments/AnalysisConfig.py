@@ -16,12 +16,12 @@ from enum import Enum
 
 import ROOT
 
-from MomentCalculator import (
+from .MomentCalculator import (
   KinematicBinningVariable,
   MomentIndices,
 )
-from PlottingUtilities import HistAxisBinning
-import Utilities
+from .PlottingUtilities import HistAxisBinning
+from . import Utilities
 
 
 def defineOverwriteRDataFrame(

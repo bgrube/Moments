@@ -21,7 +21,7 @@ from typing import Any
 
 import ROOT
 
-from MomentCalculator import (
+from .MomentCalculator import (
   KinematicBinningVariable,
   MomentResult,
   MomentResultsKinematicBinning,
