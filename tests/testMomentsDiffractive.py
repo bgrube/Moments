@@ -20,7 +20,7 @@ ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from moments.PlottingUtilities import (
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from moments import Utilities
 
 
@@ -260,9 +260,6 @@ def generateDataSphHarmLC(
   )
   return df
 
-
-# C++ implementation of RDataFrame custom action that calculates covariance between two columns
-assert ROOT.gROOT.LoadMacro("./cpp/Covariance.C+") == 0, "Error loading './cpp/Covariance.C+'"
 
 def calculateSphHarmMoments(
   dataFrame:         ROOT.RDataFrame,
@@ -655,6 +652,8 @@ def calcIntegralMatrix(
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
+  assert ROOT.gROOT.LoadMacro("./cpp/Covariance.C+") == 0, "Error loading './cpp/Covariance.C+'"  # load C++ implementation of RDataFrame custom action that calculates covariance between two columns
   Utilities.printGitInfo()
   timer = Utilities.Timer()
   ROOT.gROOT.SetBatch(True)

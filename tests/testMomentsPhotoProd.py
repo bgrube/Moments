@@ -43,7 +43,7 @@ from moments.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from moments import Utilities
 
 
@@ -228,6 +228,7 @@ def scaleHistAxes(
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
   ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
   # ROOT.gStyle.SetOptStat(False)

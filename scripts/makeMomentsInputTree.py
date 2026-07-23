@@ -40,9 +40,9 @@ from moments.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
 from moments.RootUtilities import (
   declareInCpp,
+  loadBasisFunctionsLibrary,
   loadFSROOTLibraries,
 )
 from moments import Utilities
@@ -423,6 +423,7 @@ def reweightKinDistribution(
 
 
 if __name__ == "__main__":
+  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   Utilities.printGitInfo()
   timer = Utilities.Timer()
   timer.start("Total execution time")
