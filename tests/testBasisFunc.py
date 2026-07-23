@@ -7,7 +7,7 @@ import timeit
 
 import ROOT
 
-import OpenMpUtilities
+from moments import OpenMpUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

@@ -19,8 +19,8 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
-from AnalysisConfig import AnalysisConfig
-from MomentCalculator import (
+from moments.AnalysisConfig import AnalysisConfig
+from moments.MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
   binLabel,
@@ -33,9 +33,9 @@ from MomentCalculator import (
   MomentResultsKinematicBinning,
   QnWaveIndex,
 )
-from photoProdCalcMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
-from photoProdWeightData import weightDataWithIntensityFormula
-from PlottingUtilities import (
+from scripts.photoProdCalcMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
+from scripts.photoProdWeightData import weightDataWithIntensityFormula
+from moments.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   plotComplexMatrix,
@@ -43,8 +43,8 @@ from PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-import Utilities
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

@@ -27,7 +27,7 @@ from iminuit.typing import (
 )
 from wurlitzer import pipes, STDOUT
 
-from MomentCalculator import (
+from moments.MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
   DataSet,
@@ -38,15 +38,15 @@ from MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   drawTF3,
   plotMomentsInBin,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-from testMomentsPhotoProd import TH3_ANG_PLOT_KWARGS
-from testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
-import Utilities
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from tests.testMomentsPhotoProd import TH3_ANG_PLOT_KWARGS
+from tests.testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

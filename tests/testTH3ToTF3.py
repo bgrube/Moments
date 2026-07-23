@@ -7,7 +7,7 @@ import functools
 
 import ROOT
 
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
 )

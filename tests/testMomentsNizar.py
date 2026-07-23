@@ -11,19 +11,19 @@ from typing import Any
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from MomentCalculator import (
+from moments.MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
   MomentResult,
   QnWaveIndex,
 )
-from PlottingUtilities import setupPlotStyle
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-from testMomentsPhotoProd import (
+from moments.PlottingUtilities import setupPlotStyle
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from tests.testMomentsPhotoProd import (
   genData,
   genDataFromIntensityFormula,
 )
-from Utilities import (
+from moments.Utilities import (
   makeDirPath,
   printGitInfo,
   Timer,

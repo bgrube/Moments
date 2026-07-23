@@ -5,7 +5,7 @@ import numpy as np
 import scipy
 import threadpoolctl
 
-import Utilities
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

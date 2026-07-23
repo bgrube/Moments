@@ -10,12 +10,12 @@ import functools
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from MomentCalculator import (
+from moments.MomentCalculator import (
   KinematicBinningVariable,
   MomentResultsKinematicBinning,
   QnMomentIndex,
 )
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_KSKL,
@@ -25,13 +25,13 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   HistAxisBinning,
   MomentValue,
   setCbFriendlyStyle,
   setupPlotStyle,
 )
-import Utilities
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

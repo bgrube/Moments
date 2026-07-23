@@ -13,7 +13,7 @@ import spherical  #TODO weird behavior: without this import I get
 #     assert ROOT.gROOT.LoadMacro("basisFunctions.C+") == 0, "Error loading 'basisFunctions.C'"
 # AssertionError: Error loading 'basisFunctions.C'
 # But calling the corresponding LoadMacro() line in __main__ works w/o problems
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 
 
 if __name__ == "__main__":

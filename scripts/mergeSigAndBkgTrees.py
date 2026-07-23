@@ -11,7 +11,7 @@ import functools
 
 import ROOT
 
-import Utilities
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
