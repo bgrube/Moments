@@ -7,7 +7,7 @@ import timeit
 
 import ROOT
 
-from moments import OpenMpUtilities
+from moments import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -17,8 +17,7 @@ print = functools.partial(print, flush = True)
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
 
-  OpenMpUtilities.enableRootACLiCOpenMp()
-  OpenMpUtilities.printRootACLiCSettings()
+  RootUtilities.enableRootACLiCOpenMp(verbose = True)  # enables OpenMP support for ROOT macros compiled via ACLiC
   # C++ implementation of (complex conjugated) Wigner D function and spherical harmonics
   # also provides complexT typedef for std::complex<double>
   assert ROOT.gROOT.LoadMacro("./cpp/basisFunctions.C++") == 0, "Error loading './cpp/basisFunctions.C++'"
