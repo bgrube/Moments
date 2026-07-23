@@ -1,5 +1,6 @@
 // example program showing how to read a vector of moment values from a JSON file
-// compile with = g++ -std=c++17 -o testReadMomentsJson testReadMomentsJson.cc
+// compile from main project dir by running
+//   g++ -std=c++17 -I. -o tests/testReadMomentsJson{,.cc}
 
 
 #include <fstream>
@@ -8,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "json.hpp"
+#include "cpp/json.hpp"
 
 
 // struct that holds a single moment value and its associated metadata
