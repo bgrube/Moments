@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 import ROOT
 
-import OpenMpUtilities
+from . import OpenMpUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
