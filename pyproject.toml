@@ -1,10 +1,9 @@
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "moment-analysis"
+name = "moments"
 version = "0.1.0"
+authors = [
+  { name="Boris Grube", email="bgrube@jlab.org" },
+]
 description = "Moment-analysis utilities and workflows"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -16,7 +15,7 @@ dependencies = [
   "numpy~=1.26.4",
   "pandas~=2.3.2",
   "py3nj~=0.2.1",
-  "# rcdb~=2.4.0",
+  # "rcdb~=2.4.0",
   "scipy~=1.13.1",
   "spherical~=1.0.15",
   "threadpoolctl~=3.6.0",
@@ -25,5 +24,6 @@ dependencies = [
   "wurlitzer~=3.1.1",
 ]
 
-[tool.setuptools]
-packages = ["moments"]
+[project.urls]
+Homepage = "https://github.com/bgrube/Moments"
+Issues = "https://github.com/bgrube/Moments/issues"
