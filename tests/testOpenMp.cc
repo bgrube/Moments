@@ -1,16 +1,14 @@
 // on Linux:
-// > g++ $(root-config --cflags --libs) -lMathMore -fopenmp -o testOpenMp{,.cc}
-// > export OMP_NUM_THREADS=5
-// > ./testOpenMp
+// > g++ $(root-config --cflags --libs) -lMathMore -fopenmp -I. -o tests/testOpenMp{,.cc}
+// > ./tests/testOpenMp
 //
 // on MacOS:
 // Apple does not ship OpenMP library -> install libomp e.g. via MacPorts or Homebrew
 // see https://open-box.readthedocs.io/en/latest/installation/openmp_macos.html
 // and https://stackoverflow.com/questions/43555410/enable-openmp-support-in-clang-in-mac-os-x-sierra-mojave
 // > sudo port install libomp
-// > /usr/bin/clang++ $(root-config --cflags --libs) -lMathMore -Xpreprocessor -fopenmp -I/opt/local/include/libomp -L/opt/local/lib/libomp -lomp -o testOpenMp{,.cc}
-// > export OMP_NUM_THREADS=5
-// > ./testOpenMp
+// > /usr/bin/clang++ $(root-config6 --cflags --libs) -lMathMore -Xpreprocessor -fopenmp -I/opt/local/include/libomp -L/opt/local/lib/libomp -lomp -o tests/testOpenMp{,.cc}
+// > ./tests/testOpenMp
 
 
 #include <chrono>
@@ -18,9 +16,7 @@
 #include <omp.h>
 #include <vector>
 
-#include "Math/SpecFuncMathMore.h"
-
-#include "basisFunctions.C"
+#include "cpp/basisFunctions.C"
 
 
 int
@@ -60,8 +56,7 @@ main(
 	const unsigned int  M            = 1;
 	const double        polarization = 1.0;
 
-	for (size_t nmbThreads = 1; nmbThreads < 256; nmbThreads *= 2)
-	{
+	for (size_t nmbThreads = 1; nmbThreads < 256; nmbThreads *= 2) {
 		omp_set_num_threads(nmbThreads);
 
 		const auto start = std::chrono::high_resolution_clock::now();

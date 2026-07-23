@@ -44,7 +44,7 @@ from moments.PlottingUtilities import (
   plotPullParameters,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
 from moments import Utilities
 
 

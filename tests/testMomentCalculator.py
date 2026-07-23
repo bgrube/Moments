@@ -27,7 +27,7 @@ from moments.MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
 
 
 # always flush print() to reduce garbling of log files due to buffering

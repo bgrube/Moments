@@ -315,7 +315,7 @@ class AmplitudeSet:
     printFormula: bool = False,  # if set formula for calculation of intensity is printed
   ) -> str:
     """Returns formula for intensity calculated from partial-wave amplitudes assuming rank-1 spin-density matrix"""
-    # constructed formula uses functions defined in `basisFunctions.C`
+    # constructed formula uses functions defined in `cpp/basisFunctions.C`
     intensityComponentTerms: list[tuple[str, str, str]] = []  # summands in Eq. (161) separated by intensity component
     for refl in (-1, +1) if self.polarized else (None, ):
       for amp1 in self.amplitudes(onlyRefl = refl):
@@ -679,7 +679,7 @@ class AcceptanceIntegralMatrix:
       data         = self.dataSet.phaseSpaceData,
     )
     nmbAccEvents = thetas.size()
-    # calculate basis-function values for measured moments; Eq. (175); defined in `basisFunctions.C`
+    # calculate basis-function values for measured moments; Eq. (175); defined in `cpp/basisFunctions.C`
     nmbMomentsMeas = len(self.indicesMeas)
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
     for flatIndexMeas in self.indicesMeas.flatIndices:
@@ -691,7 +691,7 @@ class AcceptanceIntegralMatrix:
         Phis,
         beamPol,
       ))
-    # calculate basis-function values for physical moments; Eq. (176); defined in `basisFunctions.C`
+    # calculate basis-function values for physical moments; Eq. (176); defined in `cpp/basisFunctions.C`
     nmbMomentsPhys = len(self.indicesPhys)
     fPhys: npt.NDArray[npt.Shape["nmbMomentsPhys, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsPhys, nmbAccEvents), dtype = np.complex128)
     for flatIndexPhys in self.indicesPhys.flatIndices:
@@ -1260,7 +1260,7 @@ class MomentResult:
     useIntensityTerms: IntensityTermsType = IntensityTermsType.ALL,
   ) -> str:
     """Returns formula for intensity calculated from moment values"""
-    # constructed formula uses functions defined in `basisFunctions.C`
+    # constructed formula uses functions defined in `cpp/basisFunctions.C`
     intensityComponentTerms: list[list[str]] = [[], [], []] if self.indices.polarized else [[]]  # lists of summands for each intensity component, i.e. I_0, I_1, and I_2 if polarized, else only I_0
     for qnIndex in self.indices.qnIndices:
       momentIndex = qnIndex.momentIndex
@@ -1297,7 +1297,7 @@ class MomentResult:
       YLM = f"Ylm({L}, {M}, {thetaFormula}, {phiFormula})"  # spherical harmonic
       term = f"{np.sqrt((2 * L + 1) / (4 * math.pi)) * (1 if M == 0 else 2)} "  # normalization factor
       # summand as in Eqs. (174) and (175)
-      term += f"* std::real(complexT({HLMreal}, {HLMimag}) * {YLM})"  # complexT is a typedef for std::complex<double> in `basisFunctions.C`
+      term += f"* std::real(complexT({HLMreal}, {HLMimag}) * {YLM})"  # complexT is a typedef for std::complex<double> in `cpp/basisFunctions.C`
       intensityComponentTerms[momentIndex].append(term if momentIndex == 0 else f"(-{term})")  # summands of I_1 and I_2 have a minus sign in Eq. (175)
     # sum all terms for each intensity component
     intensityComponentsFormula = [""] * len(intensityComponentTerms)
