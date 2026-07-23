@@ -262,7 +262,7 @@ def generateDataSphHarmLC(
 
 
 # C++ implementation of RDataFrame custom action that calculates covariance between two columns
-assert ROOT.gROOT.LoadMacro("./Covariance.C+") == 0, "Error loading './Covariance.C+'"
+assert ROOT.gROOT.LoadMacro("./cpp/Covariance.C+") == 0, "Error loading './cpp/Covariance.C+'"
 
 def calculateSphHarmMoments(
   dataFrame:         ROOT.RDataFrame,
