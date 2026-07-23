@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moment-analysis"
+version = "0.1.0"
+description = "Moment-analysis utilities and workflows"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "bidict~=0.23.1",
+  "iminuit~=2.31.1",
+  "matplotlib~=3.9.4",
+  "nptyping~=2.5.0",
+  "numpy~=1.26.4",
+  "pandas~=2.3.2",
+  "py3nj~=0.2.1",
+  "# rcdb~=2.4.0",
+  "scipy~=1.13.1",
+  "spherical~=1.0.15",
+  "threadpoolctl~=3.6.0",
+  "typing_extensions~=4.15.0",
+  "uncertainties~=3.2.3",
+  "wurlitzer~=3.1.1",
+]
+
+[tool.setuptools]
+packages = ["moments"]
