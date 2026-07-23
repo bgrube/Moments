@@ -12,11 +12,11 @@ import threadpoolctl
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-import MomentCalculator
-import PlottingUtilities
-import RootUtilities
-import testMomentsPhotoProd
-import Utilities
+import moments.MomentCalculator as MomentCalculator
+import moments.PlottingUtilities as PlottingUtilities
+from moments import RootUtilities
+import tests.testMomentsPhotoProd as testMomentsPhotoProd
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

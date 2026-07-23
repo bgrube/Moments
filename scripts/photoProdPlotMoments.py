@@ -25,7 +25,7 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   AnalysisConfig,
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
@@ -39,8 +39,8 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPP,
   DataConfig,
 )
-import MomentCalculator
-from MomentCalculator import (
+import moments.MomentCalculator as MomentCalculator
+from moments.MomentCalculator import (
   AcceptanceIntegralMatrix,
   constructMomentResultFrom,
   DataSet,
@@ -51,7 +51,7 @@ from MomentCalculator import (
   MomentValue,
   QnMomentIndex,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   convertGraphToHist,
   HistAxisBinning,
   makeMomentHistogram,
@@ -67,7 +67,7 @@ from PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-import Utilities
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

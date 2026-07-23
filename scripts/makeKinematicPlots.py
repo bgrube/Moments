@@ -19,7 +19,7 @@ from typing_extensions import TypeAlias
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -28,7 +28,7 @@ from AnalysisConfig import (
   defineOverwriteRDataFrame,
   SubsystemInfo,
 )
-from makeMomentsInputTree import (
+from scripts.makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
@@ -38,12 +38,12 @@ from makeMomentsInputTree import (
   defineDataFrameColumns,
   lorentzVectors,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   drawHorizontalZeroLine,
   HistAxisBinning,
   setupPlotStyle,
 )
-import Utilities
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

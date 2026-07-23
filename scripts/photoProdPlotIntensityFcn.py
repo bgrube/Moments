@@ -16,21 +16,21 @@ import functools
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
 )
-from MomentCalculator import (
+from moments.MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-import Utilities
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

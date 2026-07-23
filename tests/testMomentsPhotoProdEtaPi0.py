@@ -13,7 +13,7 @@ import threadpoolctl
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from MomentCalculator import (
+from moments.MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
   binLabel,
@@ -27,7 +27,7 @@ from MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   HistAxisBinning,
   MomentValueAndTruth,
   plotAngularDistr,
@@ -44,8 +44,8 @@ from PlottingUtilities import (
   plotPullParameters,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-import Utilities
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

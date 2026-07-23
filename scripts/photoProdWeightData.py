@@ -21,7 +21,7 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -34,7 +34,7 @@ from AnalysisConfig import (
   DataConfig,
   SubsystemInfo,
 )
-from makeMomentsInputTree import (
+from scripts.makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
@@ -43,17 +43,17 @@ from makeMomentsInputTree import (
   lorentzVectors,
   reweightKinDistribution,
 )
-from MomentCalculator import (
+from moments.MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-import Utilities
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

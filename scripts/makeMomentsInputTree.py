@@ -20,7 +20,7 @@ import tempfile
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -31,21 +31,21 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_CLAS,
   defineOverwriteRDataFrame,
 )
-from MomentCalculator import (
+from moments.MomentCalculator import (
   KinematicBinningVariable,
   MomentResultsKinematicBinning,
   QnMomentIndex,
 )
-from PlottingUtilities import (
+from moments.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-from RootUtilities import (
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments.RootUtilities import (
   declareInCpp,
   loadFSROOTLibraries,
 )
-import Utilities
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

@@ -11,11 +11,11 @@ import sys
 
 import ROOT
 
-from makeMomentsInputTree import (
+from scripts.makeMomentsInputTree import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
 )
-from MomentCalculator import (
+from moments.MomentCalculator import (
   AcceptanceIntegralMatrix,
   AmplitudeSet,
   AmplitudeValue,
@@ -27,7 +27,7 @@ from MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
 
 
 # always flush print() to reduce garbling of log files due to buffering

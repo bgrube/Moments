@@ -21,7 +21,7 @@ import threadpoolctl
 import ROOT
 from wurlitzer import pipes, STDOUT
 
-from AnalysisConfig import (
+from moments.AnalysisConfig import (
   AnalysisConfig,
   BEAM_POL_INFOS,
   CFG_KEVIN,
@@ -36,14 +36,14 @@ from AnalysisConfig import (
   CFG_UNPOLARIZED_PIPP,
   DataConfig,
 )
-from MomentCalculator import (
+from moments.MomentCalculator import (
   DataSet,
   MomentCalculator,
   MomentCalculatorsKinematicBinning,
 )
-from PlottingUtilities import HistAxisBinning
-import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
-import Utilities
+from moments.PlottingUtilities import HistAxisBinning
+from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
