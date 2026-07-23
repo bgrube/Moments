@@ -48,7 +48,7 @@ def loadFSROOTLibraries() -> None:
 # also provides complexT typedef for std::complex<double>
 OpenMpUtilities.enableRootACLiCOpenMp()
 # OpenMpUtilities.printRootACLiCSettings()
-assert ROOT.gROOT.LoadMacro("./basisFunctions.C+") == 0, "Error loading './basisFunctions.C'"
+assert ROOT.gROOT.LoadMacro("./cpp/basisFunctions.C+") == 0, "Error loading './cpp/basisFunctions.C'"
 
 
 # see https://root-forum.cern.ch/t/tf1-eval-as-a-function-in-rdataframe/50699/3

@@ -43,7 +43,7 @@ from moments.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `basisFunctions.C`
+from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
 from tests.testMomentsPhotoProd import TH3_ANG_PLOT_KWARGS
 from tests.testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
 from moments import Utilities

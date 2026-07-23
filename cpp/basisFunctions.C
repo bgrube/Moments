@@ -52,15 +52,16 @@ f_phys(
 	const double               polarization
 );
 
+#TODO move to file in tests/ directory
 void
 testOpenMp2()
 {
-	const size_t        nmbEvents = 100000000;
-	std::vector<double> thetas   (nmbEvents, 1.0);
-	std::vector<double> phis     (nmbEvents, 1.0);
-	std::vector<double> Phis     (nmbEvents, 1.0);
-	// std::vector<double> fcnValues(nmbEvents);
-	std::vector<complex<double>> fcnValues(nmbEvents);
+	const size_t                      nmbEvents = 100000000;
+	std::vector<double>               thetas   (nmbEvents, 1.0);
+	std::vector<double>               phis     (nmbEvents, 1.0);
+	std::vector<double>               Phis     (nmbEvents, 1.0);
+	// std::vector<double>               fcnValues(nmbEvents);
+	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	const unsigned int  momentIndex  = 1;
 	const unsigned int  L            = 3;
 	const unsigned int  M            = 2;
