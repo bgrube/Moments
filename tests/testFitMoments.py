@@ -43,7 +43,7 @@ from moments.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from tests.testMomentsPhotoProd import TH3_ANG_PLOT_KWARGS
 from tests.testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
 from moments import Utilities
@@ -393,6 +393,8 @@ def performFitAttempt(
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
+
   # set parameters of test case
   nmbPwaMcEventsSig       = 10000   # number of signal "data" events to generate from partial-wave amplitudes
   nmbPwaMcEventsBkg       = 10000   # number of background "data" events to generate from partial-wave amplitudes

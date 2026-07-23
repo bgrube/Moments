@@ -44,7 +44,7 @@ from moments.PlottingUtilities import (
   plotPullParameters,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from moments import Utilities
 
 
@@ -81,6 +81,7 @@ def readPartialWaveAmplitudes(
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
   Utilities.printGitInfo()
   timer = Utilities.Timer()
   ROOT.gROOT.SetBatch(True)

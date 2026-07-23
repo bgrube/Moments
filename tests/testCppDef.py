@@ -2,23 +2,32 @@
 
 from __future__ import annotations
 
+import functools
+
 import ROOT
 
-import spherical  #TODO weird behavior: without this import I get
-#   File "/w/halld-scshelf2101/bgrube/Moments/./testCpp.py", line 8, in <module>
-#     import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
-#   File "/group/halld/Software/builds/Linux_Alma9-x86_64-gcc11.5.0/root/root-6.24.04/lib/ROOT/_facade.py", line 150, in _importhook
-#     return _orig_ihook(name, *args, **kwds)
-#   File "/w/halld-scshelf2101/bgrube/Moments/RootUtilities.py", line 20, in <module>
-#     assert ROOT.gROOT.LoadMacro("./cpp/basisFunctions.C+") == 0, "Error loading './cpp/basisFunctions.C'"
+# import quaternionic
+import spherical
+# need to import one of the above modules, otherwise loading of `cpp/basisFunctions.C` fails with error:
+# cling::DynamicLibraryManager::loadLibrary(): libopenblas64_p-r0-0cf96a72.3.23.dev.so: cannot open shared object file: No such file or directory
+# Traceback (most recent call last):
+#   File "/w/halld-scshelf2101/bgrube/Moments/./tests/testCppDef.py", line 27, in <module>
+#     RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = False)  # initializes OpenMP and loads `cpp/basisFunctions.C`
+#   File "/w/halld-scshelf2101/bgrube/Moments/moments/RootUtilities.py", line 31, in wrapper
+#     funcResult = func(*args, **kwargs)
+#   File "/w/halld-scshelf2101/bgrube/Moments/moments/RootUtilities.py", line 97, in loadBasisFunctionsLibrary
+#     assert ROOT.gROOT.LoadMacro(f"{cppSourceFilePath}+{'+' if forceRecompilation else ''}") == 0, f"Error loading '{cppSourceFilePath}'"
 # AssertionError: Error loading './cpp/basisFunctions.C'
-# But calling the corresponding LoadMacro() line in __main__ works w/o problems
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
   ROOT.gROOT.SetBatch(True)
-  # ROOT.gROOT.LoadMacro("./cpp/basisFunctions.C+") == 0, "Error loading './cpp/basisFunctions.C'"
   print("FIRST")
   hist = ROOT.TH1D("hist", "", 100, 0, 1)
   RootUtilities.declareInCpp(hist = hist)

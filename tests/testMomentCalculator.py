@@ -27,7 +27,7 @@ from moments.MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
@@ -35,6 +35,8 @@ print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
+
   if False:
     for polarized in (True, False):
       print(f"MomentIndices for {'' if polarized else 'un'}polarized moments:")

@@ -42,7 +42,7 @@ from moments.MomentCalculator import (
   MomentCalculatorsKinematicBinning,
 )
 from moments.PlottingUtilities import HistAxisBinning
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from moments import Utilities
 
 
@@ -246,6 +246,8 @@ CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
+
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data

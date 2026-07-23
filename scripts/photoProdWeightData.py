@@ -52,7 +52,7 @@ from moments.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from moments import Utilities
 
 
@@ -250,6 +250,7 @@ def plotIntensityFcn(
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   ROOT.gROOT.SetBatch(True)
 
   # declare C++ functions

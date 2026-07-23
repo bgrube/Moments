@@ -18,7 +18,7 @@ from moments.MomentCalculator import (
   QnWaveIndex,
 )
 from moments.PlottingUtilities import setupPlotStyle
-from moments import RootUtilities  # importing initializes OpenMP and loads `cpp/basisFunctions.C`
+from moments import RootUtilities
 from tests.testMomentsPhotoProd import (
   genData,
   genDataFromIntensityFormula,
@@ -85,6 +85,7 @@ def weightAccPhaseSpaceWithIntensity(
 
 
 if __name__ == "__main__":
+  RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
   printGitInfo()
   timer = Timer()
   ROOT.gROOT.SetBatch(True)
