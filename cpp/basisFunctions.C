@@ -52,7 +52,7 @@ f_phys(
 	const double               polarization
 );
 
-#TODO move to file in tests/ directory
+// TODO move to file in tests/ directory
 void
 testOpenMp2()
 {
