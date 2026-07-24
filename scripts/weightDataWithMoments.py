@@ -194,7 +194,7 @@ def weightDataWithIntensityFormula(
   return ROOT.RDataFrame(treeName, weightedDataFilePath)
 
 
-#TODO is this still needed? if yes, use function in `photoProdPlotIntensityFcn.py` instead
+#TODO is this still needed? if yes, use function in `plotIntensityFunctions.py` instead
 def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,

@@ -9,8 +9,8 @@ Currently, the repository contains 2 analyses that are based on real data:
 * Both analyses are implemented in a set of 6 scripts
   * `calculateMoments.py` calculates the moments and writes them to disk.
   * `calculateMomentsFromPwa.py` calculates the moments from the result of a mass-independent PWA and writes the to disk.
-  * `photoProdPlotMoments.py` reads moments from disk and plots all moments.
-  * `photoProdWeightData.py` weights accepted phase-space data with intensity distribution defined by moment values.
+  * `plotMoments.py` reads moments from disk and plots all moments.
+  * `weightDataWithMoments.py` weights accepted phase-space data with intensity distribution defined by moment values.
   * `combineMoments.py` combines moment values from independent data sets, e.g. the 4 beam-polarization orientations.
   * `overlayMoments.py` creates overlay plots of moments.
 
