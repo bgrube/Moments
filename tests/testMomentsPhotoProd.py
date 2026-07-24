@@ -377,7 +377,7 @@ if __name__ == "__main__":
       # calculate true moment values and generate data
       t = timer.start("Time to generate MC data")
       # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
-      momentResultsFilePath = f"./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_{maxL}/unnorm_moments_phys.pkl"
+      momentResultsFilePath = f"./plots/PiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_{maxL}/unnorm_moments_phys.pkl"
       print(f"Reading moments from file '{momentResultsFilePath}'")
       HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)[11]  # pick [0.72, 0.76] GeV bin
       if True:

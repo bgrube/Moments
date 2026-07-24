@@ -67,8 +67,8 @@ if __name__ == "__main__":
       indicesPhys = MomentIndices(maxL = 4, polarized = True),
       dataSet     = DataSet(data = None, phaseSpaceData = None, nmbGenEvents = 0, polarization = 1.0),  # dummy data set
     )
-    # integralMatrix.load("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/integralMatrix_mass_0.460.npy")
-    integralMatrix.load("./plotsPhotoProdPiPiPol.allH2/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/integralMatrix_mass_0.460.npy")
+    # integralMatrix.load("./plots/PiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/integralMatrix_mass_0.460.npy")
+    integralMatrix.load("./plots/PiPiPol.allH2/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/integralMatrix_mass_0.460.npy")
     indexMeas = QnMomentIndex(momentIndex = 2, L = 0, M = 0)
     for indexPhys in integralMatrix.indicesPhys.qnIndices:
       print(f"Integral[{indexMeas=}, {indexPhys=}] = {integralMatrix[indexMeas, indexPhys]}")

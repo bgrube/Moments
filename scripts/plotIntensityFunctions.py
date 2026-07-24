@@ -135,7 +135,7 @@ if __name__ == "__main__":
   setupPlotStyle()
 
   # polarized eta pi0 data
-  plotsDirPath        = "./plotsPhotoProdEtaPi0"
+  plotsDirPath        = "./plots/EtaPi0"
   dataPeriod          = "merged"
   tBinLabel           = "t010020"
   # tBinLabel           = "t050075"
@@ -143,7 +143,7 @@ if __name__ == "__main__":
   overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
   coordSysLabel       = "GJ"
   # polarized pi+pi- data
-  # plotsDirPath        = "./plotsPhotoProdPiPiPol"
+  # plotsDirPath        = "./plots/PiPiPol"
   # dataPeriod          = "2018_08"
   # tBinLabel           = "tbin_0.1_0.2"
   # beamPolLabel        = "PARA_0"

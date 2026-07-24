@@ -162,7 +162,7 @@ if __name__ == "__main__":
     psGenFilePath            = f"./data/EtaPi0/phaseSpace_gen_{fileNamePattern}_flat.root"
     pwAmpsFilePath           = "./data/EtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
     fitResultPlotDir         = "./data/EtaPi0/intensityPlots/010020"
-    outFileDirPath           = Utilities.makeDirPath(f"./plotsPhotoProdEtaPi0_{beamPolAngleLabel}")
+    outFileDirPath           = Utilities.makeDirPath(f"./plots/EtaPi0_{beamPolAngleLabel}")
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments
     normalizeMoments         = False

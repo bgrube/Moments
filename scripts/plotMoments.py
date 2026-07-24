@@ -680,13 +680,13 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   compareTo = None
   # compareTo = ComparisonMomentsType.PWA
-  # compareTo = ("./plotsPhotoProdPiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
-  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho/2017_01/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "ver04")
-  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho.phiNeg/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
-  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho.phiPos/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
-  # compareTo = ("./plotsPhotoProdPiPiPol.SDME.rho/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
-  # compareTo = ("./plotsPhotoProdPiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "w/o Cut")
-  # compareTo = ("./plotsPhotoProdPiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plots/PiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
+  # compareTo = ("./plots/PiPiPol.SDME.rho/2017_01/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plots/PiPiPol.SDME.rho.phiNeg/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plots/PiPiPol.SDME.rho.phiPos/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plots/PiPiPol.SDME.rho/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plots/PiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plots/PiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
   plotCompareUncert = True
   # plotCompareUncert = False
   #
