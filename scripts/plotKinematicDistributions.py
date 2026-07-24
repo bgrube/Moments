@@ -28,13 +28,12 @@ from workflow.AnalysisConfig import (
   defineOverwriteRDataFrame,
   SubsystemInfo,
 )
-from scripts.convertInputData import (
+from workflow.DataConversionUtilities import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TRACKDISTFDC,
   CPP_CODE_TWO_BODY_ANGLES,
-  CPP_CODE_TWO_BODY_ANGLES_NIZAR,
   defineDataFrameColumns,
   lorentzVectors,
 )
@@ -537,7 +536,6 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
-  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES_NIZAR)
 
   additionalColumnDefs = {  # additional columns for each data type
     AnalysisConfig.DataType.REAL_DATA             : {},

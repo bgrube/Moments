@@ -7,12 +7,11 @@ import os
 
 import ROOT
 
-from scripts.convertInputData import (
+from workflow.AnalysisConfig import AnalysisConfig
+from workflow.DataConversionUtilities import (
   CPP_CODE_MASSPAIR,
-  InputDataFormat,
   lorentzVectors,
 )
-
 
 if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
@@ -33,7 +32,7 @@ if __name__ == "__main__":
     "Sig" : ROOT.RDataFrame(treeName, inputDataFileNamePatternSig),
     "Bkg" : ROOT.RDataFrame(treeName, inputDataFileNamePatternBkg),
   }
-  lvs = lorentzVectors(dataFormat = InputDataFormat.AMPTOOLS)
+  lvs = lorentzVectors(dataFormat = AnalysisConfig.DataFormat.AMPTOOLS)
   dfs = {label : df.Define("massPiPi", f"(Double32_t)massPair({lvs['pip']}, {lvs['pim']})") for label, df in dfs.items()}
   hists = {
     label : df.Histo1D(
