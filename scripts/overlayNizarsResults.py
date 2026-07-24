@@ -10,8 +10,8 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from moments.MomentCalculator import MomentIndices
-from moments.PlottingUtilities import setupPlotStyle
-from moments import Utilities
+from workflow.PlottingUtilities import setupPlotStyle
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

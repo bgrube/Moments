@@ -19,7 +19,6 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
-from moments.AnalysisConfig import AnalysisConfig
 from moments.MomentCalculator import (
   AmplitudeSet,
   AmplitudeValue,
@@ -35,7 +34,8 @@ from moments.MomentCalculator import (
 )
 from scripts.calculateMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
 from scripts.weightDataWithMoments import weightDataWithIntensityFormula
-from moments.PlottingUtilities import (
+from workflow.AnalysisConfig import AnalysisConfig
+from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   plotComplexMatrix,
@@ -43,8 +43,8 @@ from moments.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-from moments import RootUtilities
-from moments import Utilities
+from workflow import RootUtilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

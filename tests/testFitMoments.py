@@ -38,15 +38,16 @@ from moments.MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   drawTF3,
   plotMomentsInBin,
   setupPlotStyle,
 )
-from moments import RootUtilities
+from workflow import RootUtilities
+from workflow import Utilities
+
 from tests.testMomentsPhotoProd import TH3_ANG_PLOT_KWARGS
 from tests.testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
-from moments import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

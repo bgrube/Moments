@@ -21,7 +21,12 @@ import threadpoolctl
 import ROOT
 from wurlitzer import pipes, STDOUT
 
-from moments.AnalysisConfig import (
+from moments.MomentCalculator import (
+  DataSet,
+  MomentCalculator,
+  MomentCalculatorsKinematicBinning,
+)
+from workflow.AnalysisConfig import (
   AnalysisConfig,
   BEAM_POL_INFOS,
   CFG_KEVIN,
@@ -36,14 +41,9 @@ from moments.AnalysisConfig import (
   CFG_UNPOLARIZED_PIPP,
   DataConfig,
 )
-from moments.MomentCalculator import (
-  DataSet,
-  MomentCalculator,
-  MomentCalculatorsKinematicBinning,
-)
-from moments.PlottingUtilities import HistAxisBinning
-from moments import RootUtilities
-from moments import Utilities
+from workflow.PlottingUtilities import HistAxisBinning
+from workflow import RootUtilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

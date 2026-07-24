@@ -21,7 +21,20 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from wurlitzer import pipes, STDOUT
 
-from moments.AnalysisConfig import (
+from moments.MomentCalculator import (
+  MomentResult,
+  MomentResultsKinematicBinning,
+)
+from scripts.convertInputData import (
+  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
+  CPP_CODE_TWO_BODY_ANGLES,
+  CPP_CODE_MANDELSTAM_T,
+  CPP_CODE_MASSPAIR,
+  defineDataFrameColumns,
+  lorentzVectors,
+  reweightKinDistribution,
+)
+from workflow.AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -34,26 +47,13 @@ from moments.AnalysisConfig import (
   DataConfig,
   SubsystemInfo,
 )
-from scripts.convertInputData import (
-  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_TWO_BODY_ANGLES,
-  CPP_CODE_MANDELSTAM_T,
-  CPP_CODE_MASSPAIR,
-  defineDataFrameColumns,
-  lorentzVectors,
-  reweightKinDistribution,
-)
-from moments.MomentCalculator import (
-  MomentResult,
-  MomentResultsKinematicBinning,
-)
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments import RootUtilities
-from moments import Utilities
+from workflow import RootUtilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

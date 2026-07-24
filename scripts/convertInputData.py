@@ -20,7 +20,12 @@ import tempfile
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from moments.AnalysisConfig import (
+from moments.MomentCalculator import (
+  KinematicBinningVariable,
+  MomentResultsKinematicBinning,
+  QnMomentIndex,
+)
+from workflow.AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -31,21 +36,16 @@ from moments.AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_CLAS,
   defineOverwriteRDataFrame,
 )
-from moments.MomentCalculator import (
-  KinematicBinningVariable,
-  MomentResultsKinematicBinning,
-  QnMomentIndex,
-)
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments.RootUtilities import (
+from workflow.RootUtilities import (
   declareInCpp,
   loadBasisFunctionsLibrary,
   loadFSROOTLibraries,
 )
-from moments import Utilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

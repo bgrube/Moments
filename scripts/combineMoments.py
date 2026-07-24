@@ -17,13 +17,13 @@ import os
 from wurlitzer import pipes, STDOUT
 
 from moments.MomentCalculator import MomentResultsKinematicBinning
-from moments.AnalysisConfig import (
+from workflow.AnalysisConfig import (
   CFG_POLARIZED_ETAPPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
-from moments import Utilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

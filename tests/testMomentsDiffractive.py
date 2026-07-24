@@ -17,11 +17,11 @@ from uncertainties import UFloat, ufloat
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   setupPlotStyle,
 )
-from moments import RootUtilities
-from moments import Utilities
+from workflow import RootUtilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

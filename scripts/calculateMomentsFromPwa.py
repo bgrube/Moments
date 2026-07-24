@@ -30,12 +30,12 @@ from moments.MomentCalculator import (
   MomentResultsKinematicBinning,
   QnWaveIndex,
 )
-from moments.AnalysisConfig import (
+from workflow.AnalysisConfig import (
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
-from moments.PlottingUtilities import setupPlotStyle
-from moments import Utilities
+from workflow.PlottingUtilities import setupPlotStyle
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

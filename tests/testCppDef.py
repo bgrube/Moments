@@ -18,7 +18,7 @@ import spherical
 #   File "/w/halld-scshelf2101/bgrube/Moments/moments/RootUtilities.py", line 97, in loadBasisFunctionsLibrary
 #     assert ROOT.gROOT.LoadMacro(f"{cppSourceFilePath}+{'+' if forceRecompilation else ''}") == 0, f"Error loading '{cppSourceFilePath}'"
 # AssertionError: Error loading './cpp/basisFunctions.C'
-from moments import RootUtilities
+from workflow import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

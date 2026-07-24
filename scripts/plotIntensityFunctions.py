@@ -16,21 +16,21 @@ import functools
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from moments.AnalysisConfig import (
-  BeamPolInfo,
-  BEAM_POL_INFOS,
-)
 from moments.MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
 )
-from moments.PlottingUtilities import (
+from workflow.AnalysisConfig import (
+  BeamPolInfo,
+  BEAM_POL_INFOS,
+)
+from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments import RootUtilities
-from moments import Utilities
+from workflow import RootUtilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

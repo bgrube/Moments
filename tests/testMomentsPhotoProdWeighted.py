@@ -24,7 +24,7 @@ from moments.MomentCalculator import (
   MomentResult,
   QnWaveIndex,
 )
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   HistAxisBinning,
   plotComplexMatrix,
   plotMomentsBootstrapDiffInBin,
@@ -32,14 +32,15 @@ from moments.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-from moments import RootUtilities
+from workflow import RootUtilities
+from workflow import Utilities
+
 from tests.testMomentsPhotoProd import (
   genData,
   genDataFromIntensityFormula,
   TH3_ANG_NMB_BINS,
   TH3_ANG_TITLE,
 )
-from moments import Utilities
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
