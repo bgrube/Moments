@@ -8,7 +8,7 @@ import numpy as np
 
 import ROOT
 
-from makeMomentsInputTree import (
+from scripts.convertInputData import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
 )

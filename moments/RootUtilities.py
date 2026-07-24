@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import functools
 import os
-import socket
-import subprocess
 import threading
 from typing import Any, Callable
 

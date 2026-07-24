@@ -34,7 +34,7 @@ from moments.AnalysisConfig import (
   DataConfig,
   SubsystemInfo,
 )
-from scripts.makeMomentsInputTree import (
+from scripts.convertInputData import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
   CPP_CODE_MANDELSTAM_T,
