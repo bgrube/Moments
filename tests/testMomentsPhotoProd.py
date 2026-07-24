@@ -33,7 +33,7 @@ from moments.MomentCalculator import (
   MomentResultsKinematicBinning,
   QnWaveIndex,
 )
-from scripts.photoProdCalcMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
+from scripts.calculateMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
 from scripts.photoProdWeightData import weightDataWithIntensityFormula
 from moments.PlottingUtilities import (
   drawTF3,

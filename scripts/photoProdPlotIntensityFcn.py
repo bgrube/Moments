@@ -2,7 +2,7 @@
 """
 This module plots the intensity distributions that correspond to the
 moments estimated from data. The moment values are read from files
-produced by the script `photoProdCalcMoments.py` that calculates the
+produced by the script `calculateMoments.py` that calculates the
 moments.
 
 Usage: Run this module as a script to generate the output files.
