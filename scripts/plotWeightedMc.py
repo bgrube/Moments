@@ -22,7 +22,7 @@ from moments.AnalysisConfig import (
   CFG_POLARIZED_ETAPI0,
   SubsystemInfo,
 )
-from scripts.makeKinematicPlots import (
+from scripts.plotKinematicDistributions import (
   bookHistogram,
   defineColumnsForPlots,
   HistListType,

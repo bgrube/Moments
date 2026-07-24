@@ -8,7 +8,7 @@ import os
 
 import ROOT
 
-from makeKinematicPlots import decomposeHistEvenOdd
+from scripts.plotKinematicDistributions import decomposeHistEvenOdd
 
 
 def copyTH2(histSrc: ROOT.TH2) -> ROOT.TH2:
