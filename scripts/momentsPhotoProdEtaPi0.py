@@ -157,11 +157,11 @@ if __name__ == "__main__":
     # beamPolAngleLabel        = "135"
     beamPolAngleLabel        = "total"
     fileNamePattern          = "*" if beamPolAngleLabel == "total" else beamPolAngleLabel
-    dataFilePath             = f"./dataPhotoProdEtaPi0/data_{fileNamePattern}_flat.root"
-    psAccFilePath            = f"./dataPhotoProdEtaPi0/phaseSpace_acc_{fileNamePattern}_flat.root"
-    psGenFilePath            = f"./dataPhotoProdEtaPi0/phaseSpace_gen_{fileNamePattern}_flat.root"
-    pwAmpsFilePath           = "./dataPhotoProdEtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
-    fitResultPlotDir         = "./dataPhotoProdEtaPi0/intensityPlots/010020"
+    dataFilePath             = f"./data/EtaPi0/data_{fileNamePattern}_flat.root"
+    psAccFilePath            = f"./data/EtaPi0/phaseSpace_acc_{fileNamePattern}_flat.root"
+    psGenFilePath            = f"./data/EtaPi0/phaseSpace_gen_{fileNamePattern}_flat.root"
+    pwAmpsFilePath           = "./data/EtaPi0/evaluate_amplitude/evaluate_amplitude.csv"
+    fitResultPlotDir         = "./data/EtaPi0/intensityPlots/010020"
     outFileDirPath           = Utilities.makeDirPath(f"./plotsPhotoProdEtaPi0_{beamPolAngleLabel}")
     # maxL                     = 1  # define maximum L quantum number of moments
     maxL                     = 5  # define maximum L quantum number of moments

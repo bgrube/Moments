@@ -332,7 +332,7 @@ class AnalysisConfig:
       pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
     )
   )
-  dataDirBasePath:          str                               = "./dataPhotoProdPiPi/unpolarized"  # base directory for data
+  dataDirBasePath:          str                               = "./data/PiPi/unpolarized"  # base directory for data
   dataPeriods:              tuple[str, ...]                   = (  # labels of data periods to process
     "2017_01",
     "2018_08",
@@ -525,13 +525,13 @@ CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
   ),
 )
 CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
-  # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.root"  # Lukasz's data
-  # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
+  # dataFileName       = "./data/PiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.root"  # Lukasz's data
+  # dataFileName       = "./data/PiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
   # psAccFileName      = None,  # no file with accepted phase-space MC
   # psGenFileName      = None,  # no file with generated phase-space MC
-  # dataFileName       = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
-  # psAccFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
-  # psGenFileName      = "./dataPhotoProdPiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
+  # dataFileName       = "./data/PiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
+  # psAccFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
+  # psGenFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
   outFileDirBasePath = "./plotsPhotoProdPiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(
   #   nmbBins = 25, minVal = 0.4, maxVal = 1.40,
@@ -565,7 +565,7 @@ def inputFilePathPiPiPol(
     raise ValueError(f"Unknown data type: {dataType}")
 
 CFG_POLARIZED_PIPI = AnalysisConfig(
-  dataDirBasePath    = "./dataPhotoProdPiPi/polarized",
+  dataDirBasePath    = "./data/PiPi/polarized",
   dataPeriods        = (
     # "2017_01",
     "2017_01_ver05",  #!NOTE! SDME analysis: 0.60 < m_pipi < 0.88 GeV
@@ -659,7 +659,7 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}#it{#pi}^{0}",
   ),
-  dataDirBasePath    = "./dataPhotoProdEtaPi0/polarized",
+  dataDirBasePath    = "./data/EtaPi0/polarized",
   dataPeriods        = ("merged", ),  # merged Phase-I + Spring 2020 data with different polarization values
   tBinLabels         = (
     "t010020",
@@ -740,7 +740,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#eta}",
   ),
-  dataDirBasePath    = f"./dataPhotoProdEtapEta/unpolarized",
+  dataDirBasePath    = f"./data/EtapEta/unpolarized",
   dataPeriods        = (
     "2017_01",
     "2018_01",
@@ -799,9 +799,9 @@ CFG_KEVIN = AnalysisConfig(
   ),
   inputTreeName            = "ntFSGlueX_100_11100_angles",
   convertedTreeName        = "KmKS",
-  # dataFileName             = "./dataPhotoProdKmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
-  # psAccFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
-  # psGenFileName            = "./dataPhotoProdKmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
+  # dataFileName             = "./data/KmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
+  # psAccFileName            = "./data/KmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
+  # psGenFileName            = "./data/KmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
   # polarization             = "beamPol",  # read polarization from tree column
   # maxL                     = 4,
   maxLs                    = (
@@ -839,7 +839,7 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{K}_{S}^{0}#it{K}_{L}^{0}",
   ),
-  dataDirBasePath    = "./dataPhotoProdKSKL/polarized",
+  dataDirBasePath    = "./data/KSKL/polarized",
   dataPeriods        = ("merged", ),  # merged Phase-I(?) data with different polarization values
   tBinLabels         = ("AllT", ),
   beamPolLabels      = (

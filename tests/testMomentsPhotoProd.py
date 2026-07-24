@@ -297,7 +297,7 @@ if __name__ == "__main__":
       # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
       accPsHistNameGen = "accPs3D"  # accFull
       # accPsHistNameGen = "accPs3D_even"  # accEven
-      accPsFilePathGen = f"./dataPhotoProdPiPi/{accPsHistNameGen}.root"
+      accPsFilePathGen = f"./data/PiPi/{accPsHistNameGen}.root"
       accPsFileGen = ROOT.TFile.Open(accPsFilePathGen, "READ")
       accPSHistGen = accPsFileGen[accPsHistNameGen]
       print(f"Using 3D acceptance histogram '{accPSHistGen.GetName()}' in file '{accPsFilePathGen}' to generate events: min = {accPSHistGen.GetMinimum()}, max = {accPSHistGen.GetMaximum()}")
@@ -345,7 +345,7 @@ if __name__ == "__main__":
       # efficiencyFormulaDetune = f"0.1 * (1 + sin({yVar} * TMath::DegToRad()))"  # detuneOdd2; detune by odd terms in phi only
       # efficiencyFormulaDetune = f"0.1 * (1 + {yVar} / 180)"  # detuneOdd3; detune by odd terms in phi only
       # # use 2D histogram in (cos theta, phi) plane to detune efficiency
-      # accPsFile = ROOT.TFile.Open("./dataPhotoProdPiPi/anglesHFPiPi_0.72_0.76_odd.root", "READ")
+      # accPsFile = ROOT.TFile.Open("./data/PiPi/anglesHFPiPi_0.72_0.76_odd.root", "READ")
       # accPSHist = accPsFile["anglesHFPiPi_0.72_0.76_odd"]
       # accPSHistFunctor = ROOT.BinContent2DFunctor(accPSHist)
       # RootUtilities.declareInCpp(accPSHistFunctor = accPSHistFunctor)  # make Python object available to use in C++
@@ -354,7 +354,7 @@ if __name__ == "__main__":
       # efficiencyFormulaDetune = f"(0.35 + 0.15 * {xVar}) * (0.35 + 0.15 * ({yVar} / 180)) * (0.35 + 0.15 * ({zVar} / 180))"  # detuneOdd5; detune by odd terms in all variables
       # accPsHistNameReco = "accPs3D"  # detuneAccFull
       # # accPsHistNameReco = "accPs3D_even"  # detuneAccEven
-      # accPsFilePathReco = f"./dataPhotoProdPiPi/{accPsHistNameReco}.root"
+      # accPsFilePathReco = f"./data/PiPi/{accPsHistNameReco}.root"
       # accPsFileReco = ROOT.TFile.Open(accPsFilePathReco, "READ")
       # accPSHistReco = accPsFileReco[accPsHistNameReco]
       # print(f"Using 3D acceptance histogram '{accPSHistReco.GetName()}' in file '{accPsFilePathReco}' to analyze data: min = {accPSHistReco.GetMinimum()}, max = {accPSHistReco.GetMaximum()}")
