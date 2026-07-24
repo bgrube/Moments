@@ -667,7 +667,7 @@ if __name__ == "__main__":
     timer.start("Total execution time")
 
     # set parameters of test case
-    outFileDirPath    = Utilities.makeDirPath("./plotsTestDiffractive")
+    outFileDirPath    = Utilities.makeDirPath("./plots/testDiffractive")
     nmbEvents         = 1000
     nmbMcEvents       = 1000000
     # formulas for detection efficiency: x = cos(theta); y = phi in [-180, +180] deg
