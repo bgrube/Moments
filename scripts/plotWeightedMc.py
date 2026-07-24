@@ -22,18 +22,18 @@ from scripts.plotKinematicDistributions import (
   HistListType,
   HistogramDefinition,
 )
-from scripts.convertInputData import (
-  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_MANDELSTAM_T,
-  CPP_CODE_MASSPAIR,
-  CPP_CODE_TWO_BODY_ANGLES,
-)
 from workflow.AnalysisConfig import (
   AnalysisConfig,
   BEAM_POL_INFOS,
   CFG_POLARIZED_PIPI,
   CFG_POLARIZED_ETAPI0,
   SubsystemInfo,
+)
+from workflow.DataConversionUtilities import (
+  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
+  CPP_CODE_MANDELSTAM_T,
+  CPP_CODE_MASSPAIR,
+  CPP_CODE_TWO_BODY_ANGLES,
 )
 from workflow.PlottingUtilities import (
   HistAxisBinning,

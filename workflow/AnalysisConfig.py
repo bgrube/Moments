@@ -13,6 +13,7 @@ from dataclasses import (
   field,
 )
 from enum import Enum
+import functools
 
 import ROOT
 
@@ -22,6 +23,10 @@ from moments.MomentCalculator import (
 )
 from .PlottingUtilities import HistAxisBinning
 from . import Utilities
+
+
+# always flush print() to reduce garbling of log files due to buffering
+print = functools.partial(print, flush = True)
 
 
 def defineOverwriteRDataFrame(

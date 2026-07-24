@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Sequence
 import contextlib
 from dataclasses import (
   dataclass,
@@ -15,7 +14,6 @@ import subprocess
 import sys
 import time
 
-import ROOT
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
@@ -136,47 +134,3 @@ class Timer:
         strings.append(f"{name}: {timeData.summary}")
     summary = "\n".join(strings)
     return summary if summary else None
-
-
-DATA_TCHAINS: list[ROOT.TChain] = []  # use global variable to avoid garbage collection
-def getDataFrameWithCorrectEventWeights(
-  dataSigRegionFilePaths:    Sequence[str],  # file paths of input data files for signal region
-  dataBkgRegionFilePaths:    Sequence[str],  # file paths of input data files for background region
-  treeName:                  str,            # name of tree in input files
-  sigRegionWeightFormula:    str  = "Weight",   # formula for calculating event weight for signal events
-  bkgRegionWeightFormula:    str  = "-Weight",  # formula for calculating event weight for background events
-  friendSigRegionFilePath:   str  = "./data_sig.root.weights",  # file path for friend tree that contains event weights for signal region
-  friendBkgRegionFilePath:   str  = "./data_bkg.root.weights",  # file path for friend tree that contains event weights for background region
-  forceOverwriteFriendFiles: bool = True,  # if False existing friend files will be used and assumed to contain the correct event weights
-  weightColNameOutput:       str  = "eventWeight",  # name of column in friend trees that contains event weights
-) -> ROOT.RDataFrame:
-  """Creates friend trees with correct event weights and attaches them to data tree; must not be used in multi-threaded mode"""
-  if ROOT.IsImplicitMTEnabled():
-    raise RuntimeError("getDataFrameWithCorrectEventWeights() must not be used in multi-threaded mode")
-  # write corrected weights into friend trees
-  for dataFilePath, weightFormula, friendFilePath in (
-    (dataSigRegionFilePaths, sigRegionWeightFormula, friendSigRegionFilePath),
-    (dataBkgRegionFilePaths, bkgRegionWeightFormula, friendBkgRegionFilePath),
-  ):
-    print(f"Processing file(s) {dataFilePath}")
-    if not forceOverwriteFriendFiles and os.path.exists(friendFilePath):
-      print(f"File '{friendFilePath}' already exists, skipping creation of event-weight friend tree")
-      continue
-    print(f"Writing friend tree '{treeName}' with '{weightColNameOutput}' = '{weightFormula}' column to file '{friendFilePath}'")
-    ROOT.RDataFrame(treeName, dataFilePath) \
-        .Define(weightColNameOutput, weightFormula) \
-        .Snapshot(treeName, friendFilePath, [weightColNameOutput])  #!NOTE! when multi-threading is enabled, the order of entries is not guaranteed to be preserved
-  # chain trees for signal and background regions and add friend trees with weights
-  dataTChain   = ROOT.TChain(treeName)
-  weightTChain = ROOT.TChain(treeName)
-  for dataFilePath, friendFilePath in (
-    (dataSigRegionFilePaths, friendSigRegionFilePath),
-    (dataBkgRegionFilePaths, friendBkgRegionFilePath),
-  ):
-    for dataFilePath in dataFilePath:
-      dataTChain.Add(dataFilePath)
-    weightTChain.Add(friendFilePath)
-  dataTChain.AddFriend(weightTChain)
-  #TODO have a look at <https://root.cern/doc/v632/classROOT_1_1RDataFrame.html#rdf-from-spec> to build data frame.
-  DATA_TCHAINS.append(dataTChain)  # avoid garbage collection of TChain
-  return ROOT.RDataFrame(dataTChain)

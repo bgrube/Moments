@@ -11,6 +11,7 @@ import functools
 
 import ROOT
 
+from workflow import DataConversionUtilities
 from workflow import Utilities
 
 
@@ -37,7 +38,7 @@ if __name__ == "__main__":
     args.outTreeName = args.inTreeName
   Utilities.print_command_line_arguments(args)
 
-  mergedDf: ROOT.RDataFrame = Utilities.getDataFrameWithCorrectEventWeights(
+  mergedDf: ROOT.RDataFrame = DataConversionUtilities.getDataFrameWithCorrectEventWeights(
     dataSigRegionFilePaths  = (args.sigFilePath, ),
     dataBkgRegionFilePaths  = (args.bkgFilePath, ),
     treeName                = args.inTreeName,
