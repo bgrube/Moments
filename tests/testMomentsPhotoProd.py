@@ -33,7 +33,7 @@ from moments.MomentCalculator import (
   QnWaveIndex,
 )
 from scripts.calculateMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
-from scripts.weightDataWithMoments import weightDataWithIntensityFormula
+from workflow.DataWeightingUtilities import weightDataWithIntensityFormula
 from workflow.AnalysisConfig import AnalysisConfig
 from workflow.PlottingUtilities import (
   drawTF3,
@@ -421,7 +421,7 @@ if __name__ == "__main__":
           massBinIndex         = 0,
           intensityFormula     = f"({intensityFormula}) * ({efficiencyFormulaGen})",
           weightedDataFilePath = f"{outputDirPath}/data.root",
-          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),
+          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),  #TODO fix
           seed                 = 1234567890,
         )
       t.stop()
@@ -462,7 +462,7 @@ if __name__ == "__main__":
           massBinIndex         = 0,
           intensityFormula     = efficiencyFormulaReco,
           weightedDataFilePath = f"{outputDirPath}/acceptedPhaseSpace.root",
-          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),
+          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),  #TODO fix
           seed                 = 1234567890,
         )
       t.stop()

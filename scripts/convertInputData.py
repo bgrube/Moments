@@ -8,21 +8,14 @@ Usage: Run this module as a script to convert input data files.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from copy import deepcopy
 import functools
 import os
-import subprocess
-import tempfile
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from moments.MomentCalculator import (
-  KinematicBinningVariable,
-  MomentResultsKinematicBinning,
-  QnMomentIndex,
-)
+from moments.MomentCalculator import KinematicBinningVariable
 from workflow.AnalysisConfig import (
   AnalysisConfig,
   BEAM_POL_INFOS,
@@ -41,136 +34,17 @@ from workflow.DataConversionUtilities import (
   defineDataFrameColumns,
   lorentzVectors,
 )
+from workflow.DataWeightingUtilities import reweightKinDistribution
 from workflow.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-from workflow.RootUtilities import (
-  declareInCpp,
-  loadBasisFunctionsLibrary,
-)
+from workflow.RootUtilities import loadBasisFunctionsLibrary
 from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
-
-
-def reweightData(
-  dataToWeight: ROOT.RDataFrame,  # data to reweight
-  treeName:     str,              # name of TTree holding the data
-  variableName: str,              # column name corresponding to kinematic variable whose distribution is to be reweighted
-  targetDistr:  ROOT.TH1D,        # histogram with target distribution
-) -> ROOT.RDataFrame:
-  """Generic function that reweights data in given RDataFrame such that the distribution of the given variable matches the target distribution in the given histogram"""
-  # get histogram of current distribution using same binning as targetDistribution
-  currentDistr = dataToWeight.Histo1D(
-    ROOT.RDF.TH1DModel(
-      f"{variableName}Distr", f"Current Distribution;{variableName}",
-      targetDistr.GetNbinsX(), targetDistr.GetXaxis().GetXmin(), targetDistr.GetXaxis().GetXmax()
-    ),
-    variableName,
-  ).GetValue()
-  # normalize target and current histograms such that they represent the corresponding PDFs
-  targetDistr.Scale (1.0 / targetDistr.Integral() )
-  currentDistr.Scale(1.0 / currentDistr.Integral())
-  # calculate the weight as the ratio of target and current PDF
-  weightsHist = targetDistr.Clone("weightsHist")
-  weightsHist.SetTitle("Weights")
-  weightsHist.Divide(currentDistr)
-  # if True:
-  if False:
-    # save plots of distributions
-    for hist in (currentDistr, targetDistr, weightsHist):
-      canv = ROOT.TCanvas()
-      hist.Draw()
-      #TODO write files into correct output directory
-      canv.SaveAs(f"{hist.GetName()}.root")
-  # add columns for rejection sampling to input data
-  declareInCpp(weightsHist = weightsHist)  # use Python TH1D object in C++  #TODO this can only be called once; otherwise this call crashes in ROOT
-  dataToWeight = (
-    dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
-                .Define("reweightingRndNmb",  "(Double32_t)gRandom->Rndm()")  # random number uniformly distributed in [0, 1]
-  )
-  tmpFilePath = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
-  dataToWeight.Snapshot(treeName, tmpFilePath)  # write unweighted data to temporary file to ensure that random column is filled only once
-  dataToWeight = ROOT.RDataFrame(treeName, tmpFilePath)  # read data back from temporary file
-  nmbEvents = dataToWeight.Count().GetValue()  # number of events before reweighting
-  # determine maximum weight
-  maxWeight = dataToWeight.Max("reweightingWeight").GetValue()
-  print(f"Maximum weight is {maxWeight}")
-  # apply weights by accepting each event with probability reweightingWeight / maxWeight
-  reweightedData = (
-    dataToWeight.Define("acceptEventReweight", f"(bool)(reweightingRndNmb < (reweightingWeight / {maxWeight}))")
-                .Filter("acceptEventReweight == true")
-  )
-  nmbWeightedEvents = reweightedData.Count().GetValue()
-  print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
-  # subprocess.run(f"rm --force --verbose {tmpFilePath}", shell = True)  #TODO this does not work as the RDataFrame based on this file is passed to the calling code
-  return reweightedData
-
-
-def reweightKinDistribution(
-  dataToWeight:    ROOT.RDataFrame,  # data to reweight
-  binning:         HistAxisBinning,  # binning of kinematic variable whose distribution is to be reweighted
-  treeName:        str,              # name of TTree holding the data
-  targetDistrFrom: str | MomentResultsKinematicBinning,  # construct target distribution from given data file name or from H_0(0, 0) in given moment results
-  outFilePath:     str,  # name of file to write data into
-  outputColumns:   Sequence[str] = (),  # columns to write into output file; if empty, all columns are written
-) -> None:
-  """Reweights distribution of given kinematic variable of given data according to the kinematic distribution of data in given file name or according to kinematic dependence of H_0(0, 0) in given moment results"""
-  print(f"Reweighting {binning.var.name} dependence")
-  targetDistr = None
-  if isinstance(targetDistrFrom, str):
-    # construct target distribution from real data
-    print(f"Constructing target distribution from column '{binning.var.name}' in tree '{treeName}' in file '{targetDistrFrom}'")
-    dataTarget = ROOT.RDataFrame(treeName, targetDistrFrom)
-    targetDistr = dataTarget.Histo1D(
-      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrTarget", f"Target Distribution;{binning.axisTitle}", *binning.astuple),
-      binning.var.name,
-      "eventWeight",
-    ).GetValue()
-    # set under- and overflow bins to zero
-    targetDistr.SetBinContent(0, 0.0)  # underflow bin
-    targetDistr.SetBinContent(targetDistr.GetNbinsX() + 1, 0.0)  # overflow bin
-  elif isinstance(targetDistrFrom, MomentResultsKinematicBinning):
-    # construct target distribution from H_0(0, 0) values in kinematic bins
-    targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f"#it{{H}}_{{0}}(0, 0);{binning.axisTitle}", *binning.astuple)
-    H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
-    for momentResultsForBin in targetDistrFrom:
-      binCenter = momentResultsForBin.binCenters[binning.var]
-      targetDistr.SetBinContent(targetDistr.FindBin(binCenter), momentResultsForBin[H000Index].real[0])
-  else:
-    raise TypeError(f"Invalid {type(targetDistrFrom)=}. Must be str or MomentResultsKinematicBinning.")
-  # reweight data
-  originalColumns = list(dataToWeight.GetColumnNames())
-  reweightedData = reweightData(
-    dataToWeight = dataToWeight,
-    treeName     = treeName,
-    variableName = binning.var.name,
-    targetDistr  = targetDistr,
-  )
-  print(f"Writing reweighted data to file '{outFilePath}'")
-  reweightedData.Snapshot(treeName, outFilePath, originalColumns if not outputColumns else outputColumns)
-  if True:
-  # if False:
-    # overlay target distribution and distribution after reweighting
-    reweightedDistr = reweightedData.Histo1D(
-      ROOT.RDF.TH1DModel(f"{binning.var.name}DistrReweighted", "Weighted MC", *binning.astuple),
-      binning.var.name,
-    ).GetValue()
-    targetDistr.Scale(reweightedDistr.Integral() / targetDistr.Integral())
-    histStack = ROOT.THStack(f"{binning.var.name}DataAndMc", f";{binning.axisTitle};Count")
-    histStack.Add(targetDistr)
-    histStack.Add(reweightedDistr)
-    targetDistr.SetLineColor  (ROOT.kRed + 1)
-    targetDistr.SetMarkerColor(ROOT.kRed + 1)
-    reweightedDistr.SetLineColor  (ROOT.kBlue + 1)
-    reweightedDistr.SetMarkerColor(ROOT.kBlue + 1)
-    canv = ROOT.TCanvas()
-    histStack.Draw("NOSTACK")
-    canv.BuildLegend(0.7, 0.8, 0.99, 0.99)
-    canv.SaveAs(f"{outFilePath}.{binning.var.name}.pdf")
 
 
 if __name__ == "__main__":
