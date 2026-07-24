@@ -355,7 +355,7 @@ class AnalysisConfig:
     6,
     8,
   )
-  outFileDirBasePath:       str                               = "./plotsPhotoProdPiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
+  outFileDirBasePath:       str                               = "./plots/PiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
   # normalizeMoments:         bool                              = True
   normalizeMoments:         bool                              = False
   nmbBootstrapSamples:      int                               = 0
@@ -511,7 +511,7 @@ class AnalysisConfig:
 # configurations for unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
-  outFileDirBasePath = "./plotsPhotoProdPiPiUnpolPwa",
+  outFileDirBasePath = "./plots/PiPiUnpolPwa",
   massBinning        = HistAxisBinning(  # binning used in PWA of unpolarized data
     nmbBins = 56,    # 20 MeV wide bins
     minVal  = 0.28,  # [GeV]
@@ -532,7 +532,7 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   # dataFileName       = "./data/PiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
   # psAccFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
   # psGenFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
-  outFileDirBasePath = "./plotsPhotoProdPiPiUnpolJPAC",
+  outFileDirBasePath = "./plots/PiPiUnpolJPAC",
   # massBinning        = HistAxisBinning(
   #   nmbBins = 25, minVal = 0.4, maxVal = 1.40,
   #   # nmbBins = 2, minVal = 0.4, maxVal = 0.42
@@ -596,7 +596,7 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBasePath = "./plotsPhotoProdPiPiPol",
+  outFileDirBasePath = "./plots/PiPiPol",
   massBinning        = HistAxisBinning(
     # nmbBins = 50,    # 40 MeV wide bins used in PWA of polarized data
     # minVal  = 0.28,  # [GeV]
@@ -631,7 +631,7 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBasePath = "./plotsPhotoProdPipPUnpol",
+  outFileDirBasePath = "./plots/PipPUnpol",
   massBinning        = HistAxisBinning(
     nmbBins = 75,   # 20 MeV wide bins
     minVal  = 1.1,  # [GeV]
@@ -680,7 +680,7 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBasePath = "./plotsPhotoProdEtaPi0",
+  outFileDirBasePath = "./plots/EtaPi0",
   massBinning        = HistAxisBinning(
     nmbBins = 17,    # 40 MeV wide bins
     minVal  = 1.04,  # [GeV]
@@ -713,7 +713,7 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBasePath = "./plotsPhotoProdEtapPi0",
+  outFileDirBasePath = "./plots/EtapPi0",
   massBinning        = HistAxisBinning(
     nmbBins = 20,   # 40 MeV wide bins
     minVal  = 1.2,  # [GeV]
@@ -766,7 +766,7 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBasePath = "./plotsPhotoProdEtapEta",
+  outFileDirBasePath = "./plots/EtapEta",
   # plotMomentsInBins  = True,
   massBinning        = HistAxisBinning(
     # nmbBins = 8,    # 250 MeV wide bins
@@ -860,7 +860,7 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     6,
     8,
   ),
-  outFileDirBasePath = "./plotsPhotoProdKSKL",
+  outFileDirBasePath = "./plots/KSKL",
   massBinning        = HistAxisBinning(
     nmbBins = 70,   # 20 MeV wide bins
     minVal  = 1.2,  # [GeV]

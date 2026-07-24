@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
   for tBinLabel in tBinLabels:
     momentPlotFileNizar = f"./data/EtaPi0/polarized/merged/{tBinLabel}/input/UnnormalizedMoments_vs_Mass_{tBinLabel}.root"
-    plotDirLinAlg = f"./plotsPhotoProdEtaPi0/merged/{tBinLabel}/All.maxL_4"
+    plotDirLinAlg = f"./plots/EtaPi0/merged/{tBinLabel}/All.maxL_4"
     with ROOT.TFile.Open(momentPlotFileNizar) as fileNizar:
       chi2Total = 0.0
       nmbPointsTotal = 0
