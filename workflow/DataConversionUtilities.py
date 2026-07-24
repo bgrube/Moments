@@ -1,4 +1,4 @@
-"""Module that provides utility functions of general scope"""
+"""Module that provides utility functions converting input data into format expected by `MomentCalculator`"""
 
 from __future__ import annotations
 
