@@ -15,14 +15,8 @@ import os
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from moments.AnalysisConfig import (
-  AnalysisConfig,
-  BEAM_POL_INFOS,
-  CFG_POLARIZED_PIPI,
-  CFG_POLARIZED_ETAPI0,
-  SubsystemInfo,
-)
-from scripts.makeKinematicPlots import (
+from moments.MomentCalculator import MomentResult
+from scripts.plotKinematicDistributions import (
   bookHistogram,
   defineColumnsForPlots,
   HistListType,
@@ -34,12 +28,18 @@ from scripts.convertInputData import (
   CPP_CODE_MASSPAIR,
   CPP_CODE_TWO_BODY_ANGLES,
 )
-from moments.MomentCalculator import MomentResult
-from moments.PlottingUtilities import (
+from workflow.AnalysisConfig import (
+  AnalysisConfig,
+  BEAM_POL_INFOS,
+  CFG_POLARIZED_PIPI,
+  CFG_POLARIZED_ETAPI0,
+  SubsystemInfo,
+)
+from workflow.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments import Utilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

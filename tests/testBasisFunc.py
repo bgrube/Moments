@@ -7,7 +7,7 @@ import timeit
 
 import ROOT
 
-from moments import RootUtilities
+from workflow import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

@@ -16,7 +16,7 @@ from enum import Enum
 
 import ROOT
 
-from .MomentCalculator import (
+from moments.MomentCalculator import (
   KinematicBinningVariable,
   MomentIndices,
 )

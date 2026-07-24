@@ -17,16 +17,17 @@ from moments.MomentCalculator import (
   MomentResult,
   QnWaveIndex,
 )
-from moments.PlottingUtilities import setupPlotStyle
-from moments import RootUtilities
-from tests.testMomentsPhotoProd import (
-  genData,
-  genDataFromIntensityFormula,
-)
-from moments.Utilities import (
+from workflow.PlottingUtilities import setupPlotStyle
+from workflow import RootUtilities
+from workflow.Utilities import (
   makeDirPath,
   printGitInfo,
   Timer,
+)
+
+from tests.testMomentsPhotoProd import (
+  genData,
+  genDataFromIntensityFormula,
 )
 
 

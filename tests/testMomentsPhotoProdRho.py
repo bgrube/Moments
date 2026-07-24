@@ -13,10 +13,10 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 import moments.MomentCalculator as MomentCalculator
-import moments.PlottingUtilities as PlottingUtilities
-from moments import RootUtilities
+import workflow.PlottingUtilities as PlottingUtilities
+from workflow import RootUtilities
 import tests.testMomentsPhotoProd as testMomentsPhotoProd
-from moments import Utilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

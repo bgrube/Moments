@@ -1679,7 +1679,7 @@ class MomentCalculator:
       self._integralMatrix.loadOrCalculate(self.integralFileName)
     self._integralMatrix.save(self.integralFileName)
 
-  class DataSourceType(Enum):  #TODO use AnalysisConfig.DataType instead
+  class DataSourceType(Enum):  #TODO use this instead of AnalysisConfig.DataType
     REAL_DATA            = 0
     ACCEPTED_PHASE_SPACE = 4
 

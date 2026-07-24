@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import ROOT
 
-import PlottingUtilities
+from workflow import PlottingUtilities
 
 
 if __name__ == "__main__":

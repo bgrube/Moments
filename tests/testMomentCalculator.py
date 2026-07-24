@@ -11,10 +11,6 @@ import sys
 
 import ROOT
 
-from scripts.convertInputData import (
-  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
-  CPP_CODE_TWO_BODY_ANGLES,
-)
 from moments.MomentCalculator import (
   AcceptanceIntegralMatrix,
   AmplitudeSet,
@@ -27,7 +23,11 @@ from moments.MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from moments import RootUtilities
+from scripts.convertInputData import (
+  CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
+  CPP_CODE_TWO_BODY_ANGLES,
+)
+from workflow import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

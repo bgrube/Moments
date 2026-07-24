@@ -19,7 +19,7 @@ from typing_extensions import TypeAlias
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
-from moments.AnalysisConfig import (
+from workflow.AnalysisConfig import (
   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -38,12 +38,12 @@ from scripts.convertInputData import (
   defineDataFrameColumns,
   lorentzVectors,
 )
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   drawHorizontalZeroLine,
   HistAxisBinning,
   setupPlotStyle,
 )
-from moments import Utilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering

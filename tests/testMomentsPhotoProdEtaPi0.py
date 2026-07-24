@@ -27,7 +27,7 @@ from moments.MomentCalculator import (
   QnMomentIndex,
   QnWaveIndex,
 )
-from moments.PlottingUtilities import (
+from workflow.PlottingUtilities import (
   HistAxisBinning,
   MomentValueAndTruth,
   plotAngularDistr,
@@ -44,8 +44,8 @@ from moments.PlottingUtilities import (
   plotPullParameters,
   setupPlotStyle,
 )
-from moments import RootUtilities
-from moments import Utilities
+from workflow import RootUtilities
+from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
