@@ -7,7 +7,7 @@ import os
 
 import ROOT
 
-from makeMomentsInputTree import (
+from scripts.convertInputData import (
   CPP_CODE_MASSPAIR,
   InputDataFormat,
   lorentzVectors,

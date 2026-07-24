@@ -28,7 +28,7 @@ from scripts.makeKinematicPlots import (
   HistListType,
   HistogramDefinition,
 )
-from scripts.makeMomentsInputTree import (
+from scripts.convertInputData import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,

@@ -11,7 +11,7 @@ import sys
 
 import ROOT
 
-from scripts.makeMomentsInputTree import (
+from scripts.convertInputData import (
   CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE,
   CPP_CODE_TWO_BODY_ANGLES,
 )
