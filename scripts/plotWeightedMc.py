@@ -16,12 +16,6 @@ import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from moments.MomentCalculator import MomentResult
-from scripts.plotKinematicDistributions import (
-  bookHistogram,
-  defineColumnsForPlots,
-  HistListType,
-  HistogramDefinition,
-)
 from workflow.AnalysisConfig import (
   AnalysisConfig,
   BEAM_POL_INFOS,
@@ -36,7 +30,11 @@ from workflow.DataConversionUtilities import (
   CPP_CODE_TWO_BODY_ANGLES,
 )
 from workflow.PlottingUtilities import (
+  bookHistogram,
+  defineColumnsForPlots,
   HistAxisBinning,
+  HistListType,
+  HistogramDefinition,
   setupPlotStyle,
 )
 from workflow import Utilities

@@ -17,7 +17,12 @@ import numpy as np
 import nptyping as npt
 import os
 from scipy import stats
-from typing import Any
+from typing import (
+  Any,
+  Union,
+)
+from typing_extensions import TypeAlias
+# from typing import TypeAlias  # for Python 3.10+
 
 import ROOT
 
@@ -27,6 +32,16 @@ from moments.MomentCalculator import (
   MomentResultsKinematicBinning,
   MomentValue,
   QnMomentIndex,
+)
+from .AnalysisConfig import (
+  AnalysisConfig,
+  BeamPolInfo,
+  defineOverwriteRDataFrame,
+  SubsystemInfo,
+)
+from .DataConversionUtilities import (
+  defineDataFrameColumns,
+  lorentzVectors,
 )
 
 
@@ -423,6 +438,7 @@ def drawHorizontalZeroLine(
   """Draws horizontal line at y = 0 in given or current canvas with given style attributes"""
   if canv is None:
     canv = ROOT.gPad
+  assert canv is not None, "No canvas given and no current canvas found"
   canv.Modified()
   canv.Update()
   if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):  # zero must be in the shown y range
@@ -1002,7 +1018,7 @@ def plotMomentsCovMatrices(
     }
     for realParts, (label, title, _) in  covMatricesEst.items():
       covMatrixDiff = covMatricesDiff[realParts]
-      range = max(abs(np.min(covMatrixDiff)), abs(np.max(covMatrixDiff)))
+      range = float(max(abs(np.min(covMatrixDiff)), abs(np.max(covMatrixDiff))))
       plotRealMatrix(
         matrix      = covMatrixDiff,
         pdfFilePath = f"{pdfFileNamePrefix}{label}_BSdiff.pdf",
@@ -1307,3 +1323,167 @@ def plotAngularDistr(
     else:
       raise TypeError(f"Unexpected histogram type '{histType}'")
     canv.SaveAs(f"{outFileNamePrefix}{hist.GetName()}.{outFileType}")
+
+
+def defineColumnsForPlots(
+  df:                   ROOT.RDataFrame,
+  inputDataFormat:      AnalysisConfig.DataFormat,
+  subsystem:            SubsystemInfo,
+  beamPolInfo:          BeamPolInfo | None,
+  additionalColumnDefs: dict[str, str] = {},  # additional columns to define
+  additionalFilterDefs: list[str]      = [],  # additional filter conditions to apply
+) -> ROOT.RDataFrame:
+  """Defines RDataFrame columns for kinematic plots"""
+  lvs = lorentzVectors(dataFormat = inputDataFormat)
+  lvTarget = lvs["target"]
+  lvBeam   = lvs["beam"]
+  lvRecoil = lvs[subsystem.lvRecoilLabel]
+  lvA      = lvs[subsystem.lvALabel]
+  lvB      = lvs[subsystem.lvBLabel]
+  for frame in (AnalysisConfig.CoordSysType.HF, AnalysisConfig.CoordSysType.GJ):
+    #TODO move to better place; maybe to AnalysisConfig or SubsystemInfo
+    #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
+    #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
+    #    HF for pi+- p  baryon system: use pi+- as analyzer and z_HF = -p_pi-+   and y_HF = p_beam   x p_pi-+
+    #    GJ for pi+ pi- meson system:  use pi+  as analyzer and z_GJ = p_beam    and y_HF = p_recoil x p_beam
+    #    GJ for pi+- p  baryon system: use pi+- as analyzer and z_GJ = p_target  and y_HF = p_beam   x p_pi-+
+    #  particle A is the analyzer, particle B is the other particle in the pair, and the recoil is the third particle in the final state
+    df = defineDataFrameColumns(
+      df                   = df,
+      lvTarget             = lvTarget,
+      lvBeam               = lvBeam,
+      lvRecoil             = lvRecoil,
+      lvA                  = lvA,
+      lvB                  = lvB,
+      beamPolInfo          = beamPolInfo,
+      frame                = frame,
+      additionalColumnDefs = additionalColumnDefs,
+      additionalFilterDefs = additionalFilterDefs,
+      colNameSuffix        = subsystem.pairLabel,
+    )
+    # define additional columns for subsystem
+    if beamPolInfo is not None:
+      df = (
+        df.Define(f"Psi{frame.name}{subsystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subsystem.pairLabel} - phi{frame.name}{subsystem.pairLabel}) * TMath::RadToDeg())")
+      )
+  # define additional columns that are independent of subsystem
+  df = defineOverwriteRDataFrame(df, f"mass{subsystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subsystem.pairLabel}, 2)")
+  df = defineOverwriteRDataFrame(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvBeam}).E()")
+  # track kinematics
+  df = defineOverwriteRDataFrame(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).Z()")
+  df = defineOverwriteRDataFrame(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).Z()")
+  df = defineOverwriteRDataFrame(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).P()")
+  df = defineOverwriteRDataFrame(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).X()")
+  df = defineOverwriteRDataFrame(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).Y()")
+  df = defineOverwriteRDataFrame(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).Z()")
+  df = defineOverwriteRDataFrame(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvRecoil}).Theta() * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvA}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvB}).Theta()      * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvRecoil}).phi()   * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvA}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvB}).phi()        * TMath::RadToDeg())")
+  df = defineOverwriteRDataFrame(df, "massRecoil",        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).M()")
+  df = defineOverwriteRDataFrame(df, "massA",             f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).M()")
+  df = defineOverwriteRDataFrame(df, "massB",             f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).M()")
+  # print(f"!!! {df.GetDefinedColumnNames()=}")
+  return df
+
+
+@dataclass
+class HistogramDefinition:
+  """Stores information needed to define a histogram"""
+  name:        str  # name of the histogram
+  title:       str  # title of the histogram
+  binning:     tuple[tuple[int, float, float], ] | tuple[tuple[int, float, float], tuple[int, float, float]] | tuple[tuple[int, float, float], tuple[int, float, float], tuple[int, float, float]]
+               # 1D binning: ((number of x bins, minimum x value, maximum x value), )
+               # 2D binning: ((number of x bins, minimum x value, maximum x value), (number of y bins, minimum y value, maximum y value))
+               # 3D binning: ((number of x bins, minimum x value, maximum x value), (number of y bins, minimum y value, maximum y value), (number of z bins, minimum z value, maximum z value))
+  columnNames: tuple[str, ] | tuple[str, str] | tuple[str, str, str]  # name(s) of RDataFrame column(s) to plot
+  filter:      str = ""  # optional filter condition to apply to the histogram
+
+
+HistType:           TypeAlias = Union[ROOT.TH1D, ROOT.TH2D, ROOT.TH3D]
+HistRResultPtrType: TypeAlias = Union[ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D]]
+HistListType:       TypeAlias = list[Union[HistType, HistRResultPtrType]]
+
+def bookHistogram(
+  df:           ROOT.RDataFrame,
+  histDef:      HistogramDefinition,
+  applyWeights: bool,
+) -> HistType | HistRResultPtrType:
+  """Books a single histogram according to the given definition and returns it"""
+  # apply optional filter
+  dfHist = df.Filter(histDef.filter) if histDef.filter else df
+  # get functions to book histogram of correct dimension
+  histDimension = len(histDef.binning)
+  if histDimension not in (1, 2, 3):
+    raise NotImplementedError(f"Booking of {histDimension}D histograms is not implemented")
+  dfHistoNDFunc = (
+    dfHist.Histo1D if histDimension == 1 else
+    dfHist.Histo2D if histDimension == 2 else
+    dfHist.Histo3D
+  )
+  # flatten binning into single tuple
+  binning = tuple(entry for binningTuple in histDef.binning for entry in binningTuple)
+  # book histogram with or without event weights
+  if applyWeights:
+    return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames, "eventWeight")
+  else:
+    return dfHistoNDFunc((histDef.name, histDef.title, *binning), *histDef.columnNames)
+
+
+def calcEvenOddValue(
+  hist:          HistType,
+  histEven:      HistType,
+  histOdd:       HistType,
+  posBinIndices: tuple[int, ...],
+  negBinIndices: tuple[int, ...],
+) -> None:
+  """Calculates even or odd value for given positive and negative bin indices"""
+  assert hist.GetDimension() == histEven.GetDimension() == histOdd.GetDimension(), "Histogram dimensions must be identical!"
+  assert len(posBinIndices) == len(negBinIndices), "Dimensions of positive and negative bin indices must be the same!"
+  assert len(posBinIndices) == hist.GetDimension(), "Dimensions of bin indices must match histogram dimensions!"
+  phiPosVal = hist.GetBinContent(*posBinIndices)
+  phiNegVal = hist.GetBinContent(*negBinIndices)
+  #TODO uncertainties and correlations are not calculated and set correctly
+  phiOddVal  = (phiPosVal - phiNegVal) / 2
+  phiEvenVal = (phiPosVal + phiNegVal) / 2
+  histOdd.SetBinContent (*posBinIndices, +phiOddVal)
+  histOdd.SetBinContent (*negBinIndices, -phiOddVal)
+  histEven.SetBinContent(*posBinIndices, phiEvenVal)
+  histEven.SetBinContent(*negBinIndices, phiEvenVal)
+
+
+def decomposeHistEvenOdd(hist: HistType) -> tuple[ROOT.TH1, ROOT.TH1, ROOT.TH1] | tuple[ROOT.TH2, ROOT.TH2, ROOT.TH2] | tuple[ROOT.TH3, ROOT.TH3, ROOT.TH3]:
+  """Decomposes a histogram into even and odd parts based on symmetry along the phi axis, which must be the y axis for 2D or 3D histograms; returns (odd, even, odd + even)"""
+  histOdd  = hist.Clone(f"{hist.GetName()}_odd")
+  histEven = hist.Clone(f"{hist.GetName()}_even")
+  if hist.GetDimension() == 1:
+    assert hist.GetNbinsX() % 2 == 0, "Number of phi bins must be even!"
+    for phiBinNegIndex in range(1, hist.GetNbinsX() // 2 + 1):  # only need to loop over negative half of phi bins
+      phiBinPosIndex = hist.GetXaxis().FindBin(-hist.GetXaxis().GetBinCenter(phiBinNegIndex))
+      calcEvenOddValue(hist, histEven, histOdd, (phiBinPosIndex, ), (phiBinNegIndex, ))
+  elif hist.GetDimension() == 2:
+    assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
+    for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
+      for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
+        phiBinPosIndex = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
+        calcEvenOddValue(hist, histEven, histOdd, (thetaBinIndex, phiBinPosIndex), (thetaBinIndex, phiBinNegIndex))
+  elif hist.GetDimension() == 3:
+    assert hist.GetNbinsY() % 2 == 0, "Number of phi bins must be even!"
+    for thetaBinIndex in range(1, hist.GetNbinsX() + 1):
+      for PhiBinIndex in range(1, hist.GetNbinsZ() + 1):
+        for phiBinNegIndex in range(1, hist.GetNbinsY() // 2 + 1):  # only need to loop over negative half of phi bins
+          phiBinPosIndex = hist.GetYaxis().FindBin(-hist.GetYaxis().GetBinCenter(phiBinNegIndex))
+          calcEvenOddValue(hist, histEven, histOdd, (thetaBinIndex, phiBinPosIndex, PhiBinIndex), (thetaBinIndex, phiBinNegIndex, PhiBinIndex))
+  else:
+    raise NotImplementedError(f"Decomposition of {hist.GetDimension()}D histograms is not implemented")
+  histSum = hist.Clone(f"{hist.GetName()}_sum")
+  histSum.Add(histOdd, histEven)
+  return histOdd, histEven, histSum
