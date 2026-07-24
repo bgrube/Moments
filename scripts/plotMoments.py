@@ -80,7 +80,7 @@ def readMomentResultsClas(
     tBinLabel:          str = "#: -T [GeV^2],,,0.4-0.5",
     # beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.4-3.6",
     beamEnergyBinLabel: str = "#: E(P=1) [GeV],,,3.6-3.8",
-    csvDirPath:         str = "./dataPhotoProdPiPiUnpol/HEPData-ins825040-v1-csv",
+    csvDirPath:         str = "./data/PiPi/unpolarized/HEPData-ins825040-v1-csv",
 ) -> MomentResultsKinematicBinning:
   """Reads the moment values in the for the given moment indices and from the CLAS analysis in PRD 80 (2009) 072005 published at https://www.hepdata.net/record/ins825040"""
   csvFilePaths = sorted(glob.glob(f"{csvDirPath}/Table*.csv"))
@@ -147,7 +147,7 @@ def readMomentResultsJpac(
     momentIndices: MomentIndices,  # moment indices to read
     binVarMass:    KinematicBinningVariable,  # binning variable for mass bins
     tBinLabel:     str = "t=0.40-0.50",
-    dataDirPath:   str = "./dataPhotoProdPiPiUnpol/2406.08016",
+    dataDirPath:   str = "./data/PiPi/unpolarized/2406.08016",
 ) -> MomentResultsKinematicBinning:
   """Reads the moments values from the JPAC fit to the CLAS data in range 3.6 < E_gamma < 3.8 GeV as published in Figs. 6, 7, 13--16 in arXiv:2406.08016"""
   momentDfs: dict[QnMomentIndex, pd.DataFrame] = {}  # key: moment quantum numbers, value: Pandas dataframe with moment values in mass bins
@@ -405,8 +405,8 @@ def makeAllPlots(
             histsBandJpac[momentPart].SetFillColorAlpha(ROOT.kBlue + 1, 0.3)
         histPwaTotalIntensity = None
         if False and qnIndex == H000Index:
-          plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiUnpol/PWA_S_P_D/pwa_plots_weight1.root", "READ")
-          # plotFile = ROOT.TFile.Open("./dataPhotoProdPiPiPol/PWA_S_P_D/pwa_plots_SPD.root", "READ")
+          plotFile = ROOT.TFile.Open("./data/PiPi/unpolarized/PWA_S_P_D/pwa_plots_weight1.root", "READ")
+          # plotFile = ROOT.TFile.Open("./data/PiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/pwa_plots_SPD.root", "READ")
           histPwaTotalIntensity = convertGraphToHist(
             graph     = plotFile.Get("Total"),
             binning   = cfg.massBinning.astuple,

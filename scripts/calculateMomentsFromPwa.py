@@ -127,8 +127,8 @@ if __name__ == "__main__":
               #TODO add this info to AnalysisConfig?
               if dataCfg.polarization is None:
                 # unpolarized data
-                pwaAmplitudesFilePath = "./dataPhotoProdPiPiUnpol/PWA_S_P_D/amplitudes_range_tbin.txt"
-                # pwaAmplitudesFilePath = "./dataPhotoProdPiPiUnpol/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
+                pwaAmplitudesFilePath = "./data/PiPi/unpolarized/PWA_S_P_D/amplitudes_range_tbin.txt"
+                # pwaAmplitudesFilePath = "./data/PiPi/unpolarized/PWA_S_P_D_F/amplitudes_new_SPDF.txt"
                 waves = [  # order must match columns in file with partial-wave amplitudes
                   ("S_0",  QnWaveIndex(refl = None, l = 0, m =  0)),
                   # P-waves
@@ -152,8 +152,8 @@ if __name__ == "__main__":
                 ]
               else:
                 # polarized data
-                # pwaAmplitudesFilePath = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD.txt"
-                pwaAmplitudesFilePath = "./dataPhotoProdPiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD_100M.txt"
+                # pwaAmplitudesFilePath = "./data/PiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD.txt"
+                pwaAmplitudesFilePath = "./data/PiPi/polarized/2017_01/tbin_0.1_0.2/PWA_S_P_D/amplitudes_SPD_100M.txt"
                 waves = [  # order must match columns in file with partial-wave amplitudes
                   # S-waves
                   ("S_0+",  QnWaveIndex(refl = +1, l = 0, m =  0)),

@@ -134,9 +134,9 @@ if __name__ == "__main__":
     #       the rho decay angles need to be calculated in this frame
     outFileDirPath      = Utilities.makeDirPath("./plotsTestPhotoProdRho")
     treeName            = "ntFSGlueX_100_110_angles"
-    signalFilePath      = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.signal.root.angles"
+    signalFilePath      = "./data/Rho/tree_pippim__B4_gen_amp_030994.signal.root.angles"
     nmbSignalEvents     = 218240
-    acceptedPsFilePath  = "./dataPhotoProdRho/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
+    acceptedPsFilePath  = "./data/Rho/tree_pippim__B4_gen_amp_030994.phaseSpace.root.angles"
     nmbAcceptedPsEvents = 210236  #TODO not correct number to normalize integral matrix
     beamPolarization    = 0.4  #TODO read from tree
     # beamPolarization    = 1.0  #TODO read from tree
