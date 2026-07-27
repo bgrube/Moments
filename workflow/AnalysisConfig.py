@@ -322,10 +322,8 @@ class AnalysisConfig:
     TLORENTZVECTORS = 3  # TLorentzVector for each particle
     FSROOT          = 4  # FSROOT format
 
-  # defaults are for unpolarized gamma p -> (pi+ pi-) p data
-  method:                   AnalysisConfig.MethodType         = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
-  frame:                    CoordSysType                      = CoordSysType.HF  # coordinate system, in which moments are calculated
-  subsystem:                SubsystemInfo                     = field(default_factory = lambda:
+  # moment calculation
+  subsystem:           SubsystemInfo                     = field(default_factory = lambda:
     SubsystemInfo(  # pi+pi- subsystem to analyze; pi+ is the analyzer
       lvALabel          = "pip",     # label of pi+ Lorentz-vector
       lvBLabel          = "pim",     # label of pi- Lorentz-vector
@@ -337,51 +335,18 @@ class AnalysisConfig:
       pairTLatexLabel   = "#it{#pi}^{#plus}#it{#pi}^{#minus}",
     )
   )
-  dataDirBasePath:          str                               = "./data/PiPi/unpolarized"  # base directory for data
-  dataPeriods:              tuple[str, ...]                   = (  # labels of data periods to process
-    "2017_01",
-    "2018_08",
-  )
-  tBinLabels:               tuple[str, ...]                   = (  # labels of t bins to process
-    "tbin_0.4_0.5",
-  )
-  beamPolLabels:            tuple[str, ...]                   = (  # labels of beam polarizations to process, e.g. "PARA_0"; use "AMO" or "Unpol" for unpolarized data  #TODO store list of BeamPolInfos and generate labels with a function
-    "Unpol",
-  )
-  inputDataFormats:         dict[DataType, DataFormat]        = field(default_factory = lambda: {  # input data formats for each data type
-    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.ALEX,
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
-  })
-  inputTreeName:            str                               = "kin"   # name of tree for data in input format; must contain Lorentz-vectors of all particles
-  convertedTreeName:        str                               = "PiPi"  # name of tree for data in converted format
-  maxLs:                    tuple[int | tuple[int, int], ...] = (  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
+  method:              AnalysisConfig.MethodType         = MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS  # method used to estimate moments from data
+  frame:               CoordSysType                      = CoordSysType.HF  # coordinate system, in which moments are calculated
+  maxLs:               tuple[int | tuple[int, int], ...] = (  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
     4,
     6,
     8,
   )
-  outFileDirBasePath:       str                               = "./plots/PiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
-  # normalizeMoments:         bool                              = True
-  normalizeMoments:         bool                              = False
-  nmbBootstrapSamples:      int                               = 0
-  # nmbBootstrapSamples:      int                               = 10000
-  # plotAngularDistributions: bool                              = True
-  plotAngularDistributions: bool                              = False
-  # plotAccIntegralMatrices:  bool                              = True
-  plotAccIntegralMatrices:  bool                              = False
-  # calcAccPsMoments:         bool                              = True
-  calcAccPsMoments:         bool                              = False
-  # plotAccPsMoments:         bool                              = True
-  plotAccPsMoments:         bool                              = False
-  # plotMomentsInBins:        bool                              = True
-  plotMomentsInBins:        bool                              = False
-  # plotMeasuredMoments:      bool                              = True
-  plotMeasuredMoments:      bool                              = False
-  # plotCovarianceMatrices:   bool                              = True
-  plotCovarianceMatrices:   bool                              = False
-  limitNmbPsAccEvents:      int                               = 0
-  # limitNmbPsAccEvents:      int                               = 100000
-  massBinning:              HistAxisBinning                   = field(default_factory = lambda:
+  # normalizeMoments:    bool                              = True
+  normalizeMoments:    bool                              = False
+  nmbBootstrapSamples: int                               = 0
+  # nmbBootstrapSamples: int                               = 10000
+  massBinning:         HistAxisBinning                   = field(default_factory = lambda:
     HistAxisBinning(  # same binning as used by CLAS
       nmbBins = 100,  # 10 MeV wide bins
       minVal  = 0.4,  # [GeV]
@@ -394,6 +359,45 @@ class AnalysisConfig:
       ),
     )
   )
+
+  # data
+  dataDirBasePath:     str                        = "./data/PiPi/unpolarized"  # base directory for data
+  dataPeriods:         tuple[str, ...]            = (  # labels of data periods to process
+    "2017_01",
+    "2018_08",
+  )
+  tBinLabels:          tuple[str, ...]            = (  # labels of t bins to process
+    "tbin_0.4_0.5",
+  )
+  beamPolLabels:       tuple[str, ...]            = (  # labels of beam polarizations to process, e.g. "PARA_0"; use "AMO" or "Unpol" for unpolarized data  #TODO store list of BeamPolInfos and generate labels with a function
+    "Unpol",
+  )
+  inputDataFormats:    dict[DataType, DataFormat] = field(default_factory = lambda: {  # input data formats for each data type
+    AnalysisConfig.DataType.REAL_DATA             : AnalysisConfig.DataFormat.ALEX,
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : AnalysisConfig.DataFormat.ALEX,
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
+  })
+  inputTreeName:       str                        = "kin"   # name of tree for data in input format; must contain Lorentz-vectors of all particles
+  convertedTreeName:   str                        = "PiPi"  # name of tree for data in converted format
+  outFileDirBasePath:  str                        = "./plots/PiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
+  limitNmbPsAccEvents: int                        = 0
+  # limitNmbPsAccEvents: int                        = 100000
+
+  # plotting
+  # plotAngularDistributions: bool = True
+  plotAngularDistributions: bool = False
+  # plotAccIntegralMatrices:  bool = True
+  plotAccIntegralMatrices:  bool = False
+  # calcAccPsMoments:         bool = True
+  calcAccPsMoments:         bool = False
+  # plotAccPsMoments:         bool = True
+  plotAccPsMoments:         bool = False
+  # plotMomentsInBins:        bool = True
+  plotMomentsInBins:        bool = False
+  # plotMeasuredMoments:      bool = True
+  plotMeasuredMoments:      bool = False
+  # plotCovarianceMatrices:   bool = True
+  plotCovarianceMatrices:   bool = False
 
   def inputDataDirBasePath(
     self,
@@ -516,8 +520,8 @@ class AnalysisConfig:
 # configurations for unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
 CFG_UNPOLARIZED_PIPI_CLAS = AnalysisConfig()
 CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
-  outFileDirBasePath = "./plots/PiPiUnpolPwa",
-  massBinning        = HistAxisBinning(  # binning used in PWA of unpolarized data
+  # moment calculation
+  massBinning = HistAxisBinning(  # binning used in PWA of unpolarized data
     nmbBins = 56,    # 20 MeV wide bins
     minVal  = 0.28,  # [GeV]
     maxVal  = 1.40,  # [GeV]
@@ -528,16 +532,12 @@ CFG_UNPOLARIZED_PIPI_PWA  = AnalysisConfig(
       nmbDigits = 3,
     ),
   ),
+
+  # data
+  outFileDirBasePath = "./plots/PiPiUnpolPwa",
 )
 CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
-  # dataFileName       = "./data/PiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.root"  # Lukasz's data
-  # dataFileName       = "./data/PiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
-  # psAccFileName      = None,  # no file with accepted phase-space MC
-  # psGenFileName      = None,  # no file with generated phase-space MC
-  # dataFileName       = "./data/PiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
-  # psAccFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
-  # psGenFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
-  outFileDirBasePath = "./plots/PiPiUnpolJPAC",
+  # # moment calculation
   # massBinning        = HistAxisBinning(
   #   nmbBins = 25, minVal = 0.4, maxVal = 1.40,
   #   # nmbBins = 2, minVal = 0.4, maxVal = 0.42
@@ -548,6 +548,16 @@ CFG_UNPOLARIZED_PIPI_JPAC = AnalysisConfig(
   #     nmbDigits = 3,
   #   ),
   # ),
+
+  # data
+  # dataFileName       = "./data/PiPiUnpolJPAC/mc_full/tbin_0.4_0.5/data_flat.root"  # Lukasz's data
+  # dataFileName       = "./data/PiPiUnpolJPAC/ideal/data_reweighted_flat.root"  # data generated from real parts of true moments up to L = 4
+  # psAccFileName      = None,  # no file with accepted phase-space MC
+  # psGenFileName      = None,  # no file with generated phase-space MC
+  # dataFileName       = "./data/PiPiUnpolJPAC/ideal_8GeV/data_flat.PiPi.root",  # data_reweighted_flat.root boosted to lab frame and passed through simulation, reconstruction, and selection
+  # psAccFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_acc_flat.PiPi.root",
+  # psGenFileName      = "./data/PiPiUnpolJPAC/ideal_8GeV/phaseSpace_gen_flat.PiPi.root",
+  outFileDirBasePath = "./plots/PiPiUnpolJPAC",
 )
 
 
@@ -570,6 +580,28 @@ def inputFilePathPiPiPol(
     raise ValueError(f"Unknown data type: {dataType}")
 
 CFG_POLARIZED_PIPI = AnalysisConfig(
+  # moment calculation
+  maxLs       = (
+    4,
+    6,
+    8,
+  ),
+  massBinning = HistAxisBinning(
+    # nmbBins = 50,    # 40 MeV wide bins used in PWA of polarized data
+    # minVal  = 0.28,  # [GeV]
+    # maxVal  = 2.28,  # [GeV]
+    nmbBins = 7,     # 40 MeV wide bins in mass range of SDME analysis; for 2017_01_ver05 data
+    minVal  = 0.60,  # [GeV]
+    maxVal  = 0.88,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
+  ),
+
+  # data
   dataDirBasePath    = "./data/PiPi/polarized",
   dataPeriods        = (
     # "2017_01",
@@ -596,32 +628,14 @@ CFG_POLARIZED_PIPI = AnalysisConfig(
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
   _inputFilePath     = inputFilePathPiPiPol,  # use custom function to generate paths of data files in input format for polarized data
-  maxLs              = (
-    4,
-    6,
-    8,
-  ),
   outFileDirBasePath = "./plots/PiPiPol",
-  massBinning        = HistAxisBinning(
-    # nmbBins = 50,    # 40 MeV wide bins used in PWA of polarized data
-    # minVal  = 0.28,  # [GeV]
-    # maxVal  = 2.28,  # [GeV]
-    nmbBins = 7,     # 40 MeV wide bins in mass range of SDME analysis; for 2017_01_ver05 data
-    minVal  = 0.60,  # [GeV]
-    maxVal  = 0.88,  # [GeV]
-    _var    = KinematicBinningVariable(
-      name      = "mass",
-      label     = "#it{m}_{#it{#pi}^{#plus}#it{#pi}^{#minus}}",
-      unit      = "GeV/#it{c}^{2}",
-      nmbDigits = 3,
-    ),
-  ),
 )
 
 
 # configuration for unpolarized gamma p -> (pi+ p) pi- data
 CFG_UNPOLARIZED_PIPP = AnalysisConfig(
-  subsystem          = SubsystemInfo(  # pi+ p subsystem to analyze; pi+ is the analyzer
+  # moment calculation
+  subsystem   = SubsystemInfo(  # pi+ p subsystem to analyze; pi+ is the analyzer
     lvALabel          = "pip",    # label of pi+ Lorentz-vector
     lvBLabel          = "recoil", # label of proton Lorentz-vector
     lvRecoilLabel     = "pim",    # label of "recoil" pi- Lorentz-vector
@@ -631,13 +645,12 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
     recoilTLatexLabel = "#it{#pi}^{#minus}",
     pairTLatexLabel   = "#it{#pi}^{#plus}#it{p}",
   ),
-  maxLs              = (
+  maxLs       = (
     4,
     6,
     8,
   ),
-  outFileDirBasePath = "./plots/PipPUnpol",
-  massBinning        = HistAxisBinning(
+  massBinning = HistAxisBinning(
     nmbBins = 75,   # 20 MeV wide bins
     minVal  = 1.1,  # [GeV]
     maxVal  = 2.6,  # [GeV]
@@ -648,13 +661,16 @@ CFG_UNPOLARIZED_PIPP = AnalysisConfig(
       nmbDigits = 3,
     ),
   ),
+
+  # data
+  outFileDirBasePath = "./plots/PipPUnpol",
 )
 
 
 # configuration for Nizar's polarized gamma p -> (eta pi0) p data, with eta -> gamma gamma
 CFG_POLARIZED_ETAPI0 = AnalysisConfig(
-  frame              = AnalysisConfig.CoordSysType.GJ,
-  subsystem          = SubsystemInfo(  # eta pi0 subsystem to analyze; eta is the analyzer
+  # moment calculation
+  subsystem   = SubsystemInfo(  # eta pi0 subsystem to analyze; eta is the analyzer
     lvALabel          = "eta",     # label of eta Lorentz-vector
     lvBLabel          = "pi0",     # label of pi0 Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -664,6 +680,25 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}#it{#pi}^{0}",
   ),
+  frame       = AnalysisConfig.CoordSysType.GJ,
+  maxLs       = (
+    4,
+    6,
+    8,
+  ),
+  massBinning = HistAxisBinning(
+    nmbBins = 17,    # 40 MeV wide bins
+    minVal  = 1.04,  # [GeV]
+    maxVal  = 1.72,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
+  ),
+
+  # data
   dataDirBasePath    = "./data/EtaPi0/polarized",
   dataPeriods        = ("merged", ),  # merged Phase-I + Spring 2020 data with different polarization values
   tBinLabels         = (
@@ -680,29 +715,14 @@ CFG_POLARIZED_ETAPI0 = AnalysisConfig(
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : AnalysisConfig.DataFormat.AMPTOOLS,
   },
   convertedTreeName  = "EtaPi0",
-  maxLs              = (
-    4,
-    6,
-    8,
-  ),
   outFileDirBasePath = "./plots/EtaPi0",
-  massBinning        = HistAxisBinning(
-    nmbBins = 17,    # 40 MeV wide bins
-    minVal  = 1.04,  # [GeV]
-    maxVal  = 1.72,  # [GeV]
-    _var    = KinematicBinningVariable(
-      name      = "mass",
-      label     = "#it{m}_{#it{#eta}#it{#pi}^{0}}",
-      unit      = "GeV/#it{c}^{2}",
-      nmbDigits = 3,
-    ),
-  ),
 )
 
 
 # configuration for Zach's polarized gamma p -> (eta' pi0) p data, with eta' -> pi+ + pi- + eta and eta -> gamma gamma
 CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
-  subsystem          = SubsystemInfo(  # eta' pi0 subsystem to analyze; eta' is the analyzer
+  # moment calculation
+  subsystem   = SubsystemInfo(  # eta' pi0 subsystem to analyze; eta' is the analyzer
     lvALabel          = "etap",    # label of eta' Lorentz-vector
     lvBLabel          = "pi0",     # label of pi0 Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -712,14 +732,12 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#pi}^{0}",
   ),
-  convertedTreeName  = "EtapPi0",
-  maxLs              = (
+  maxLs       = (
     4,
     6,
     8,
   ),
-  outFileDirBasePath = "./plots/EtapPi0",
-  massBinning        = HistAxisBinning(
+  massBinning = HistAxisBinning(
     nmbBins = 20,   # 40 MeV wide bins
     minVal  = 1.2,  # [GeV]
     maxVal  = 2.0,  # [GeV]
@@ -730,12 +748,17 @@ CFG_POLARIZED_ETAPPI0 = AnalysisConfig(
       nmbDigits = 3,
     ),
   ),
+
+  # data
+  convertedTreeName  = "EtapPi0",
+  outFileDirBasePath = "./plots/EtapPi0",
 )
 
 
 # configuration for Will's unpolarized gamma p -> (eta' eta) p data
 CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
-  subsystem          = SubsystemInfo(  # eta' eta subsystem to analyze; eta' is the analyzer
+  # moment calculation
+  subsystem   = SubsystemInfo(  # eta' eta subsystem to analyze; eta' is the analyzer
     lvALabel          = "etap",    # label of eta' Lorentz-vector
     lvBLabel          = "eta",     # label of eta Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -745,6 +768,27 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{#eta}'#it{#eta}",
   ),
+  maxLs       = (
+    4,
+    6,
+    8,
+  ),
+  massBinning = HistAxisBinning(
+    # nmbBins = 8,    # 250 MeV wide bins
+    # minVal  = 1.5,  # [GeV]
+    # maxVal  = 3.5,  # [GeV]
+    nmbBins = 15,   # 100 MeV wide bins
+    minVal  = 1.5,  # [GeV]
+    maxVal  = 3.0,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{#eta}'#it{#eta}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
+  ),
+
+  # data
   dataDirBasePath    = f"./data/EtapEta/unpolarized",
   dataPeriods        = (
     "2017_01",
@@ -766,33 +810,17 @@ CFG_UNPOLARIZED_ETAPETA = AnalysisConfig(
   # inputTreeName      = "kin",  # for 2018_08 ALLT real data
   inputTreeName      = "nt",
   convertedTreeName  = "EtapEta",
-  maxLs              = (
-    4,
-    6,
-    8,
-  ),
   outFileDirBasePath = "./plots/EtapEta",
-  # plotMomentsInBins  = True,
-  massBinning        = HistAxisBinning(
-    # nmbBins = 8,    # 250 MeV wide bins
-    # minVal  = 1.5,  # [GeV]
-    # maxVal  = 3.5,  # [GeV]
-    nmbBins = 15,   # 100 MeV wide bins
-    minVal  = 1.5,  # [GeV]
-    maxVal  = 3.0,  # [GeV]
-    _var    = KinematicBinningVariable(
-      name      = "mass",
-      label     = "#it{m}_{#it{#eta}'#it{#eta}}",
-      unit      = "GeV/#it{c}^{2}",
-      nmbDigits = 3,
-    ),
-  ),
+
+  # # plotting
+  # plotMomentsInBins = True,
 )
 
 
 # configuration for Kevin's gamma p -> (K- K_S) Delta++ data
 CFG_KEVIN = AnalysisConfig(
-  subsystem                = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer
+  # moment calculation
+  subsystem        = SubsystemInfo(  # K- K_S subsystem to analyze; K- is the analyzer
     lvALabel          = "K-",      # label of K- Lorentz-vector
     lvBLabel          = "K_S",     # label of K_S Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -802,23 +830,13 @@ CFG_KEVIN = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{K}^{#minus}#it{K}_{S}^{0}",
   ),
-  inputTreeName            = "ntFSGlueX_100_11100_angles",
-  convertedTreeName        = "KmKS",
-  # dataFileName             = "./data/KmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
-  # psAccFileName            = "./data/KmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
-  # psGenFileName            = "./data/KmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
-  # polarization             = "beamPol",  # read polarization from tree column
-  # maxL                     = 4,
-  maxLs                    = (
+  maxLs            = (
     4,
     6,
     8,
   ),
-  outFileDirBasePath       = "./plotsTestKevin",
-  # normalizeMoments         = True,
-  # plotAngularDistributions = True,
-  # plotAccIntegralMatrices  = True,
-  massBinning              = HistAxisBinning(
+  # normalizeMoments = True,
+  massBinning      = HistAxisBinning(
     nmbBins = 20,   # 40 MeV wide bins; original binning: 200 bins in [0.6, 2.6] GeV
     minVal  = 1.0,  # [GeV]
     maxVal  = 1.8,  # [GeV]
@@ -829,12 +847,26 @@ CFG_KEVIN = AnalysisConfig(
       nmbDigits = 3,
     ),
   ),
+
+  # data
+  inputTreeName      = "ntFSGlueX_100_11100_angles",
+  convertedTreeName  = "KmKS",
+  # dataFileName       = "./data/KmKS/data/pipkmks_100_11100_B4_M16_*_SKIM_A2.root.angles",
+  # psAccFileName      = "./data/KmKS/phaseSpace/pipkmks_100_11100_B4_M16_SIGNAL_SKIM_A2.root.angles",
+  # psGenFileName      = "./data/KmKS/phaseSpace/pipkmks_100_11100_B4_M16_MCGEN_GENERAL_SKIM_A2.root.angles",
+  # polarization       = "beamPol",  # read polarization from tree column
+  outFileDirBasePath = "./plotsTestKevin",
+
+  # # plotting
+  # plotAngularDistributions = True,
+  # plotAccIntegralMatrices  = True,
 )
 
 
 # configuration for Gabriel's gamma p -> K_S (K_L) p data
 CFG_POLARIZED_KSKL = AnalysisConfig(
-  subsystem          = SubsystemInfo(  # K_S K_L subsystem to analyze; K_L is the analyzer
+  # moment calculation
+  subsystem   = SubsystemInfo(  # K_S K_L subsystem to analyze; K_L is the analyzer
     lvALabel          = "K_L",     # label of K_S Lorentz-vector
     lvBLabel          = "K_S",     # label of K_L Lorentz-vector
     lvRecoilLabel     = "recoil",  # label of recoil-proton Lorentz-vector
@@ -844,6 +876,24 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
     recoilTLatexLabel = "#it{p}",
     pairTLatexLabel   = "#it{K}_{S}^{0}#it{K}_{L}^{0}",
   ),
+  maxLs       = (
+    4,
+    6,
+    8,
+  ),
+  massBinning = HistAxisBinning(
+    nmbBins = 70,   # 20 MeV wide bins
+    minVal  = 1.2,  # [GeV]
+    maxVal  = 2.6,  # [GeV]
+    _var    = KinematicBinningVariable(
+      name      = "mass",
+      label     = "#it{m}_{#it{K}_{S}^{0}#it{K}_{L}^{0}}",
+      unit      = "GeV/#it{c}^{2}",
+      nmbDigits = 3,
+    ),
+  ),
+
+  # data
   dataDirBasePath    = "./data/KSKL/polarized",
   dataPeriods        = ("merged", ),  # merged Phase-I(?) data with different polarization values
   tBinLabels         = ("AllT", ),
@@ -860,21 +910,5 @@ CFG_POLARIZED_KSKL = AnalysisConfig(
   },
   inputTreeName      = "flatTree",
   convertedTreeName  = "KSKL",
-  maxLs              = (
-    4,
-    6,
-    8,
-  ),
   outFileDirBasePath = "./plots/KSKL",
-  massBinning        = HistAxisBinning(
-    nmbBins = 70,   # 20 MeV wide bins
-    minVal  = 1.2,  # [GeV]
-    maxVal  = 2.6,  # [GeV]
-    _var    = KinematicBinningVariable(
-      name      = "mass",
-      label     = "#it{m}_{#it{K}_{S}^{0}#it{K}_{L}^{0}}",
-      unit      = "GeV/#it{c}^{2}",
-      nmbDigits = 3,
-    ),
-  ),
 )
