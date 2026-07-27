@@ -28,10 +28,10 @@ from workflow.DataConversionUtilities import (
   CPP_CODE_MANDELSTAM_T,
   CPP_CODE_MASSPAIR,
   CPP_CODE_TWO_BODY_ANGLES,
+  defineColumnsForPlots,
 )
 from workflow.PlottingUtilities import (
   bookHistogram,
-  defineColumnsForPlots,
   HistAxisBinning,
   HistListType,
   HistogramDefinition,
