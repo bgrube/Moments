@@ -33,16 +33,6 @@ from moments.MomentCalculator import (
   MomentValue,
   QnMomentIndex,
 )
-from .AnalysisConfig import (
-  AnalysisConfig,
-  BeamPolInfo,
-  defineOverwriteRDataFrame,
-  SubsystemInfo,
-)
-from .DataConversionUtilities import (
-  defineDataFrameColumns,
-  lorentzVectors,
-)
 
 
 # set default matplotlib font to STIX
@@ -1323,76 +1313,6 @@ def plotAngularDistr(
     else:
       raise TypeError(f"Unexpected histogram type '{histType}'")
     canv.SaveAs(f"{outFileNamePrefix}{hist.GetName()}.{outFileType}")
-
-
-def defineColumnsForPlots(
-  df:                   ROOT.RDataFrame,
-  inputDataFormat:      AnalysisConfig.DataFormat,
-  subsystem:            SubsystemInfo,
-  beamPolInfo:          BeamPolInfo | None,
-  additionalColumnDefs: dict[str, str] = {},  # additional columns to define
-  additionalFilterDefs: list[str]      = [],  # additional filter conditions to apply
-) -> ROOT.RDataFrame:
-  """Defines RDataFrame columns for kinematic plots"""
-  lvs = lorentzVectors(dataFormat = inputDataFormat)
-  lvTarget = lvs["target"]
-  lvBeam   = lvs["beam"]
-  lvRecoil = lvs[subsystem.lvRecoilLabel]
-  lvA      = lvs[subsystem.lvALabel]
-  lvB      = lvs[subsystem.lvBLabel]
-  for frame in (AnalysisConfig.CoordSysType.HF, AnalysisConfig.CoordSysType.GJ):
-    #TODO move to better place; maybe to AnalysisConfig or SubsystemInfo
-    #!NOTE! coordinate system definitions for beam + target -> pi+ + pi- + recoil (all momenta in XRF):
-    #    HF for pi+ pi- meson system:  use pi+  as analyzer and z_HF = -p_recoil and y_HF = p_recoil x p_beam
-    #    HF for pi+- p  baryon system: use pi+- as analyzer and z_HF = -p_pi-+   and y_HF = p_beam   x p_pi-+
-    #    GJ for pi+ pi- meson system:  use pi+  as analyzer and z_GJ = p_beam    and y_HF = p_recoil x p_beam
-    #    GJ for pi+- p  baryon system: use pi+- as analyzer and z_GJ = p_target  and y_HF = p_beam   x p_pi-+
-    #  particle A is the analyzer, particle B is the other particle in the pair, and the recoil is the third particle in the final state
-    df = defineDataFrameColumns(
-      df                   = df,
-      lvTarget             = lvTarget,
-      lvBeam               = lvBeam,
-      lvRecoil             = lvRecoil,
-      lvA                  = lvA,
-      lvB                  = lvB,
-      beamPolInfo          = beamPolInfo,
-      frame                = frame,
-      additionalColumnDefs = additionalColumnDefs,
-      additionalFilterDefs = additionalFilterDefs,
-      colNameSuffix        = subsystem.pairLabel,
-    )
-    # define additional columns for subsystem
-    if beamPolInfo is not None:
-      df = (
-        df.Define(f"Psi{frame.name}{subsystem.pairLabel}Deg", f"(Double32_t)(fixAzimuthalAngleRange(Phi{subsystem.pairLabel} - phi{frame.name}{subsystem.pairLabel}) * TMath::RadToDeg())")
-      )
-  # define additional columns that are independent of subsystem
-  df = defineOverwriteRDataFrame(df, f"mass{subsystem.pairLabel}Sq", f"(Double32_t)std::pow(mass{subsystem.pairLabel}, 2)")
-  df = defineOverwriteRDataFrame(df, "Ebeam",                        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvBeam}).E()")
-  # track kinematics
-  df = defineOverwriteRDataFrame(df, "momLabRecoil",      f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).P()")
-  df = defineOverwriteRDataFrame(df, "momLabXRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).X()")
-  df = defineOverwriteRDataFrame(df, "momLabYRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).Y()")
-  df = defineOverwriteRDataFrame(df, "momLabZRecoil",     f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).Z()")
-  df = defineOverwriteRDataFrame(df, "momLabA",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).P()")
-  df = defineOverwriteRDataFrame(df, "momLabXA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).X()")
-  df = defineOverwriteRDataFrame(df, "momLabYA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).Y()")
-  df = defineOverwriteRDataFrame(df, "momLabZA",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).Z()")
-  df = defineOverwriteRDataFrame(df, "momLabB",           f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).P()")
-  df = defineOverwriteRDataFrame(df, "momLabXB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).X()")
-  df = defineOverwriteRDataFrame(df, "momLabYB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).Y()")
-  df = defineOverwriteRDataFrame(df, "momLabZB",          f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).Z()")
-  df = defineOverwriteRDataFrame(df, "thetaLabRecoilDeg", f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvRecoil}).Theta() * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "thetaLabADeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvA}).Theta()      * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "thetaLabBDeg",      f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvB}).Theta()      * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "phiLabRecoilDeg",   f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvRecoil}).phi()   * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "phiLabADeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvA}).phi()        * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "phiLabBDeg",        f"(Double32_t)(ROOT::Math::PxPyPzEVector({lvB}).phi()        * TMath::RadToDeg())")
-  df = defineOverwriteRDataFrame(df, "massRecoil",        f"(Double32_t)ROOT::Math::PxPyPzEVector({lvRecoil}).M()")
-  df = defineOverwriteRDataFrame(df, "massA",             f"(Double32_t)ROOT::Math::PxPyPzEVector({lvA}).M()")
-  df = defineOverwriteRDataFrame(df, "massB",             f"(Double32_t)ROOT::Math::PxPyPzEVector({lvB}).M()")
-  # print(f"!!! {df.GetDefinedColumnNames()=}")
-  return df
 
 
 @dataclass

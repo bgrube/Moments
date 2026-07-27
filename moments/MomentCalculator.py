@@ -14,7 +14,7 @@ from dataclasses import (
   fields,
   InitVar,
 )
-from enum import Enum, auto
+from enum import Enum
 import functools
 import json
 import math

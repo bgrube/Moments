@@ -29,12 +29,12 @@ from workflow.DataConversionUtilities import (
   CPP_CODE_MASSPAIR,
   CPP_CODE_TRACKDISTFDC,
   CPP_CODE_TWO_BODY_ANGLES,
+  defineColumnsForPlots,
   lorentzVectors,
 )
 from workflow.PlottingUtilities import (
   bookHistogram,
   decomposeHistEvenOdd,
-  defineColumnsForPlots,
   drawHorizontalZeroLine,
   HistAxisBinning,
   HistogramDefinition,
