@@ -24,6 +24,7 @@ from moments.MomentCalculator import (
 from workflow.AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+  CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_PIPI,
 )
 from workflow.PlottingUtilities import (
@@ -49,7 +50,7 @@ def plotIntensityFcn(
   coorsysLabel:      str                             = "HF",
 ) -> None:
   """Draw intensity function in given mass bin and save PDF to output directory"""
-  print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and {useIntensityTerms.value}")
+  print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and intensity terms {useIntensityTerms.value}")
   if True:
     # draw intensity function as 3D plot
     # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
@@ -136,51 +137,43 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
 
-  # # polarized eta pi0 data
-  # plotsDirPath        = "./plots/EtaPi0"
-  # dataPeriod          = "merged"
-  # tBinLabel           = "t010020"
-  # # tBinLabel           = "t050075"
-  # beamPolLabel        = "All"
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
-  # coordSysLabel       = "GJ"
-  # polarized pi+pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  plotsDirPath        = "./plots/PiPiPol"
-  # dataPeriod          = "2018_08"
-  # tBinLabel           = "tbin_0.1_0.2"
-  dataPeriod          = "2017_01_ver05"
-  tBinLabel           = "tbin_0.100_0.114"
-  beamPolLabel        = "PARA_0"
   overrideBeamPolInfo = None
 
-  maxL = 4
   momentType = f"phys"
   # momentType = f"meas"
 
-  fitResultDirPath = cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)
-  momentResultsFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
-  print(f"Reading moments from file '{momentResultsFilePath}'")
-  momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
-  for useIntensityTerms in (
-    MomentResult.IntensityTermsType.ALL,
-    MomentResult.IntensityTermsType.PARITY_CONSERVING,
-    MomentResult.IntensityTermsType.PARITY_VIOLATING,
-  ):
-    for massBinIndex, momentResultsForBin in enumerate(momentResults):
-    # for massBinIndex, momentResultsForBin in enumerate(momentResults[4:5]):
-    # for massBinIndex, momentResultsForBin in enumerate(momentResults[11:12]):
-    # for massBinIndex, momentResultsForBin in enumerate(momentResults[30:31]):
-      print(f"Generating plot for {momentResultsForBin.binCenters=}")
-      plotIntensityFcn(
-        momentResults     = momentResultsForBin,
-        massBinIndex      = massBinIndex,
-        beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
-        outputDirPath     = ".",
-        nmbBinsPerAxis    = 50,
-        useIntensityTerms = useIntensityTerms,
-        coorsysLabel      = cfg.frame.name,
-      )
+  print(f"Plotting intensity functions for subsystem '{cfg.subsystem}':")
+  for dataPeriod in cfg.dataPeriods:
+    for tBinLabel in cfg.tBinLabels:
+      for beamPolLabel in cfg.beamPolLabels:
+        for maxL in cfg.maxLs:
+          print(f"Plotting intensity functions for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+          fitResultDirPath = cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)
+          momentResultsFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
+          print(f"Reading moments from file '{momentResultsFilePath}'")
+          momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
+          for useIntensityTerms in (
+            MomentResult.IntensityTermsType.ALL,
+            # MomentResult.IntensityTermsType.PARITY_CONSERVING,
+            # MomentResult.IntensityTermsType.PARITY_VIOLATING,
+          ):
+            for massBinIndex, momentResultsForBin in enumerate(momentResults):
+            # for massBinIndex, momentResultsForBin in enumerate(momentResults[4:5]):
+            # for massBinIndex, momentResultsForBin in enumerate(momentResults[11:12]):
+            # for massBinIndex, momentResultsForBin in enumerate(momentResults[30:31]):
+              print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
+              plotIntensityFcn(
+                momentResults     = momentResultsForBin,
+                massBinIndex      = massBinIndex,
+                beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
+                outputDirPath     = fitResultDirPath,
+                nmbBinsPerAxis    = 50,
+                useIntensityTerms = useIntensityTerms,
+                coorsysLabel      = cfg.frame.name,
+              )
 
   timer.stop("Total execution time")
   print(timer.summary)
