@@ -171,12 +171,12 @@ if __name__ == "__main__":
       # load moment results
       momentResultsToOverlay: dict[str, tuple[MomentResultsKinematicBinning, float | None]] = {}  # key: legend label, value: (moment results, optional scale factor)
       for momentType, fitResultDirPath, fitResultLabel, scaleFactor in fitResults:
-        print(f"Loading moment results from directory {fitResultDirPath}")
-        momentResultsPhysFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
+        momentResultsFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
+        print(f"Loading moment results from file {momentResultsFilePath}")
         try:
-          momentResultsPhys = MomentResultsKinematicBinning.loadPickle(momentResultsPhysFilePath)
+          momentResultsPhys = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
         except FileNotFoundError as e:
-          print(f"Cannot not find file '{momentResultsPhysFilePath}'. Skipping directory '{fitResultDirPath}'")
+          print(f"Cannot not find file '{momentResultsFilePath}'. Skipping directory '{fitResultDirPath}'")
           continue
         momentResultsToOverlay[fitResultLabel] = (momentResultsPhys, scaleFactor)
 
