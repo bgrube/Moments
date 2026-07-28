@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import functools
 import os
+import socket
+import subprocess
 import threading
 from typing import Any, Callable
 
@@ -66,6 +68,18 @@ def enableRootACLiCOpenMp(verbose: bool = False) -> None:
     print(f"Enabling ACLiC compilation with OpenMP for Linux")
     ROOT.gSystem.SetFlagsOpt("-fopenmp")  # compiler flags for optimized mode
     ROOT.gSystem.AddLinkedLibs("-lgomp")
+    if socket.gethostname().startswith("ifarm"):
+      # For usual setups, the above should be sufficient.
+      # On ifarm, however, ACLiC does not search the gcc include directory at `/usr/lib/gcc/x86_64-redhat-linux/11/include/` and hence does not find `omp.h`.
+      # Get the include directory from gcc and add it to the include path.
+      result = subprocess.run("gcc -print-search-dirs",
+                              shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, universal_newlines = True)
+      lines= result.stdout.splitlines()
+      gccIncludePath = None
+      for line in lines:
+        if "install:" in line:
+          gccIncludePath = line.split(": ")[1] + "include"
+      ROOT.gSystem.AddIncludePath(f"-I \"{gccIncludePath}\"")
   if verbose:
     printRootACLiCSettings()
 
@@ -74,10 +88,11 @@ def enableRootACLiCOpenMp(verbose: bool = False) -> None:
 def loadBasisFunctionsLibrary(
   enableOpenMp:       bool = True,
   forceRecompilation: bool = False,
+  verbose:            bool = False,
 ) -> None:
   """Loads C++ implementation of Wigner D function, spherical harmonics, and basis functions for moments; also provides complexT typedef for std::complex<double>"""
   if enableOpenMp:
-    enableRootACLiCOpenMp()
+    enableRootACLiCOpenMp(verbose)
   cppSourceFilePath = "./cpp/basisFunctions.C"
   assert ROOT.gROOT.LoadMacro(f"{cppSourceFilePath}+{'+' if forceRecompilation else ''}") == 0, f"Error loading '{cppSourceFilePath}'"
 
