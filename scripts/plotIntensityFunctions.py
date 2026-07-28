@@ -11,6 +11,7 @@ Usage: Run this module as a script to generate the output files.
 
 from __future__ import annotations
 
+from copy import deepcopy
 import functools
 
 import ROOT
@@ -23,6 +24,7 @@ from moments.MomentCalculator import (
 from workflow.AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
+  CFG_POLARIZED_PIPI,
 )
 from workflow.PlottingUtilities import (
   drawTF3,
@@ -40,7 +42,7 @@ print = functools.partial(print, flush = True)
 def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
-  beamPolInfo:       BeamPolInfo,
+  beamPolInfo:       BeamPolInfo | None,
   outputDirPath:     str,
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
@@ -52,7 +54,7 @@ def plotIntensityFcn(
     # draw intensity function as 3D plot
     # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
     intensityFormula = momentResults.intensityFormula(
-      polarization      = beamPolInfo.pol,
+      polarization      = beamPolInfo.pol if beamPolInfo is not None else None,
       thetaFormula      = "std::acos(x)",
       phiFormula        = "TMath::DegToRad() * y",
       PhiFormula        = "TMath::DegToRad() * z",
@@ -134,26 +136,30 @@ if __name__ == "__main__":
   ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
 
-  # polarized eta pi0 data
-  plotsDirPath        = "./plots/EtaPi0"
-  dataPeriod          = "merged"
-  tBinLabel           = "t010020"
-  # tBinLabel           = "t050075"
-  beamPolLabel        = "All"
-  overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
-  coordSysLabel       = "GJ"
+  # # polarized eta pi0 data
+  # plotsDirPath        = "./plots/EtaPi0"
+  # dataPeriod          = "merged"
+  # tBinLabel           = "t010020"
+  # # tBinLabel           = "t050075"
+  # beamPolLabel        = "All"
+  # overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
+  # coordSysLabel       = "GJ"
   # polarized pi+pi- data
-  # plotsDirPath        = "./plots/PiPiPol"
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  plotsDirPath        = "./plots/PiPiPol"
   # dataPeriod          = "2018_08"
   # tBinLabel           = "tbin_0.1_0.2"
-  # beamPolLabel        = "PARA_0"
-  # overrideBeamPolInfo = None
-  # coordSysLabel       = "HF"
-  # massBinning         = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)  # generate plots in these bins
+  dataPeriod          = "2017_01_ver05"
+  tBinLabel           = "tbin_0.100_0.114"
+  beamPolLabel        = "PARA_0"
+  overrideBeamPolInfo = None
 
   maxL = 4
+  momentType = f"phys"
+  # momentType = f"meas"
 
-  momentResultsFilePath = f"./{plotsDirPath}/{dataPeriod}/{tBinLabel}/{beamPolLabel}.maxL_{maxL}/unnorm_moments_phys.pkl"
+  fitResultDirPath = cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)
+  momentResultsFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
   print(f"Reading moments from file '{momentResultsFilePath}'")
   momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
   for useIntensityTerms in (
@@ -173,7 +179,7 @@ if __name__ == "__main__":
         outputDirPath     = ".",
         nmbBinsPerAxis    = 50,
         useIntensityTerms = useIntensityTerms,
-        coorsysLabel      = coordSysLabel,
+        coorsysLabel      = cfg.frame.name,
       )
 
   timer.stop("Total execution time")
