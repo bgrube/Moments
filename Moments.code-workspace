@@ -17,6 +17,7 @@
 			"ALLT",
 			"amptools",
 			"arange",
+			"arccos",
 			"arctan",
 			"ASBS",
 			"ascontiguousarray",
@@ -93,6 +94,7 @@
 			"iterrows",
 			"Jaug",
 			"Jconj",
+			"jmnk",
 			"Jpac",
 			"JPAC",
 			"keepdims",
@@ -194,6 +196,7 @@
 			"YAVs",
 			"Yaxis",
 			"YBVs",
+			"yerr",
 			"ylabel",
 			"Zaxis"
 		]

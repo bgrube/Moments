@@ -46,9 +46,9 @@ f_phys(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const double               polarization
 );
 
@@ -291,18 +291,18 @@ f_phys(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const double               polarization
 ) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
+	// assume that thetas, phis, and Phis have the same length
+	const size_t nmbEvents = thetas.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+		fcnValues[i] = f_phys(momentIndex, L, M, thetas[i], phis[i], Phis[i], polarization);
 	}
 	return fcnValues;
 }
@@ -314,18 +314,18 @@ f_phys(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const std::vector<double>& polarizations
 ) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
+	// assume that thetas, phis, and Phis have the same length
+	const size_t nmbEvents = thetas.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_phys(momentIndex, L, M, theta[i], phi[i], Phi[i], polarizations[i]);
+		fcnValues[i] = f_phys(momentIndex, L, M, thetas[i], phis[i], Phis[i], polarizations[i]);
 	}
 	return fcnValues;
 }
@@ -363,18 +363,18 @@ f_meas(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const double               polarization
 ) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
+	// assume that thetas, phis, and Phis have the same length
+	const size_t nmbEvents = thetas.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+		fcnValues[i] = f_meas(momentIndex, L, M, thetas[i], phis[i], Phis[i], polarization);
 	}
 	return fcnValues;
 }
@@ -386,18 +386,18 @@ f_meas(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const std::vector<double>& polarizations
 ) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
+	// assume that thetas, phis, and Phis have the same length
+	const size_t nmbEvents = thetas.size();
 	std::vector<std::complex<double>> fcnValues(nmbEvents);
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_meas(momentIndex, L, M, theta[i], phi[i], Phi[i], polarizations[i]);
+		fcnValues[i] = f_meas(momentIndex, L, M, thetas[i], phis[i], Phis[i], polarizations[i]);
 	}
 	return fcnValues;
 }
@@ -436,18 +436,18 @@ f_basis(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const double               polarization
 ) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
+	// assume that thetas, phis, and Phis have the same length
+	const size_t nmbEvents = thetas.size();
 	std::vector<double> fcnValues(nmbEvents);
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_basis(momentIndex, L, M, theta[i], phi[i], Phi[i], polarization);
+		fcnValues[i] = f_basis(momentIndex, L, M, thetas[i], phis[i], Phis[i], polarization);
 	}
 	return fcnValues;
 }
@@ -460,18 +460,18 @@ f_basis(
 	const int                  momentIndex,  // 0, 1, or 2
 	const int                  L,
 	const int                  M,
-	const std::vector<double>& theta,  // [rad]
-	const std::vector<double>& phi,    // [rad]
-	const std::vector<double>& Phi,    // [rad]
+	const std::vector<double>& thetas,  // [rad]
+	const std::vector<double>& phis,    // [rad]
+	const std::vector<double>& Phis,    // [rad]
 	const std::vector<double>& polarizations
 ) {
-	// assume that theta, phi, and Phi have the same length
-	const size_t nmbEvents = theta.size();
+	// assume that thetas, phis, and Phis have the same length
+	const size_t nmbEvents = thetas.size();
 	std::vector<double> fcnValues(nmbEvents);
 	// multi-threaded loop over events using OpenMP
 	#pragma omp parallel for
 	for (size_t i = 0; i < nmbEvents; ++i) {
-		fcnValues[i] = f_basis(momentIndex, L, M, theta[i], phi[i], Phi[i], polarizations[i]);
+		fcnValues[i] = f_basis(momentIndex, L, M, thetas[i], phis[i], Phis[i], polarizations[i]);
 	}
 	return fcnValues;
 }
