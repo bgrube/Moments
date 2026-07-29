@@ -54,7 +54,7 @@ from tests.testMomentsPhotoProdWeighted import genSigAndBkgDataFromWaves
 print = functools.partial(print, flush = True)
 
 
-# TINY_FLOAT = np.finfo(dtype = np.double).tiny
+# TINY_FLOAT = np.finfo(dtype = np.float64).tiny
 TINY_FLOAT = np.finfo(dtype = float).tiny
 
 
@@ -202,7 +202,7 @@ class IntensityFcnVectorized:
     assert nmbEvents == len(self._phis) == len(self._Phis), f"Data arrays must have same length; but got {len(self._thetas)=} vs. {len(self._phis)=} vs. {len(self._Phis)=}"
     nmbMoments = len(self.indices)
     # precalculate real-data values of basis functions
-    self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
+    self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
     for flatIndex in self.indices.flatIndices:
       qnIndex = self.indices[flatIndex]
       self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
@@ -229,7 +229,7 @@ class IntensityFcnVectorized:
     nmbAccEvents = len(self._thetasAccPs)
     assert nmbAccEvents == len(self._phisAccPs) == len(self._PhisAccPs), f"Data arrays must have same length; but got {len(self._thetasAccPs)=} vs. {len(self._phisAccPs)=} vs. {len(self._PhisAccPs)=}"
     nmbMoments = len(self.indices)
-    self._baseFcnIntegrals = np.zeros((nmbMoments, ), dtype = np.double)
+    self._baseFcnIntegrals = np.zeros((nmbMoments, ), dtype = np.float64)
     for flatIndex in self.indices.flatIndices:
       # calculate basis-functions value for each accepted phase-space event
       qnIndex = self.indices[flatIndex]
@@ -587,9 +587,9 @@ if __name__ == "__main__":
       )
       momentValuesTruth = np.array([HTruthSig[qnIndex].val.real if qnIndex.momentIndex < 2 else HTruthSig[qnIndex].val.imag for qnIndex in HTruthSig.indices.qnIndices])  # make all moment values real-valued
       momentLabels = tuple(qnIndex.label for qnIndex in HTruthSig.indices.qnIndices)
-      thetas = np.array([0,    1,    2],    dtype = np.double)
-      phis   = np.array([0.5,  1.5,  2.5],  dtype = np.double)
-      Phis   = np.array([0.75, 1.75, 2.75], dtype = np.double)
+      thetas = np.array([0,    1,    2],    dtype = np.float64)
+      phis   = np.array([0.5,  1.5,  2.5],  dtype = np.float64)
+      Phis   = np.array([0.75, 1.75, 2.75], dtype = np.float64)
       intensities = intensityFcn(dataPoints = (thetas, phis, Phis), moments = momentValuesTruth)
       intensitiesTF3 = []
       for theta, phi, Phi in zip(thetas, phis, Phis):

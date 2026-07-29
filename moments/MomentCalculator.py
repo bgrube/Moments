@@ -1811,7 +1811,7 @@ class MomentCalculator:
       nmbEvents  = len(thetas)
       nmbMoments = len(momentCalculator.indicesPhys)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
-      self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.double)
+      self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
       for flatIndex in momentCalculator.indicesPhys.flatIndices:
         qnIndex = momentCalculator.indicesPhys[flatIndex]
         self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
@@ -1830,7 +1830,7 @@ class MomentCalculator:
       nmbMoments = len(momentCalculator.indicesPhys)
       if momentCalculator.dataSet.phaseSpaceData is None:
         print("Warning: no phase-space data; using perfect acceptance")
-        self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
+        self._integralVector = np.zeros((nmbMoments, ), dtype = np.float64)
         H000Index: int = momentCalculator.indicesPhys[QnMomentIndex(momentIndex = 0, L = 0, M = 0)]
         self._integralVector[H000Index] = 1.0
         self._phaseSpaceEfficiency      = 1.0
@@ -1844,7 +1844,7 @@ class MomentCalculator:
       nmbEventsAccPs = len(thetasAccPs)
       self._phaseSpaceEfficiency = nmbEventsAccPs / momentCalculator.dataSet.nmbGenEvents  # efficiency averaged over phase space
       print(f"Calculating acceptance integral vector for {nmbMoments} moments from {nmbEventsAccPs} accepted phase-space events")
-      self._integralVector = np.zeros((nmbMoments, ), dtype = np.double)
+      self._integralVector = np.zeros((nmbMoments, ), dtype = np.float64)
       for flatIndex in momentCalculator.indicesPhys.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
         qnIndex = momentCalculator.indicesPhys[flatIndex]
