@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import functools
+import numpy as np
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
@@ -20,6 +21,7 @@ ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 from moments.MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
+  QnMomentIndex,
 )
 from workflow.AnalysisConfig import (
   BeamPolInfo,
@@ -40,6 +42,63 @@ from workflow import Utilities
 print = functools.partial(print, flush = True)
 
 
+class IntensityPhysFunctor:
+  """Functor that calculates the intensity function for physical parts of moments"""
+
+  def __init__(
+    self,
+    momentResults: MomentResult,
+    beamPol:       float = 0.0,
+  ) -> None:
+    self.momentResults = momentResults
+    self.beamPol       = beamPol
+
+  def __call__(
+    self,
+    args: np.ndarray,  # 3 arguments: <cos(theta)>, <phi [deg]>, <Phi [deg]>
+    _:    np.ndarray,  # unused argument required by ROOT
+  ) -> float:
+    """Calculates intensity function"""
+    cosTheta = args[0]
+    # convert azimuthal angles from degrees to radians
+    phi      = args[1] * ROOT.TMath.DegToRad()
+    Phi      = args[2] * ROOT.TMath.DegToRad()
+    # get moment values
+    # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
+    indices = self.momentResults.indices
+    maxL = indices.maxL
+    reIndexRange = (
+      QnMomentIndex(momentIndex = 0, L = 0,    M = 0),
+      QnMomentIndex(momentIndex = 1, L = maxL, M = maxL),
+    )  # all H_0 and H_1 moments are real-valued
+    imIndexRange = (
+      QnMomentIndex(momentIndex = 2, L = 1,    M = 1),
+      QnMomentIndex(momentIndex = 2, L = maxL, M = maxL)
+    )  # all H_2 moments are purely imaginary; all H_2(L, 0) are 0
+    # convert to flat-index ranges
+    reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
+    imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
+    # copy values
+    nmbMoments = len(self.momentResults)
+    momentValues = np.zeros((nmbMoments, ), dtype = np.float64)
+    momentValues[reSlice] = np.real(self.momentResults._valsFlatIndex[reSlice])
+    momentValues[imSlice] = np.imag(self.momentResults._valsFlatIndex[imSlice])
+    # calculate basis functions for all moments
+    baseFcnValues = np.zeros((nmbMoments, ), dtype = np.float64)
+    for flatIndex in indices.flatIndices:
+      qnIndex = indices[flatIndex]
+      baseFcnValues[flatIndex] = ROOT.f_basis(
+        qnIndex.momentIndex, qnIndex.L, qnIndex.M,
+        np.arccos(cosTheta),
+        phi,
+        Phi,
+        self.beamPol,
+      )
+    # calculate intensity function
+    intensity = np.dot(momentValues, baseFcnValues)
+    return intensity
+
+
 def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
@@ -47,7 +106,7 @@ def plotIntensityFcn(
   outputDirPath:     str,
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
-  coorsysLabel:      str                             = "HF",
+  coordSysLabel:     str                             = "HF",
 ) -> None:
   """Draw intensity function in given mass bin and save PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and intensity terms {useIntensityTerms.value}")
@@ -74,9 +133,23 @@ def plotIntensityFcn(
       fcn                = intensityFcn,
       binnings           = binnings,
       outFilePath        = f"{outputDirPath}/{intensityFcn.GetName()}.png",
-      histTitle          = f"Intensity Function;cos#theta_{{{coorsysLabel}}};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]",
+      histTitle          = f"Intensity Function;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = True,
     )
+    # test new functor-based implementation of intensity function
+    intensityFunctor = IntensityPhysFunctor(
+      momentResults = momentResults,
+      beamPol       = beamPolInfo.pol if beamPolInfo is not None else 0.0,
+    )
+    intensityFcn2 = ROOT.TF3(f"intensityFcn2_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFunctor, -1, +1, -180, +180, -180, +180)
+    drawTF3(
+      fcn                = intensityFcn2,
+      binnings           = binnings,
+      outFilePath        = f"{outputDirPath}/{intensityFcn2.GetName()}.png",
+      histTitle          = f"Intensity Function 2;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+      showNegativeValues = True,
+    )
+    # raise SystemExit("Test exit")
     if minVal < 0:
       print(f"WARNING: Intensity function for mass bin {massBinIndex} has negative values: minimum = {minVal}, maximum = {maxVal}")
     # draw negative part of intensity function (if any)
@@ -86,7 +159,7 @@ def plotIntensityFcn(
       fcn                = intensityFcnNeg,
       binnings           = binnings,
       outFilePath        = f"{outputDirPath}/{intensityFcnNeg.GetName()}.png",
-      histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coorsysLabel}}};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]",
+      histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = False,
     )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
@@ -120,7 +193,7 @@ def plotIntensityFcn(
       useIntensityTerms = useIntensityTerms,
     )
     intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcn_fixedCosTheta_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
-    intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{{coorsysLabel}}} = {cosTheta};#phi_{{{coorsysLabel}}} [deg];#Phi [deg]")
+    intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{{coordSysLabel}}} = {cosTheta};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]")
     intensityFcnFixedCosTheta.SetNpx(100)
     intensityFcnFixedCosTheta.SetNpy(100)
     intensityFcnFixedCosTheta.SetMinimum(0)
@@ -156,8 +229,8 @@ if __name__ == "__main__":
           print(f"Reading moments from file '{momentResultsFilePath}'")
           momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
           for useIntensityTerms in (
-            MomentResult.IntensityTermsType.ALL,
-            # MomentResult.IntensityTermsType.PARITY_CONSERVING,
+            # MomentResult.IntensityTermsType.ALL,
+            MomentResult.IntensityTermsType.PARITY_CONSERVING,
             # MomentResult.IntensityTermsType.PARITY_VIOLATING,
           ):
             for massBinIndex, momentResultsForBin in enumerate(momentResults):
@@ -172,7 +245,7 @@ if __name__ == "__main__":
                 outputDirPath     = fitResultDirPath,
                 nmbBinsPerAxis    = 50,
                 useIntensityTerms = useIntensityTerms,
-                coorsysLabel      = cfg.frame.name,
+                coordSysLabel     = cfg.frame.name,
               )
 
   timer.stop("Total execution time")
