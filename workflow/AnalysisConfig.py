@@ -66,12 +66,12 @@ class BeamPolInfo:
 
 #TODO maybe using a function would be more flexible here
 BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period label> : {<beam-polarization label> : BeamPolInfo(...)}; `None` means unpolarized
-  "merged" : {  # several merged data periods with different polarization values
-    "All" : BeamPolInfo(  # read polarization values from the given column names
+  "merged" : {  # use for data merged across periods with different polarization values
+    "All" : BeamPolInfo(  # read polarization values for each event from the given column names
       pol    = "beamPol",
       PhiLab = "beamPolPhiLabDeg",
     ),
-    # approximate polarization values across all data-taking periods; don't use for serious analyses
+    # approximate average polarization values; do not use for serious analyses; store correct values in tree instead
     "PARA_0" : BeamPolInfo(
       pol    = 0.35,
       PhiLab = 0,
@@ -91,9 +91,9 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "AMO"   : None,
     "Unpol" : None,
   },
-  # polarization values from Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
-  # beam polarization angles in lab frame taken from `Lab Phi` column of tables 2 to 5 in GlueX-doc-3977
-  "2017_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
+  # Phase-I polarization values are obtained using Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
+  # beam polarization angles in lab frame are taken from `Lab Phi` column of tables 2 to 6 in GlueX-doc-3977-v7
+  "2017_01" : {  # Spring 2017 polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3537,
       PhiLab = 1.8,
@@ -113,7 +113,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "AMO"   : None,
     "Unpol" : None,
   },
-  "2018_01" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
+  "2018_01" : {  # Spring 2018 polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3420,
       PhiLab = 4.1,
@@ -133,7 +133,7 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "AMO"   : None,
     "Unpol" : None,
   },
-  "2018_08" : {  # polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
+  "2018_08" : {  # Fall 2018 polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
     "PARA_0" : BeamPolInfo(
       pol    = 0.3563,
       PhiLab = 3.3,
@@ -153,22 +153,42 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "AMO"   : None,
     "Unpol" : None,
   },
-  "2019_11" : {  # Spring 2020 polarization magnitudes obtained by running `root makePolVals2020.C'(0)'`  #TODO did Alex already produce PhiLab values?
+  "2019_11" : {  # Spring 2020 polarization magnitudes obtained by running `root makePolVals2020.C'(0)'` using version `V2`
     "PARA_0" : BeamPolInfo(
       pol    = 0.3525,
-      PhiLab = 0,
+      PhiLab = 1.4,
     ),
     "PERP_45" : BeamPolInfo(
       pol    = 0.3535,
-      PhiLab = 45,
+      PhiLab = 47.1,
     ),
     "PERP_90" : BeamPolInfo(
       pol    = 0.3536,
-      PhiLab = 90,
+      PhiLab = 93.4,
     ),
     "PARA_135" : BeamPolInfo(
       pol    = 0.3721,
-      PhiLab = -45,
+      PhiLab = -42.2,
+    ),
+    "AMO"   : None,
+    "Unpol" : None,
+  },
+  "2023_01" : {  # Spring 2023 polarization magnitudes obtained by running `root makePolVals2023.C'(0)'` using version `V1`
+    "PARA_0" : BeamPolInfo(
+      pol    = 0.3704,
+      PhiLab = 1.8,
+    ),
+    "PERP_45" : BeamPolInfo(
+      pol    = 0.3734,
+      PhiLab = 47.5,
+    ),
+    "PERP_90" : BeamPolInfo(
+      pol    = 0.3720,
+      PhiLab = 93.7,
+    ),
+    "PARA_135" : BeamPolInfo(
+      pol    = 0.3787,
+      PhiLab = -42.1,
     ),
     "AMO"   : None,
     "Unpol" : None,
