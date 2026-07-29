@@ -49,21 +49,12 @@ class IntensityPhysFunctor:
     self,
     momentResults: MomentResult,
     beamPol:       float = 0.0,
+    invertSign:    bool  = False,  # if True, invert sign of intensity function
   ) -> None:
     self.momentResults = momentResults
     self.beamPol       = beamPol
-
-  def __call__(
-    self,
-    args: np.ndarray,  # 3 arguments: <cos(theta)>, <phi [deg]>, <Phi [deg]>
-    _:    np.ndarray,  # unused argument required by ROOT
-  ) -> float:
-    """Calculates intensity function"""
-    cosTheta = args[0]
-    # convert azimuthal angles from degrees to radians
-    phi      = args[1] * ROOT.TMath.DegToRad()
-    Phi      = args[2] * ROOT.TMath.DegToRad()
-    # get moment values
+    self.invertSign    = invertSign
+    # get moment values as flat, real-valued array
     # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
     indices = self.momentResults.indices
     maxL = indices.maxL
@@ -76,27 +67,79 @@ class IntensityPhysFunctor:
       QnMomentIndex(momentIndex = 2, L = maxL, M = maxL)
     )  # all H_2 moments are purely imaginary; all H_2(L, 0) are 0
     # convert to flat-index ranges
-    reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
-    imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
+    self.reSlice = slice(indices[reIndexRange[0]], indices[reIndexRange[1]] + 1)
+    self.imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
     # copy values
     nmbMoments = len(self.momentResults)
-    momentValues = np.zeros((nmbMoments, ), dtype = np.float64)
-    momentValues[reSlice] = np.real(self.momentResults._valsFlatIndex[reSlice])
-    momentValues[imSlice] = np.imag(self.momentResults._valsFlatIndex[imSlice])
+    self.momentValues = np.zeros((nmbMoments, ), dtype = np.float64)
+    self.momentValues[self.reSlice] = np.real(self.momentResults._valsFlatIndex[self.reSlice])
+    self.momentValues[self.imSlice] = np.imag(self.momentResults._valsFlatIndex[self.imSlice])
+
+  def __call__(
+    self,
+    args: np.ndarray,  # 3 arguments: <cos(theta)>, <phi [deg]>, <Phi [deg]>
+    _:    np.ndarray,  # unused argument required by ROOT
+  ) -> float:
+    """Calculates intensity function"""
+    cosTheta = args[0]
+    # convert azimuthal angles from degrees to radians
+    phi      = args[1] * ROOT.TMath.DegToRad()
+    Phi      = args[2] * ROOT.TMath.DegToRad()
     # calculate basis functions for all moments
-    baseFcnValues = np.zeros((nmbMoments, ), dtype = np.float64)
+    self.baseFcnValues = np.zeros((len(self.momentResults), ), dtype = np.float64)
+    indices = self.momentResults.indices
     for flatIndex in indices.flatIndices:
       qnIndex = indices[flatIndex]
-      baseFcnValues[flatIndex] = ROOT.f_basis(
+      self.baseFcnValues[flatIndex] = ROOT.f_basis(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
         np.arccos(cosTheta),
         phi,
         Phi,
         self.beamPol,
-      )
-    # calculate intensity function
-    intensity = np.dot(momentValues, baseFcnValues)
-    return intensity
+    )
+    # calculate intensity
+    intensity = float(self.momentValues @ self.baseFcnValues)
+    return -intensity if self.invertSign else intensity
+
+
+class IntensitySignificanceFunctor:
+  """Functor that calculates the significance of the deviation of the intensity function from 0 for physical parts of moments"""
+
+  def __init__(
+    self,
+    momentResults: MomentResult,
+    beamPol:       float = 0.0,
+    invertSign:    bool  = False,  # if True, invert sign of significance function
+  ) -> None:
+    self.intensityFunctor = IntensityPhysFunctor(
+      momentResults = momentResults,
+      beamPol       = beamPol,
+      invertSign    = invertSign,
+    )
+    momentResults = self.intensityFunctor.momentResults
+    # copy covariance matrix
+    nmbMoments = len(momentResults)
+    self.covMatrix = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
+    reSlice = self.intensityFunctor.reSlice
+    imSlice = self.intensityFunctor.imSlice
+    self.covMatrix[reSlice, reSlice] = momentResults._V_ReReFlatIndex[reSlice, reSlice]
+    self.covMatrix[imSlice, imSlice] = momentResults._V_ImImFlatIndex[imSlice, imSlice]
+    self.covMatrix[reSlice, imSlice] = momentResults._V_ReImFlatIndex[reSlice, imSlice]
+    self.covMatrix[imSlice, reSlice] = momentResults._V_ReImFlatIndex[reSlice, imSlice].T
+
+  def __call__(
+    self,
+    args: np.ndarray,  # 3 arguments: <cos(theta)>, <phi [deg]>, <Phi [deg]>
+    _:    np.ndarray,  # unused argument required by ROOT
+  ) -> float:
+    """Calculates significance function"""
+    # calculate intensity value
+    intensity = self.intensityFunctor(args, _)
+    baseFcnValues = self.intensityFunctor.baseFcnValues
+    # calculate standard deviation of intensity function
+    standardDev = float(np.sqrt(baseFcnValues @ self.covMatrix @ baseFcnValues))  # since baseFcnValues has shape (nmbMoments, ) it does not need to be transposed
+    significance = intensity / standardDev if standardDev > 0 else 0.0
+    return significance
 
 
 def plotIntensityFcn(
@@ -136,20 +179,6 @@ def plotIntensityFcn(
       histTitle          = f"Intensity Function;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = True,
     )
-    # test new functor-based implementation of intensity function
-    intensityFunctor = IntensityPhysFunctor(
-      momentResults = momentResults,
-      beamPol       = beamPolInfo.pol if beamPolInfo is not None else 0.0,
-    )
-    intensityFcn2 = ROOT.TF3(f"intensityFcn2_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFunctor, -1, +1, -180, +180, -180, +180)
-    drawTF3(
-      fcn                = intensityFcn2,
-      binnings           = binnings,
-      outFilePath        = f"{outputDirPath}/{intensityFcn2.GetName()}.png",
-      histTitle          = f"Intensity Function 2;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-      showNegativeValues = True,
-    )
-    # raise SystemExit("Test exit")
     if minVal < 0:
       print(f"WARNING: Intensity function for mass bin {massBinIndex} has negative values: minimum = {minVal}, maximum = {maxVal}")
     # draw negative part of intensity function (if any)
@@ -160,6 +189,20 @@ def plotIntensityFcn(
       binnings           = binnings,
       outFilePath        = f"{outputDirPath}/{intensityFcnNeg.GetName()}.png",
       histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+      showNegativeValues = False,
+    )
+    # draw statistical significance of negative part of intensity function (if any)
+    intensitySignificanceFunctor = IntensitySignificanceFunctor(
+      momentResults = momentResults,
+      beamPol       = beamPolInfo.pol if beamPolInfo is not None else 0.0,
+      invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
+    )
+    intensitySignificanceFcn = ROOT.TF3(f"intensitySignificanceFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensitySignificanceFunctor, -1, +1, -180, +180, -180, +180)
+    drawTF3(
+      fcn                = intensitySignificanceFcn,
+      binnings           = binnings,
+      outFilePath        = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
+      histTitle          = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
       showNegativeValues = False,
     )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
