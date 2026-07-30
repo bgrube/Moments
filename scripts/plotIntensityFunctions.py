@@ -42,17 +42,19 @@ from workflow import Utilities
 print = functools.partial(print, flush = True)
 
 
-class IntensityPhysFunctor:
+class IntensityFunctor:
   """Functor that calculates the intensity function for physical parts of moments"""
 
   def __init__(
     self,
     momentResults: MomentResult,
     beamPol:       float = 0.0,
+    onlyNegValues: bool  = False,  # if True, return only negative values of intensity function
     invertSign:    bool  = False,  # if True, invert sign of intensity function
   ) -> None:
     self.momentResults = momentResults
     self.beamPol       = beamPol
+    self.onlyNegValues = onlyNegValues
     self.invertSign    = invertSign
     # get moment values as flat, real-valued array
     # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
@@ -78,7 +80,7 @@ class IntensityPhysFunctor:
   def __call__(
     self,
     args: np.ndarray,  # 3 arguments: <cos(theta)>, <phi [deg]>, <Phi [deg]>
-    _:    np.ndarray,  # unused argument required by ROOT
+    _:    np.ndarray,  # unused argument; required by ROOT
   ) -> float:
     """Calculates intensity function"""
     cosTheta = args[0]
@@ -99,6 +101,8 @@ class IntensityPhysFunctor:
     )
     # calculate intensity
     intensity = float(self.momentValues @ self.baseFcnValues)
+    if self.onlyNegValues and intensity > 0:
+      return 0.0
     return -intensity if self.invertSign else intensity
 
 
@@ -109,11 +113,13 @@ class IntensitySignificanceFunctor:
     self,
     momentResults: MomentResult,
     beamPol:       float = 0.0,
+    onlyNegValues: bool  = False,  # if True, return only negative values of intensity function
     invertSign:    bool  = False,  # if True, invert sign of significance function
   ) -> None:
-    self.intensityFunctor = IntensityPhysFunctor(
+    self.intensityFunctor = IntensityFunctor(
       momentResults = momentResults,
       beamPol       = beamPol,
+      onlyNegValues = onlyNegValues,
       invertSign    = invertSign,
     )
     momentResults = self.intensityFunctor.momentResults
@@ -192,18 +198,19 @@ def plotIntensityFcn(
       showNegativeValues = False,
     )
     # draw statistical significance of negative part of intensity function (if any)
+    beamPol = beamPolInfo.pol if beamPolInfo is not None else 0.0
     intensitySignificanceFunctor = IntensitySignificanceFunctor(
       momentResults = momentResults,
-      beamPol       = beamPolInfo.pol if beamPolInfo is not None else 0.0,
+      beamPol       = beamPol,
+      onlyNegValues = True,  # only show negative part of intensity function
       invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
     )
     intensitySignificanceFcn = ROOT.TF3(f"intensitySignificanceFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensitySignificanceFunctor, -1, +1, -180, +180, -180, +180)
     drawTF3(
-      fcn                = intensitySignificanceFcn,
-      binnings           = binnings,
-      outFilePath        = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
-      histTitle          = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-      showNegativeValues = False,
+      fcn         = intensitySignificanceFcn,
+      binnings    = binnings,
+      outFilePath = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
+      histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
     )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
     # ROOT.gStyle.SetCanvasDefW(600)
