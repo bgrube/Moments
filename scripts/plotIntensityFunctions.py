@@ -15,6 +15,7 @@ from copy import deepcopy
 import ctypes
 import functools
 import numpy as np
+from scipy.optimize import minimize
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
@@ -234,6 +235,70 @@ class IntensityIntegralFunctor:
     # 1e7:  MISER integral=-3965868.0687554656, nfnevl=c_int(0), relerr=c_double(0.0014723495766031775),  ifail=c_int(0); wall time = 1151 sec,  CPU time = 1148 sec
 
 
+def makeIntensityPositiveDefinite(
+  momentResults: MomentResult,
+  beamPol:       float = 0.0,
+  margin:        float = 1e-9,  # margin to ensure positive definiteness of intensity function
+) -> MomentResult:
+  """Performs minimal shift of moment values to make intensity function positive definite"""
+  print(f"Making intensity function positive definite by shifting moment values")
+  negIntensitySignificanceFunctor = IntensitySignificanceFunctor(  # significance of negative part of intensity function
+    momentResults = momentResults,
+    beamPol       = beamPol,
+    onlyNegValues = True,
+  )
+  negIntensityFunctor = negIntensitySignificanceFunctor.intensityFunctor  # negative part of intensity function
+  H = negIntensityFunctor.momentValues  # nominal moment values
+  V = negIntensitySignificanceFunctor.covMatrix  # covariance matrix of moment values
+  # determine minimal shift delta of moments values H such that
+  # intensity function is positive definite, i.e.
+  # min_delta[delta^T V^-1 delta] such that g(H + delta) >= 0
+  # Cholesky-decompose the covariance matrix, i.e. V = L L^T
+  try:
+    L = np.linalg.cholesky(V)
+  except np.linalg.LinAlgError:
+    print("Warning: Cholesky decomposition of covariance failed, adding small diagonal term")
+    L = np.linalg.cholesky(V + 1e-12 * np.eye(len(V)))
+  # perform minimization in whitened space, i.e. define new parameters
+  # H_w = L^-1 H that have unit covariance matrix, i.e. V(H_w) = I
+  # therefore, the whitened parameter difference is delta_w = L^-1 delta
+  # and minimizing the objective function delta^T V^-1 delta is
+  # equivalent to minimizing delta_w^T delta_w, i.e. the Euclidean norm of delta_w
+  negIntensityIntegralFcn = IntensityIntegralFunctor(negIntensityFunctor)  # integral of negative part of intensity function
+  result = minimize(
+    fun         = lambda delta_w: float(delta_w @ delta_w),  # objective function to be minimized is Euclidean norm in whitened space
+    x0          = np.zeros(len(H)),  # start values for delta_w
+    method      = 'COBYLA',          # use the Constrained Optimization BY Linear Approximation (COBYLA) algorithm
+    options     = {  # options for 'COBYLA' method
+      "rhobeg"  : 1.0,   # reasonable initial changes to delta_w
+      "maxiter" : 2000,  # maximum number of function evaluations
+      "catol"   : 1e-8,  # absolute tolerance for violation of constraint g(H + delta) >= 0
+      "disp"    : True,  # display convergence messages
+    },
+    constraints = [{  # constraints for minimization
+      "fun"  : lambda delta_w: negIntensityIntegralFcn(H + L @ delta_w) - margin,  # function g(H + delta) defining the constraint with delta = L @ delta_w
+      "type" : "ineq",                                                             # inequality constraint, i.e. g(H + delta) >= 0
+    }],
+  )
+  # get result from minimization and transform back from whitened to original space
+  print(f"!!! {result=}")
+  delta_w = result.x
+  delta = L @ delta_w
+  print(f"!!! {delta=}")
+  H_shifted = H + delta
+  print(f"!!! {H_shifted=}")
+  print(f"!!! {negIntensityIntegralFcn(H)=} vs. {negIntensityIntegralFcn(H_shifted)=}")
+  chi2 = float(delta_w @ delta_w)  # calculate chi^2 of parameter shift
+  print(f"!!! {chi2=} vs. {result.fun=}")
+  # construct new MomentResult object with shifted moment values
+  momentResultsShifted = deepcopy(momentResults)
+  reSlice = negIntensityFunctor.reSlice
+  imSlice = negIntensityFunctor.imSlice
+  momentResultsShifted._valsFlatIndex[reSlice] = H_shifted[reSlice]
+  momentResultsShifted._valsFlatIndex[imSlice] = H_shifted[imSlice] * 1j  # convert to purely imaginary
+  return momentResultsShifted
+
+
 def plotIntensityFcn(
   momentResults:     MomentResult,
   massBinIndex:      int,
@@ -297,6 +362,21 @@ def plotIntensityFcn(
       binnings    = binnings,
       outFilePath = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
       histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+    )
+    # make intensity function positive definite by shifting moment values and draw negative part to confirm
+    momentsShifted = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
+    intensityFunctorShiftedNeg = IntensityFunctor(
+      momentResults = momentsShifted,
+      beamPol       = beamPol,
+      onlyNegValues = True,  # only show negative part of intensity function
+      invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
+    )
+    intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShiftedNeg, -1, +1, -180, +180, -180, +180)
+    drawTF3(
+      fcn         = intensityFcnShiftedNeg,
+      binnings    = binnings,
+      outFilePath = f"{outputDirPath}/{intensityFcnShiftedNeg.GetName()}.png",
+      histTitle   = f"Intensity Shifted, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
     )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
     # ROOT.gStyle.SetCanvasDefW(600)
