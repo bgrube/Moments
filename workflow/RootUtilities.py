@@ -79,7 +79,7 @@ def enableRootACLiCOpenMp(verbose: bool = False) -> None:
       for line in lines:
         if "install:" in line:
           gccIncludePath = line.split(": ")[1] + "include"
-      ROOT.gSystem.AddIncludePath(f"-I \"{gccIncludePath}\"")
+      ROOT.gSystem.AddIncludePath(f"-I\"{gccIncludePath}\"")
   if verbose:
     printRootACLiCSettings()
 

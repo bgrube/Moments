@@ -338,21 +338,14 @@ def plotComplexMatrix(
     plotRealMatrix(matrix, f"{pdfFileNamePrefix}{label}_color.pdf", axisTitles, plotTitle = plotTitle + title, zRange = zRange, cmap = "RdBu", **kwargs)
 
 
-def drawTF3(
-  fcn:                ROOT.TF3,  # function to plot
+def TF3toTH3(
+  fcn:       ROOT.TF3,  # function to plot
   #TODO read binning ranges from fcn and just define number of points
-  binnings:           tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
-  outFilePath:        str,                  # name of output file to write
-  histTitle:          str          = "",    # histogram title
-  minVal:             float | None = None,  # set minimum function value to plot
-  maxVal:             float | None = None,  # set maximum function value to plot
-  showNegativeValues: bool         = True,  # whether to limit minimum function value to zero
-) -> tuple[ROOT.TH3F,float, float]:
-  """Plots given TF3 into PDF file with given name using the binning defined by `binnings`; returns minimum and maximum function values found in the bins"""
-  canv = ROOT.TCanvas()
-  # fcn.Draw("BOX2Z") does not work; sigh
-  # draw function "by hand" instead
-  histName = os.path.splitext(os.path.basename(outFilePath))[0]
+  binnings:  tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
+  histName:  str,       # histogram name
+  histTitle: str = "",  # override histogram title; if empty the title of the TF3 is used
+) -> ROOT.TH3F:
+  """Converts given TF3 into TH3 histogram using the given binning"""
   histFcn = ROOT.TH3F(histName, histTitle if histTitle else fcn.GetTitle(), *binnings[0].astuple, *binnings[1].astuple, *binnings[2].astuple)
   xAxis = histFcn.GetXaxis()
   yAxis = histFcn.GetYaxis()
@@ -364,9 +357,31 @@ def drawTF3(
         y = yAxis.GetBinCenter(yBin)
         z = zAxis.GetBinCenter(zBin)
         histFcn.SetBinContent(xBin, yBin, zBin, fcn.Eval(x, y, z))
+  return histFcn
+
+
+def drawTF3(
+  fcn:                ROOT.TF3,  # function to plot
+  #TODO read binning ranges from fcn and just define number of points
+  binnings:           tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning],  # binnings of the 3 histogram axes: (x, y, z)
+  outFilePath:        str,                  # name of output file to write
+  histTitle:          str          = "",    # histogram title
+  minVal:             float | None = None,  # set minimum function value to plot
+  maxVal:             float | None = None,  # set maximum function value to plot
+  showNegativeValues: bool         = True,  # whether to limit minimum function value to zero
+) -> tuple[ROOT.TH3F,float, float]:
+  """Plots given TF3 into PDF file with given name using the binning defined by `binnings`; returns histogram and minimum and maximum function values found in the bins"""
+  # fcn.Draw("BOX2Z") does not work; sigh
+  # draw function "by hand" instead
+  histFcn = TF3toTH3(
+    fcn       = fcn,
+    binnings  = binnings,
+    histName  = os.path.splitext(os.path.basename(outFilePath))[0],
+    histTitle = histTitle,
+  )
   histMin = histFcn.GetMinimum()
   histMax = histFcn.GetMaximum()
-  print(f"Drawing histogram '{histName}' for function '{fcn.GetName()}': minimum value = {histMin}, maximum value = {histMax}")
+  print(f"Drawing histogram '{histFcn.GetName()}' for function '{fcn.GetName()}': minimum value = {histMin}, maximum value = {histMax}")
   if not showNegativeValues:
     # by default negative values are drawn as crossed-out boxes
     # hide these boxes by setting the bin content of negative bins to zero
@@ -387,6 +402,7 @@ def drawTF3(
   histFcn.GetXaxis().SetTitleOffset(1.5)
   histFcn.GetYaxis().SetTitleOffset(2)
   histFcn.GetZaxis().SetTitleOffset(1.5)
+  canv = ROOT.TCanvas()
   histFcn.Draw("BOX2Z")
   canv.SaveAs(outFilePath)
   return (histFcn, histMin, histMax)
