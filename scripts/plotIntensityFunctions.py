@@ -12,6 +12,7 @@ Usage: Run this module as a script to generate the output files.
 from __future__ import annotations
 
 from copy import deepcopy
+import ctypes
 import functools
 import numpy as np
 
@@ -33,6 +34,7 @@ from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   setupPlotStyle,
+  TF3toTH3,
 )
 from workflow import RootUtilities
 from workflow import Utilities
@@ -146,6 +148,90 @@ class IntensitySignificanceFunctor:
     standardDev = float(np.sqrt(baseFcnValues @ self.covMatrix @ baseFcnValues))  # since baseFcnValues has shape (nmbMoments, ) it does not need to be transposed
     significance = intensity / standardDev if standardDev > 0 else 0.0
     return significance
+
+
+class IntensityIntegralFunctor:
+  """Functor that calculates the integral of the intensity function for physical parts of moments"""
+
+  def __init__(
+    self,
+    intensityFunctor: IntensityFunctor,
+    nmbBinsPerAxis:   int = 25,  # number of bins per axis for numerical integration
+  ) -> None:
+    self.intensityFunctor = intensityFunctor
+    self.intensityFcn     = ROOT.TF3(f"intensityFcn", self.intensityFunctor, -1, +1, -180, +180, -180, +180)
+    self.nmbBinsPerAxis   = nmbBinsPerAxis
+
+  def __call__(
+    self,
+    momentValues: np.ndarray,  # flat array of moment values
+  ) -> float:
+    """Calculates integral of intensity function"""
+    self.intensityFunctor.momentValues = momentValues  # set moment values used by intensity function
+    # integral = float(self.intensityFcn.Integral(-1, +1, -180, +180, -180, +180))  # does not work
+    # The adaptive quadrature integration used by `TF3.Integral()`
+    # does not work, because it does not find the regions with
+    # negative intensity and hence returns zero. This is also true
+    # when using `TF1.IntegralMultiple()` with increased number of
+    # maximum function evaluations. Using
+    # `ROOT.Math.AdaptiveIntegratorMultiDim` directly and increasing
+    # the minimum number of points using `SetMinPts()` yields a
+    # non-zero integral but the algorithm fails to converge for
+    # reasonable values of the maximum number of points and the
+    # computed value is too small indicating the algorithm does not
+    # find all negative regions.
+
+    # timer = Utilities.Timer()
+
+    # # use Monte Carlo integration
+    # # for comparable run times they don't seem to give much better results than simple grid integration
+    # ROOT.Math.IntegratorMultiDimOptions.SetDefaultIntegrator("VEGAS")  # default is "ADAPTIVE"
+    # # ROOT.Math.IntegratorMultiDimOptions.SetDefaultIntegrator("MISER")  # default is "ADAPTIVE"
+    # maxpts = int(1e4)  # maximum number of function evaluations
+    # epsrel = 1e-6      # relative target accuracy
+    # epsabs = 1e-6      # absolute target accuracy
+    # relerr = ctypes.c_double(0.0)  # estimate of relative accuracy of integral
+    # nfnevl = ctypes.c_int(0)       # number of function evaluations
+    # ifail  = ctypes.c_int(0)       # error flag
+    # timer.start("VEGAS")
+    # integral = float(self.intensityFcn.IntegralMultiple(3, np.array([-1, -180, -180], dtype = np.float64), np.array([+1, +180, +180], dtype = np.float64), maxpts, epsrel, epsabs, relerr, nfnevl, ifail))
+    # print(f"!!! VEGAS {integral=}, {nfnevl=}, {relerr=}, {ifail=}")
+    # timer.stop("VEGAS")
+    # ROOT.Math.IntegratorMultiDimOptions.SetDefaultIntegrator("MISER")  # default is "ADAPTIVE"
+    # timer.start("MISER")
+    # integral = float(self.intensityFcn.IntegralMultiple(3, np.array([-1, -180, -180], dtype = np.float64), np.array([+1, +180, +180], dtype = np.float64), maxpts, epsrel, epsabs, relerr, nfnevl, ifail))
+    # print(f"!!! MISER {integral=}, {nfnevl=}, {relerr=}, {ifail=}")
+    # timer.stop("MISER")
+
+    # use simple grid integration
+    # timer.start("HIST")
+    intensityFcnHist = TF3toTH3(
+      fcn      = self.intensityFcn,
+      binnings = (
+        HistAxisBinning(self.nmbBinsPerAxis,   -1,   +1),  # cos(theta)
+        HistAxisBinning(self.nmbBinsPerAxis, -180, +180),  # phi
+        HistAxisBinning(self.nmbBinsPerAxis, -180, +180),  # Phi
+      ),
+      histName = self.intensityFcn.GetName(),
+    )
+    integral = float(intensityFcnHist.Integral("width"))
+    # print(f"!!! {integral=}")
+    # timer.stop("HIST")
+    # print(timer.summary)
+    return integral
+    #TODO try vegas package
+    # benchmarks:
+    # 1e4:  VEGAS integral=-3992222.0601890543, nfnevl=c_int(0), relerr=c_double(0.004470002848448925),   ifail=c_int(0); wall time = 5.584 sec, CPU time = 5.561 sec
+    # 1e4:  MISER integral=-3714687.1934114816, nfnevl=c_int(0), relerr=c_double(0.05762639926726086),    ifail=c_int(0); wall time = 1.146 sec, CPU time = 1.143 sec
+    #  25 points: integral=-4114769.2088862327; wall time = 1.835 sec, CPU time = 1.831 sec
+    # 1e5:  VEGAS integral=-3961930.3445391045, nfnevl=c_int(0), relerr=c_double(0.0006438089454992076),  ifail=c_int(0); wall time = 52.97 sec, CPU time = 52.79 sec
+    # 1e5:  MISER integral=-3928096.1729773143, nfnevl=c_int(0), relerr=c_double(0.015646596362202617),   ifail=c_int(0); wall time = 11.45 sec, CPU time = 11.42 sec
+    #  50 points: integral=-3999756.605608042;  wall time = 15.12 sec, CPU time = 15.08 sec
+    # 1e6:  VEGAS integral=-3969148.325157645,  nfnevl=c_int(0), relerr=c_double(0.00016875431791790187), ifail=c_int(0); wall time = 587.3 sec, CPU time = 585.7 sec
+    # 1e6:  MISER integral=-3979578.4439491937, nfnevl=c_int(0), relerr=c_double(0.004340729467225029),   ifail=c_int(0); wall time = 116.8 sec, CPU time = 116.5 sec
+    # 100 points: integral=-3969229.6918768394; wall time = 116.8 sec, CPU time = 116.4 sec
+    # 1e7:  VEGAS integral=-3968043.144606392,  nfnevl=c_int(0), relerr=c_double(2.1594798389239337e-05), ifail=c_int(0); wall time = 3853 sec,  CPU time = 3843 sec
+    # 1e7:  MISER integral=-3965868.0687554656, nfnevl=c_int(0), relerr=c_double(0.0014723495766031775),  ifail=c_int(0); wall time = 1151 sec,  CPU time = 1148 sec
 
 
 def plotIntensityFcn(
