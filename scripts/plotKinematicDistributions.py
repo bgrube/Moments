@@ -133,8 +133,8 @@ def bookHistograms(
       # 2D histograms
       HistogramDefinition(f"anglesHF{pairLabel}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg")),
       HistogramDefinition(f"anglesGJ{pairLabel}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg]", ((50, -1, +1), (36, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg")),
-      HistogramDefinition(f"phiHF{pairLabel}DegVsPhiLabADeg", f"{title};#phi_{{{ATLatex}}}^{{lab}} [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"phiLabADeg", f"phiHF{pairLabel}Deg")),
-      HistogramDefinition(f"phiHF{pairLabel}DegVsPhiLabBDeg", f"{title};#phi_{{{BTLatex}}}^{{lab}} [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"phiLabBDeg", f"phiHF{pairLabel}Deg")),
+      HistogramDefinition(f"phiHF{pairLabel}DegVsPhiLabADeg", f"{title};#phi_{{{ATLatex}}}^{{lab}} [deg];#phi_{{HF}} [deg]", ((72, -180, +180), (72, -180, +180)), (f"phiLabADeg", f"phiHF{pairLabel}Deg")),
+      HistogramDefinition(f"phiHF{pairLabel}DegVsPhiLabBDeg", f"{title};#phi_{{{BTLatex}}}^{{lab}} [deg];#phi_{{HF}} [deg]", ((72, -180, +180), (72, -180, +180)), (f"phiLabBDeg", f"phiHF{pairLabel}Deg")),
     ]
     if beamPolInfo is not None:
       histDefs += [
@@ -208,6 +208,9 @@ def bookHistograms(
           HistogramDefinition(f"Phi{pairLabel}DegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};#Phi [deg]",  ((100,   -1,   +1), (72, -180, +180)), (f"cosThetaGJ{pairLabel}", f"Phi{pairLabel}Deg"  ), massBinFilter),
           HistogramDefinition(f"phiHF{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",   f"{title};#Phi [deg];#phi_{{HF}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"Phi{pairLabel}Deg",     f"phiHF{pairLabel}Deg"), massBinFilter),
           HistogramDefinition(f"phiGJ{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",   f"{title};#Phi [deg];#phi_{{GJ}} [deg]", (( 72, -180, +180), (72, -180, +180)), (f"Phi{pairLabel}Deg",     f"phiGJ{pairLabel}Deg"), massBinFilter),
+          # 3D histograms
+          HistogramDefinition(f"Phi{pairLabel}DegVsPhiHF{pairLabel}DegVsCosThetaHF{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{HF}};#phi_{{HF}} [deg];#Phi [deg]", ((25, -1, +1), (24, -180, +180), (24, -180, +180)), (f"cosThetaHF{pairLabel}", f"phiHF{pairLabel}Deg", f"Phi{pairLabel}Deg"), massBinFilter),
+          HistogramDefinition(f"Phi{pairLabel}DegVsPhiGJ{pairLabel}DegVsCosThetaGJ{pairLabel}{histNameSuffix}", f"{title};cos#theta_{{GJ}};#phi_{{GJ}} [deg];#Phi [deg]", ((25, -1, +1), (24, -180, +180), (24, -180, +180)), (f"cosThetaGJ{pairLabel}", f"phiGJ{pairLabel}Deg", f"Phi{pairLabel}Deg"), massBinFilter),
         ]
         histNamesEvenOdd += [
           f"phiHF{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",
@@ -386,7 +389,8 @@ if __name__ == "__main__":
   }
 
   cfg = deepcopy(CFG_POLARIZED_PIPI)
-  subsystemMassBinning = None  # do not generate plots in mass bins
+  # subsystemMassBinning = None  # do not generate plots in mass bins
+  subsystemMassBinning = cfg.massBinning
   additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
     AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)"],
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)"],
