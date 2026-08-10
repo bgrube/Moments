@@ -265,6 +265,12 @@ def makeIntensityPositiveDefinite(
   # and minimizing the objective function delta^T V^-1 delta is
   # equivalent to minimizing delta_w^T delta_w, i.e. the Euclidean norm of delta_w
   negIntensityIntegralFcn = IntensityIntegralFunctor(negIntensityFunctor)  # integral of negative part of intensity function
+  # Unfortunately, at a value of g(H + delta) 0, which is the goal for
+  # the minimizer, the negative part of the intensity function is not
+  # differentiable with respect to the moment values, so the
+  # minimization does not converge properly. Still, the minimization
+  # result leads to intensity functions with much smaller negative
+  # parts than the original moment values, so it is still useful.
   result = minimize(
     fun         = lambda delta_w: float(delta_w @ delta_w),  # objective function to be minimized is Euclidean norm in whitened space
     x0          = np.zeros(len(H)),  # start values for delta_w
@@ -307,9 +313,10 @@ def plotIntensityFcn(
   nmbBinsPerAxis:    int                             = 25,
   useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
   coordSysLabel:     str                             = "HF",
-) -> None:
+) -> MomentResult | None:  # return moments shifted such that intensity function is positive definite
   """Draw intensity function in given mass bin and save PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and intensity terms {useIntensityTerms.value}")
+  momentsShifted = None
   if True:
     # draw intensity function as 3D plot
     # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
@@ -363,21 +370,23 @@ def plotIntensityFcn(
       outFilePath = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
       histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
     )
-    # make intensity function positive definite by shifting moment values and draw negative part to confirm
-    momentsShifted = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
-    intensityFunctorShiftedNeg = IntensityFunctor(
-      momentResults = momentsShifted,
-      beamPol       = beamPol,
-      onlyNegValues = True,  # only show negative part of intensity function
-      invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
-    )
-    intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShiftedNeg, -1, +1, -180, +180, -180, +180)
-    drawTF3(
-      fcn         = intensityFcnShiftedNeg,
-      binnings    = binnings,
-      outFilePath = f"{outputDirPath}/{intensityFcnShiftedNeg.GetName()}.png",
-      histTitle   = f"Intensity Shifted, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-    )
+    if True:
+    # if False:
+      # make intensity function positive definite by shifting moment values and draw negative part to confirm
+      momentsShifted = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
+      intensityFunctorShiftedNeg = IntensityFunctor(
+        momentResults = momentsShifted,
+        beamPol       = beamPol,
+        onlyNegValues = True,  # only show negative part of intensity function
+        invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
+      )
+      intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShiftedNeg, -1, +1, -180, +180, -180, +180)
+      drawTF3(
+        fcn         = intensityFcnShiftedNeg,
+        binnings    = binnings,
+        outFilePath = f"{outputDirPath}/{intensityFcnShiftedNeg.GetName()}.png",
+        histTitle   = f"Intensity Shifted, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+      )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
     # ROOT.gStyle.SetCanvasDefW(600)
     # draw projections of intensity function onto (cos(theta), phi) plane
@@ -416,6 +425,7 @@ def plotIntensityFcn(
     canv = ROOT.TCanvas()
     intensityFcnFixedCosTheta.Draw("COLZ")
     canv.SaveAs(f"{outputDirPath}/{intensityFcnFixedCosTheta.GetName()}.pdf")
+  return momentsShifted
 
 
 if __name__ == "__main__":
@@ -449,20 +459,27 @@ if __name__ == "__main__":
             MomentResult.IntensityTermsType.PARITY_CONSERVING,
             # MomentResult.IntensityTermsType.PARITY_VIOLATING,
           ):
+            momentsShifted = []
             for massBinIndex, momentResultsForBin in enumerate(momentResults):
             # for massBinIndex, momentResultsForBin in enumerate(momentResults[4:5]):
             # for massBinIndex, momentResultsForBin in enumerate(momentResults[11:12]):
             # for massBinIndex, momentResultsForBin in enumerate(momentResults[30:31]):
               print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
-              plotIntensityFcn(
-                momentResults     = momentResultsForBin,
-                massBinIndex      = massBinIndex,
-                beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
-                outputDirPath     = fitResultDirPath,
-                nmbBinsPerAxis    = 50,
-                useIntensityTerms = useIntensityTerms,
-                coordSysLabel     = cfg.frame.name,
+              momentsShifted.append(
+                plotIntensityFcn(
+                  momentResults     = momentResultsForBin,
+                  massBinIndex      = massBinIndex,
+                  beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
+                  outputDirPath     = fitResultDirPath,
+                  nmbBinsPerAxis    = 50,
+                  useIntensityTerms = useIntensityTerms,
+                  coordSysLabel     = cfg.frame.name,
+                )
               )
+            # save shifted moments to file
+            if all(m is not None for m in momentsShifted):
+              momentResultsShifted = MomentResultsKinematicBinning(momentsShifted)
+              momentResultsShifted.savePickle(momentResultsFilePath.replace(".pkl", f"_shifted.pkl"))
 
   timer.stop("Total execution time")
   print(timer.summary)
