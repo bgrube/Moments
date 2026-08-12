@@ -306,13 +306,14 @@ def makeIntensityPositiveDefinite(
 
 
 def plotIntensityFcn(
-  momentResults:     MomentResult,
-  massBinIndex:      int,
-  beamPolInfo:       BeamPolInfo | None,
-  outputDirPath:     str,
-  nmbBinsPerAxis:    int                             = 25,
-  useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
-  coordSysLabel:     str                             = "HF",
+  momentResults:            MomentResult,
+  massBinIndex:             int,
+  beamPolInfo:              BeamPolInfo | None,
+  outputDirPath:            str,
+  nmbBinsPerAxis:           int                             = 25,
+  useIntensityTerms:        MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
+  coordSysLabel:            str                             = "HF",
+  makeIntensityPosDefinite: bool                            = False,  # if True, shift moment values such that intensity function is positive definite
 ) -> MomentResult | None:  # return moments shifted such that intensity function is positive definite
   """Draw intensity function in given mass bin and save PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and intensity terms {useIntensityTerms.value}")
@@ -370,9 +371,9 @@ def plotIntensityFcn(
       outFilePath = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
       histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
     )
-    if True:
-    # if False:
+    if makeIntensityPosDefinite and useIntensityTerms == MomentResult.IntensityTermsType.PARITY_CONSERVING:
       # make intensity function positive definite by shifting moment values and draw negative part to confirm
+      #TODO this code works only for parity-conserving moments
       momentsShifted = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
       intensityFunctorShiftedNeg = IntensityFunctor(
         momentResults = momentsShifted,
@@ -467,13 +468,14 @@ if __name__ == "__main__":
               print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
               momentsShifted.append(
                 plotIntensityFcn(
-                  momentResults     = momentResultsForBin,
-                  massBinIndex      = massBinIndex,
-                  beamPolInfo       = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
-                  outputDirPath     = fitResultDirPath,
-                  nmbBinsPerAxis    = 50,
-                  useIntensityTerms = useIntensityTerms,
-                  coordSysLabel     = cfg.frame.name,
+                  momentResults            = momentResultsForBin,
+                  massBinIndex             = massBinIndex,
+                  beamPolInfo              = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
+                  outputDirPath            = fitResultDirPath,
+                  nmbBinsPerAxis           = 50,
+                  useIntensityTerms        = useIntensityTerms,
+                  coordSysLabel            = cfg.frame.name,
+                  makeIntensityPosDefinite = True,
                 )
               )
             # save shifted moments to file
