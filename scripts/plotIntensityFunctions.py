@@ -238,9 +238,13 @@ class IntensityIntegralFunctor:
 def makeIntensityPositiveDefinite(
   momentResults: MomentResult,
   beamPol:       float = 0.0,
-  margin:        float = 1e-9,  # margin to ensure positive definiteness of intensity function
-) -> MomentResult:
-  """Performs minimal shift of moment values to make intensity function positive definite"""
+  relMargin:     float = 0.0,
+  # relMargin:     float = -1e-4,  # allow for small relative negative values of intensity integral to keep integral in a region, where its derivatives are still defined
+  relTolerance:  float = 5e-5,   # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
+  # relTolerance:  float = 5e-4,  # L_max = 6
+  # relTolerance:  float = 5e-3,  # L_max = 8
+) -> tuple[MomentResult, float]:
+  """Performs minimal shift of moment values to make intensity function positive definite and returns shifted moments and the chi^2 of the shift"""
   print(f"Making intensity function positive definite by shifting moment values")
   negIntensitySignificanceFunctor = IntensitySignificanceFunctor(  # significance of negative part of intensity function
     momentResults = momentResults,
@@ -248,8 +252,8 @@ def makeIntensityPositiveDefinite(
     onlyNegValues = True,
   )
   negIntensityFunctor = negIntensitySignificanceFunctor.intensityFunctor  # negative part of intensity function
-  H = negIntensityFunctor.momentValues  # nominal moment values
-  V = negIntensitySignificanceFunctor.covMatrix  # covariance matrix of moment values
+  H: np.ndarray = negIntensityFunctor.momentValues  # nominal moment values
+  V: np.ndarray = negIntensitySignificanceFunctor.covMatrix  # covariance matrix of moment values
   # determine minimal shift delta of moments values H such that
   # intensity function is positive definite, i.e.
   # min_delta[delta^T V^-1 delta] such that g(H + delta) >= 0
@@ -271,38 +275,44 @@ def makeIntensityPositiveDefinite(
   # minimization does not converge properly. Still, the minimization
   # result leads to intensity functions with much smaller negative
   # parts than the original moment values, so it is still useful.
+  integral = negIntensityIntegralFcn(H)
+  margin = relMargin * abs(integral)  # absolute margin for constraint g(H + delta) >= 0
+  catol  = relTolerance * abs(integral)  # absolute tolerance for violation of constraint g(H + delta) >= 0
+  print(f"Running minimizer with absolute constraint margin = {margin} and absolute tolerance = {catol}")
   result = minimize(
     fun         = lambda delta_w: float(delta_w @ delta_w),  # objective function to be minimized is Euclidean norm in whitened space
     x0          = np.zeros(len(H)),  # start values for delta_w
     method      = 'COBYLA',          # use the Constrained Optimization BY Linear Approximation (COBYLA) algorithm
     options     = {  # options for 'COBYLA' method
-      "rhobeg"  : 1.0,   # reasonable initial changes to delta_w
-      "maxiter" : 2000,  # maximum number of function evaluations
-      "catol"   : 1e-8,  # absolute tolerance for violation of constraint g(H + delta) >= 0
-      "disp"    : True,  # display convergence messages
+      "rhobeg"  : 0.1,    # reasonable initial changes to delta_w
+      "maxiter" : 2000,   # maximum number of function evaluations
+      "catol"   : catol,  # absolute tolerance for violation of constraint g(H + delta) >= 0
+      "disp"    : True,   # display convergence messages
     },
     constraints = [{  # constraints for minimization
-      "fun"  : lambda delta_w: negIntensityIntegralFcn(H + L @ delta_w) - margin,  # function g(H + delta) defining the constraint with delta = L @ delta_w
+      "fun"  : lambda delta_w: negIntensityIntegralFcn(H + L @ delta_w) - margin,  # function g(H + delta) defining the constraint with delta = L @ delta_w; subtract margin to allow for small deviations from g = 0
       "type" : "ineq",                                                             # inequality constraint, i.e. g(H + delta) >= 0
     }],
   )
   # get result from minimization and transform back from whitened to original space
-  print(f"!!! {result=}")
+  print(f"Minimization finished with result:\n{result}")
   delta_w = result.x
   delta = L @ delta_w
   print(f"!!! {delta=}")
+  uncertainties = np.sqrt(np.diag(V))
+  deltaSignificances = delta / uncertainties
+  print(f"!!! {deltaSignificances=}")
   H_shifted = H + delta
   print(f"!!! {H_shifted=}")
-  print(f"!!! {negIntensityIntegralFcn(H)=} vs. {negIntensityIntegralFcn(H_shifted)=}")
-  chi2 = float(delta_w @ delta_w)  # calculate chi^2 of parameter shift
-  print(f"!!! {chi2=} vs. {result.fun=}")
+  print(f"Integral of negative intensity for original moment values = {integral}")
+  print(f"Integral of negative intensity for shifted  moment values = {negIntensityIntegralFcn(H_shifted)}; ratio = {negIntensityIntegralFcn(H_shifted) / integral}")
   # construct new MomentResult object with shifted moment values
   momentResultsShifted = deepcopy(momentResults)
   reSlice = negIntensityFunctor.reSlice
   imSlice = negIntensityFunctor.imSlice
   momentResultsShifted._valsFlatIndex[reSlice] = H_shifted[reSlice]
   momentResultsShifted._valsFlatIndex[imSlice] = H_shifted[imSlice] * 1j  # convert to purely imaginary
-  return momentResultsShifted
+  return momentResultsShifted, result.fun
 
 
 def plotIntensityFcn(
@@ -374,7 +384,7 @@ def plotIntensityFcn(
     if makeIntensityPosDefinite and useIntensityTerms == MomentResult.IntensityTermsType.PARITY_CONSERVING:
       # make intensity function positive definite by shifting moment values and draw negative part to confirm
       #TODO this code works only for parity-conserving moments
-      momentsShifted = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
+      momentsShifted, chi2 = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
       intensityFunctorShiftedNeg = IntensityFunctor(
         momentResults = momentsShifted,
         beamPol       = beamPol,
@@ -386,7 +396,7 @@ def plotIntensityFcn(
         fcn         = intensityFcnShiftedNeg,
         binnings    = binnings,
         outFilePath = f"{outputDirPath}/{intensityFcnShiftedNeg.GetName()}.png",
-        histTitle   = f"Intensity Shifted, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+        histTitle   = f"Intensity, Negative Part, Shifted #chi^{{2}} = {chi2:.2g};cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
       )
     # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
     # ROOT.gStyle.SetCanvasDefW(600)
