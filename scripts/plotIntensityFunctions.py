@@ -236,13 +236,19 @@ class IntensityIntegralFunctor:
 
 
 def makeIntensityPositiveDefinite(
-  momentResults: MomentResult,
-  beamPol:       float = 0.0,
-  relMargin:     float = 0.0,
-  # relMargin:     float = -1e-4,  # allow for small relative negative values of intensity integral to keep integral in a region, where its derivatives are still defined
-  relTolerance:  float = 5e-5,   # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
-  # relTolerance:  float = 5e-4,  # L_max = 6
-  # relTolerance:  float = 5e-3,  # L_max = 8
+  momentResults:    MomentResult,
+  beamPol:          float = 0.0,
+  # relMargin:        float = -1e-4,  # allow for small relative negative values of intensity integral to keep integral in a region, where its derivatives are still defined
+  relMargin:        float = 0.0,
+  # L_max = 4
+  relTolerance:     float = 5e-5,  # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
+  maxNmbIterations: int   = 2000,  # maximum number of iterations for minimization
+  # # # L_max = 6
+  # relTolerance:     float = 5e-4,
+  # maxNmbIterations: int   = 5000,
+  # # L_max = 8
+  # relTolerance:     float = 5e-3,
+  # maxNmbIterations: int   = 10000,
 ) -> tuple[MomentResult, float]:
   """Performs minimal shift of moment values to make intensity function positive definite and returns shifted moments and the chi^2 of the shift"""
   print(f"Making intensity function positive definite by shifting moment values")
@@ -278,16 +284,16 @@ def makeIntensityPositiveDefinite(
   integral = negIntensityIntegralFcn(H)
   margin = relMargin * abs(integral)  # absolute margin for constraint g(H + delta) >= 0
   catol  = relTolerance * abs(integral)  # absolute tolerance for violation of constraint g(H + delta) >= 0
-  print(f"Running minimizer with absolute constraint margin = {margin} and absolute tolerance = {catol}")
+  print(f"Running minimizer with absolute constraint margin = {margin}, absolute tolerance = {catol}, and a maximum of {maxNmbIterations} iterations")
   result = minimize(
     fun         = lambda delta_w: float(delta_w @ delta_w),  # objective function to be minimized is Euclidean norm in whitened space
     x0          = np.zeros(len(H)),  # start values for delta_w
     method      = 'COBYLA',          # use the Constrained Optimization BY Linear Approximation (COBYLA) algorithm
     options     = {  # options for 'COBYLA' method
-      "rhobeg"  : 0.1,    # reasonable initial changes to delta_w
-      "maxiter" : 2000,   # maximum number of function evaluations
-      "catol"   : catol,  # absolute tolerance for violation of constraint g(H + delta) >= 0
-      "disp"    : True,   # display convergence messages
+      "rhobeg"  : 0.1,               # reasonable initial changes to delta_w
+      "maxiter" : maxNmbIterations,  # maximum number of function evaluations
+      "catol"   : catol,             # absolute tolerance for violation of constraint g(H + delta) >= 0
+      "disp"    : True,              # display convergence messages
     },
     constraints = [{  # constraints for minimization
       "fun"  : lambda delta_w: negIntensityIntegralFcn(H + L @ delta_w) - margin,  # function g(H + delta) defining the constraint with delta = L @ delta_w; subtract margin to allow for small deviations from g = 0
@@ -298,14 +304,14 @@ def makeIntensityPositiveDefinite(
   print(f"Minimization finished with result:\n{result}")
   delta_w = result.x
   delta = L @ delta_w
-  print(f"!!! {delta=}")
+  print(f"Absolute shifts of moment values:\n{delta}")
   uncertainties = np.sqrt(np.diag(V))
   deltaSignificances = delta / uncertainties
-  print(f"!!! {deltaSignificances=}")
+  print(f"Significances of shifts:\n{deltaSignificances}")
   H_shifted = H + delta
-  print(f"!!! {H_shifted=}")
+  print(f"Shifted moment values:\n{H_shifted}")
   print(f"Integral of negative intensity for original moment values = {integral}")
-  print(f"Integral of negative intensity for shifted  moment values = {negIntensityIntegralFcn(H_shifted)}; ratio = {negIntensityIntegralFcn(H_shifted) / integral}")
+  print(f"Integral of negative intensity for shifted  moment values = {negIntensityIntegralFcn(H_shifted)}; ratio = {negIntensityIntegralFcn(H_shifted) / integral if integral != 0 else float('nan')}")
   # construct new MomentResult object with shifted moment values
   momentResultsShifted = deepcopy(momentResults)
   reSlice = negIntensityFunctor.reSlice
