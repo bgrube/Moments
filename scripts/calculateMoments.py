@@ -56,8 +56,8 @@ def calculateAllMoments(
   timer:                          Utilities.Timer        = Utilities.Timer(),
   forceIntegralMatrixCalculation: bool                   = True,  # if `True` integral matrices are recalculated even if pickled versions exist
   limitToDataEntryRange:          tuple[int, int] | None = None,  # for debugging: limit analysis to entry range [begin, end) of real-data data tree
-  additionalCuts:                 Iterable[str]          = (),  # optional additional cuts to be applied to real and accepted phase-space data
-  additionalColumnDefs:           dict[str, str]         = {},  # additional columns to define
+  additionalCuts:                 Iterable[str]          = (),    # optional additional cuts to be applied to real and accepted phase-space data
+  additionalColumnDefs:           dict[str, str]         = {},    # additional columns to define
 ) -> None:
   """Performs the moment analysis for the given configuration"""
   # setup MomentCalculators for all data samples and mass bins
@@ -252,8 +252,8 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
   # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
-  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
@@ -263,6 +263,12 @@ if __name__ == "__main__":
   # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
   # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
+  additionalColumnDefs = {}
+  # additionalColumnDefs = {  # needed for Zach's data
+  #   "mass"             : "(Double32_t)mass_EtaPrimePi",
+  #   "beamPol"          : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].pol}",
+  #   "beamPolPhiLabDeg" : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].PhiLab}",
+  # }
 
   forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
   # forceIntegralMatrixCalculation = False
@@ -335,12 +341,7 @@ if __name__ == "__main__":
                 #   # ")",  # noSpikeOdd
                 #   "(0.100 < minusT and minusT < 0.114)",
                 # ),
-                additionalColumnDefs = {},
-                # additionalColumnDefs = {  # needed for Zach's data
-                #   "mass"             : "(Double32_t)mass_EtaPrimePi",
-                #   "beamPol"          : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].pol}",
-                #   "beamPolPhiLabDeg" : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].PhiLab}",
-                # },
+                additionalColumnDefs = additionalColumnDefs,
               )
               timer.stop("Total execution time")
               print(timer.summary)
