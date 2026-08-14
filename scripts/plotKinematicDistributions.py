@@ -9,6 +9,7 @@ Usage: Run this module as a script to generate kinematic plots.
 from __future__ import annotations
 
 from copy import deepcopy
+import ctypes
 import functools
 import os
 
@@ -56,7 +57,7 @@ def bookHistograms(
   subsystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
   subsystemMassBinning: HistAxisBinning | None = None,  # if not None, histograms will be booked in bins of the subsystem mass
-) -> tuple[HistListType, list[str]]:
+) -> tuple[HistListType, list[str], list[str]]:
   """Books histograms for kinematic plots and returns the list of histograms and the names of histograms to decompose into even/odd parts"""
   print(f"Booking histograms for input data type '{inputDataType}' and subsystem '{subsystem}'")
   # applyWeights = (inputDataType == AnalysisConfig.DataType.REAL_DATA and df.HasColumn("eventWeight"))
@@ -66,7 +67,8 @@ def bookHistograms(
   else:
     print(f"Not applying event weights; 'eventWeight' column does not exist")
   yAxisLabel = "RF-Sideband Subtracted Combos" if applyWeights else "Combos"
-  histNamesEvenOdd: list[str] = []
+  histNamesEvenOdd:  list[str] = []
+  histNamesCheckNeg: list[str] = []
   histDefs: list[HistogramDefinition] = []
   pairLabel    = subsystem.pairLabel
   ATLatex      = subsystem.ATLatexLabel
@@ -156,6 +158,9 @@ def bookHistograms(
         f"Phi{pairLabel}DegVsPhiHF{pairLabel}DegVsCosThetaHF{pairLabel}",
         f"Phi{pairLabel}DegVsPhiGJ{pairLabel}DegVsCosThetaGJ{pairLabel}",
       ]
+      histNamesCheckNeg += [
+        f"Phi{pairLabel}DegVsPhiHF{pairLabel}DegVsCosThetaHF{pairLabel}",
+      ]
 
   # define histograms for mass and angular distributions of the subsystem
   if True:
@@ -216,8 +221,11 @@ def bookHistograms(
           f"phiHF{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",
           f"phiGJ{pairLabel}DegVsPhi{pairLabel}Deg{histNameSuffix}",
         ]
+        histNamesCheckNeg += [
+          f"Phi{pairLabel}DegVsPhiHF{pairLabel}DegVsCosThetaHF{pairLabel}{histNameSuffix}",
+        ]
 
-# book histograms
+  # book histograms
   hists = []
   for histDef in histDefs:
     hists.append(bookHistogram(df, histDef, applyWeights))
@@ -228,7 +236,7 @@ def bookHistograms(
       applyWeights = False,
     ))
   print(f"Booked {len(hists)} histograms")
-  return hists, histNamesEvenOdd
+  return hists, histNamesEvenOdd, histNamesCheckNeg
 
 
 def makePlot(
@@ -266,9 +274,10 @@ def makePlot(
 
 
 def makePlots(
-  hists:            HistListType,
-  histNamesEvenOdd: list[str],
-  outputDirPath:    str,
+  hists:             HistListType,
+  histNamesEvenOdd:  list[str],
+  histNamesCheckNeg: list[str],
+  outputDirPath:     str,
 ) -> None:
   """Writes histograms to ROOT file and generates PDF plots"""
   for hist in hists:
@@ -292,6 +301,27 @@ def makePlots(
     histsEvenOdd += [histOdd, histEven, histSum]
     histsOdd.append(histOdd)
   hists += histsEvenOdd
+  # check for negative entries in histograms
+  for histName in histNamesCheckNeg:
+    print(f"Checking histogram '{histName}' for negative entries")
+    histToCheck = [hist for hist in hists if hist.GetName() == histName]
+    assert len(histToCheck) == 1, f"Expected exactly one histogram with name '{histName}', but found {len(histToCheck)}"
+    histToCheck = histToCheck[0]
+    hasNegativeEntries = False
+    for binIndex in range(histToCheck.GetNcells()):  # loop over all bins, including underflow and overflow
+      if histToCheck.GetBinContent(binIndex) < 0:
+        xIndex, yIndex, zIndex = ctypes.c_int(0), ctypes.c_int(0), ctypes.c_int(0)
+        histToCheck.GetBinXYZ(binIndex, xIndex, yIndex, zIndex)
+        # print(f"Warning: histogram '{histToCheck.GetName()}' has negative entry in bin {(xIndex.value, yIndex.value, zIndex.value)} (content = {histToCheck.GetBinContent(binIndex)})")
+        hasNegativeEntries = True
+    if hasNegativeEntries:
+      print(f"Warning: histogram '{histToCheck.GetName()}' has negative entries. Creating a copy with positive entries set to zero for plotting.")
+      histNeg = histToCheck.Clone(f"{histToCheck.GetName()}_neg")
+      for binIndex in range(histNeg.GetNcells()):
+        if histNeg.GetBinContent(binIndex) > 0:
+          histNeg.SetBinContent(binIndex, 0)
+      histNeg *= -1.0  # invert sign of negative histogram
+      hists += [histNeg]
   # plot all histograms
   os.makedirs(outputDirPath, exist_ok = True)
   outRootFilePath = f"{outputDirPath}/plots.root"
@@ -311,7 +341,7 @@ def makeAnglesHFCorrelationPlot(
   subsystem:            SubsystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
   outputDirPath:        str,  # directory to save output plot in
-  histNameSuffix:       str = "",
+  histNameSuffix:       str       = "",
   additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
 ) -> None:
   """Produces 2D correlation plot of helicity-frame angles with given RDataFrame column"""
