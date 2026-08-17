@@ -816,23 +816,6 @@ class MomentValue:
     bsUncert  = float(np.std(bsSamples, ddof = 1))
     return (bsVal, bsUncert)
 
-  def toJsonDict(self) -> dict:
-    """Returns dictionary with moment value and uncertainty that can be serialized to JSON using `json.dumps(MomentValue.toJsonDict())`"""
-    return {
-      "momentIndex" : self.qn.momentIndex,
-      "L"           : self.qn.L,
-      "M"           : self.qn.M,
-      "valRe"       : self.val.real,
-      "uncertRe"    : self.uncertRe,
-      "valIm"       : self.val.imag,
-      "uncertIm"    : self.uncertIm,
-      "binCenters"  : {kinVar.name : binCenter for kinVar, binCenter in self.binCenters.items()},
-    }
-
-  def toJsonStr(self) -> str:
-    """Returns JSON string with moment value and uncertainty"""
-    return json.dumps(self.toJsonDict(), indent = 2)
-
 
 @dataclass(eq = False)
 class MomentResult:
@@ -1239,10 +1222,6 @@ class MomentResult:
     with open(pickleFilePath, "rb") as file:
       return pickle.load(file)
 
-  def toJsonStr(self) -> str:
-    """Returns JSON string with moment values for all moments in kinematic bin"""
-    return json.dumps([momentValue.toJsonDict() for momentValue in self.values], indent = 2)
-
   class IntensityTermsType(Enum):
     """Enumerates, which terms to use in intensity formula"""
     ALL               = "allTerms"          # use parity-conserving and parity-violating terms
@@ -1553,16 +1532,6 @@ class MomentResultsKinematicBinning:
     with open(pickleFilePath, "rb") as file:
       return pickle.load(file)
     print(f"Loaded moment results from file '{pickleFilePath}'")
-
-  def toJsonStr(self) -> str:
-    """Returns JSON string with valid moment values in all kinematic bins"""
-    return json.dumps(
-      [
-        momentValue.toJsonDict() for momentResult in self if momentResult
-                                 for momentValue in momentResult.values
-      ],
-      indent = 2,
-    )
 
 
 @dataclass

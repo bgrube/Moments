@@ -6,14 +6,14 @@ from __future__ import annotations
 import argparse
 
 from moments.MomentCalculator import MomentResultsKinematicBinning
+from workflow.JsonUtilities import toJsonStr
 
 
 def main(args: argparse.Namespace) -> None:
   print(f"Converting file '{args.pickle_file_path}' to JSON file '{args.json_file_path}'")
   momentResults = MomentResultsKinematicBinning.loadPickle(args.pickle_file_path)
-  jsonStr = momentResults.toJsonStr()
   with open(file = args.json_file_path, mode = "w", encoding = "utf-8") as jsonFile:
-    jsonFile.write(jsonStr + "\n")
+    jsonFile.write(toJsonStr(momentResults, indent = 2) + "\n")  #TODO extend this to write full information in `MomentResultsKinematicBinning`
 
 
 if __name__ == "__main__":
