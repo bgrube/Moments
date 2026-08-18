@@ -36,13 +36,28 @@ def toJsonDict(obj: Any) -> Any:
 # per-type serialization logic
 @toJsonDict.register
 def _(obj: QnMomentIndex) -> dict[str, Any]:
-  """Returns dictionary with moment indices that can be serialized to JSON"""
+  """Returns dictionary for moment quantum-number index that can be serialized to JSON"""
   return {
     "type"        : "QnMomentIndex",
     "momentIndex" : obj.momentIndex,
     "L"           : obj.L,
     "M"           : obj.M,
   }
+
+
+# single dispatch does not work for types in containers like dict, so we need a separate function for binCenters
+def _toJsonDict_binCenters(binCenters: dict[KinematicBinningVariable, float]) -> dict[str, Any]:
+  """Returns dictionary with kinematic bin centers that can be serialized to JSON"""
+  jsonDict: dict[str, Any] = {"type" : "binCenters"}
+  jsonDict |= {
+    kinVar.name : {
+      "binCenter" : binCenter,
+      "label"     : kinVar.label,
+      "unit"      : kinVar.unit,
+      "nmbDigits" : kinVar.nmbDigits,
+    } for kinVar, binCenter in binCenters.items()
+  }
+  return jsonDict
 
 
 @toJsonDict.register
@@ -55,14 +70,7 @@ def _(obj: MomentValue) -> dict[str, Any]:
     "uncertRe"    : obj.uncertRe,
     "valIm"       : obj.val.imag,
     "uncertIm"    : obj.uncertIm,
-    "binCenters"  : {
-      kinVar.name : {
-        "binCenter" : binCenter,
-        "label"     : kinVar.label,
-        "unit"      : kinVar.unit,
-        "nmbDigits" : kinVar.nmbDigits,
-      } for kinVar, binCenter in obj.binCenters.items()
-    },
+    "binCenters"  : _toJsonDict_binCenters(obj.binCenters),
   }
 
 
@@ -130,6 +138,20 @@ def _fromJsonDict_QnMomentIndex(jsonDict: dict[str, Any]) -> QnMomentIndex:
   )
 
 
+@registerFromJsonDictFunc("binCenters")
+def _fromJsonDict_binCenters(jsonDict: dict[str, Any]) -> dict[KinematicBinningVariable, float]:
+  """Returns bin centers constructed from a JSON-serializable dictionary"""
+  return {
+    KinematicBinningVariable(
+      name     = name,
+      label    = value["label"],
+      unit     = value["unit"],
+      nmbDigits= value["nmbDigits"],
+    ) : value["binCenter"]
+    for name, value in jsonDict.items() if name != "type"
+  }
+
+
 @registerFromJsonDictFunc("MomentValue")
 def _fromJsonDict_MomentValue(jsonDict: dict[str, Any]) -> MomentValue:
   """Returns moment value constructed from a JSON-serializable dictionary"""
@@ -138,16 +160,9 @@ def _fromJsonDict_MomentValue(jsonDict: dict[str, Any]) -> MomentValue:
     val        = complex(jsonDict["valRe"], jsonDict["valIm"]),
     uncertRe   = jsonDict["uncertRe"],
     uncertIm   = jsonDict["uncertIm"],
-    binCenters = {
-      KinematicBinningVariable(
-        name     = name,
-        label    = value["label"],
-        unit     = value["unit"],
-        nmbDigits= value["nmbDigits"],
-      ) : value["binCenter"]
-      for name, value in jsonDict["binCenters"].items()
-    },
+    binCenters = jsonDict["binCenters"],  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
   )
+
 
 
 # generic function called for every dict encountered during loads
