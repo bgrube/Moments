@@ -55,7 +55,7 @@ def _(obj: MomentIndices) -> dict[str, Any]:
     "type"      : "MomentIndices",
     "maxL"      : obj.maxL,
     "polarized" : obj.polarized,
-    "indices"   : [toJsonDict(qn) for qn in obj.qnIndices],  # store list of indices to preserve order
+    "qnIndices" : [toJsonDict(qn) for qn in obj.qnIndices],  # store list of quantum-number indices to preserve order
   }
 
 
@@ -64,12 +64,15 @@ def _toJsonDict_binCenters(binCenters: dict[KinematicBinningVariable, float]) ->
   """Returns dictionary with kinematic bin centers that can be serialized to JSON"""
   jsonDict: dict[str, Any] = {"type" : "binCenters"}
   jsonDict |= {
-    kinVar.name : {
-      "binCenter" : binCenter,
-      "label"     : kinVar.label,
-      "unit"      : kinVar.unit,
-      "nmbDigits" : kinVar.nmbDigits,
-    } for kinVar, binCenter in binCenters.items()
+    "binCenters" : [
+      {
+        "varName"     : kinVar.name,
+        "centerValue" : binCenter,
+        "label"       : kinVar.label,
+        "unit"        : kinVar.unit,
+        "nmbDigits"   : kinVar.nmbDigits,
+      }
+    ] for kinVar, binCenter in binCenters.items()
   }
   return jsonDict
 
@@ -246,12 +249,12 @@ def _fromJsonDict_binCenters(jsonDict: dict[str, Any]) -> dict[KinematicBinningV
   """Returns bin centers constructed from a JSON-serializable dictionary"""
   return {
     KinematicBinningVariable(
-      name     = name,
-      label    = value["label"],
-      unit     = value["unit"],
-      nmbDigits= value["nmbDigits"],
-    ) : value["binCenter"]
-    for name, value in jsonDict.items() if name != "type"
+      name     = binCenter["varName"],
+      label    = binCenter["label"],
+      unit     = binCenter["unit"],
+      nmbDigits= binCenter["nmbDigits"],
+    ) : binCenter["centerValue"]
+    for binCenter in jsonDict["binCenters"]
   }
 
 
