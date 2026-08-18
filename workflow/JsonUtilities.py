@@ -132,15 +132,45 @@ def _toJsonDict_ndarray1DComplex(obj: npt.NDArray[npt.Shape["*"], npt.Complex128
   }
 
 
+def _toJsonDict_ndarray2DFloat(obj: npt.NDArray[npt.Shape["*, *"], npt.Float64]) -> dict[str, Any]:
+  """
+  Converts given 2D NumPy ndarray of dtype float64 to a dictionary that can be serialized to JSON.
+
+  JSON layout:
+  {
+    "type"  : "ndarray2DFloat",
+    "dtype" : "float64",
+    "order" : "row-major",
+    "shape" : [rows, cols],
+    "data"  : [[...], [...], ...]  # nested lists (rows of doubles)
+  }
+
+  Raises:
+    ValueError: if the array is not 2D or contains NaN/Inf (strict JSON disallows them).
+  """
+  if not verifyNdarray(obj, nDim = 2, dtype = np.float64):
+    raise ValueError(f"Expected a 2D NumPy array of float64, but got = {repr(obj)}")
+  return {
+    "type"  : "ndarray2DFloat",
+    "dtype" : obj.dtype.name,
+    "order" : "row-major",
+    "shape" : [int(obj.shape[0]), int(obj.shape[1])],
+    "data"  : obj.tolist(),  # nested lists of Python floats
+  }
+
+
 @toJsonDict.register
 def _(obj: MomentResult) -> dict[str, Any]:
   """Returns dictionary for moment result that can be serialized to JSON"""
   return {
-    "type"           : "MomentResult",
-    "indices"        : toJsonDict(obj.indices),
-    "binCenters"     : _toJsonDict_binCenters(obj.binCenters),
-    "_valsFlatIndex" : _toJsonDict_ndarray1DComplex(obj._valsFlatIndex),
-    "valid"          : obj.valid,
+    "type"             : "MomentResult",
+    "indices"          : toJsonDict(obj.indices),
+    "binCenters"       : _toJsonDict_binCenters(obj.binCenters),
+    "_valsFlatIndex"   : _toJsonDict_ndarray1DComplex(obj._valsFlatIndex),
+    "_V_ReReFlatIndex" : _toJsonDict_ndarray2DFloat(obj._V_ReReFlatIndex),
+    "_V_ImImFlatIndex" : _toJsonDict_ndarray2DFloat(obj._V_ImImFlatIndex),
+    "_V_ReImFlatIndex" : _toJsonDict_ndarray2DFloat(obj._V_ReImFlatIndex),
+    "valid"            : obj.valid,
   }
 
 
@@ -274,6 +304,26 @@ def _fromJsonDict_ndarray1DComplex(jsonDict: dict[str, Any]) -> npt.NDArray[npt.
   return array
 
 
+@registerFromJsonDictFunc("ndarray2DFloat")
+def _fromJsonDict_ndarray2DFloat(jsonDict: dict[str, Any]) -> npt.NDArray[npt.Shape["*, *"], npt.Float64]:
+  """Returns 2D NumPy ndarray of float64 constructed from a JSON-serializable dictionary"""
+  wellFormed = checkNdarrayJsonDict(jsonDict, nDim = 2, dtype = np.float64)
+  if not wellFormed or (
+    wellFormed and not all(
+      (
+        isinstance(row, list)
+        and len(row) == jsonDict["shape"][1]
+        and all(isinstance(value, float) for value in row)
+      ) for row in jsonDict["data"])
+    ):
+    raise ValueError(f"Invalid JSON dictionary for 2D float64 ndarray:\n{jsonDict}")
+  array = np.empty(jsonDict["shape"], dtype = np.float64)
+  for indexRow, row in enumerate(jsonDict["data"]):
+    for indexCol, value in enumerate(row):
+      array[indexRow, indexCol] = float(value)
+  return array
+
+
 @registerFromJsonDictFunc("MomentResult")
 def _fromJsonDict_MomentResult(jsonDict: dict[str, Any]) -> MomentResult:
   """Returns moment result constructed from a JSON-serializable dictionary"""
@@ -281,8 +331,11 @@ def _fromJsonDict_MomentResult(jsonDict: dict[str, Any]) -> MomentResult:
     indices    = jsonDict["indices"],     #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
     binCenters = jsonDict["binCenters"],  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
   )
-  result._valsFlatIndex = jsonDict["_valsFlatIndex"]  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
-  result.valid          = jsonDict["valid"]
+  result._valsFlatIndex   = jsonDict["_valsFlatIndex"]    #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+  result._V_ReReFlatIndex = jsonDict["_V_ReReFlatIndex"]  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+  result._V_ImImFlatIndex = jsonDict["_V_ImImFlatIndex"]  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+  result._V_ReImFlatIndex = jsonDict["_V_ReImFlatIndex"]  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+  result.valid            = jsonDict["valid"]
   return result
 
 
