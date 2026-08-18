@@ -175,9 +175,12 @@ def _(obj: MomentResult) -> dict[str, Any]:
 
 
 @toJsonDict.register
-def _(obj: MomentResultsKinematicBinning) -> list[dict[str, Any]]:
-  """Returns list of dictionaries with valid moment values and uncertainties in all kinematic bins that can be serialized to JSON"""
-  return [toJsonDict(momentResult) for momentResult in obj if momentResult.valid]
+def _(obj: MomentResultsKinematicBinning) -> dict[str, Any]:
+  """Returns dictionary with list moment results in all kinematic bins, which can be serialized to JSON"""
+  return {
+    "type"    : "MomentResultsKinematicBinning",
+    "results" : [toJsonDict(momentResult) for momentResult in obj],
+  }
 
 
 # generic wrapper encoder that uses toJsonDict() to convert objects to JSON-serializable dictionaries
@@ -337,6 +340,12 @@ def _fromJsonDict_MomentResult(jsonDict: dict[str, Any]) -> MomentResult:
   result._V_ReImFlatIndex = jsonDict["_V_ReImFlatIndex"]  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
   result.valid            = jsonDict["valid"]
   return result
+
+
+@registerFromJsonDictFunc("MomentResultsKinematicBinning")
+def _fromJsonDict_MomentResultsKinematicBinning(jsonDict: dict[str, Any]) -> MomentResultsKinematicBinning:
+  """Returns MomentResultsKinematicBinning constructed from a JSON-serializable dictionary"""
+  return MomentResultsKinematicBinning([result for result in jsonDict["results"]])  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
 
 
 # generic function called for every dict encountered during loads
