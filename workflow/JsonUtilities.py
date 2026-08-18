@@ -35,13 +35,22 @@ def toJsonDict(obj: Any) -> Any:
 
 # per-type serialization logic
 @toJsonDict.register
+def _(obj: QnMomentIndex) -> dict[str, Any]:
+  """Returns dictionary with moment indices that can be serialized to JSON"""
+  return {
+    "type"        : "QnMomentIndex",
+    "momentIndex" : obj.momentIndex,
+    "L"           : obj.L,
+    "M"           : obj.M,
+  }
+
+
+@toJsonDict.register
 def _(obj: MomentValue) -> dict[str, Any]:
   """Returns dictionary with moment value and uncertainty that can be serialized to JSON"""
   return {
     "type"        : "MomentValue",
-    "momentIndex" : obj.qn.momentIndex,
-    "L"           : obj.qn.L,
-    "M"           : obj.qn.M,
+    "qn"          : toJsonDict(obj.qn),
     "valRe"       : obj.val.real,
     "uncertRe"    : obj.uncertRe,
     "valIm"       : obj.val.imag,
@@ -100,26 +109,32 @@ def toJsonStr(
 
 # use value-based dispatch to convert JSON-serializable dictionaries back to objects
 # deserializer registry keyed by the "type" tag
-_FROM_JSON_STR_FUNCS: dict[str, Callable[[dict], Any]] = {}
+_FROM_JSON_DICT_FUNCS: dict[str, Callable[[dict], Any]] = {}
 
-def registerFromJsonStrFunc(tag: str):
+def registerFromJsonDictFunc(tag: str):
   """Decorator to register a deserializer function for a tagged dictionary"""
   def deco(func: Callable[[dict], Any]) -> Callable[[dict], Any]:
-    _FROM_JSON_STR_FUNCS[tag] = func
+    _FROM_JSON_DICT_FUNCS[tag] = func
     return func
   return deco
 
 
 # per-type reconstruction logic
-@registerFromJsonStrFunc("MomentValue")
-def fromJsonStr_MomentValue(jsonDict: dict[str, Any]) -> MomentValue:
+@registerFromJsonDictFunc("QnMomentIndex")
+def _fromJsonDict_QnMomentIndex(jsonDict: dict[str, Any]) -> QnMomentIndex:
+  """Returns moment quantum numbers constructed from a JSON-serializable dictionary"""
+  return QnMomentIndex(
+    momentIndex = jsonDict["momentIndex"],
+    L           = jsonDict["L"],
+    M           = jsonDict["M"],
+  )
+
+
+@registerFromJsonDictFunc("MomentValue")
+def _fromJsonDict_MomentValue(jsonDict: dict[str, Any]) -> MomentValue:
   """Returns moment value constructed from a JSON-serializable dictionary"""
   return MomentValue(
-    qn         = QnMomentIndex(
-      momentIndex = jsonDict["momentIndex"],
-      L           = jsonDict["L"],
-      M           = jsonDict["M"],
-    ),
+    qn         = jsonDict["qn"],  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
     val        = complex(jsonDict["valRe"], jsonDict["valIm"]),
     uncertRe   = jsonDict["uncertRe"],
     uncertIm   = jsonDict["uncertIm"],
@@ -136,12 +151,12 @@ def fromJsonStr_MomentValue(jsonDict: dict[str, Any]) -> MomentValue:
 
 
 # generic function called for every dict encountered during loads
-def fromJsonDict(jsonDict: dict) -> Any:
+def _fromJsonDict(jsonDict: dict) -> Any:
   tag = jsonDict.get("type")
   if tag:
-    fromJsonStrFunc = _FROM_JSON_STR_FUNCS.get(tag)
-    if fromJsonStrFunc is not None:
-      return fromJsonStrFunc(jsonDict)
+    fromJsonDictFunc = _FROM_JSON_DICT_FUNCS.get(tag)
+    if fromJsonDictFunc is not None:
+      return fromJsonDictFunc(jsonDict)
   # no tag or unknown tag: leave as plain dict
   return jsonDict
 
@@ -154,8 +169,8 @@ class _MyDecoder(json.JSONDecoder):
     *args,
     **kwargs,
   ) -> None:
-    # inject our fromJsonDict; other kwargs (parse_float, etc.) still work.
-    super().__init__(object_hook = fromJsonDict, *args, **kwargs)
+    # object_hook runs bottom‑up: inner dicts are processed first, then outer ones—--so nested objects rebuild correctly
+    super().__init__(object_hook = _fromJsonDict, *args, **kwargs)
 
 
 def fromJsonStr(
