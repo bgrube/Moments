@@ -15,6 +15,7 @@ from typing import (
 
 from moments.MomentCalculator import (
   KinematicBinningVariable,
+  MomentIndices,
   MomentResult,
   MomentResultsKinematicBinning,
   MomentValue,
@@ -42,6 +43,17 @@ def _(obj: QnMomentIndex) -> dict[str, Any]:
     "momentIndex" : obj.momentIndex,
     "L"           : obj.L,
     "M"           : obj.M,
+  }
+
+
+@toJsonDict.register
+def _(obj: MomentIndices) -> dict[str, Any]:
+  """Returns dictionary with moment indices that can be serialized to JSON"""
+  return {
+    "type"      : "MomentIndices",
+    "maxL"      : obj.maxL,
+    "polarized" : obj.polarized,
+    "indices"   : [toJsonDict(qn) for qn in obj.qnIndices],  # store list of indices to preserve order
   }
 
 
@@ -135,6 +147,15 @@ def _fromJsonDict_QnMomentIndex(jsonDict: dict[str, Any]) -> QnMomentIndex:
     momentIndex = jsonDict["momentIndex"],
     L           = jsonDict["L"],
     M           = jsonDict["M"],
+  )
+
+
+@registerFromJsonDictFunc("MomentIndices")
+def _fromJsonDict_MomentIndices(jsonDict: dict[str, Any]) -> MomentIndices:
+  """Returns moment quantum numbers constructed from a JSON-serializable dictionary"""
+  return MomentIndices(
+    maxL      = jsonDict["maxL"],
+    polarized = jsonDict["polarized"],
   )
 
 
