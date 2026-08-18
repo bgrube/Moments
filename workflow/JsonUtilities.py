@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import functools
 import json
+import nptyping as npt
+import numpy as np
 from typing import (
   Any,
   Callable,
@@ -86,19 +88,66 @@ def _(obj: MomentValue) -> dict[str, Any]:
   }
 
 
+def verifyNdarray(
+  a:     npt.NDArray[npt.Shape["*, ..."]],
+  nDim:  int,
+  dtype: np.dtype[Any],
+) -> bool:
+  """Verifies whether the given array is a NumPy ndarray with the specified number of dimensions and data type, and contains only finite values"""
+  if not isinstance(a, np.ndarray):
+    return False
+  if a.ndim != nDim:
+    return False
+  if a.dtype != dtype:
+    return False
+  if not np.isfinite(a).all():
+    return False
+  return True
+
+
+def _toJsonDict_ndarray1DComplex(obj: npt.NDArray[npt.Shape["*"], npt.Complex128]) -> dict[str, Any]:
+  """
+  Converts given 1D NumPy ndarray of dtype complex128 to a dictionary that can be serialized to JSON.
+
+  JSON layout:
+  {
+    "type"  : "ndarray1DComplex",
+    "dtype" : "complex128",
+    "order" : "row-major",
+    "shape" : [rows],
+    "data"  : [{"re": ..., "im": ...}, ...]  # list of complex numbers represented as objects
+  }
+
+  Raises:
+    ValueError: if the array is not 1D or contains NaN/Inf (strict JSON disallows them).
+  """
+  if not verifyNdarray(obj, nDim = 1, dtype = np.complex128):
+    raise ValueError(f"Expected a 1D NumPy array of complex128, but got = {repr(obj)}")
+  return {
+    "type"  : "ndarray1DComplex",
+    "dtype" : obj.dtype.name,
+    "order" : "row-major",
+    "shape" : [int(obj.shape[0])],
+    "data"  : [{"re": float(value.real), "im": float(value.imag)} for value in obj],
+  }
+
+
 @toJsonDict.register
-def _(obj: MomentResult) -> list[dict[str, Any]]:
-  """Returns list of dictionaries with moment values and uncertainties that can be serialized to JSON"""
-  return [toJsonDict(momentValue) for momentValue in obj.values]
+def _(obj: MomentResult) -> dict[str, Any]:
+  """Returns dictionary for moment result that can be serialized to JSON"""
+  return {
+    "type"           : "MomentResult",
+    "indices"        : toJsonDict(obj.indices),
+    "binCenters"     : _toJsonDict_binCenters(obj.binCenters),
+    "_valsFlatIndex" : _toJsonDict_ndarray1DComplex(obj._valsFlatIndex),
+    "valid"          : obj.valid,
+  }
 
 
 @toJsonDict.register
 def _(obj: MomentResultsKinematicBinning) -> list[dict[str, Any]]:
   """Returns list of dictionaries with valid moment values and uncertainties in all kinematic bins that can be serialized to JSON"""
-  return [
-    toJsonDict(momentValue) for momentResult in obj if momentResult
-                            for momentValue  in momentResult.values
-  ]
+  return [toJsonDict(momentResult) for momentResult in obj if momentResult.valid]
 
 
 # generic wrapper encoder that uses toJsonDict() to convert objects to JSON-serializable dictionaries
@@ -184,6 +233,57 @@ def _fromJsonDict_MomentValue(jsonDict: dict[str, Any]) -> MomentValue:
     binCenters = jsonDict["binCenters"],  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
   )
 
+
+def checkNdarrayJsonDict(
+  jsonDict: dict[str, Any],
+  nDim:     int,
+  dtype:    np.dtype[Any],
+) -> bool:
+  """Checks whether given JSON dictionary represents a serialized NumPy ndarray with the specified number of dimensions and data type"""
+  if not isinstance(jsonDict, dict) or not all(isinstance(key, str) for key in jsonDict):
+    return False
+  if not all(field in jsonDict for field in ("dtype", "order", "shape", "data")):
+    return False
+  if jsonDict["dtype"] != np.dtype(dtype).name:
+    return False
+  shape = jsonDict["shape"]
+  if not isinstance(shape, list) or not all(isinstance(x, int) for x in shape) or len(shape) != nDim:
+    return False
+  data  = jsonDict["data"]
+  if not isinstance(data, list) or len(data) != shape[0]:
+    return False
+  return True
+
+
+@registerFromJsonDictFunc("ndarray1DComplex")
+def _fromJsonDict_ndarray1DComplex(jsonDict: dict[str, Any]) -> npt.NDArray[npt.Shape["*"], npt.Complex128]:
+  """Returns 1D NumPy ndarray of complex128 constructed from a JSON-serializable dictionary"""
+  wellFormed = checkNdarrayJsonDict(jsonDict, nDim = 1, dtype = np.complex128)
+  if not wellFormed or (
+    wellFormed and not all(
+      (
+        isinstance(value, dict)
+        and "re" in value
+        and "im" in value
+      ) for value in jsonDict["data"])
+    ):
+    raise ValueError(f"Invalid JSON dictionary for 1D complex128 ndarray:\n{jsonDict}")
+  array = np.empty(jsonDict["shape"], dtype = np.complex128)
+  for index, entry in enumerate(jsonDict["data"]):
+    array[index] = complex(float(entry["re"]), float(entry["im"]))
+  return array
+
+
+@registerFromJsonDictFunc("MomentResult")
+def _fromJsonDict_MomentResult(jsonDict: dict[str, Any]) -> MomentResult:
+  """Returns moment result constructed from a JSON-serializable dictionary"""
+  result = MomentResult(
+    indices    = jsonDict["indices"],     #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+    binCenters = jsonDict["binCenters"],  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+  )
+  result._valsFlatIndex = jsonDict["_valsFlatIndex"]  #!NOTE! this only works when called through MyDecoder, which will recursively call fromJsonDict() on the nested dict
+  result.valid          = jsonDict["valid"]
+  return result
 
 
 # generic function called for every dict encountered during loads
