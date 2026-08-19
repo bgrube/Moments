@@ -211,7 +211,7 @@ main()
 	inFile >> json;
 	std::vector<MomentResult> momentResults = json.at("results").get<std::vector<MomentResult>>();
 
-	// print data
+	// print each moment result
 	for (const auto& result : momentResults) {
 		std::cout << "indices.maxL = "      << result.indices.maxL << std::endl;
 		std::cout << "indices.polarized = " << result.indices.polarized << std::endl;
@@ -235,18 +235,25 @@ main()
 			          << ", L: " << qnIndex.L << ", M: " << qnIndex.M
 			          << ", val: " << val << "}" << std::endl;
 		}
-		if (nmbMoments != result._V_ReReFlatIndex.size()) {
-			throw std::runtime_error("Mismatch between number of moments = " + std::to_string(nmbMoments)
-				+ " and number of rows = " + std::to_string(result._V_ReReFlatIndex.size()));
-		}
-		for (size_t indexRow = 0; indexRow < nmbMoments; ++indexRow) {
-			const auto& row = result._V_ReReFlatIndex[indexRow];
-			if (nmbMoments != row.size()) {
+		std::map<std::string, const std::vector<std::vector<double>>*> covMatrices = {
+			{"_V_ReReFlatIndex", &(result._V_ReReFlatIndex)},
+			{"_V_ImImFlatIndex", &(result._V_ImImFlatIndex)},
+			{"_V_ReImFlatIndex", &(result._V_ReImFlatIndex)}
+		};
+		for (const auto& [covName, covMatrix] : covMatrices) {
+			if (nmbMoments != covMatrix->size()) {
 				throw std::runtime_error("Mismatch between number of moments = " + std::to_string(nmbMoments)
-					+ " and number of columns = " + std::to_string(row.size()));
+					+ " and number of rows in covariance matrix '" + covName + "' = " + std::to_string(covMatrix->size()));
 			}
-			for (size_t indexCol = 0; indexCol < row.size(); ++indexCol) {
-				std::cout << "result._V_ReReFlatIndex[" << indexRow << "][" << indexCol << "] = " << row[indexCol] << std::endl;
+			for (size_t indexRow = 0; indexRow < nmbMoments; ++indexRow) {
+				const auto& row = (*covMatrix)[indexRow];
+				if (nmbMoments != row.size()) {
+					throw std::runtime_error("Mismatch between number of moments = " + std::to_string(nmbMoments)
+						+ " and number of columns in covariance matrix '" + covName + "' = " + std::to_string(row.size()));
+				}
+				for (size_t indexCol = 0; indexCol < row.size(); ++indexCol) {
+					std::cout << covName << "[" << indexRow << "][" << indexCol << "] = " << row[indexCol] << std::endl;
+				}
 			}
 		}
 	}
