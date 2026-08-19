@@ -243,12 +243,12 @@ def makeIntensityPositiveDefinite(
   # L_max = 4
   relTolerance:     float = 5e-5,  # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
   maxNmbIterations: int   = 2000,  # maximum number of iterations for minimization
-  # # # L_max = 6
+  # # L_max = 6
   # relTolerance:     float = 5e-4,
-  # maxNmbIterations: int   = 5000,
+  # maxNmbIterations: int   = 7000,
   # # L_max = 8
   # relTolerance:     float = 5e-3,
-  # maxNmbIterations: int   = 10000,
+  # maxNmbIterations: int   = 20000,
 ) -> tuple[MomentResult, float]:
   """Performs minimal shift of moment values to make intensity function positive definite and returns shifted moments and the chi^2 of the shift"""
   print(f"Making intensity function positive definite by shifting moment values")
@@ -478,9 +478,6 @@ if __name__ == "__main__":
           ):
             momentsShifted = []
             for massBinIndex, momentResultsForBin in enumerate(momentResults):
-            # for massBinIndex, momentResultsForBin in enumerate(momentResults[4:5]):
-            # for massBinIndex, momentResultsForBin in enumerate(momentResults[11:12]):
-            # for massBinIndex, momentResultsForBin in enumerate(momentResults[30:31]):
               print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
               momentsShifted.append(
                 plotIntensityFcn(
