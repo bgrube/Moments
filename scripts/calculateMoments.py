@@ -97,7 +97,10 @@ def calculateAllMoments(
         dataInBin = dataSample.Filter(massBinFilter)
         print(f"Loaded {dataInBin.Count().GetValue()} real-data events for kinematic bin")
         if "eventWeight" in dataInBin.GetColumnNames():
-          print(f"Real-data sample contains {dataInBin.Sum('eventWeight').GetValue()} events after applying event weights")
+          nmbWeightedEvents = dataInBin.Sum('eventWeight').GetValue()
+          if labelDataSample == "Bkg":
+            nmbWeightedEvents = -nmbWeightedEvents  # flip sign of weights for background events
+          print(f"Real-data sample contains {nmbWeightedEvents} events after applying event weights")
         dataPsAccInBin = None if dataPsAcc is None else dataPsAcc.Filter(massBinFilter)
         nmbPsAccEvents = None if dataPsAcc is None else dataPsAccInBin.Count().GetValue()
         nmbPsGenEvents = None
