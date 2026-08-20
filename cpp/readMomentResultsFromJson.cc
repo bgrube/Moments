@@ -57,7 +57,8 @@ class MomentIndices
 				}
 			}
 
-		size_t nmbMoments() const
+		size_t
+		nmbMoments() const
 		{
 			return _flatToQnIndex.size();
 		}
@@ -68,7 +69,7 @@ class MomentIndices
 			return _flatToQnIndex.at(flatIndex);
 		}
 
-		int
+		const int&
 		operator [](const QnMomentIndex& qnIndex) const
 		{
 			return _qnIndexToFlat.at(qnIndex);
@@ -200,6 +201,7 @@ from_json(
 int
 main()
 {
+	// load moment results from JSON file
 	const std::string jsonFilePath = "./moments.json";
 	std::cout << "Reading moment values from JSON file '" << jsonFilePath << "'" << std::endl;
 	std::ifstream inFile(jsonFilePath);
