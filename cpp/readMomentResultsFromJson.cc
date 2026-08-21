@@ -13,7 +13,7 @@
 #include "json.hpp"
 
 
-// define classes that represent Python dataclasses in the `MomentCalculation` module
+// define classes that represent Python dataclasses in the `MomentCalculator` module
 struct QnMomentIndex
 {
 	int momentIndex;

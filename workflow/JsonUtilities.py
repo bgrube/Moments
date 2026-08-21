@@ -92,7 +92,7 @@ def _(obj: MomentValue) -> dict[str, Any]:
 
 
 def verifyNdarray(
-  a:     npt.NDArray[npt.Shape["*, ..."]],
+  a:     npt.NDArray[npt.Shape["*, ..."], Any],
   nDim:  int,
   dtype: np.dtype[Any],
 ) -> bool:

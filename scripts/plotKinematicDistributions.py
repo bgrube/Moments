@@ -303,19 +303,20 @@ def makePlots(
   hists += histsEvenOdd
   # check for negative entries in histograms
   for histName in histNamesCheckNeg:
-    print(f"Checking histogram '{histName}' for negative entries")
+    print(f"Checking histogram '{histName}' for negative bins")
     histToCheck = [hist for hist in hists if hist.GetName() == histName]
     assert len(histToCheck) == 1, f"Expected exactly one histogram with name '{histName}', but found {len(histToCheck)}"
     histToCheck = histToCheck[0]
     hasNegativeEntries = False
     for binIndex in range(histToCheck.GetNcells()):  # loop over all bins, including underflow and overflow
       if histToCheck.GetBinContent(binIndex) < 0:
-        xIndex, yIndex, zIndex = ctypes.c_int(0), ctypes.c_int(0), ctypes.c_int(0)
-        histToCheck.GetBinXYZ(binIndex, xIndex, yIndex, zIndex)
+        # xIndex, yIndex, zIndex = ctypes.c_int(0), ctypes.c_int(0), ctypes.c_int(0)
+        # histToCheck.GetBinXYZ(binIndex, xIndex, yIndex, zIndex)
         # print(f"Warning: histogram '{histToCheck.GetName()}' has negative entry in bin {(xIndex.value, yIndex.value, zIndex.value)} (content = {histToCheck.GetBinContent(binIndex)})")
         hasNegativeEntries = True
+        break
     if hasNegativeEntries:
-      print(f"Warning: histogram '{histToCheck.GetName()}' has negative entries. Creating a copy with positive entries set to zero for plotting.")
+      print(f"Warning: histogram '{histToCheck.GetName()}' has negative bins. Creating a copy with absolute values of negative bins only for plotting.")
       histNeg = histToCheck.Clone(f"{histToCheck.GetName()}_neg")
       for binIndex in range(histNeg.GetNcells()):
         if histNeg.GetBinContent(binIndex) > 0:

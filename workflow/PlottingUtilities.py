@@ -561,7 +561,9 @@ def plotMoments(
     # (ii) plot pulls
     histPullsName = f"{outFileNamePrefix}pulls_{momentLabel}_{momentPart}"
     histPulls = ROOT.TH1D(histPullsName,
-      (f"{histTitle} " if histTitle else "") + f"Pulls {legendEntrySuffix};{xAxisTitle};(Data - Truth) / #it{{#sigma}}_{{Data}}",
+      (f"{histTitle} " if histTitle else "") + f"Pulls {legendEntrySuffix};"
+      f"{xAxisTitle};"
+      f"({legendLabels[0] or 'Data'} - {legendLabels[1] or 'Truth'}) / #it{{#sigma}}_{{{legendLabels[0] or 'Data'}}}",
       *histBinning.astuple)
     # calculate pulls; NaN flags histogram bins, for which truth info is missing
     pulls = np.full(len(HVals) if binning is None else len(binning), np.nan)
