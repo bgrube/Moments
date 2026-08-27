@@ -160,8 +160,9 @@ def loadDataToWeight(
   dataToWeight = None
   if (isinstance(inputDataDef, tuple) and (len(inputDataDef) == 3)
       and isinstance(inputDataDef[0], str) and isinstance(inputDataDef[1], str) and isinstance(inputDataDef[2], AnalysisConfig.DataFormat)):
-    filePath = inputDataDef[0]
-    treeName = inputDataDef[1]
+    filePath   = inputDataDef[0]
+    treeName   = inputDataDef[1]
+    dataFormat = inputDataDef[2]
     dataToWeight = ROOT.RDataFrame(treeName, filePath)
     assert dataToWeight is not None, f"Could not load data defined by '{inputDataDef}'"
     if limitNmbEventsTo is not None:
@@ -171,17 +172,18 @@ def loadDataToWeight(
     if isinstance(inputDataDef, tuple):
       # define columns needed to calculate intensity
       assert beamPolInfo is not None, "Beam polarization information must be provided when loading raw data from file"
-      lvs = lorentzVectors(dataFormat = inputDataDef[2])
-      dataToWeight = defineDataFrameColumns(
-        df          = dataToWeight,
-        lvTarget    = lvs["target"],
-        lvBeam      = lvs["beam"],
-        lvRecoil    = lvs[cfg.subsystem.lvRecoilLabel],
-        lvA         = lvs[cfg.subsystem.lvALabel],
-        lvB         = lvs[cfg.subsystem.lvBLabel],
-        beamPolInfo = beamPolInfo,
-        frame       = cfg.frame,
-      )
+      if not dataFormat == AnalysisConfig.DataFormat.FLAT:
+        lvs = lorentzVectors(dataFormat = dataFormat)
+        dataToWeight = defineDataFrameColumns(
+          df          = dataToWeight,
+          lvTarget    = lvs["target"],
+          lvBeam      = lvs["beam"],
+          lvRecoil    = lvs[cfg.subsystem.lvRecoilLabel],
+          lvA         = lvs[cfg.subsystem.lvALabel],
+          lvB         = lvs[cfg.subsystem.lvBLabel],
+          beamPolInfo = beamPolInfo,
+          frame       = cfg.frame,
+        )
     kinematicBinFilter: str = massBinning.binFilter(massBinIndex)
     dataToWeight = dataToWeight.Filter(kinematicBinFilter)
     nmbInputEvents = dataToWeight.Count().GetValue()
@@ -246,7 +248,7 @@ def weightDataWithIntensityFormula(
   )
   # write unweighted data to file and read data back to ensure that random columns are filled only once
   tmpFilePath = f"{weightedDataFilePath}.tmp"
-  treeName = cfg.inputTreeName if (isinstance(inputDataDef, tuple) and inputDataDef[1]) else cfg.convertedTreeName
+  treeName = cfg.inputTreeName if (isinstance(inputDataDef, tuple) and inputDataDef[2] != AnalysisConfig.DataFormat.FLAT) else cfg.convertedTreeName
   dataToWeight.Snapshot(treeName, tmpFilePath)
   dataToWeight = ROOT.RDataFrame(treeName, tmpFilePath)
   # determine range of weight values
@@ -267,7 +269,8 @@ def weightDataWithIntensityFormula(
         f"weighting efficiency is {nmbWeightedEvents / nmbInputEvents}")
   # write weighted data to file
   print(f"Writing data weighted with intensity function to file '{weightedDataFilePath}'")
-  weightedData.Snapshot(treeName, weightedDataFilePath, originalColumns + ["intensityWeight", "mass"])  # write original columns and selected new columns
+  writeColumns = originalColumns + ["intensityWeight"] + (["mass"] if "mass" not in originalColumns else [])  # write original columns and selected new columns; `mass` column is already contained in FLAT data format
+  weightedData.Snapshot(treeName, weightedDataFilePath, writeColumns)
   # weightedData.Snapshot(treeName, weightedDataFilePath)  # write original columns + all columns defined here; !NOTE! the `phi` columns may trigger the ROOT bug https://github.com/root-project/root/issues/22295
   subprocess.run(f"rm --force --verbose {tmpFilePath}", shell = True)  # remove temporary file
   return ROOT.RDataFrame(treeName, weightedDataFilePath)

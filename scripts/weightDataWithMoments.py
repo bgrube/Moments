@@ -127,8 +127,8 @@ if __name__ == "__main__":
 
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)   # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
@@ -137,21 +137,21 @@ if __name__ == "__main__":
   #   PhiLab = "BeamAngle",
   # )
 
-  useIntensityTerms = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
-  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  # useIntensityTerms = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
   # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
 
   # weight accepted phase-space data in input format for generating kinematic plots in mass bins
-  dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
-  weightInputFormat        = True
-  weightedDataFileBaseName = f"phaseSpace_acc_weighted_input_{useIntensityTerms.value}"
-  # # weight accepted phase-space data in converted format for input-output studies with acceptance correction
   # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
-  # weightInputFormat        = False
-  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
+  # weightInputData          = True
+  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_input_{useIntensityTerms.value}"
+  # weight accepted phase-space data in converted format for input-output studies with acceptance correction
+  dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  weightInputData          = False
+  weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
   # # weight generated phase-space data in converted format for input-output studies without acceptance correction
   # dataType                 = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-  # weightInputFormat        = False
+  # weightInputData          = False
   # weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
   # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
 
@@ -192,14 +192,15 @@ if __name__ == "__main__":
               momentResultsForBin = momentResults[massBinIndexForMoments]
               print(f"Weighting events with intensity function using moment values in mass bin {massBinIndexForMoments} at {momentResultsForBin.binCenters[cfg.massBinning.var]:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
               dataFilePath = (
-                cfg.inputFilePath    (dataType, dataPeriod, tBinLabel, beamPolLabel) if weightInputFormat else
+                cfg.inputFilePath    (dataType, dataPeriod, tBinLabel, beamPolLabel) if weightInputData else
                 cfg.convertedFilePath(dataType, dataPeriod, tBinLabel, beamPolLabel)
               )
-              treeName = cfg.inputTreeName if weightInputFormat else cfg.convertedTreeName
-              print(f"Loading input data of type '{dataType}' in tree '{treeName}' from file '{dataFilePath}'")
+              treeName   = cfg.inputTreeName if weightInputData else cfg.convertedTreeName
+              dataFormat = cfg.inputDataFormats[dataType] if weightInputData else AnalysisConfig.DataFormat.FLAT
+              print(f"Loading input data of type '{dataType}' with format '{dataFormat}' in tree '{treeName}' from file '{dataFilePath}'")
               beamsPolInfo = BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel]
               weightDataWithIntensityFormula(
-                inputDataDef         = (dataFilePath, treeName, cfg.inputDataFormats[dataType]),
+                inputDataDef         = (dataFilePath, treeName, dataFormat),
                 massBinning          = massBinningForWeighting,
                 massBinIndex         = massBinIndexForWeighting,
                 intensityFormula     = momentResultsForBin.intensityFormula(
@@ -234,7 +235,7 @@ if __name__ == "__main__":
 
             if reweightMassDistribution:
               # reweight mass distribution of merged file
-              treeName           = cfg.inputTreeName if weightInputFormat else cfg.convertedTreeName
+              treeName           = cfg.inputTreeName if weightInputData else cfg.convertedTreeName
               reweightedFilePath = f"{weightedDataDirPath}/{weightedDataFileBaseName}_reweighted.root"
               with timer.timeThis(f"Time to reweight mass distribution"):
                 reweightKinDistribution(

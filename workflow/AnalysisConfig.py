@@ -336,11 +336,12 @@ class AnalysisConfig:
 
   class DataFormat(Enum):
     """Enumerates input formats of data files"""
-    ALEX            = 0  # Alex' data format  #TODO improve naming
-    AMPTOOLS        = 1  # AmpTools format
-    JPAC_MC         = 2  # MC truth data in JPAC text format
-    TLORENTZVECTORS = 3  # TLorentzVector for each particle
-    FSROOT          = 4  # FSROOT format
+    FLAT            = 0  # flat ntuple as expected by `MomentCalculator`; does not need to be converted
+    ALEX            = 1  # Alex' data format  #TODO improve naming
+    AMPTOOLS        = 2  # AmpTools format
+    JPAC_MC         = 3  # MC truth data in JPAC text format
+    TLORENTZVECTORS = 4  # TLorentzVector for each particle
+    FSROOT          = 5  # FSROOT format
 
   # moment calculation
   subsystem:           SubsystemInfo                     = field(default_factory = lambda:
