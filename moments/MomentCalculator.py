@@ -1016,8 +1016,23 @@ class MomentResult:
     """Returns copies of moment values and corresponding uncertainties at the given flat or quantum-number index/indices"""
     if not self:
       raise ValueError("MomentResult is not valid; cannot access moment values")
-    # turn quantum-number index to flat index
-    flatIndex: int | slice = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
+    try:
+      # turn quantum-number index to flat index; keep slice if given
+      flatIndex: int | slice = self.indices[subscript] if isinstance(subscript, QnMomentIndex) else subscript
+    except KeyError as exc:
+      # return zero moment value if quantum-number index does not exist
+      if isinstance(subscript, QnMomentIndex):
+        return MomentValue(
+          qn         = subscript,
+          val        = 0.0j,
+          uncertRe   = 0.0,
+          uncertIm   = 0.0,
+          binCenters = self.binCenters,
+          label      = self.label,
+          bsSamples  = np.zeros((self.nmbBootstrapSamples, ), dtype = np.complex128),
+        )
+      else:
+        raise exc
     if isinstance(flatIndex, slice):
       return [
         MomentValue(
