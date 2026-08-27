@@ -294,7 +294,7 @@ def makeAllPlots(
   if True:
     with timer.timeThis(f"Time to plot results from analysis of real data"):
       # plot moments in each mass bin
-      chi2ValuesInMassBins: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # index: mass-bin index; index: moment index; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
+      chi2ValuesInMassBins: list[list[dict[str, tuple[float, float] | tuple[None, None]]]] = [[]] * len(momentResultsPhys)  # list index: mass-bin index; list index: moment index; dict key: "Re"/"Im" for real and imaginary parts of moments; dict values: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for massBinIndex, HPhys in enumerate(momentResultsPhys):
         binLabel = MomentCalculator.binLabel(HPhys)
         binTitle = MomentCalculator.binTitle(HPhys)
@@ -382,7 +382,7 @@ def makeAllPlots(
             canv.SaveAs(f"{dataCfg.outFileDirPath}/{histChi2.GetName()}.pdf")
 
       # plot mass dependences of all moments
-      chi2ValuesForMoments: dict[QnMomentIndex, dict[str, tuple[float, float] | tuple[None, None]]] = {}  # key: quantum-number index of moment; key: "Re"/"Im" for real and imaginary parts of moments; value: chi2 value w.r.t. to given true values and corresponding n.d.f.
+      chi2ValuesForMoments: dict[QnMomentIndex, dict[str, tuple[float, float] | tuple[None, None]]] = {}  # dict key: quantum-number index of moment; dict key: "Re"/"Im" for real and imaginary parts of moments; dict values: chi2 value w.r.t. to given true values and corresponding n.d.f.
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
         # get histogram with moment values from JPAC fit
         histsJpac:     dict[str, ROOT.TH1D] = {}
