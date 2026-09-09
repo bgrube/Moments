@@ -388,16 +388,25 @@ def plotIntensityFcn(
       histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
     )
     if makeIntensityPosDefinite and useIntensityTerms == MomentResult.IntensityTermsType.PARITY_CONSERVING:
-      # make intensity function positive definite by shifting moment values and draw negative part to confirm
       #TODO this code works only for parity-conserving moments
+      # make intensity function positive definite by shifting moment values and draw negative part to confirm
       momentsShifted, chi2 = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
-      intensityFunctorShiftedNeg = IntensityFunctor(
+      # plot intensity function for shifted moment values
+      intensityFunctorShifted = IntensityFunctor(
         momentResults = momentsShifted,
         beamPol       = beamPol,
-        onlyNegValues = True,  # only show negative part of intensity function
-        invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
       )
-      intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShiftedNeg, -1, +1, -180, +180, -180, +180)
+      intensityFcnShifted = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
+      drawTF3(
+        fcn         = intensityFcnShifted,
+        binnings    = binnings,
+        outFilePath = f"{outputDirPath}/{intensityFcnShifted.GetName()}.png",
+        histTitle   = f"Intensity, Shifted #chi^{{2}} = {chi2:.2g};cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+      )
+      # plot negative part of intensity function for shifted moment values
+      intensityFunctorShifted.onlyNegValues = True  # only show negative part of intensity function
+      intensityFunctorShifted.invertSign    = True  # invert sign of significance function to make negative part of intensity function positive
+      intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
       drawTF3(
         fcn         = intensityFcnShiftedNeg,
         binnings    = binnings,
