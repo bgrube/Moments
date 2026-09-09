@@ -301,12 +301,15 @@ if __name__ == "__main__":
 
 
   cfg = deepcopy(CFG_POLARIZED_PIPI)
-  massBinning  = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)
+  # massBinning = None
+  massBinning = deepcopy(cfg.massBinning)  # same binning as for moment values
+  # massBinning = HistAxisBinning(nmbBins = 50, minVal = 0.28, maxVal = 2.28)
   additionalColumnDefs = {
     "realData"   : {},  # no additional columns to define for real data
     "weightedMc" : {},  # no additional columns to define for weighted MC
   }
-  additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)"]
+  additionalFilterDefs = []
+  # additionalFilterDefs = ["(0.60 < massPiPi and massPiPi < 0.88)"]
   nmbBinsAzim  = 72   # number of bins for azimuthal variables
   nmbBinsOther = 100  # number of bins for other variables
 
@@ -322,8 +325,8 @@ if __name__ == "__main__":
   # nmbBinsAzim  = 36  # number of bins for azimuthal variables
   # nmbBinsOther = 50  # number of bins for other variables
 
-  useIntensityTerms = MomentResult.IntensityTermsType.ALL
-  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING
+  # useIntensityTerms = MomentResult.IntensityTermsType.ALL
+  useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING
   # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING
 
   print(f"Using analysis configuration:\n{cfg}")
@@ -371,8 +374,7 @@ if __name__ == "__main__":
             nmbBinsOther  = nmbBinsOther,
             massBinning   = massBinning.astuple,
           )
-          # if True:
-          if False:
+          if massBinning is not None:
             for massBinIndex in range(massBinning.nmbBins):
               massBinMin = massBinning.minVal + massBinIndex * massBinning.binWidth
               massBinMax = massBinMin + massBinning.binWidth
