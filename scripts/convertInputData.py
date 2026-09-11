@@ -68,29 +68,21 @@ def init() -> None:
 
 
 def convertInputData(
-  cfg: AnalysisConfig,
-  outputColumnsUnpolarized: tuple[str, ...] = (
+  cfg:                               AnalysisConfig,
+  #TODO move these two also into AnalysisConfig
+  additionalColumnDefs:              dict[AnalysisConfig.DataType, dict[str, str]],
+  additionalFilterDefs:              dict[AnalysisConfig.DataType, list[str]],
+  outputColumnsUnpolarized:          tuple[str, ...] = (
     "theta",
     "phi",
     "mass",
     "minusT",
   ),
-  outputColumnsPolarized: tuple[str, ...] = (
+  outputColumnsPolarized:            tuple[str, ...] = (
     "beamPol",
     "beamPolPhiLabDeg",
     "Phi",
   ),
-  #TODO move these two also into AnalysisConfig
-  additionalColumnDefs: dict[AnalysisConfig.DataType, dict[str, str]] = {  # additional columns for each data type
-    AnalysisConfig.DataType.REAL_DATA             : {},
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : {},
-  },
-  additionalFilterDefs: dict[AnalysisConfig.DataType, list[str]] = {  # additional filters for each data type
-    AnalysisConfig.DataType.REAL_DATA             : [],
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : [],
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
-  },
   reweightAccPSMCMinusTDistribution: bool = False,
 ) -> None:
   """Converts input data into the format expected by `MomentCalculator`"""
