@@ -330,108 +330,110 @@ def plotIntensityFcn(
   useIntensityTerms:        MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
   coordSysLabel:            str                             = "HF",
   makeIntensityPosDefinite: bool                            = False,  # if True, shift moment values such that intensity function is positive definite
+  scaleFactor:              float | None                    = None,   # scale intensity function with this factor
 ) -> MomentResult | None:  # return moments shifted such that intensity function is positive definite
   """Draw intensity function in given mass bin and save PDF to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and intensity terms {useIntensityTerms.value}")
+  if scaleFactor is not None:
+    print(f"Scaling moments by factor {scaleFactor}")
+    momentResults = deepcopy(momentResults)
+    momentResults.scaleBy(scaleFactor)
+  # draw intensity function as 3D plot
+  # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
+  intensityFormula = momentResults.intensityFormula(
+    polarization      = beamPolInfo.pol if beamPolInfo is not None else None,
+    thetaFormula      = "std::acos(x)",
+    phiFormula        = "TMath::DegToRad() * y",
+    PhiFormula        = "TMath::DegToRad() * z",
+    useIntensityTerms = useIntensityTerms,
+  )
+  ROOT.gStyle.SetImageScaling(3)  # improve bitmap rendering quality by tripling the resolution; default is 1
+  intensityFcn = ROOT.TF3(f"intensityFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
+  binnings = (
+    HistAxisBinning(nmbBinsPerAxis,   -1,   +1),  # cos(theta)
+    HistAxisBinning(nmbBinsPerAxis, -180, +180),  # phi
+    HistAxisBinning(nmbBinsPerAxis, -180, +180),  # Phi
+  )
+  histFcn, minVal, maxVal = drawTF3(
+    fcn                = intensityFcn,
+    binnings           = binnings,
+    outFilePath        = f"{outputDirPath}/{intensityFcn.GetName()}.png",
+    histTitle          = f"Intensity Function;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+    showNegativeValues = True,
+  )
+  if minVal < 0:
+    print(f"WARNING: Intensity function for mass bin {massBinIndex} has negative values: minimum = {minVal}, maximum = {maxVal}")
+  # draw negative part of intensity function (if any)
+  intensityFormulaNeg = f"-({intensityFormula})"
+  intensityFcnNeg = ROOT.TF3(f"{intensityFcn.GetName()}_neg", intensityFormulaNeg, -1, +1, -180, +180, -180, +180)
+  histFcnNeg, _, _ = drawTF3(
+    fcn                = intensityFcnNeg,
+    binnings           = binnings,
+    outFilePath        = f"{outputDirPath}/{intensityFcnNeg.GetName()}.png",
+    histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+    showNegativeValues = False,
+  )
+  # draw statistical significance of negative part of intensity function (if any)
+  beamPol = beamPolInfo.pol if beamPolInfo is not None else 0.0
+  intensitySignificanceFunctor = IntensitySignificanceFunctor(
+    momentResults = momentResults,
+    beamPol       = beamPol,
+    onlyNegValues = True,  # only show negative part of intensity function
+    invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
+  )
+  intensitySignificanceFcn = ROOT.TF3(f"intensitySignificanceFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensitySignificanceFunctor, -1, +1, -180, +180, -180, +180)
+  drawTF3(
+    fcn         = intensitySignificanceFcn,
+    binnings    = binnings,
+    outFilePath = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
+    histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+  )
   momentsShifted = None
-  if True:
-    # draw intensity function as 3D plot
-    # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-    intensityFormula = momentResults.intensityFormula(
-      polarization      = beamPolInfo.pol if beamPolInfo is not None else None,
-      thetaFormula      = "std::acos(x)",
-      phiFormula        = "TMath::DegToRad() * y",
-      PhiFormula        = "TMath::DegToRad() * z",
-      useIntensityTerms = useIntensityTerms,
-    )
-    # ROOT.gStyle.SetCanvasDefH(2400)  # temporarily increase resolution to generate bitmap images
-    # ROOT.gStyle.SetCanvasDefW(2400)
-    ROOT.gStyle.SetImageScaling(3)  # improve bitmap rendering quality by tripling the resolution; default is 1
-    intensityFcn = ROOT.TF3(f"intensityFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
-    binnings = (
-      HistAxisBinning(nmbBinsPerAxis,   -1,   +1),  # cos(theta)
-      HistAxisBinning(nmbBinsPerAxis, -180, +180),  # phi
-      HistAxisBinning(nmbBinsPerAxis, -180, +180),  # Phi
-    )
-    histFcn, minVal, maxVal = drawTF3(
-      fcn                = intensityFcn,
-      binnings           = binnings,
-      outFilePath        = f"{outputDirPath}/{intensityFcn.GetName()}.png",
-      histTitle          = f"Intensity Function;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-      showNegativeValues = True,
-    )
-    if minVal < 0:
-      print(f"WARNING: Intensity function for mass bin {massBinIndex} has negative values: minimum = {minVal}, maximum = {maxVal}")
-    # draw negative part of intensity function (if any)
-    intensityFormulaNeg = f"-({intensityFormula})"
-    intensityFcnNeg = ROOT.TF3(f"{intensityFcn.GetName()}_neg", intensityFormulaNeg, -1, +1, -180, +180, -180, +180)
-    histFcnNeg, _, _ = drawTF3(
-      fcn                = intensityFcnNeg,
-      binnings           = binnings,
-      outFilePath        = f"{outputDirPath}/{intensityFcnNeg.GetName()}.png",
-      histTitle          = f"Intensity Function, Negative Part;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-      showNegativeValues = False,
-    )
-    # draw statistical significance of negative part of intensity function (if any)
-    beamPol = beamPolInfo.pol if beamPolInfo is not None else 0.0
-    intensitySignificanceFunctor = IntensitySignificanceFunctor(
-      momentResults = momentResults,
+  if makeIntensityPosDefinite and useIntensityTerms == MomentResult.IntensityTermsType.PARITY_CONSERVING:
+    #TODO this code works only for parity-conserving moments
+    # make intensity function positive definite by shifting moment values and draw negative part to confirm
+    momentsShifted, chi2 = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
+    # plot intensity function for shifted moment values
+    intensityFunctorShifted = IntensityFunctor(
+      momentResults = momentsShifted,
       beamPol       = beamPol,
-      onlyNegValues = True,  # only show negative part of intensity function
-      invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
     )
-    intensitySignificanceFcn = ROOT.TF3(f"intensitySignificanceFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensitySignificanceFunctor, -1, +1, -180, +180, -180, +180)
+    intensityFcnShifted = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
     drawTF3(
-      fcn         = intensitySignificanceFcn,
+      fcn         = intensityFcnShifted,
       binnings    = binnings,
-      outFilePath = f"{outputDirPath}/{intensitySignificanceFcn.GetName()}.png",
-      histTitle   = f"Intensity Significance;cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+      outFilePath = f"{outputDirPath}/{intensityFcnShifted.GetName()}.png",
+      histTitle   = f"Intensity, Shifted #chi^{{2}} = {chi2:.2g};cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
     )
-    if makeIntensityPosDefinite and useIntensityTerms == MomentResult.IntensityTermsType.PARITY_CONSERVING:
-      #TODO this code works only for parity-conserving moments
-      # make intensity function positive definite by shifting moment values and draw negative part to confirm
-      momentsShifted, chi2 = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
-      # plot intensity function for shifted moment values
-      intensityFunctorShifted = IntensityFunctor(
-        momentResults = momentsShifted,
-        beamPol       = beamPol,
-      )
-      intensityFcnShifted = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
-      drawTF3(
-        fcn         = intensityFcnShifted,
-        binnings    = binnings,
-        outFilePath = f"{outputDirPath}/{intensityFcnShifted.GetName()}.png",
-        histTitle   = f"Intensity, Shifted #chi^{{2}} = {chi2:.2g};cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-      )
-      # plot negative part of intensity function for shifted moment values
-      intensityFunctorShifted.onlyNegValues = True  # only show negative part of intensity function
-      intensityFunctorShifted.invertSign    = True  # invert sign of significance function to make negative part of intensity function positive
-      intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
-      drawTF3(
-        fcn         = intensityFcnShiftedNeg,
-        binnings    = binnings,
-        outFilePath = f"{outputDirPath}/{intensityFcnShiftedNeg.GetName()}.png",
-        histTitle   = f"Intensity, Negative Part, Shifted #chi^{{2}} = {chi2:.2g};cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
-      )
-    # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
-    # ROOT.gStyle.SetCanvasDefW(600)
-    # draw projections of intensity function onto (cos(theta), phi) plane
-    histProj = histFcn.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
-    canv = ROOT.TCanvas()
-    ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # draw 2D plot with pos/neg color palette and symmetric z axis
-    histProj.SetTitle(f"Intensity Function Projection;{histFcn.GetXaxis().GetTitle()};{histFcn.GetYaxis().GetTitle()}")
-    # zRange = abs(histProj.GetMinimum()) if histProj.GetMinimum() < 0 else 10.0  # choose z range to see negative values; but avoid zero range in case function positive
-    # histProj.SetMinimum(-zRange)
-    # histProj.SetMaximum(+zRange)
-    histProj.Draw("COLZ")
-    canv.SaveAs(f"{outputDirPath}/{histProj.GetName()}.pdf")
-    ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
-    histProjNeg = histFcnNeg.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
-    canv = ROOT.TCanvas()
-    histProjNeg.SetTitle(f"Intensity Function Projection, Negative Part;{histFcnNeg.GetXaxis().GetTitle()};{histFcnNeg.GetYaxis().GetTitle()}")
-    histProjNeg.SetMinimum(0)
-    histProjNeg.Draw("COLZ")
-    canv.SaveAs(f"{outputDirPath}/{histProjNeg.GetName()}.pdf")
+    # plot negative part of intensity function for shifted moment values
+    intensityFunctorShifted.onlyNegValues = True  # only show negative part of intensity function
+    intensityFunctorShifted.invertSign    = True  # invert sign of significance function to make negative part of intensity function positive
+    intensityFcnShiftedNeg = ROOT.TF3(f"intensityFcnShifted_{useIntensityTerms.value}_bin_{massBinIndex}_neg", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
+    drawTF3(
+      fcn         = intensityFcnShiftedNeg,
+      binnings    = binnings,
+      outFilePath = f"{outputDirPath}/{intensityFcnShiftedNeg.GetName()}.png",
+      histTitle   = f"Intensity, Negative Part, Shifted #chi^{{2}} = {chi2:.2g};cos#theta_{{{coordSysLabel}}};#phi_{{{coordSysLabel}}} [deg];#Phi [deg]",
+    )
+  # ROOT.gStyle.SetCanvasDefH(600)  # revert back to default resolution
+  # ROOT.gStyle.SetCanvasDefW(600)
+  # draw projections of intensity function onto (cos(theta), phi) plane
+  histProj = histFcn.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
+  canv = ROOT.TCanvas()
+  ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # draw 2D plot with pos/neg color palette and symmetric z axis
+  histProj.SetTitle(f"Intensity Function Projection;{histFcn.GetXaxis().GetTitle()};{histFcn.GetYaxis().GetTitle()}")
+  # zRange = abs(histProj.GetMinimum()) if histProj.GetMinimum() < 0 else 10.0  # choose z range to see negative values; but avoid zero range in case function positive
+  # histProj.SetMinimum(-zRange)
+  # histProj.SetMaximum(+zRange)
+  histProj.Draw("COLZ")
+  canv.SaveAs(f"{outputDirPath}/{histProj.GetName()}.pdf")
+  ROOT.gStyle.SetPalette(ROOT.kBird)  # restore default color palette
+  histProjNeg = histFcnNeg.Project3D("yx")  #!NOTE! "yx" gives y = phi vs. x = cos(theta)
+  canv = ROOT.TCanvas()
+  histProjNeg.SetTitle(f"Intensity Function Projection, Negative Part;{histFcnNeg.GetXaxis().GetTitle()};{histFcnNeg.GetYaxis().GetTitle()}")
+  histProjNeg.SetMinimum(0)
+  histProjNeg.Draw("COLZ")
+  canv.SaveAs(f"{outputDirPath}/{histProjNeg.GetName()}.pdf")
   if False:
     # draw intensity as function of phi and Phi for fixed cos(theta) value
     cosTheta = 0.0  # fixed value of cos(theta)
@@ -466,6 +468,9 @@ if __name__ == "__main__":
   # overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   overrideBeamPolInfo = None
+  # makeIntensityPosDefinite = True
+  makeIntensityPosDefinite = False
+  scaleFactor = None
 
   momentType = f"phys"
   # momentType = f"meas"
@@ -497,11 +502,12 @@ if __name__ == "__main__":
                   nmbBinsPerAxis           = 50,
                   useIntensityTerms        = useIntensityTerms,
                   coordSysLabel            = cfg.frame.name,
-                  makeIntensityPosDefinite = True,
+                  makeIntensityPosDefinite = makeIntensityPosDefinite,
+                  scaleFactor              = scaleFactor,
                 )
               )
             # save shifted moments to file
-            if all(m is not None for m in momentsShifted):
+            if momentsShifted and all(m is not None for m in momentsShifted):
               momentResultsShifted = MomentResultsKinematicBinning(momentsShifted)
               momentResultsShifted.savePickle(momentResultsFilePath.replace(".pkl", f"_shifted.pkl"))
 
