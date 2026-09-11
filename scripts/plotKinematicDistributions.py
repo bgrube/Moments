@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-This module plots kinematic distributions from input data.
+This module plots kinematic distributions of input data.
 
 Usage: Run this module as a script to generate kinematic plots.
 """
@@ -46,6 +46,7 @@ from workflow.PlottingUtilities import (
   histTypes,
   setupPlotStyle,
 )
+from workflow.RootUtilities import runOnlyOnce
 from workflow import Utilities
 
 
@@ -395,10 +396,10 @@ def makeAnglesHFCorrelationPlot(
     histCorr.Write()
 
 
-if __name__ == "__main__":
+@runOnlyOnce
+def init() -> None:
+  """Loads libraries and initializes ROOT environment"""
   Utilities.printGitInfo()
-  timer = Utilities.Timer()
-  timer.start("Total execution time")
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
   setupPlotStyle()
@@ -410,31 +411,18 @@ if __name__ == "__main__":
   ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
   ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
 
-  additionalColumnDefs = {  # additional columns for each data type
-    AnalysisConfig.DataType.REAL_DATA             : {},
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : {},
-  }
-  additionalFilterDefs = {  # additional filters for each data type
-    AnalysisConfig.DataType.REAL_DATA             : [],
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : [],
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
-  }
 
-  cfg = deepcopy(CFG_POLARIZED_PIPI)
-  # subsystemMassBinning = None  # do not generate plots in mass bins
-  subsystemMassBinning = cfg.massBinning
-  additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
-    AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)"],
-    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)"],
-    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : ["(0.60 < massPiPi and massPiPi < 0.88)"],
-  }
-  # cfg = deepcopy(CFG_POLARIZED_KSKL)
-  # subsystemMassBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins; generate plots for these mass bins
-  # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
-  # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
-  # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
-  # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
+def plotKinematicDistributions(
+  cfg:                  AnalysisConfig,
+  #TODO move these two also into AnalysisConfig
+  additionalColumnDefs: dict[AnalysisConfig.DataType, dict[str, str]],
+  additionalFilterDefs: dict[AnalysisConfig.DataType, list[str]],
+  subsystemMassBinning: HistAxisBinning | None = None,
+) -> None:
+  """Plots kinematic distributions of input data"""
+  timer = Utilities.Timer()
+  timer.start("Total execution time")
+  init()
 
   print(f"Using analysis configuration:\n{cfg}")
   print(f"Generating plots for subsystem '{cfg.subsystem}':")
@@ -506,3 +494,38 @@ if __name__ == "__main__":
 
   timer.stop("Total execution time")
   print(timer.summary)
+
+
+if __name__ == "__main__":
+  additionalColumnDefs = {  # additional columns for each data type
+    AnalysisConfig.DataType.REAL_DATA             : {},
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : {},
+  }
+  additionalFilterDefs = {  # additional filters for each data type
+    AnalysisConfig.DataType.REAL_DATA             : [],
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : [],
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
+  }
+
+  cfg = deepcopy(CFG_POLARIZED_PIPI)
+  # subsystemMassBinning = None  # do not generate plots in mass bins
+  subsystemMassBinning = cfg.massBinning
+  additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
+    AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)"],
+    AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)"],
+    AnalysisConfig.DataType.GENERATED_PHASE_SPACE : ["(0.60 < massPiPi and massPiPi < 0.88)"],
+  }
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)
+  # subsystemMassBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins; generate plots for these mass bins
+  # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
+  # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights
+  # BEAM_POL_INFOS["merged"]["All"].pol    = "Pol"
+  # BEAM_POL_INFOS["merged"]["All"].PhiLab = "BeamAngle"
+
+  plotKinematicDistributions(
+    cfg                  = cfg,
+    additionalColumnDefs = additionalColumnDefs,
+    additionalFilterDefs = additionalFilterDefs,
+    subsystemMassBinning = subsystemMassBinning,
+  )
