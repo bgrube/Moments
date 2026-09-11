@@ -8,7 +8,6 @@ Usage: Run this module as a script to generate kinematic plots.
 
 from __future__ import annotations
 
-from copy import deepcopy
 import ctypes
 import functools
 import os
@@ -508,7 +507,7 @@ if __name__ == "__main__":
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
   }
 
-  cfg = deepcopy(CFG_POLARIZED_PIPI)
+  cfg = CFG_POLARIZED_PIPI
   # subsystemMassBinning = None  # do not generate plots in mass bins
   subsystemMassBinning = cfg.massBinning
   additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
@@ -516,7 +515,7 @@ if __name__ == "__main__":
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)"],
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : ["(0.60 < massPiPi and massPiPi < 0.88)"],
   }
-  # cfg = deepcopy(CFG_POLARIZED_KSKL)
+  # cfg = CFG_POLARIZED_KSKL
   # subsystemMassBinning      = HistAxisBinning(nmbBins = 14, minVal = 1.2, maxVal = 2.6)  # 100 MeV wide bins; generate plots for these mass bins
   # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
   # additionalColumnDefs = {"eventWeight" : "weightASBS"}  # use this column as event weights

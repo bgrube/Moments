@@ -8,7 +8,6 @@ Usage: Run this module as a script to convert input data files.
 
 from __future__ import annotations
 
-from copy import deepcopy
 import functools
 import os
 
@@ -162,7 +161,7 @@ if __name__ == "__main__":
     AnalysisConfig.DataType.GENERATED_PHASE_SPACE : [],
   }
 
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # polarized gamma p -> (pi+ pi-) p data
+  cfg = CFG_POLARIZED_PIPI  # polarized gamma p -> (pi+ pi-) p data
   if False:  # cut away forward tracks in reconstructed data
     for inputDataType in (AnalysisConfig.DataType.REAL_DATA, AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE):
       lvs = lorentzVectors(dataFormat = AnalysisConfig.DataFormat.ALEX)
@@ -171,16 +170,16 @@ if __name__ == "__main__":
         "DistFdcPim": f"(Double32_t)trackDistFdc(pim_x4_kin.Z(), {lvs['pim']})",
       }
       additionalFilterDefs[inputDataType] = ["(DistFdcPip > 4) and (DistFdcPim > 4)"]  # require minimum distance of tracks at FDC position [cm]
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
-  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # polarized gamma p -> (eta pi0) p data, with eta -> gamma gamma from Nizar's analysis
+  # cfg = CFG_UNPOLARIZED_PIPI_CLAS  # unpolarized gamma p -> (pi+ pi-) p data in CLAS kinematic range
+  # cfg = CFG_POLARIZED_ETAPI0  # polarized gamma p -> (eta pi0) p data, with eta -> gamma gamma from Nizar's analysis
   # for inputDataType in additionalColumnDefs:
   #   additionalColumnDefs[inputDataType] = {
   #     "beamPol"          : "Pol",         # use this column for beam polarization degree
   #     "beamPolPhiLabDeg" : "BeamAngle",   # use this column for beam polarization angle in lab frame
   #   }
   # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "weightASBS"  # use this column as event weights
-  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # unpolarized gamma p -> (eta' eta) p data from Will's analysis
-  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # polarized gamma p -> (K_S K_L) p data from Gabriel's analysis
+  # cfg = CFG_UNPOLARIZED_ETAPETA  # unpolarized gamma p -> (eta' eta) p data from Will's analysis
+  # cfg = CFG_POLARIZED_KSKL  # polarized gamma p -> (K_S K_L) p data from Gabriel's analysis
   # additionalColumnDefs[AnalysisConfig.DataType.REAL_DATA]["eventWeight"] = "Weight"  # use this column as event weight
 
   convertInputData(
