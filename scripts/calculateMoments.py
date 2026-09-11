@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-This module performs the moment analysis of unpolarized and polarized
-pi+ pi- photoproduction data. The calculated moments are written to
-files to be read by the plotting script `plotMoments.py`.
+This module performs the moment analysis and writes the calculated
+moments to files to be read by the plotting function defined in
+`plotMoments.py`.
 
 Usage: Run this module as a script to perform the moment calculations
 and to generate the output files.
@@ -42,7 +42,10 @@ from workflow.AnalysisConfig import (
   DataConfig,
 )
 from workflow.PlottingUtilities import HistAxisBinning
-from workflow import RootUtilities
+from workflow.RootUtilities import (
+  loadBasisFunctionsLibrary,
+  runOnlyOnce,
+)
 from workflow import Utilities
 
 
@@ -169,8 +172,10 @@ def calculateAllMoments(
 
   if cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_NEG_WEIGHTS:
     #TODO calculate normalized and unnormalized moments
-    with timer.timeThis(f"Time to calculate moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights"):
-      print(f"Calculating moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights")
+    with timer.timeThis(f"Time to calculate moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method "
+                        f"with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights"):
+      print(f"Calculating moments of real data for {len(momentCalculators[None])} bins using the linear-algebra method "
+            f"with {nmbOpenMpThreads} OpenMP threads and subtracting background using negative weights")
       momentCalculators[None].calculateMoments(
         normalize           = cfg.normalizeMoments,
         nmbBootstrapSamples = cfg.nmbBootstrapSamples,
@@ -180,8 +185,10 @@ def calculateAllMoments(
 
   elif cfg.method == AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS:
     for labelDataSample, momentCalculatorsDataSample in momentCalculators.items():
-      with timer.timeThis(f"Time to calculate moments of '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background at moment level"):
-        print(f"Calculating moments of '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background at moment level")
+      with timer.timeThis(f"Time to calculate moments of '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins "
+                          f"using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background at moment level"):
+        print(f"Calculating moments of '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins "
+              f"using the linear-algebra method with {nmbOpenMpThreads} OpenMP threads and subtracting background at moment level")
         momentCalculatorsDataSample.calculateMoments(
           normalize           = cfg.normalizeMoments,
           nmbBootstrapSamples = cfg.nmbBootstrapSamples,
@@ -209,8 +216,10 @@ def calculateAllMoments(
     startValueRandomSeed    = 123456789
     for labelDataSample, momentCalculatorsDataSample in momentCalculators.items():
       if len(momentCalculatorsDataSample) > 0:
-        with timer.timeThis(f"Time to fit moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level"):
-          print(f"Fitting moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level")
+        with timer.timeThis(f"Time to fit moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins "
+                            f"running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level"):
+          print(f"Fitting moments to '{labelDataSample}' real data with {len(momentCalculatorsDataSample)} bins "
+                f"running {nmbFitAttempts} fit attempts in {nmbParallelFitProcesses} processes and subtracting background at moment level")
           momentCalculatorsDataSample.fitMomentsMultipleAttempts(
             nmbFitAttempts          = nmbFitAttempts,
             nmbParallelFitProcesses = nmbParallelFitProcesses,
@@ -248,35 +257,23 @@ CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
 """
 
 
-if __name__ == "__main__":
-  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
-
-  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
-  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
-  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
-  # cfg.method      = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # estimate moments using linear algebra method with background subtraction at moment level
-  # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
-  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
-  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
-  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
-  additionalColumnDefs = {}
-  # additionalColumnDefs = {  # needed for Zach's data
-  #   "mass"             : "(Double32_t)mass_EtaPrimePi",
-  #   "beamPol"          : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].pol}",
-  #   "beamPolPhiLabDeg" : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].PhiLab}",
-  # }
-
-  forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
-  # forceIntegralMatrixCalculation = False
-
+@runOnlyOnce
+def init() -> None:
+  """Loads libraries and initializes ROOT environment"""
+  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
+  ROOT.gROOT.SetBatch(True)
   ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
+
+
+def calculateMoments(
+  cfg:                            AnalysisConfig,
+  additionalColumnDefs:           dict[str, str],
+  additionalCuts:                 Iterable[str],
+  forceIntegralMatrixCalculation: bool = True,
+) -> None:
+  """Performs moment analysis and writes the calculated moments to
+  files to be read by the plotting function defined in `plotMoments.py`"""
+  init()
 
   print(f"Calculating moments for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
@@ -297,7 +294,6 @@ if __name__ == "__main__":
           with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
-            ROOT.gROOT.SetBatch(True)
             threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
             print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")
             with threadController.limit(limits = 4):
@@ -310,41 +306,75 @@ if __name__ == "__main__":
                 dataCfg                        = dataCfg,
                 timer                          = timer,
                 forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
-                additionalCuts                 = (),
-                # additionalCuts                 = (
-                #   # "not isInEfficiencyHoles(cosTheta, phiDeg)",  # holes
-                #   # "not ((cosTheta > 0.8) and (-100 < phiDeg and phiDeg < +100))",
-                #   # "(-180 < phiDeg and phiDeg < -108)",    # phi slice 0
-                #   # "(-108 < phiDeg and phiDeg <  -36)",    # phi slice 1
-                #   # "( -36 < phiDeg and phiDeg <  +36)",    # phi slice 2
-                #   # "( +36 < phiDeg and phiDeg < +108)",    # phi slice 3
-                #   # "(+108 < phiDeg and phiDeg < +180)",    # phi slice 4
-                #   # "(-90 < phiDeg and phiDeg < +90)",      # phi slice 5
-                #   # "not (-90 < phiDeg and phiDeg < +90)",  # phi slice 6
-                #   # "(-1.0 < cosTheta and cosTheta < -0.6)",  # cos theta slice 0
-                #   # "(-0.6 < cosTheta and cosTheta < -0.2)",  # cos theta slice 1
-                #   # "(-0.2 < cosTheta and cosTheta < +0.2)",  # cos theta slice 2
-                #   # "(+0.2 < cosTheta and cosTheta < +0.6)",  # cos theta slice 3
-                #   # "(+0.6 < cosTheta and cosTheta < +1.0)",  # cos theta slice 4
-                #   # "((-0.8 < cosTheta and cosTheta < +0.8) and (-150 < phiDeg and phiDeg < +150))",  # border
-                #   # "((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border1
-                #   # "not ((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border3
-                #   # "(cosTheta < 0)",  # cosThetaNeg
-                #   # "(cosTheta > 0)",  # cosThetaPos
-                #   # "(phi < 0)",  # phiNeg
-                #   # "(phi > 0)",  # phiPos
-                #   # "(Phi < 0)",  # PhiNeg
-                #   # "(Phi > 0)",  # PhiPos
-                #   # "(-0.75 < cosTheta && cosTheta < +0.75)",  # cosThetaNoSpikeOdd
-                #   # "((-150 < phiDeg && phiDeg < -30) || (+30 < phiDeg && phiDeg < +150))",  # phiNoSpikeOdd
-                #   # "!(" \
-                #   #   "   ((-1 < cosTheta && cosTheta < -0.75) && (-180 < phiDeg && phiDeg < -150))" \
-                #   #   "|| ((-1 < cosTheta && cosTheta < -0.75) && (+150 < phiDeg && phiDeg < +180))" \
-                #   #   "|| ((+0.75 < cosTheta && cosTheta < +1) && ( -30 < phiDeg && phiDeg <  +30))" \
-                #   # ")",  # noSpikeOdd
-                #   "(0.100 < minusT and minusT < 0.114)",
-                # ),
-                additionalColumnDefs = additionalColumnDefs,
+                additionalCuts                 = additionalCuts,
+                additionalColumnDefs           = additionalColumnDefs,
               )
               timer.stop("Total execution time")
               print(timer.summary)
+
+
+if __name__ == "__main__":
+  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
+  # cfg.method      = AnalysisConfig.MethodType.LIN_ALG_BG_SUBTR_MOMENTS  # estimate moments using linear algebra method with background subtraction at moment level
+  # cfg.method      = AnalysisConfig.MethodType.MAX_LIKELIHOOD_FIT  # estimate moments using maximum-likelihood fit
+  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
+  # cfg.massBinning = HistAxisBinning(nmbBins = 1, minVal = 0.5, maxVal = 4.0)  # all eta' eta masses
+  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
+
+  additionalColumnDefs           = {
+    # # needed for Zach's data
+    # "mass"             : "(Double32_t)mass_EtaPrimePi",
+    # "beamPol"          : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].pol}",
+    # "beamPolPhiLabDeg" : f"(Double32_t){BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel].PhiLab}",
+  }
+  forceIntegralMatrixCalculation = True  # if `True` integral matrices are recalculated even if pickled versions exist
+  # forceIntegralMatrixCalculation = False
+  additionalCuts                 = (
+    # "not isInEfficiencyHoles(cosTheta, phiDeg)",  # holes
+    # "not ((cosTheta > 0.8) and (-100 < phiDeg and phiDeg < +100))",
+    # "(-180 < phiDeg and phiDeg < -108)",    # phi slice 0
+    # "(-108 < phiDeg and phiDeg <  -36)",    # phi slice 1
+    # "( -36 < phiDeg and phiDeg <  +36)",    # phi slice 2
+    # "( +36 < phiDeg and phiDeg < +108)",    # phi slice 3
+    # "(+108 < phiDeg and phiDeg < +180)",    # phi slice 4
+    # "(-90 < phiDeg and phiDeg < +90)",      # phi slice 5
+    # "not (-90 < phiDeg and phiDeg < +90)",  # phi slice 6
+    # "(-1.0 < cosTheta and cosTheta < -0.6)",  # cos theta slice 0
+    # "(-0.6 < cosTheta and cosTheta < -0.2)",  # cos theta slice 1
+    # "(-0.2 < cosTheta and cosTheta < +0.2)",  # cos theta slice 2
+    # "(+0.2 < cosTheta and cosTheta < +0.6)",  # cos theta slice 3
+    # "(+0.6 < cosTheta and cosTheta < +1.0)",  # cos theta slice 4
+    # "((-0.8 < cosTheta and cosTheta < +0.8) and (-150 < phiDeg and phiDeg < +150))",  # border
+    # "((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border1
+    # "not ((-0.6 < cosTheta and cosTheta < +0.6) and (-120 < phiDeg and phiDeg < +120))",  # border3
+    # "(cosTheta < 0)",  # cosThetaNeg
+    # "(cosTheta > 0)",  # cosThetaPos
+    # "(phi < 0)",  # phiNeg
+    # "(phi > 0)",  # phiPos
+    # "(Phi < 0)",  # PhiNeg
+    # "(Phi > 0)",  # PhiPos
+    # "(-0.75 < cosTheta && cosTheta < +0.75)",  # cosThetaNoSpikeOdd
+    # "((-150 < phiDeg && phiDeg < -30) || (+30 < phiDeg && phiDeg < +150))",  # phiNoSpikeOdd
+    # "!(" \
+    #   "   ((-1 < cosTheta && cosTheta < -0.75) && (-180 < phiDeg && phiDeg < -150))" \
+    #   "|| ((-1 < cosTheta && cosTheta < -0.75) && (+150 < phiDeg && phiDeg < +180))" \
+    #   "|| ((+0.75 < cosTheta && cosTheta < +1) && ( -30 < phiDeg && phiDeg <  +30))" \
+    # ")",  # noSpikeOdd
+    # "(0.100 < minusT and minusT < 0.114)",
+  )
+
+  calculateMoments(
+    cfg                            = cfg,
+    additionalColumnDefs           = additionalColumnDefs,
+    additionalCuts                 = additionalCuts,
+    forceIntegralMatrixCalculation = forceIntegralMatrixCalculation,
+  )
