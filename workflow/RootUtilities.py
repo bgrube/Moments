@@ -34,7 +34,7 @@ def printRootACLiCSettings() -> None:
   print(f" GetMakeSharedLib()           = {ROOT.gSystem.GetMakeSharedLib()}")
 
 
-def runOnce(func) -> Callable[..., Any | None]:
+def runOnlyOnce(func) -> Callable[..., Any | None]:
   """Decorator that ensures that the decorated function is executed only once; subsequent calls only return the result of the first call"""
   threadLock = threading.Lock()
   firstCall  = True
@@ -53,7 +53,7 @@ def runOnce(func) -> Callable[..., Any | None]:
   return wrapper
 
 
-@runOnce
+@runOnlyOnce
 def enableRootACLiCOpenMp(verbose: bool = False) -> None:
   """Enables OpenMP support for ROOT macros compiled via ACLiC"""
   arch = ROOT.gSystem.GetBuildArch()
@@ -84,7 +84,7 @@ def enableRootACLiCOpenMp(verbose: bool = False) -> None:
     printRootACLiCSettings()
 
 
-@runOnce
+@runOnlyOnce
 def loadBasisFunctionsLibrary(
   enableOpenMp:       bool = True,
   forceRecompilation: bool = False,
@@ -97,7 +97,7 @@ def loadBasisFunctionsLibrary(
   assert ROOT.gROOT.LoadMacro(f"{cppSourceFilePath}+{'+' if forceRecompilation else ''}") == 0, f"Error loading '{cppSourceFilePath}'"
 
 
-@runOnce
+@runOnlyOnce
 def loadFSROOTLibraries() -> None:
   """Loads FSROOT libraries"""
   ROOT.gSystem.AddDynamicPath("$FSROOT/lib")
