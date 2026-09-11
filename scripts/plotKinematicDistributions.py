@@ -41,7 +41,9 @@ from workflow.PlottingUtilities import (
   HistogramDefinition,
   HistListType,
   HistRResultPtrType,
+  histRResultPtrTypes,
   HistType,
+  histTypes,
   setupPlotStyle,
 )
 from workflow import Utilities
@@ -329,8 +331,8 @@ def makePlots(
   with ROOT.TFile.Open(outRootFilePath, "RECREATE"):
     print(f"Writing histograms to '{outRootFilePath}'")
     for hist in hists:
-      if   (isinstance(hist, (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D))                                                                and hist            in histsOdd) \
-        or (isinstance(hist, (ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D])) and hist.GetValue() in histsOdd):
+      if   (isinstance(hist, histTypes)           and hist            in histsOdd) \
+        or (isinstance(hist, histRResultPtrTypes) and hist.GetValue() in histsOdd):
         ROOT.gStyle.SetPalette(ROOT.kLightTemperature)  # use pos/neg color palette and symmetric z axis
       makePlot(hist, outputDirPath)
       hist.Write()

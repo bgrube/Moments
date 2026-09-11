@@ -1336,7 +1336,9 @@ class HistogramDefinition:
 
 
 HistType:           TypeAlias = Union[ROOT.TH1D, ROOT.TH2D, ROOT.TH3D]
+histTypes                     = (ROOT.TH1D, ROOT.TH2D, ROOT.TH3D)
 HistRResultPtrType: TypeAlias = Union[ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D]]
+histRResultPtrTypes           = (ROOT.RDF.RResultPtr[ROOT.TH1D], ROOT.RDF.RResultPtr[ROOT.TH2D], ROOT.RDF.RResultPtr[ROOT.TH3D])
 HistListType:       TypeAlias = list[Union[HistType, HistRResultPtrType]]
 
 def bookHistogram(
