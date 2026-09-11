@@ -363,10 +363,8 @@ class AnalysisConfig:
     6,
     8,
   )
-  # normalizeMoments:    bool                              = True
   normalizeMoments:    bool                              = False
   nmbBootstrapSamples: int                               = 0
-  # nmbBootstrapSamples: int                               = 10000
   massBinning:         HistAxisBinning                   = field(default_factory = lambda:
     HistAxisBinning(  # same binning as used by CLAS
       nmbBins = 100,  # 10 MeV wide bins
@@ -402,22 +400,14 @@ class AnalysisConfig:
   convertedTreeName:   str                        = "PiPi"  # name of tree for data in converted format
   outFileDirBasePath:  str                        = "./plots/PiPiUnpolCLAS"  # base name of directory into which all output of moment calculation will be written
   limitNmbPsAccEvents: int                        = 0
-  # limitNmbPsAccEvents: int                        = 100000
 
   # plotting
-  # plotAngularDistributions: bool = True
   plotAngularDistributions: bool = False
-  # plotAccIntegralMatrices:  bool = True
   plotAccIntegralMatrices:  bool = False
-  # calcAccPsMoments:         bool = True
   calcAccPsMoments:         bool = False
-  # plotAccPsMoments:         bool = True
   plotAccPsMoments:         bool = False
-  # plotMomentsInBins:        bool = True
   plotMomentsInBins:        bool = False
-  # plotMeasuredMoments:      bool = True
   plotMeasuredMoments:      bool = False
-  # plotCovarianceMatrices:   bool = True
   plotCovarianceMatrices:   bool = False
 
   def inputDataDirBasePath(
@@ -504,7 +494,7 @@ class AnalysisConfig:
     dataPeriod:   str,
     tBinLabel:    str,
     beamPolLabel: str,
-  ) -> str:
+  ) -> str | None:
     """Generates path of data file in converted format based on data type, data period, t bin label, and beam polarization label"""
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
@@ -528,8 +518,10 @@ class AnalysisConfig:
     maxL:         int | tuple[int, int],
   ) -> DataConfig:
     """Returns a `DataConfig` object for data in converted format for a given data period, t bin label, and beam polarization label"""
+    dataFilePath = self.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel)
+    assert dataFilePath is not None
     return DataConfig(
-      dataFilePath       = self.convertedFilePath(AnalysisConfig.DataType.REAL_DATA,             dataPeriod, tBinLabel, beamPolLabel),
+      dataFilePath       = dataFilePath,
       psAccFilePath      = self.convertedFilePath(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  dataPeriod, tBinLabel, beamPolLabel),
       psGenFilePath      = self.convertedFilePath(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, dataPeriod, tBinLabel, beamPolLabel),
       polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  # if beam was polarized, converted data are expected to have `beamPol` column with polarization value
