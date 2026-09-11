@@ -47,72 +47,13 @@ from workflow.AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
-from workflow.PlottingUtilities import (
-  drawTF3,
-  HistAxisBinning,
-  setupPlotStyle,
-)
+from workflow.PlottingUtilities import setupPlotStyle
 from workflow import RootUtilities
 from workflow import Utilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
-
-
-#TODO is this still needed? if yes, use function in `plotIntensityFunctions.py` instead
-def plotIntensityFcn(
-  momentResults:     MomentResult,
-  massBinIndex:      int,
-  beamPolInfo:       BeamPolInfo | None,
-  outputDirPath:     str,
-  nmbBinsPerAxis:    int                             = 25,
-  useIntensityTerms: MomentResult.IntensityTermsType = MomentResult.IntensityTermsType.ALL,
-) -> None:
-  """Draws intensity function in given mass bin and writes PDF to output directory"""
-  print(f"Plotting intensity function for mass bin {massBinIndex}")
-  polarization = beamPolInfo.pol if beamPolInfo is not None else None
-  if True:
-    # draw intensity function as 3D plot
-    # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-    intensityFormula = momentResults.intensityFormula(
-      polarization      = polarization,
-      thetaFormula      = "std::acos(x)",
-      phiFormula        = "TMath::DegToRad() * y",
-      PhiFormula        = "TMath::DegToRad() * z",
-      useIntensityTerms = useIntensityTerms,
-    )
-    intensityFcn = ROOT.TF3(f"intensityFcn_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormula, -1, +1, -180, +180, -180, +180)
-    intensityFcn.SetMinimum(0)
-    drawTF3(
-      fcn         = intensityFcn,
-      binnings    = (
-        HistAxisBinning(nmbBinsPerAxis,   -1,   +1),
-        HistAxisBinning(nmbBinsPerAxis, -180, +180),
-        HistAxisBinning(nmbBinsPerAxis, -180, +180),
-      ),
-      outFilePath = f"{outputDirPath}/{intensityFcn.GetName()}.pdf",
-      histTitle   = "Intensity Function;cos#theta_{HF};#phi_{HF} [deg];#Phi [deg]",
-    )
-  if True:
-    # draw intensity as function of phi_HF and Phi for fixed cos(theta)_HF value
-    cosTheta = 0.0  # fixed value of cos(theta)_HF
-    # formula uses variables: x = phi in [-180, +180] deg; y = Phi in [-180, +180] deg
-    intensityFormulaFixedCosTheta = momentResults.intensityFormula(
-      polarization      = polarization,
-      thetaFormula      = f"std::acos({cosTheta})",
-      phiFormula        = "TMath::DegToRad() * x",
-      PhiFormula        = "TMath::DegToRad() * y",
-      useIntensityTerms = useIntensityTerms,
-    )
-    intensityFcnFixedCosTheta = ROOT.TF2(f"intensityFcn_fixedCosTheta_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFormulaFixedCosTheta, -180, +180, -180, +180)
-    intensityFcnFixedCosTheta.SetTitle(f"Intensity Function for cos#theta_{{HF}} = {cosTheta};#phi_{{HF}} [deg];#Phi [deg]")
-    intensityFcnFixedCosTheta.SetNpx(100)
-    intensityFcnFixedCosTheta.SetNpy(100)
-    intensityFcnFixedCosTheta.SetMinimum(0)
-    canv = ROOT.TCanvas()
-    intensityFcnFixedCosTheta.Draw("COLZ")
-    canv.SaveAs(f"{outputDirPath}/{intensityFcnFixedCosTheta.GetName()}.pdf")
 
 
 if __name__ == "__main__":
@@ -173,7 +114,7 @@ if __name__ == "__main__":
           # create directory, into which weighted data will be written
           weightedDataDirPath = f"{cfg.dataDirBasePath}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
           Utilities.makeDirPath(weightedDataDirPath)
-          logFilePath = f"{weightedDataDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{useIntensityTerms.value}.log"
+          logFilePath = f"{weightedDataDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{weightedDataFileBaseName}.log"
           print(f"Writing output to log file '{logFilePath}'")
           with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
@@ -216,14 +157,6 @@ if __name__ == "__main__":
                 beamPolInfo          = beamsPolInfo,
                 limitNmbEventsTo     = limitNmbEventsTo,
               )
-              if makeIntensityFcnPlots:
-                plotIntensityFcn(
-                  momentResults     = momentResultsForBin,
-                  massBinIndex      = massBinIndexForWeighting,
-                  beamPolInfo       = beamsPolInfo,
-                  outputDirPath     = weightedDataDirPath,
-                  useIntensityTerms = useIntensityTerms,
-                )
 
             # merge trees with weighted MC data for individual mass bins into single file
             mergedFilePath  = f"{weightedDataDirPath}/{weightedDataFileBaseName}.root"
