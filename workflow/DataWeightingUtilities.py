@@ -107,7 +107,7 @@ def reweightKinDistribution(
     targetDistr.SetBinContent(0, 0.0)  # underflow bin
     targetDistr.SetBinContent(targetDistr.GetNbinsX() + 1, 0.0)  # overflow bin
   elif isinstance(targetDistrFrom, MomentResultsKinematicBinning):
-    # construct target distribution from H_0(0, 0) values in kinematic bins
+    print(f"Constructing target distribution from from H_0(0, 0) values in kinematic bins {targetDistrFrom.binCenters}")
     targetDistr = ROOT.TH1D(f"{binning.var.name}DistrTarget", f"#it{{H}}_{{0}}(0, 0);{binning.axisTitle}", *binning.astuple)
     H000Index = QnMomentIndex(momentIndex = 0, L = 0, M =0)
     for momentResultsForBin in targetDistrFrom:
