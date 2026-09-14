@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+This module overlays the results of several moment analyses. The
+moment values are read from files produced by the function defined in
+`calculateMoments.py` that calculates the moments.
+
+Usage: Run this module as a script to generate the output files.
+"""
 
 
 from __future__ import annotations
@@ -18,6 +25,7 @@ from moments.MomentCalculator import (
   QnMomentIndex,
 )
 from workflow.AnalysisConfig import (
+  AnalysisConfig,
   CFG_KEVIN,
   CFG_POLARIZED_ETAPI0,
   CFG_POLARIZED_KSKL,
@@ -83,7 +91,7 @@ class ResultToOverlay:
     return self._momentResults
 
 
-def overlayMoments1D(
+def overlayMomentsKinVar(
   resultsToOverlay:  Sequence[ResultToOverlay],
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
@@ -137,22 +145,66 @@ def overlayMoments1D(
     canv.SaveAs(f"{histStack.GetName()}.pdf")
 
 
+def overlayMoments(
+  cfg:               AnalysisConfig,
+  resultsToOverlay:  Sequence[ResultToOverlay],  # list of results to overlay
+  outputDirPath:     str,  # path to the directory where output files will be saved
+  normToFirstResult: bool = False,  # whether to normalize all moments to the first result
+) -> None:
+  """Overlays the results of several moment analyses. The moment
+  values are read from files produced by the function defined in
+  `calculateMoments.py` that calculates the moments."""
+
+  # load moment results
+  for resultToOverlay in resultsToOverlay:
+    resultToOverlay.loadMomentResults()
+
+  # ensure that all moment results have identical kinematic binning and identical order of kinematic bins
+  momentResults: tuple[MomentResultsKinematicBinning, ...]         = tuple(resultToOverlay.momentResults for resultToOverlay in resultsToOverlay)
+  binCenters:    tuple[dict[KinematicBinningVariable, float], ...] = momentResults[0].binCenters  # bin centers of first moment result
+  for momentResult in momentResults[1:]:
+    assert momentResult.binCenters == binCenters
+
+  if normToFirstResult:
+    # set scale factors such that all moments are normalized to H_0(0, 0) of the first moment result
+    firstMomentResults = resultsToOverlay[0].momentResults
+    for resultToOverlay in resultsToOverlay:
+      scaleFactor = resultToOverlay.momentResults.normalizeTo(
+        firstMomentResults,
+        normBinIndex = None,  # normalize to integral over mass bins
+      )
+      print(f"Applying scale factor {scaleFactor} to moment result '{resultToOverlay.label}'")
+
+  # plot kinematic dependences of all moments
+  for qnIndex in resultsToOverlay[-1].momentResults[0].indices.qnIndices:
+    overlayMomentsKinVar(
+      resultsToOverlay  = resultsToOverlay,
+      qnIndex           = qnIndex,
+      binning           = cfg.massBinning,
+      normalizedMoments = cfg.normalizeMoments,
+      pdfFileNamePrefix = f"{outputDirPath}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
+      # styleIndexOffset  = 1,
+      # styleIndexStride  = 2,
+      # yAxisUnit         = " [#mub/GeV^{3}]",
+    )
+
+
 if __name__ == "__main__":
-  Utilities.printGitInfo()
   timer = Utilities.Timer()
+  timer.start("Total execution time")
+  Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
   setupPlotStyle()
-  timer.start("Total execution time")
 
   # define what to overlay
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg.polarization = None  # treat data as unpolarized
 
   normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first moment result
@@ -185,45 +237,33 @@ if __name__ == "__main__":
         # #
         # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/Unpol.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "LOWT",   None),
         # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/XSCUTS/Unpol.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl",      "XSCUTS", None),
-        # K_S K_L
+        # # K_S K_L
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 8)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 8"),
+        # pi+ pi-
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "BG subtraction"),
+        # ResultToOverlay(f"./plots/PiPiPol.bg/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "Moment subtraction"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4, Nominal"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6, Nominal"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys_shifted.pkl", "L_{max} = 4, Shifted"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys_shifted.pkl", "L_{max} = 6, Shifted"),
+        ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl",                             "Truth L_{max} = 6"),
         ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4"),
         ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
-        ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 8)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 8"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 8)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 8"),
+        # ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/unnorm_moments_phys_shifted.pkl",                             "Real data L_{max} = 4"),
+        ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/unnorm_moments_phys.pkl",                                     "Real data L_{max} = 4"),
       )
       outputDirPath = Utilities.makeDirPath(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}.overlay")
 
-      # load moment results
-      for resultToOverlay in resultsToOverlay:
-        resultToOverlay.loadMomentResults()
+      overlayMoments(
+        cfg               = cfg,
+        resultsToOverlay  = resultsToOverlay,
+        outputDirPath     = outputDirPath,
+        normToFirstResult = normToFirstResult,
+      )
 
-      # ensure that all moment results have identical kinematic binning and identical order of kinematic bins
-      momentResults: tuple[MomentResultsKinematicBinning, ...]         = tuple(resultToOverlay.momentResults for resultToOverlay in resultsToOverlay)
-      binCenters:    tuple[dict[KinematicBinningVariable, float], ...] = momentResults[0].binCenters  # bin centers of first moment result
-      for momentResult in momentResults[1:]:
-        assert momentResult.binCenters == binCenters
-
-      if normToFirstResult:
-        # set scale factors such that all moments are normalized to H_0(0, 0) of the first moment result
-        firstMomentResults = resultsToOverlay[0].momentResults
-        for resultToOverlay in resultsToOverlay:
-          scaleFactor = resultToOverlay.momentResults.normalizeTo(
-            firstMomentResults,
-            normBinIndex = None,  # normalize to integral over mass bins
-          )
-          print(f"Applying scale factor {scaleFactor} to moment result '{resultToOverlay.label}'")
-
-      # plot kinematic dependences of all moments
-      for qnIndex in resultsToOverlay[-1].momentResults[0].indices.qnIndices:
-        overlayMoments1D(
-          resultsToOverlay  = resultsToOverlay,
-          qnIndex           = qnIndex,
-          binning           = cfg.massBinning,
-          normalizedMoments = cfg.normalizeMoments,
-          pdfFileNamePrefix = f"{outputDirPath}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
-          # styleIndexOffset  = 1,
-          # styleIndexStride  = 2,
-          # yAxisUnit         = " [#mub/GeV^{3}]",
-        )
 
   timer.stop("Total execution time")
   print(timer.summary)
