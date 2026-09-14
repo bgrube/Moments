@@ -16,6 +16,10 @@ ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
 from scripts.calculateMoments import calculateMoments
 from scripts.convertInputData import convertInputData
+from scripts.overlayMoments import (
+  overlayMoments,
+  ResultToOverlay,
+)
 from scripts.plotKinematicDistributions import plotKinematicDistributions
 from scripts.plotMoments import plotMoments
 from workflow.AnalysisConfig import (
@@ -86,7 +90,7 @@ if __name__ == "__main__":
   if True:
   # if False:
     print("\n=== Step 1A: plot kinematic distributions =====================================")
-    ROOT.EnableImplicitMT()
+    # ROOT.EnableImplicitMT()  #TODO multi-threading leads to non-reproducible results when calculating moments in step 2
     additionalFilterDefs = {  # kinematic range used in SDME analysis; for 2017_01_ver05 data
       AnalysisConfig.DataType.REAL_DATA             : ["(0.60 < massPiPi and massPiPi < 0.88)"],
       AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : ["(0.60 < massPiPi and massPiPi < 0.88)"],
@@ -132,6 +136,27 @@ if __name__ == "__main__":
       # outFileType                 = "root",
       yAxisUnit                   = "",
     )
+
+  if True:
+  # if False:
+    print("\n=== Step 4: overlay moments ======================================================")
+    normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first moment result
+    # normToFirstResult = False
+    for dataPeriod in cfg.dataPeriods:
+      for tBinLabel in cfg.tBinLabels:
+        resultsToOverlay: tuple[ResultToOverlay, ...] = (  # last moment result in this tuple defines, which moments are plotted
+          ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl",                             "Truth L_{max} = 6"),
+          ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4"),
+          ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
+          ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/unnorm_moments_phys.pkl",                                     "Real data L_{max} = 4"),
+        )
+        outputDirPath = Utilities.makeDirPath(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}.overlay")
+        overlayMoments(
+          cfg               = cfg,
+          resultsToOverlay  = resultsToOverlay,
+          outputDirPath     = outputDirPath,
+          normToFirstResult = normToFirstResult,
+        )
 
   timer.stop("Total time for analysis")
   print(timer.summary)

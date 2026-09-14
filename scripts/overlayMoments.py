@@ -264,6 +264,5 @@ if __name__ == "__main__":
         normToFirstResult = normToFirstResult,
       )
 
-
   timer.stop("Total execution time")
   print(timer.summary)
