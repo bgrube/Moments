@@ -10,7 +10,6 @@ and to generate the output files.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from copy import deepcopy
 import functools
 import os
 
@@ -18,6 +17,7 @@ from wurlitzer import pipes, STDOUT
 
 from moments.MomentCalculator import MomentResultsKinematicBinning
 from workflow.AnalysisConfig import (
+  AnalysisConfig,
   CFG_POLARIZED_ETAPPI0,
   CFG_POLARIZED_PIPI,
   CFG_UNPOLARIZED_ETAPETA,
@@ -45,21 +45,12 @@ def combineMomentResultsKinematicBinning(results: Sequence[MomentResultsKinemati
   return MomentResultsKinematicBinning(combinedMomentResults)
 
 
-if __name__ == "__main__":
-  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta pi0 data
-
-  beamPolsToCombine = {
-    # "0_90"      : ("PARA_0",   "PERP_90"),
-    # "-45_45"    : ("PARA_135", "PERP_45"),
-    # "0_-45"     : ("PARA_0",   "PARA_135"),
-    # "45_90"     : ("PERP_45",  "PERP_90"),
-    "allOrient" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
-  }
-  momentsFileName = "_moments_phys.pkl"
-
+def combineMoments(
+  cfg:               AnalysisConfig,
+  momentsFileName:   str,                       # base name of file containing the moment results
+  beamPolsToCombine: dict[str, Sequence[str]],  # dictionary mapping labels to sequences of beam polarization labels to combine
+) -> None:
+  """Combines moment values from independent data samples"""
   outFileDirBasePathCommon = cfg.outFileDirBasePath
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
@@ -76,7 +67,7 @@ if __name__ == "__main__":
               beamPolLabel = beamPolLabel,
               maxL         = maxL,
             )
-            momentResultsFilePaths.append(f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}")
+            momentResultsFilePaths.append(f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{momentsFileName}")
           # combining moment results
           dataCfg = cfg.getConfigConvertedData(
             dataPeriod   = dataPeriod,
@@ -98,9 +89,26 @@ if __name__ == "__main__":
             print(f"Combining moments from {momentResultsFilePaths}")
             momentResultsToCombine = tuple(MomentResultsKinematicBinning.loadPickle(momentResultsFilePath) for momentResultsFilePath in momentResultsFilePaths)
             momentResultsCombined = combineMomentResultsKinematicBinning(momentResultsToCombine)
-            momentResultsCombinedFilePath = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}{momentsFileName}"
+            momentResultsCombinedFilePath = f"{dataCfg.outFileDirPath}/{cfg.outFileNamePrefix}_{momentsFileName}"
             print(f"Writing combined moments to file '{momentResultsCombinedFilePath}'")
             momentResultsCombined.savePickle(momentResultsCombinedFilePath)
 
             timer.stop("Total execution time")
             print(timer.summary)
+
+
+if __name__ == "__main__":
+  combineMoments(
+    # cfg = CFG_UNPOLARIZED_ETAPETA,  # perform analysis of Will's unpolarized eta' eta data
+    cfg = CFG_POLARIZED_ETAPPI0,  # perform analysis of Zach's polarized eta pi0 data
+    # cfg = CFG_POLARIZED_PIPI,  # perform analysis of polarized pi+ pi- data
+    # cfg = CFG_UNPOLARIZED_PIPI_PWA,  # perform analysis of unpolarized pi+ pi- data
+    momentsFileName   = "moments_phys.pkl",
+    beamPolsToCombine = {
+      # "0_90"      : ("PARA_0",   "PERP_90"),
+      # "-45_45"    : ("PARA_135", "PERP_45"),
+      # "0_-45"     : ("PARA_0",   "PARA_135"),
+      # "45_90"     : ("PERP_45",  "PERP_90"),
+      "allOrient" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
+    },
+  )
