@@ -66,6 +66,7 @@ from workflow.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
+from workflow.RootUtilities import runOnlyOnce
 from workflow import Utilities
 
 
@@ -663,49 +664,29 @@ def makeAllPlots(
             )
 
 
-if __name__ == "__main__":
-  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
-  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
-  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  # compareTo = ComparisonMomentsType.CLAS
-  # compareTo = ComparisonMomentsType.JPAC
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
-  # compareTo = ComparisonMomentsType.PWA
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
-  # compareTo = ComparisonMomentsType.JPAC
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  compareTo = None
-  # compareTo = ComparisonMomentsType.PWA
-  # compareTo = ("./plots/PiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "True Values")
-  # compareTo = ("./plots/PiPiPol.SDME.rho/2017_01/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "ver04")
-  # compareTo = ("./plots/PiPiPol.SDME.rho.phiNeg/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
-  # compareTo = ("./plots/PiPiPol.SDME.rho.phiPos/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
-  # compareTo = ("./plots/PiPiPol.SDME.rho/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
-  # compareTo = ("./plots/PiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "w/o Cut")
-  # compareTo = ("./plots/PiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
-  plotCompareUncert = True
-  # plotCompareUncert = False
-  #
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
+@runOnlyOnce
+def init() -> None:
+  """Initializes ROOT environment"""
+  ROOT.gROOT.SetBatch(True)
+  setupPlotStyle()
 
-  scaleFactorPhysicalMoments = 1.0  # no scaling
-  # scaleFactorPhysicalMoments = 0.5  # account for phi <> 0 cut
-  yAxisUnit = ""
-  # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
-  # yAxisUnit = " [#mub/GeV^{3}]"
-  # scaleFactorPhysicalMoments = 1.0 / (0.250 * 0.1305 * 1e3)  # [nb / GeV]; from 1 / ([250 MeV mass bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
-  # yAxisUnit = " [nb/GeV]"
-  # normalizeComparisonMoments = True  # whether to scale comparison moments to estimated moments
-  normalizeComparisonMoments = False
-  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
-  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
-  # cfg.polarization = None  # treat data as unpolarized
-  # cfg.plotMomentsInBins = True
-  # cfg.plotAccIntegralMatrices = True
-  # cfg.plotMeasuredMoments = True
+
+def plotMoments(
+  cfg:                         AnalysisConfig,
+  scaleFactorPhysicalMoments:  float = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
+  compareTo:                   ComparisonMomentsType | tuple[str, str] | None = None,
+  # if `ComparisonMomentsType`, comparison moments are read from predefined sources
+  # if `tuple[str, str]`, moment file is loaded from path given by first element, legend label is given by second element
+  # if `None`, no comparison moments are plotted
+  normalizeComparisonMoments:  bool  = False,  # whether to scale comparison moments
+  plotComparisonMomentsUncert: bool  = False,  # whether to plot uncertainties of comparison moments
+  outFileType:                 str   = "pdf",  # "pdf" or "root"
+  yAxisUnit:                   str   = "",     # optional unit for moment values
+) -> None:
+  """Plots the results of the moment analysis. The moment values are
+  read from files produced by the function defined in
+  `calculateMoments.py` that calculates the moments."""
+  init()
 
   print(f"Calculating moments for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
@@ -725,8 +706,6 @@ if __name__ == "__main__":
           with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
             Utilities.printGitInfo()
             timer = Utilities.Timer()
-            ROOT.gROOT.SetBatch(True)
-            setupPlotStyle()
             print(f"Using analysis configuration:\n{cfg}")
             print(f"Using dataset configuration:\n{dataCfg}")
             timer.start("Total execution time")
@@ -737,10 +716,65 @@ if __name__ == "__main__":
               scaleFactorPhysicalMoments  = scaleFactorPhysicalMoments,
               compareTo                   = compareTo,
               normalizeComparisonMoments  = normalizeComparisonMoments,
-              plotComparisonMomentsUncert = plotCompareUncert,
-              outFileType                 = "pdf",
-              # outFileType                 = "root",
+              plotComparisonMomentsUncert = plotComparisonMomentsUncert,
+              outFileType                 = outFileType,
               yAxisUnit                   = yAxisUnit,
             )
             timer.stop("Total execution time")
             print(timer.summary)
+
+
+if __name__ == "__main__":
+  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPPI0)  # perform analysis of Zach's polarized eta' pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  # compareTo = ComparisonMomentsType.CLAS
+  # compareTo = ComparisonMomentsType.JPAC
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
+  # compareTo = ComparisonMomentsType.PWA
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # compareTo = ComparisonMomentsType.JPAC
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # compareTo = None
+  # compareTo = ComparisonMomentsType.PWA
+  # compareTo = ("./plots/PiPiPol.SDME.rho/2017_01/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plots/PiPiPol.SDME.rho.phiNeg/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plots/PiPiPol.SDME.rho.phiPos/2017_01/tbin_0.1_0.2/PARA_0.maxL_8/unnorm_moments_phys.pkl", "ver04")
+  # compareTo = ("./plots/PiPiPol.SDME.rho/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_8/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plots/PiPiPol.rho/2018_08/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl", "w/o Cut")
+  # compareTo = ("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl", "Shifted")
+  # plotCompareUncert = True
+  compareTo = ("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl", "True Values")
+  plotCompareUncert = False
+  #
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPP)  # perform analysis of unpolarized pi+ p data
+
+  scaleFactorPhysicalMoments = 1.0  # no scaling
+  # scaleFactorPhysicalMoments = 0.5  # account for phi <> 0 cut
+  yAxisUnit = ""
+  # scaleFactorPhysicalMoments = 1.0 / (0.01 * 0.1 * 0.1305 * 1e6)  # [ub / GeV^3]; from 1 / ([10 MeV mass bin width] * [0.1 GeV^2 t bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
+  # yAxisUnit = " [#mub/GeV^{3}]"
+  # scaleFactorPhysicalMoments = 1.0 / (0.250 * 0.1305 * 1e3)  # [nb / GeV]; from 1 / ([250 MeV mass bin width] * L) with L(Fall 2018) = 0.1305 pb^{-1}
+  # yAxisUnit = " [nb/GeV]"
+  normalizeComparisonMoments = True  # whether to scale comparison moments to estimated moments
+  # normalizeComparisonMoments = False
+  # cfg.nmbBootstrapSamples = 10000  # number of bootstrap samples used for uncertainty estimation
+  # cfg.massBinning         = HistAxisBinning(nmbBins = 10, minVal = 0.75, maxVal = 0.85)  # fit only rho region
+  # cfg.polarization = None  # treat data as unpolarized
+  cfg.plotMomentsInBins = True
+  # cfg.plotAccIntegralMatrices = True
+  # cfg.plotMeasuredMoments = True
+
+  plotMoments(
+    cfg                         = cfg,
+    scaleFactorPhysicalMoments  = scaleFactorPhysicalMoments,
+    compareTo                   = compareTo,
+    normalizeComparisonMoments  = normalizeComparisonMoments,
+    plotComparisonMomentsUncert = plotCompareUncert,
+    outFileType                 = "pdf",
+    # outFileType                 = "root",
+    yAxisUnit                   = yAxisUnit,
+  )
