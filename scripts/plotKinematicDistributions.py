@@ -45,7 +45,6 @@ from workflow.PlottingUtilities import (
   histTypes,
   setupPlotStyle,
 )
-from workflow.RootUtilities import runOnlyOnce
 from workflow import Utilities
 
 
@@ -395,34 +394,16 @@ def makeAnglesHFCorrelationPlot(
     histCorr.Write()
 
 
-@runOnlyOnce
-def init() -> None:
-  """Loads libraries and initializes ROOT environment"""
-  Utilities.printGitInfo()
-  ROOT.gROOT.SetBatch(True)
-  ROOT.EnableImplicitMT()
-  setupPlotStyle()
-
-  # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
-  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
-  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
-
-
 def plotKinematicDistributions(
   cfg:                  AnalysisConfig,
   #TODO move these two also into AnalysisConfig
-  additionalColumnDefs: dict[AnalysisConfig.DataType, dict[str, str]],
-  additionalFilterDefs: dict[AnalysisConfig.DataType, list[str]],
-  subsystemMassBinning: HistAxisBinning | None = None,
+  additionalColumnDefs: dict[AnalysisConfig.DataType, dict[str, str]],  # additional columns to define for each data type
+  additionalFilterDefs: dict[AnalysisConfig.DataType, list[str]],  # additional filters to be applied to each data type
+  subsystemMassBinning: HistAxisBinning | None = None,  # bins in subsystem mass to generate plots for
 ) -> None:
   """Plots kinematic distributions of input data"""
   timer = Utilities.Timer()
   timer.start("Total execution time")
-  init()
-
   print(f"Using analysis configuration:\n{cfg}")
   print(f"Generating plots for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
@@ -496,6 +477,18 @@ def plotKinematicDistributions(
 
 
 if __name__ == "__main__":
+  Utilities.printGitInfo()
+  ROOT.gROOT.SetBatch(True)
+  ROOT.EnableImplicitMT()
+  setupPlotStyle()
+
+  # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
+
   additionalColumnDefs = {  # additional columns for each data type
     AnalysisConfig.DataType.REAL_DATA             : {},
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},

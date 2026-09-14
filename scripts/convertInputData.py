@@ -38,10 +38,7 @@ from workflow.PlottingUtilities import (
   HistAxisBinning,
   setupPlotStyle,
 )
-from workflow.RootUtilities import (
-  loadBasisFunctionsLibrary,
-  runOnlyOnce,
-)
+from workflow.RootUtilities import loadBasisFunctionsLibrary
 from workflow import Utilities
 
 
@@ -49,46 +46,27 @@ from workflow import Utilities
 print = functools.partial(print, flush = True)
 
 
-@runOnlyOnce
-def init() -> None:
-  """Loads libraries and initializes ROOT environment"""
-  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
-  Utilities.printGitInfo()
-  ROOT.gROOT.SetBatch(True)
-  # ROOT.EnableImplicitMT()
-  setupPlotStyle()
-
-  # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
-  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
-  ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
-
-
 def convertInputData(
   cfg:                               AnalysisConfig,
   #TODO move these two also into AnalysisConfig
-  additionalColumnDefs:              dict[AnalysisConfig.DataType, dict[str, str]],
-  additionalFilterDefs:              dict[AnalysisConfig.DataType, list[str]],
-  outputColumnsUnpolarized:          tuple[str, ...] = (
+  additionalColumnDefs:              dict[AnalysisConfig.DataType, dict[str, str]],  # additional columns to define for each data type
+  additionalFilterDefs:              dict[AnalysisConfig.DataType, list[str]],  # additional filters to be applied to each data type
+  outputColumnsUnpolarized:          tuple[str, ...] = (  # columns to be included in the output for unpolarized data
     "theta",
     "phi",
     "mass",
     "minusT",
   ),
-  outputColumnsPolarized:            tuple[str, ...] = (
+  outputColumnsPolarized:            tuple[str, ...] = (  # additional columns to be included in the output for polarized data
     "beamPol",
     "beamPolPhiLabDeg",
     "Phi",
   ),
-  reweightAccPSMCMinusTDistribution: bool = False,
+  reweightAccPSMCMinusTDistribution: bool = False,  # whether to reweight the accepted phase-space Monte Carlo minus-t distribution
 ) -> None:
   """Converts input data into the format expected by `MomentCalculator`"""
   timer = Utilities.Timer()
   timer.start("Total execution time")
-  init()
-
   print(f"Using analysis configuration:\n{cfg}")
   print(f"Setting up subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
@@ -150,6 +128,19 @@ def convertInputData(
 
 
 if __name__ == "__main__":
+  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
+  Utilities.printGitInfo()
+  ROOT.gROOT.SetBatch(True)
+  # ROOT.EnableImplicitMT()
+  setupPlotStyle()
+
+  # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
+  ROOT.gInterpreter.Declare(CPP_CODE_TRACKDISTFDC)
+
   additionalColumnDefs: dict[AnalysisConfig.DataType, dict[str, str]] = {  # additional columns for each data type
     AnalysisConfig.DataType.REAL_DATA             : {},
     AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE  : {},

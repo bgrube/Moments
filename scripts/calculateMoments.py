@@ -42,10 +42,7 @@ from workflow.AnalysisConfig import (
   DataConfig,
 )
 from workflow.PlottingUtilities import HistAxisBinning
-from workflow.RootUtilities import (
-  loadBasisFunctionsLibrary,
-  runOnlyOnce,
-)
+from workflow.RootUtilities import loadBasisFunctionsLibrary
 from workflow import Utilities
 
 
@@ -257,14 +254,6 @@ CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
 """
 
 
-@runOnlyOnce
-def init() -> None:
-  """Loads libraries and initializes ROOT environment"""
-  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
-  ROOT.gROOT.SetBatch(True)
-  ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
-
-
 def calculateMoments(
   cfg:                            AnalysisConfig,
   additionalColumnDefs:           dict[str, str],  # additional columns to define
@@ -273,8 +262,6 @@ def calculateMoments(
 ) -> None:
   """Performs moment analysis and writes the calculated moments to
   files to be read by the plotting function defined in `plotMoments.py`"""
-  init()
-
   print(f"Calculating moments for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
@@ -314,6 +301,10 @@ def calculateMoments(
 
 
 if __name__ == "__main__":
+  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
+  ROOT.gROOT.SetBatch(True)
+  ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
+
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data

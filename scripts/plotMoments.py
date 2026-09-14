@@ -66,7 +66,6 @@ from workflow.PlottingUtilities import (
   plotMomentsInBin,
   setupPlotStyle,
 )
-from workflow.RootUtilities import runOnlyOnce
 from workflow import Utilities
 
 
@@ -664,13 +663,6 @@ def makeAllPlots(
             )
 
 
-@runOnlyOnce
-def init() -> None:
-  """Initializes ROOT environment"""
-  ROOT.gROOT.SetBatch(True)
-  setupPlotStyle()
-
-
 def plotMoments(
   cfg:                         AnalysisConfig,
   scaleFactorPhysicalMoments:  float = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
@@ -686,8 +678,6 @@ def plotMoments(
   """Plots the results of the moment analysis. The moment values are
   read from files produced by the function defined in
   `calculateMoments.py` that calculates the moments."""
-  init()
-
   print(f"Calculating moments for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
@@ -725,6 +715,9 @@ def plotMoments(
 
 
 if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)
+  setupPlotStyle()
+
   # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
   # cfg = deepcopy(CFG_UNPOLARIZED_ETAPETA)  # perform analysis of Will's unpolarized eta' eta data
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
