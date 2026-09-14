@@ -32,13 +32,13 @@ from workflow.PlottingUtilities import (
   MomentValueAndTruth,
   plotAngularDistr,
   plotComplexMatrix,
-  plotMoments,
+  plotMoments1D,
   plotMomentsBootstrapDiff1D,
   plotMomentsBootstrapDiffInBin,
   plotMomentsBootstrapDistributions1D,
   plotMomentsBootstrapDistributions2D,
   plotMomentsCovMatrices,
-  plotMoments1D,
+  plotMomentsKinVar,
   plotMomentsInBin,
   plotPullsForMoment,
   plotPullParameters,
@@ -229,7 +229,7 @@ if __name__ == "__main__":
         # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
-          plotMoments(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
+          plotMoments1D(HVals, massBinning, normalizeMoments, momentLabel = qnIndex.label,
                       outFileNamePrefix = f"{outFileDirPath}/{namePrefix}_{massBinning.var.name}_accPs_", histTitle = qnIndex.title, plotLegend = False)
 
     # calculate and plot moments of signal data
@@ -258,7 +258,7 @@ if __name__ == "__main__":
       # plot kinematic dependences of all moments
       pullParameters: dict[QnMomentIndex, dict[bool, tuple[tuple[float, float], tuple[float, float]]]] = {} # {index : {isReal : ((mean val, mean err), (sigma val, sigma err))}}
       for qnIndex in momentIndices.qnIndices:
-        plotMoments1D(
+        plotMomentsKinVar(
           momentResults     = moments.momentResultsPhys,
           qnIndex           = qnIndex,
           binning           = massBinning,
@@ -295,7 +295,7 @@ if __name__ == "__main__":
               f" vs. Truth = {HTruth.val.real} +- {HTruth.uncertRe}"
               f" vs. # gen = {nmbSignalGenEvents[binIndex]}")
         momentsTruth[binIndex].HPhys._valsFlatIndex[0] = complex(nmbSignalGenEvents[binIndex])
-      plotMoments1D(
+      plotMomentsKinVar(
         momentResults     = moments.momentResultsPhys,
         qnIndex           = H000Index,
         binning           = massBinning,

@@ -39,7 +39,7 @@ from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   plotComplexMatrix,
-  plotMoments1D,
+  plotMomentsKinVar,
   plotMomentsInBin,
   setupPlotStyle,
 )
@@ -559,7 +559,7 @@ if __name__ == "__main__":
       if False:
         # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
         for qnIndex in momentIndices.qnIndices:
-          plotMoments1D(
+          plotMomentsKinVar(
             momentResults     = momentResultsPhys,
             qnIndex           = qnIndex,
             binning           = massBinning,

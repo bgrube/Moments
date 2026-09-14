@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-This module plots the results of the moment analysis of unpolarized
-and polarized pi+ pi- photoproduction data. The moment values are read
-from files produced by the script `calculateMoments.py` that
-calculates the moments.
+This module plots the results of the moment analysis. The moment
+values are read from files produced by the function defined in
+`calculateMoments.py` that calculates the moments.
 
 Usage: Run this module as a script to generate the output files.
 """
@@ -58,8 +57,8 @@ from workflow.PlottingUtilities import (
   MomentValueAndTruth,
   plotAngularDistr,
   plotComplexMatrix,
-  plotMoments,
   plotMoments1D,
+  plotMomentsKinVar,
   plotMomentsBootstrapDiffInBin,
   plotMomentsBootstrapDistributions1D,
   plotMomentsBootstrapDistributions2D,
@@ -414,7 +413,7 @@ def makeAllPlots(
             histTitle = "",
           )
           histPwaTotalIntensity.SetLineColor(ROOT.kGreen + 2)
-        chi2ValuesForMoments[qnIndex] = plotMoments1D(
+        chi2ValuesForMoments[qnIndex] = plotMomentsKinVar(
           momentResults     = momentResultsPhys,
           qnIndex           = qnIndex,
           binning           = cfg.massBinning,
@@ -445,7 +444,7 @@ def makeAllPlots(
           # },
         )
         if cfg.plotMeasuredMoments and momentResultsMeas is not None:
-          plotMoments1D(
+          plotMomentsKinVar(
             momentResults     = momentResultsMeas,
             qnIndex           = qnIndex,
             binning           = cfg.massBinning,
@@ -526,7 +525,7 @@ def makeAllPlots(
         ).GetValue()
         for binIndex, H000Meas in enumerate(H000s[0]):
           H000Meas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
-        plotMoments(
+        plotMoments1D(
           HVals             = H000s[0],
           binning           = cfg.massBinning,
           normalizedMoments = cfg.normalizeMoments,
@@ -619,7 +618,7 @@ def makeAllPlots(
         # plot mass dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentResultInBin[qnIndex]) for momentResultInBin in momentResultsAccPsMeas)
-          plotMoments(
+          plotMoments1D(
             HVals             = HVals,
             binning           = cfg.massBinning,
             normalizedMoments = cfg.normalizeMoments,

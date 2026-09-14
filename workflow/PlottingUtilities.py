@@ -456,7 +456,7 @@ def drawHorizontalZeroLine(
     # zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
 
 
-def plotMoments(
+def plotMoments1D(
   HVals:             Sequence[MomentValueAndTruth],  # moment values extracted from data with (optional) true values
   binning:           HistAxisBinning | None                                    = None,  # if not None data are plotted as function of binning variable
   normalizedMoments: bool                                                      = True,  # indicates whether moment values were normalized to H_0(0, 0)
@@ -644,7 +644,7 @@ def plotMomentsInBin(
   forceYaxisRange:   tuple[float | None, float | None] = (None, None),    # allows to set minimum and/or maximum for y axis
   yAxisUnit:         str                               = "",    # optional unit for moment values
 ) -> list[dict[str, tuple[float, float] | tuple[None, None]]]:  # list index: moment index; dict key: "Re"/"Im" for real and imaginary parts of moments; dict values: chi2 value w.r.t. to given true values and corresponding n.d.f.
-  """Plots H_i extracted from data for each i separately; the H_i with the same i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
+  """Plots H_i extracted from data for each i separately; for each i, the H_i are plotted as a categorical axis and overlaid with the corresponding true values if given"""
   if not HData:
     print(f"Warning: moment data are not valid. Cannot plot data:\n{HData}")
     return [{}] * HData.indices.momentIndexRange  # return empty list of chi2 values
@@ -659,7 +659,7 @@ def plotMomentsInBin(
         truthUncertIm = HTruth[qnIndex].uncertIm if HTruth else None,
       ) for qnIndex in HData.indices.qnIndices if qnIndex.momentIndex == momentIndex
     )
-    chi2Values[momentIndex] = plotMoments(
+    chi2Values[momentIndex] = plotMoments1D(
       HVals             = HVals,
       binning           = None,
       normalizedMoments = normalizedMoments,
@@ -676,7 +676,7 @@ def plotMomentsInBin(
   return chi2Values
 
 
-def plotMoments1D(
+def plotMomentsKinVar(
   momentResults:     MomentResultsKinematicBinning,  # moments extracted from data
   qnIndex:           QnMomentIndex,    # defines specific moment
   binning:           HistAxisBinning,  # binning to use for plot
@@ -705,7 +705,7 @@ def plotMoments1D(
         truthUncertIm = None if momentResultsTrue is None else momentResultsTrue[binIndex][qnIndex].uncertIm if qnIndex in momentResultsTrue[binIndex] else 0,
       )
     )
-  return plotMoments(
+  return plotMoments1D(
     HVals             = HVals,
     binning           = binning,
     normalizedMoments = normalizedMoments,

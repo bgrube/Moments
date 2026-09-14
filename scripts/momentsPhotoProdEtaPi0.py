@@ -33,8 +33,8 @@ from workflow.PlottingUtilities import (
   MomentValueAndTruth,
   plotAngularDistr,
   plotComplexMatrix,
-  plotMoments,
   plotMoments1D,
+  plotMomentsKinVar,
   plotMomentsBootstrapDiffInBin,
   plotMomentsBootstrapDistributions1D,
   plotMomentsBootstrapDistributions2D,
@@ -318,7 +318,7 @@ if __name__ == "__main__":
         # plot kinematic dependences of all phase-space moments
         for qnIndex in momentIndices.qnIndices:
           HVals = tuple(MomentValueAndTruth(*momentsInBin.HMeas[qnIndex]) for momentsInBin in moments)
-          plotMoments(
+          plotMoments1D(
             HVals             = HVals,
             binning           = massBinning,
             normalizedMoments = normalizeMoments,
@@ -411,7 +411,7 @@ if __name__ == "__main__":
 
       # plot kinematic dependences of all moments
       for qnIndex in momentResultsPhys[0].indices.qnIndices:
-        plotMoments1D(
+        plotMomentsKinVar(
           momentResults     = momentResultsPhys,
           qnIndex           = qnIndex,
           binning           = massBinning,
@@ -421,7 +421,7 @@ if __name__ == "__main__":
           histTitle         = qnIndex.title,
           legendLabels      = ("Moment", "PWA Result"),
         )
-        plotMoments1D(
+        plotMomentsKinVar(
           momentResults     = momentResultsMeas,
           qnIndex           = qnIndex,
           binning           = massBinning,
@@ -468,7 +468,7 @@ if __name__ == "__main__":
                         ).GetValue()
       for binIndex, HMeas in enumerate(H000s[0]):
         HMeas.truth = histIntMeas.GetBinContent(binIndex + 1)  # set truth values to measured intensity
-      plotMoments(
+      plotMoments1D(
         HVals             = H000s[0],
         binning           = massBinning,
         normalizedMoments = normalizeMoments,
@@ -547,7 +547,7 @@ if __name__ == "__main__":
         HVal.truth    = H000True.val
         # print(f"!!! {HVal=}")
         HVals.append(HVal)
-      plotMoments(
+      plotMoments1D(
         HVals             = HVals,
         binning           = massBinning,
         normalizedMoments = normalizeMoments,

@@ -267,9 +267,9 @@ def init() -> None:
 
 def calculateMoments(
   cfg:                            AnalysisConfig,
-  additionalColumnDefs:           dict[str, str],
-  additionalCuts:                 Iterable[str],
-  forceIntegralMatrixCalculation: bool = True,
+  additionalColumnDefs:           dict[str, str],  # additional columns to define
+  additionalCuts:                 Iterable[str],   # optional additional cuts to be applied to real and accepted phase-space data
+  forceIntegralMatrixCalculation: bool = True,     # if `True` integral matrices are recalculated even if pickled versions exist
 ) -> None:
   """Performs moment analysis and writes the calculated moments to
   files to be read by the plotting function defined in `plotMoments.py`"""
