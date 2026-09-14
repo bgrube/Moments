@@ -43,8 +43,8 @@ if __name__ == "__main__":
   timer = Utilities.Timer()
   timer.start("Total time for analysis")
   Utilities.printGitInfo()
-  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   ROOT.gROOT.SetBatch(True)
+  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   setupPlotStyle()
 
   # declare C++ functions

@@ -457,11 +457,11 @@ def plotIntensityFcn(
 
 
 if __name__ == "__main__":
-  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
-  Utilities.printGitInfo()
   timer = Utilities.Timer()
   timer.start("Total execution time")
+  Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
+  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   setupPlotStyle()
 
   # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data

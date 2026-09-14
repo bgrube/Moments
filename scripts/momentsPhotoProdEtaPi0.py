@@ -138,10 +138,10 @@ def readPartialWaveAmplitudes(
 
 
 if __name__ == "__main__":
-  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
-  Utilities.printGitInfo()
   timer = Utilities.Timer()
+  Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
+  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   setupPlotStyle()
   threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
   print(f"Initial state of ThreadpoolController before setting number of threads:\n{threadController.info()}")

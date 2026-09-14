@@ -128,10 +128,10 @@ def convertInputData(
 
 
 if __name__ == "__main__":
-  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
   # ROOT.EnableImplicitMT()
+  loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
   setupPlotStyle()
 
   # declare C++ functions

@@ -19,9 +19,9 @@ print = functools.partial(print, flush = True)
 
 
 if __name__ == "__main__":
-  Utilities.printGitInfo()
   timer = Utilities.Timer()
   timer.start("Total execution time")
+  Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
   ROOT.EnableImplicitMT()
   setupPlotStyle()
