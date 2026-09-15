@@ -217,5 +217,64 @@ if __name__ == "__main__":
       additionalFilterDefs      = [],
     )
 
+  if True:
+  # if False:
+    print("\n=== Step 7: MC input-output study with perfect acceptance =====================")
+    maxL = 4
+    # maxL = 6
+    cfgNoAcc = deepcopy(CFG_POLARIZED_PIPI)
+    cfgNoAcc.maxLs = (maxL, )
+    # weight generated phase-space data in converted format
+    weightDataWithMoments(
+      cfg                       = cfgNoAcc,
+      momentsFileName           = "moments_phys_shifted.pkl",
+      dataType                  = AnalysisConfig.DataType.GENERATED_PHASE_SPACE,
+      useIntensityTerms         = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+      weightInputData           = False,
+      massBinningForWeighting   = cfgNoAcc.massBinning,
+      reweightMassDistribution  = True,
+      weightedDataDirPathSuffix = "_shifted",
+    )
+    # calculate moments from weighted MC
+    def convertedFilePathNoAcc(
+      cfg:          AnalysisConfig,
+      dataType:     AnalysisConfig.DataType,
+      dataPeriod:   str,
+      tBinLabel:    str,
+      beamPolLabel: str
+    ) -> str | None:
+      """Default function that returns path of data file in converted format based on data type, data period, t bin label, and beam polarization label"""
+      # one input file for each data type
+      if dataType == AnalysisConfig.DataType.REAL_DATA:
+        return f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/weightedMc.maxL_{cfg.maxLs[0]}_shifted/{beamPolLabel}/weighted_mc_GENERATED_PHASE_SPACE_parityConserving_flat_reweighted.root"
+      elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+        return None
+      elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+        return None
+      else:
+        raise ValueError(f"Unknown data type: {dataType}")
+    cfgNoAcc._convertedFilePath = convertedFilePathNoAcc
+    cfgNoAcc.outFileDirBasePath = f"./plots/PiPiPol.trueMaxL_{maxL}_noacc.foo"
+    calculateMoments(
+      cfg                            = cfgNoAcc,
+      additionalColumnDefs           = {},
+      additionalCuts                 = (
+        # "(0.100 < minusT and minusT < 0.114)",
+      ),
+      forceIntegralMatrixCalculation = True,
+    )
+    # plot moments from weighted MC
+    cfgNoAcc.plotMomentsInBins = True
+    plotMoments(
+      cfg                         = cfgNoAcc,
+      scaleFactorPhysicalMoments  = 1.0,  # no scaling
+      compareTo                   = (f"{cfg.outFileDirPath(dataPeriod = '2017_01_ver05', tBinLabel = 'tbin_0.100_0.114', beamPolLabel = 'PARA_0', maxL = maxL)}/{cfg.outFileNamePrefix}_moments_phys_shifted.pkl", "True Values"),
+      normalizeComparisonMoments  = True,  # scale comparison moments to estimated moments
+      outFileType                 = "pdf",
+      # outFileType                 = "root",
+      yAxisUnit                   = "",
+    )
+
+
   timer.stop("Total time for analysis")
   print(timer.summary)
