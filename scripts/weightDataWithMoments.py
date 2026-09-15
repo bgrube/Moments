@@ -47,7 +47,10 @@ from workflow.AnalysisConfig import (
   CFG_UNPOLARIZED_PIPI_JPAC,
   CFG_UNPOLARIZED_PIPI_PWA,
 )
-from workflow.PlottingUtilities import setupPlotStyle
+from workflow.PlottingUtilities import (
+  HistAxisBinning,
+  setupPlotStyle,
+)
 from workflow import RootUtilities
 from workflow import Utilities
 
@@ -56,54 +59,20 @@ from workflow import Utilities
 print = functools.partial(print, flush = True)
 
 
-if __name__ == "__main__":
-  ROOT.gROOT.SetBatch(True)
-  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
-
-  # declare C++ functions
-  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
-  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
-  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
-  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
-
-  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
-  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
-  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
-  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)   # perform analysis of unpolarized pi+ pi- data
-  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
-  # BEAM_POL_INFOS["merged"]["All"] = BeamPolInfo(  # read beam polarization info from input tree
-  #   pol    = "Pol",
-  #   PhiLab = "BeamAngle",
-  # )
-
-  # useIntensityTerms = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
-  useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
-  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
-
-  # weight accepted phase-space data in input format for generating kinematic plots in mass bins
-  # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
-  # weightInputData          = True
-  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_input_{useIntensityTerms.value}"
-  # weight accepted phase-space data in converted format for input-output studies with acceptance correction
-  dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
-  weightInputData          = False
-  weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
-  # # weight generated phase-space data in converted format for input-output studies without acceptance correction
-  # dataType                 = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-  # weightInputData          = False
-  # weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
-  # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
-
-  reweightMassDistribution = True
-  limitNmbEventsTo         = None  # limit number of events to read from input tree
-  # makeIntensityFcnPlots    = True  # draw intensity function in each mass bin
-  makeIntensityFcnPlots    = False
-  massBinningForWeighting  = deepcopy(cfg.massBinning)  # same binning as for moment values
-  massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
-  # massBinningForWeighting  = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
-
+def weightDataWithMoments(
+  cfg:                       AnalysisConfig,
+  momentsFileName:           str,                              # base name of file containing the moment results
+  dataType:                  AnalysisConfig.DataType,          # type of data to weight, i.e. generated or accepted phase space
+  useIntensityTerms:         MomentResult.IntensityTermsType,  # type of intensity terms to use for intensity weights
+  weightInputData:           bool,                             # whether to weight the input data or converted data
+  weightedDataFileBaseName:  str,                              # base name of the file to which the weighted data will be written to
+  massBinningForWeighting:   HistAxisBinning,                  # binning of the mass variable to use for weighting
+  reweightMassDistribution:  bool,                             # whether to reweight the mass distribution
+  weightedDataDirPathSuffix: str = "",                         # suffix to append to the weighted data directory path
+  limitNmbEventsTo:          int | None = None,                # maximum number of events to process, or None for no limit
+) -> None:
+  """Weights data with the intensity distribution calculated from the results of the moment analysis of photoproduction data"""
+  assert dataType in (AnalysisConfig.DataType.GENERATED_PHASE_SPACE, AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE)
   print(f"Generating weighted MC for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
@@ -112,7 +81,7 @@ if __name__ == "__main__":
           print(f"Generating weighted MC for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
           thisSourceFileName = os.path.basename(__file__)
           # create directory, into which weighted data will be written
-          weightedDataDirPath = f"{cfg.dataDirBasePath}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/weightedMc.maxL_{maxL}/{beamPolLabel}"
+          weightedDataDirPath = f"{cfg.dataDirBasePath}/{dataPeriod}/{tBinLabel}/{cfg.subsystem.pairLabel}/weightedMc.maxL_{maxL}{weightedDataDirPathSuffix}/{beamPolLabel}"
           Utilities.makeDirPath(weightedDataDirPath)
           logFilePath = f"{weightedDataDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{weightedDataFileBaseName}.log"
           print(f"Writing output to log file '{logFilePath}'")
@@ -122,7 +91,7 @@ if __name__ == "__main__":
             setupPlotStyle()
             print(f"Using analysis configuration:\n{cfg}")
             timer.start("Total execution time")
-            momentResultsFilePath = f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)}/{cfg.outFileNamePrefix}_moments_phys.pkl"
+            momentResultsFilePath = f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)}/{cfg.outFileNamePrefix}_{momentsFileName}"
             print(f"Reading moments from file '{momentResultsFilePath}'")
             momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
             for massBinIndexForWeighting, massBinCenterForWeighting in enumerate(massBinningForWeighting):
@@ -175,10 +144,78 @@ if __name__ == "__main__":
                   dataToWeight    = ROOT.RDataFrame(treeName, mergedFilePath),  # load merged data file created in step above
                   binning         = massBinningForWeighting,
                   treeName        = cfg.convertedTreeName,
-                  targetDistrFrom = cfg.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel),  # match measured mass distribution
-                  # targetDistrFrom = momentResults,  # match acceptance-corrected mass distribution given by H_0(0, 0)
+                  targetDistrFrom = (
+                    cfg.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel) or ""  # match measured mass distribution
+                    if dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+                    else momentResults  # match acceptance-corrected mass distribution given by H_0(0, 0)
+                  ),
                   outFilePath     = reweightedFilePath,
                 )
 
             timer.stop("Total execution time")
             print(timer.summary)
+
+
+if __name__ == "__main__":
+  ROOT.gROOT.SetBatch(True)
+  RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
+
+  # declare C++ functions
+  ROOT.gInterpreter.Declare(CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE)
+  ROOT.gInterpreter.Declare(CPP_CODE_TWO_BODY_ANGLES)
+  ROOT.gInterpreter.Declare(CPP_CODE_MANDELSTAM_T)
+  ROOT.gInterpreter.Declare(CPP_CODE_MASSPAIR)
+
+  # cfg = deepcopy(CFG_KEVIN)  # perform analysis of Kevin's polarizedK- K_S Delta++ data
+  # cfg = deepcopy(CFG_POLARIZED_ETAPI0)  # perform analysis of Nizar's polarized eta pi0 data
+  # cfg = deepcopy(CFG_POLARIZED_KSKL)  # perform analysis of Gabriel's polarized K_S K_L data
+  cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_CLAS)  # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)   # perform analysis of unpolarized pi+ pi- data
+  # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
+  # BEAM_POL_INFOS["merged"]["All"] = BeamPolInfo(  # read beam polarization info from input tree
+  #   pol    = "Pol",
+  #   PhiLab = "BeamAngle",
+  # )
+
+  # useIntensityTerms = MomentResult.IntensityTermsType.ALL                # include parity-conserving and parity-violating terms into formula
+  useIntensityTerms = MomentResult.IntensityTermsType.PARITY_CONSERVING  # include only parity-conserving terms
+  # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
+
+  # weight accepted phase-space data in input format for generating kinematic plots in mass bins
+  # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  # weightInputData          = True
+  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_input_{useIntensityTerms.value}"  #TODO set this in function
+  # # weight accepted phase-space data in converted format for input-output studies with acceptance correction
+  # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  # weightInputData          = False
+  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
+  # weight generated phase-space data in converted format for input-output studies without acceptance correction
+  dataType                 = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
+  weightInputData          = False
+  weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
+
+  reweightMassDistribution = True
+  limitNmbEventsTo         = None  # limit number of events to read from input tree
+  # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
+  massBinningForWeighting  = deepcopy(cfg.massBinning)  # same binning as for moment values
+  # massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
+  # massBinningForWeighting  = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
+
+  # momentsFileName = "moments_phys.pkl"
+  # weightedDataDirPathSuffix = ""
+  momentsFileName = "moments_phys_shifted.pkl"
+  weightedDataDirPathSuffix = "_shifted"
+
+  weightDataWithMoments(
+    cfg                       = cfg,
+    momentsFileName           = momentsFileName,
+    dataType                  = dataType,
+    useIntensityTerms         = useIntensityTerms,
+    weightInputData           = weightInputData,
+    weightedDataFileBaseName  = weightedDataFileBaseName,
+    massBinningForWeighting   = massBinningForWeighting,
+    reweightMassDistribution  = reweightMassDistribution,
+    weightedDataDirPathSuffix = weightedDataDirPathSuffix,
+    limitNmbEventsTo          = limitNmbEventsTo,
+  )
