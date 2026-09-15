@@ -325,7 +325,7 @@ def plotWeightedMc(
           print(f"Generating plots for L_max = {maxL}:")
           #TODO move these paths to `AnalysisConfig`?
           weightedDataDirPath  = f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/weightedMc.maxL_{maxL}{weightedDataDirPathSuffix}/{beamPolLabel}"
-          weightedDataFilePath = f"{weightedDataDirPath}/phaseSpace_acc_weighted_input_{useIntensityTerms.value}_reweighted.root"
+          weightedDataFilePath = f"{weightedDataDirPath}/weighted_mc_ACCEPTED_PHASE_SPACE_{useIntensityTerms.value}_input_reweighted.root"
           print(f"Loading input data of type '{AnalysisConfig.DataType.REAL_DATA}' from '{inputFilePath}'")
           print(f"Loading weighted-MC data from '{weightedDataFilePath}'")
           dataToOverlay = DataToOverlay(
@@ -418,7 +418,7 @@ if __name__ == "__main__":
   # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING
 
   plotWeightedMc(
-    cfg = cfg,
+    cfg                       = cfg,
     useIntensityTerms         = useIntensityTerms,
     massBinning               = massBinning,
     weightedDataDirPathSuffix = "_shifted",

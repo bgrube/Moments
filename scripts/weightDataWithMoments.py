@@ -65,7 +65,6 @@ def weightDataWithMoments(
   dataType:                  AnalysisConfig.DataType,          # type of data to weight, i.e. generated or accepted phase space
   useIntensityTerms:         MomentResult.IntensityTermsType,  # type of intensity terms to use for intensity weights
   weightInputData:           bool,                             # whether to weight the input data or converted data
-  weightedDataFileBaseName:  str,                              # base name of the file to which the weighted data will be written to
   massBinningForWeighting:   HistAxisBinning,                  # binning of the mass variable to use for weighting
   reweightMassDistribution:  bool,                             # whether to reweight the mass distribution
   weightedDataDirPathSuffix: str = "",                         # suffix to append to the weighted data directory path
@@ -73,6 +72,7 @@ def weightDataWithMoments(
 ) -> None:
   """Weights data with the intensity distribution calculated from the results of the moment analysis of photoproduction data"""
   assert dataType in (AnalysisConfig.DataType.GENERATED_PHASE_SPACE, AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE)
+  weightedDataFileBaseName = f"weighted_mc_{dataType.name}_{useIntensityTerms.value}_{'input' if weightInputData else 'flat'}"
   print(f"Generating weighted MC for subsystem '{cfg.subsystem}':")
   for dataPeriod in cfg.dataPeriods:
     for tBinLabel in cfg.tBinLabels:
@@ -185,15 +185,12 @@ if __name__ == "__main__":
   # weight accepted phase-space data in input format for generating kinematic plots in mass bins
   # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
   # weightInputData          = True
-  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_input_{useIntensityTerms.value}"  #TODO set this in function
   # # weight accepted phase-space data in converted format for input-output studies with acceptance correction
   # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
   # weightInputData          = False
-  # weightedDataFileBaseName = f"phaseSpace_acc_weighted_flat_{useIntensityTerms.value}"
   # weight generated phase-space data in converted format for input-output studies without acceptance correction
   dataType                 = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
   weightInputData          = False
-  weightedDataFileBaseName = f"phaseSpace_gen_weighted_flat_{useIntensityTerms.value}"
 
   reweightMassDistribution = True
   limitNmbEventsTo         = None  # limit number of events to read from input tree
@@ -213,7 +210,6 @@ if __name__ == "__main__":
     dataType                  = dataType,
     useIntensityTerms         = useIntensityTerms,
     weightInputData           = weightInputData,
-    weightedDataFileBaseName  = weightedDataFileBaseName,
     massBinningForWeighting   = massBinningForWeighting,
     reweightMassDistribution  = reweightMassDistribution,
     weightedDataDirPathSuffix = weightedDataDirPathSuffix,
