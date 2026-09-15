@@ -2,8 +2,8 @@
 """
 This module plots the intensity distributions that correspond to the
 moments estimated from data. The moment values are read from files
-produced by the script `calculateMoments.py` that calculates the
-moments.
+produced by the function defined in `calculateMoments.py` that
+calculates the moments.
 
 Usage: Run this module as a script to generate the output files.
 """
@@ -15,10 +15,12 @@ from copy import deepcopy
 import ctypes
 import functools
 import numpy as np
+import os
 from scipy.optimize import minimize
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
+from wurlitzer import pipes, STDOUT
 
 from moments.MomentCalculator import (
   MomentResult,
@@ -26,6 +28,7 @@ from moments.MomentCalculator import (
   QnMomentIndex,
 )
 from workflow.AnalysisConfig import (
+  AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
   CFG_POLARIZED_ETAPI0,
@@ -456,9 +459,64 @@ def plotIntensityFcn(
   return momentsShifted
 
 
+def plotIntensityFunctions(
+  cfg:                      AnalysisConfig,
+  momentType:               str,                        # type of moments to read from file: "phys" or "meas"
+  makeIntensityPosDefinite: bool,                       # if True, perform minimal shift of moment values to make the intensity functions positive definite
+  overrideBeamPolInfo:      BeamPolInfo | None = None,  # if provided, this beam polarization info will override the one in BEAM_POL_INFOS
+  scaleFactor:              float | None       = None,  # scale moments by this factor before plotting intensity functions
+) -> None:
+  """Plots the intensity distributions that correspond to the moments
+  estimated from data. The moment values are read from files produced
+  by the function defined in `calculateMoments.py` that calculates the
+  moments."""
+  print(f"Plotting intensity functions for subsystem '{cfg.subsystem}':")
+  for dataPeriod in cfg.dataPeriods:
+    for tBinLabel in cfg.tBinLabels:
+      for beamPolLabel in cfg.beamPolLabels:
+        for maxL in cfg.maxLs:
+          fitResultDirPath = cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)
+          thisSourceFileName = os.path.basename(__file__)
+          logFilePath = f"{fitResultDirPath}/{os.path.splitext(thisSourceFileName)[0]}_{cfg.outFileNamePrefix}.log"
+          print(f"Writing output to log file '{logFilePath}'")
+          with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):  # redirect all output into log file
+            Utilities.printGitInfo()
+            timer = Utilities.Timer()
+            timer.start("Total execution time")
+            print(f"Plotting intensity functions for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
+            momentResultsFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
+            print(f"Reading moments from file '{momentResultsFilePath}'")
+            momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
+            for useIntensityTerms in (
+              # MomentResult.IntensityTermsType.ALL,
+              MomentResult.IntensityTermsType.PARITY_CONSERVING,
+              # MomentResult.IntensityTermsType.PARITY_VIOLATING,
+            ):
+              momentsShifted = []
+              for massBinIndex, momentResultsForBin in enumerate(momentResults):
+                print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
+                momentsShifted.append(
+                  plotIntensityFcn(
+                    momentResults            = momentResultsForBin,
+                    massBinIndex             = massBinIndex,
+                    beamPolInfo              = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
+                    outputDirPath            = fitResultDirPath,
+                    nmbBinsPerAxis           = 50,
+                    useIntensityTerms        = useIntensityTerms,
+                    coordSysLabel            = cfg.frame.name,
+                    makeIntensityPosDefinite = makeIntensityPosDefinite,
+                    scaleFactor              = scaleFactor,
+                  )
+                )
+              # save shifted moments to file
+              if momentsShifted and all(m is not None for m in momentsShifted):
+                momentResultsShifted = MomentResultsKinematicBinning(momentsShifted)
+                momentResultsShifted.savePickle(momentResultsFilePath.replace(".pkl", f"_shifted.pkl"))
+            timer.stop("Total execution time")
+            print(timer.summary)
+
+
 if __name__ == "__main__":
-  timer = Utilities.Timer()
-  timer.start("Total execution time")
   Utilities.printGitInfo()
   ROOT.gROOT.SetBatch(True)
   RootUtilities.loadBasisFunctionsLibrary()  # initializes OpenMP and loads `cpp/basisFunctions.C`
@@ -468,48 +526,23 @@ if __name__ == "__main__":
   # overrideBeamPolInfo = BEAM_POL_INFOS["2018_08"]["PARA_0"]  # force beam polarization
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   overrideBeamPolInfo = None
-  # makeIntensityPosDefinite = True
-  makeIntensityPosDefinite = False
   scaleFactor = None
+  # scaleFactor = 1.6112841143413135  # gen MC weighted with L_max = 4 and analyzed with L_max = 4, 6, 8
+  # scaleFactor = 2.450175524066058   # acc MC weighted with L_max = 4 and analyzed with L_max = 4
+  # scaleFactor = 2.4515044898120957  # acc MC weighted with L_max = 4 and analyzed with L_max = 6
+  # scaleFactor = 2.441922028485739   # acc MC weighted with L_max = 4 and analyzed with L_max = 8
+  #
+  # scaleFactor = 1.682258789616807  # gen MC weighted with L_max = 6 and analyzed with L_max = 4, 6, 8
+  # scaleFactor = 2.5108970501733427  # acc MC weighted with L_max = 6 and analyzed with L_max = 4
+  # scaleFactor = 2.5735512097120283  # acc MC weighted with L_max = 6 and analyzed with L_max = 6
+  # scaleFactor = 2.582279973210192   # acc MC weighted with L_max = 6 and analyzed with L_max = 8
 
-  momentType = f"phys"
-  # momentType = f"meas"
-
-  print(f"Plotting intensity functions for subsystem '{cfg.subsystem}':")
-  for dataPeriod in cfg.dataPeriods:
-    for tBinLabel in cfg.tBinLabels:
-      for beamPolLabel in cfg.beamPolLabels:
-        for maxL in cfg.maxLs:
-          print(f"Plotting intensity functions for data period '{dataPeriod}', t bin '{tBinLabel}', beam-polarization orientation '{beamPolLabel}', and L_max = {maxL}")
-          fitResultDirPath = cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel, maxL)
-          momentResultsFilePath = f"{fitResultDirPath}/{cfg.outFileNamePrefix}_moments_{momentType}.pkl"
-          print(f"Reading moments from file '{momentResultsFilePath}'")
-          momentResults = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)
-          for useIntensityTerms in (
-            # MomentResult.IntensityTermsType.ALL,
-            MomentResult.IntensityTermsType.PARITY_CONSERVING,
-            # MomentResult.IntensityTermsType.PARITY_VIOLATING,
-          ):
-            momentsShifted = []
-            for massBinIndex, momentResultsForBin in enumerate(momentResults):
-              print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
-              momentsShifted.append(
-                plotIntensityFcn(
-                  momentResults            = momentResultsForBin,
-                  massBinIndex             = massBinIndex,
-                  beamPolInfo              = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
-                  outputDirPath            = fitResultDirPath,
-                  nmbBinsPerAxis           = 50,
-                  useIntensityTerms        = useIntensityTerms,
-                  coordSysLabel            = cfg.frame.name,
-                  makeIntensityPosDefinite = makeIntensityPosDefinite,
-                  scaleFactor              = scaleFactor,
-                )
-              )
-            # save shifted moments to file
-            if momentsShifted and all(m is not None for m in momentsShifted):
-              momentResultsShifted = MomentResultsKinematicBinning(momentsShifted)
-              momentResultsShifted.savePickle(momentResultsFilePath.replace(".pkl", f"_shifted.pkl"))
-
-  timer.stop("Total execution time")
-  print(timer.summary)
+  plotIntensityFunctions(
+    cfg                      = cfg,
+    # momentType               = "meas",
+    momentType               = "phys",
+    # makeIntensityPosDefinite = True,
+    makeIntensityPosDefinite = False,
+    overrideBeamPolInfo      = overrideBeamPolInfo,
+    scaleFactor              = scaleFactor,
+  )
