@@ -216,7 +216,7 @@ def toJsonStr(
 # deserializer registry keyed by the "type" tag
 _FROM_JSON_DICT_FUNCS: dict[str, Callable[[dict], Any]] = {}
 
-def registerFromJsonDictFunc(tag: str):
+def registerFromJsonDictFunc(tag: str) -> Callable[..., Callable[[dict], Any]]:
   """Decorator to register a deserializer function for a tagged dictionary"""
   def deco(func: Callable[[dict], Any]) -> Callable[[dict], Any]:
     _FROM_JSON_DICT_FUNCS[tag] = func

@@ -7,7 +7,6 @@ from collections.abc import (
   Mapping,
   Sequence,
 )
-import copy
 import ctypes
 from dataclasses import dataclass
 import functools

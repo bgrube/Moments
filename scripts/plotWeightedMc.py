@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+This module overlays weighted accepted phase-space MC data generated
+by the function in `weightDataWithMoments.py` with real data for
+comparison.
+
+Usage: Run this module as a script to generate the output files.
+"""
 
 
 from __future__ import annotations

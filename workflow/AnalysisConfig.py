@@ -520,10 +520,8 @@ class AnalysisConfig:
     maxL:         int | tuple[int, int],
   ) -> DataConfig:
     """Returns a `DataConfig` object for data in converted format for a given data period, t bin label, and beam polarization label"""
-    dataFilePath = self.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel)
-    assert dataFilePath is not None
     return DataConfig(
-      dataFilePath       = dataFilePath,
+      dataFilePath       = self.convertedFilePath(AnalysisConfig.DataType.REAL_DATA, dataPeriod, tBinLabel, beamPolLabel) or "",
       psAccFilePath      = self.convertedFilePath(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,  dataPeriod, tBinLabel, beamPolLabel),
       psGenFilePath      = self.convertedFilePath(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, dataPeriod, tBinLabel, beamPolLabel),
       polarization       = "beamPol" if BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel] is not None else None,  # if beam was polarized, converted data are expected to have `beamPol` column with polarization value
