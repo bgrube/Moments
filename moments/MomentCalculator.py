@@ -260,9 +260,11 @@ class AmplitudeSet:
     normalize:           bool | float = True,   # if set to true, moment values are normalized to H_0(0, 0)
                                                 # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
     printMomentFormulas: bool         = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
-    binCenters:          dict[KinematicBinningVariable, float] = {}  # center values of variables that define kinematic bin of `MomentResult`
+    binCenters:          dict[KinematicBinningVariable, float] | None = None,  # center values of variables that define kinematic bin of `MomentResult`
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; since they are 0 the moments H_2(L, 0) are omitted"""
+    if binCenters is None:
+      binCenters = {}
     momentIndices = MomentIndices(maxL, polarized = self.polarized)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = np.complex128)
     norm: float = 1.0
@@ -1898,7 +1900,7 @@ class MomentCalculator:
     startValues:              npt.NDArray[npt.Shape["nmbMoments"], npt.Float64],  # initial values for fit parameters
     indices:                  MomentIndices,  # indices that define set of moments to fit
     minuit:                   im.Minuit | None              = None,   # use provided Minuit object for reentrant fitting; if None, a new Minuit object is created
-    fixMomentsToZero:         Sequence[int | QnMomentIndex] = [],     # list of moment indices, for which the fit parameters are fixed to zero
+    fixMomentsToZero:         Sequence[int | QnMomentIndex] = (),     # moment indices, for which the fit parameters are fixed to zero
   ) -> im.Minuit:
     """Estimates photoproduction moments and their covariances by fitting intensity model to data from the given source"""
     if minuit is None:

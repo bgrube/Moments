@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import (
+  Iterable,
+  Sequence,
+)
 import functools
 import numpy as np
 import os
@@ -238,12 +241,14 @@ def defineDataFrameColumns(
   lvB:                  str,  # function-argument list with Lorentz-vector components of daughter B
   beamPolInfo:          BeamPolInfo | None          = None,  # photon beam polarization
   frame:                AnalysisConfig.CoordSysType = AnalysisConfig.CoordSysType.HF,  # reference frame for angle definitions
-  additionalColumnDefs: dict[str, str]              = {},  # additional columns to define
-  additionalFilterDefs: list[str]                   = [],  # additional filter conditions to apply
-  colNameSuffix:        str                         = "",  # suffix appended to column names
+  additionalColumnDefs: dict[str, str] | None       = None,   # additional columns to define
+  additionalFilterDefs: Iterable[str]               = (),     # additional filter conditions to apply
+  colNameSuffix:        str                         = "",     # suffix appended to column names
   defineFSROOTAngles:   bool                        = False,  # if True, define additional columns with angles calculated using FSROOT
 ) -> ROOT.RDataFrame:
   """Defines columns for (A, B) pair mass, squared four-momentum transferred from beam to recoil, and angles (cos(theta), phi) of particle A in X rest frame for reaction beam + target -> X + recoil with X -> A + B using the given Lorentz-vector components"""
+  if additionalColumnDefs is None:
+    additionalColumnDefs = {}
   print(f"Defining angles in '{frame}' frame using '{lvA}' as analyzer and '{lvRecoil}' as recoil")
   angColNameSuffix = frame.name + colNameSuffix if colNameSuffix else ""  # column name suffixes are only used for plotting
   coordSysTypeStr = None
@@ -305,8 +310,8 @@ def defineColumnsForPlots(
   inputDataFormat:      AnalysisConfig.DataFormat,
   subsystem:            SubsystemInfo,
   beamPolInfo:          BeamPolInfo | None,
-  additionalColumnDefs: dict[str, str] = {},  # additional columns to define
-  additionalFilterDefs: list[str]      = [],  # additional filter conditions to apply
+  additionalColumnDefs: dict[str, str] | None = None,  # additional columns to define
+  additionalFilterDefs: Iterable[str]         = (),    # additional filter conditions to apply
 ) -> ROOT.RDataFrame:
   """Defines RDataFrame columns for kinematic plots"""
   lvs = lorentzVectors(dataFormat = inputDataFormat)

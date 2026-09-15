@@ -53,11 +53,11 @@ print = functools.partial(print, flush = True)
 def calculateAllMoments(
   cfg:                            AnalysisConfig,
   dataCfg:                        DataConfig,
-  timer:                          Utilities.Timer        = Utilities.Timer(),
+  timer:                          Utilities.Timer,
   forceIntegralMatrixCalculation: bool                   = True,  # if `True` integral matrices are recalculated even if pickled versions exist
   limitToDataEntryRange:          tuple[int, int] | None = None,  # for debugging: limit analysis to entry range [begin, end) of real-data data tree
   additionalCuts:                 Iterable[str]          = (),    # optional additional cuts to be applied to real and accepted phase-space data
-  additionalColumnDefs:           dict[str, str]         = {},    # additional columns to define
+  additionalColumnDefs:           dict[str, str] | None  = None,  # optional additional columns to define
 ) -> None:
   """Performs the moment analysis for the given configuration"""
   # setup MomentCalculators for all data samples and mass bins

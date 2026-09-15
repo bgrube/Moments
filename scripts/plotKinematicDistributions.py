@@ -8,6 +8,7 @@ Usage: Run this module as a script to generate kinematic plots.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import ctypes
 import functools
 import os
@@ -343,8 +344,8 @@ def makeAnglesHFCorrelationPlot(
   subsystem:            SubsystemInfo,
   kinVarNameCorr:       str,  # column name to correlate with helicity-frame angles
   outputDirPath:        str,  # directory to save output plot in
-  histNameSuffix:       str       = "",
-  additionalFilterDefs: list[str] = [],  # additional filter conditions to apply
+  histNameSuffix:       str           = "",
+  additionalFilterDefs: Iterable[str] = (),  # additional filter conditions to apply
 ) -> None:
   """Produces 2D correlation plot of helicity-frame angles with given RDataFrame column"""
   print(f"Generating correlation plot of helicity-frame angles with '{kinVarNameCorr}' for {subsystem.pairLabel} subsystem")

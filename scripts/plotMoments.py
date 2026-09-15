@@ -204,7 +204,7 @@ class ComparisonMomentsType(Enum):
 def makeAllPlots(
   cfg:                         AnalysisConfig,
   dataCfg:                     DataConfig,
-  timer:                       Utilities.Timer = Utilities.Timer(),
+  timer:                       Utilities.Timer,
   scaleFactorPhysicalMoments:  float           = 1.0,    # optional scale factor for physical moments; can be used to convert number of events to cross section
   compareTo:                   ComparisonMomentsType | tuple[str, str] | None = None,
   # if `ComparisonMomentsType`, comparison moments are read from predefined sources

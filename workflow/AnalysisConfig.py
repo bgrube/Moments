@@ -257,10 +257,12 @@ class DataConfig:
     self,
     dataType:             AnalysisConfig.DataType,
     treeName:             str,
-    additionalCuts:       Iterable[str]  = (),  # optional additional cuts to be applied to loaded data
-    additionalColumnDefs: dict[str, str] = {},  # additional columns to define
+    additionalCuts:       Iterable[str]         = (),    # optional additional cuts to be applied to loaded data
+    additionalColumnDefs: dict[str, str] | None = None,  # additional columns to define
   ) -> ROOT.RDataFrame | None:
     """Returns a ROOT RDataFrame for given data type, applies optional additional cuts, and defines optional additional columns"""
+    if additionalColumnDefs is None:
+      additionalColumnDefs = {}
     df = None
     if dataType == AnalysisConfig.DataType.REAL_DATA:
       print(f"Loading real data from tree '{treeName}' in file '{self.dataFilePath}'")
