@@ -96,8 +96,7 @@ def convertInputData(
             additionalColumnDefs = additionalColumnDefs[inputDataType],
             additionalFilterDefs = additionalFilterDefs[inputDataType],
           ).Filter(('if (rdfentry_ == 0) { std::cout << "Running event loop" << std::endl; } return true;'))  # no-op filter that logs when event loop is running
-          outputFilePath = cfg.convertedFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel)
-          assert outputFilePath is not None
+          outputFilePath = cfg.convertedFilePath(inputDataType, dataPeriod, tBinLabel, beamPolLabel) or ""
           outputTreeName = cfg.subsystem.pairLabel
           outputColumns  = outputColumnsUnpolarized
           if beamPolInfo is not None:

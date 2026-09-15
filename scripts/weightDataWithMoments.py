@@ -2,9 +2,9 @@
 """
 This module weights data (usually generated or accepted phase-space
 data) with the intensity distribution calculated from the results of
-the moment analysis of unpolarized or polarized pi+ pi-
-photoproduction data.  The moment values are read from files produced
-by the script `calculateMoments.py` that calculates the moments.
+the moment analysis of photoproduction data.  The moment values are
+read from files produced by the function defined in
+`calculateMoments.py` that calculates the moments.
 
 Usage: Run this module as a script to generate the output files.
 """
@@ -134,7 +134,7 @@ if __name__ == "__main__":
               print(f"Weighting events with intensity function using moment values in mass bin {massBinIndexForMoments} at {momentResultsForBin.binCenters[cfg.massBinning.var]:.{cfg.massBinning.var.nmbDigits}f} {cfg.massBinning.var.unit}")
               dataFilePath = (
                 cfg.inputFilePath    (dataType, dataPeriod, tBinLabel, beamPolLabel) if weightInputData else
-                cfg.convertedFilePath(dataType, dataPeriod, tBinLabel, beamPolLabel)
+                cfg.convertedFilePath(dataType, dataPeriod, tBinLabel, beamPolLabel) or ""
               )
               treeName   = cfg.inputTreeName if weightInputData else cfg.convertedTreeName
               dataFormat = cfg.inputDataFormats[dataType] if weightInputData else AnalysisConfig.DataFormat.FLAT

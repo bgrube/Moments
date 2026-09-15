@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 This module calculates the moment values from partial-wave amplitudes
-obtained from unpolarized and polarized pi+ pi- photoproduction data.
-The calculated moments are written to a file to be read by the
-plotting script `plotMoments.py`.
+obtained from photoproduction data.  The calculated moments are
+written to a file to be read by the plotting function defined in
+`plotMoments.py`.
 
 Usage: Run this module as a script to perform the moment calculations
 and to generate the output files.
