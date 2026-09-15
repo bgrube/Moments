@@ -20,6 +20,7 @@ from scripts.overlayMoments import (
   overlayMoments,
   ResultToOverlay,
 )
+from scripts.plotIntensityFunctions import plotIntensityFunctions
 from scripts.plotKinematicDistributions import plotKinematicDistributions
 from scripts.plotMoments import plotMoments
 from workflow.AnalysisConfig import (
@@ -157,6 +158,28 @@ if __name__ == "__main__":
           outputDirPath     = outputDirPath,
           normToFirstResult = normToFirstResult,
         )
+
+  if True:
+  # if False:
+    print("\n=== Step 5: plot intensity functions and make them positive definite  =========")
+    scaleFactor = None
+    # scaleFactor = 1.6112841143413135  # gen MC weighted with L_max = 4 and analyzed with L_max = 4, 6, 8
+    # scaleFactor = 2.450175524066058   # acc MC weighted with L_max = 4 and analyzed with L_max = 4
+    # scaleFactor = 2.4515044898120957  # acc MC weighted with L_max = 4 and analyzed with L_max = 6
+    # scaleFactor = 2.441922028485739   # acc MC weighted with L_max = 4 and analyzed with L_max = 8
+    #
+    # scaleFactor = 1.682258789616807  # gen MC weighted with L_max = 6 and analyzed with L_max = 4, 6, 8
+    # scaleFactor = 2.5108970501733427  # acc MC weighted with L_max = 6 and analyzed with L_max = 4
+    # scaleFactor = 2.5735512097120283  # acc MC weighted with L_max = 6 and analyzed with L_max = 6
+    # scaleFactor = 2.582279973210192   # acc MC weighted with L_max = 6 and analyzed with L_max = 8
+    plotIntensityFunctions(
+      cfg                      = cfg,
+      momentType               = "phys",
+      # makeIntensityPosDefinite = True,
+      makeIntensityPosDefinite = False,
+      overrideBeamPolInfo      = None,
+      scaleFactor              = scaleFactor,
+    )
 
   timer.stop("Total time for analysis")
   print(timer.summary)
