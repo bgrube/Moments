@@ -12,8 +12,11 @@ from copy import deepcopy
 import functools
 
 import ROOT
+
+from scripts.plotWeightedMc import plotWeightedMc
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
 
+from moments.MomentCalculator import MomentResult
 from scripts.calculateMoments import calculateMoments
 from scripts.convertInputData import convertInputData
 from scripts.overlayMoments import (
@@ -23,6 +26,7 @@ from scripts.overlayMoments import (
 from scripts.plotIntensityFunctions import plotIntensityFunctions
 from scripts.plotKinematicDistributions import plotKinematicDistributions
 from scripts.plotMoments import plotMoments
+from scripts.weightDataWithMoments import weightDataWithMoments
 from workflow.AnalysisConfig import (
   AnalysisConfig,
   CFG_POLARIZED_PIPI,
@@ -140,7 +144,7 @@ if __name__ == "__main__":
 
   if True:
   # if False:
-    print("\n=== Step 4: overlay moments ======================================================")
+    print("\n=== Step 4: overlay moments ==================================================")
     normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first moment result
     # normToFirstResult = False
     for dataPeriod in cfg.dataPeriods:
@@ -161,7 +165,7 @@ if __name__ == "__main__":
 
   if True:
   # if False:
-    print("\n=== Step 5: plot intensity functions and make them positive definite  =========")
+    print("\n=== Step 5: plot intensity functions and make them positive definite ==========")
     scaleFactor = None
     # scaleFactor = 1.6112841143413135  # gen MC weighted with L_max = 4 and analyzed with L_max = 4, 6, 8
     # scaleFactor = 2.450175524066058   # acc MC weighted with L_max = 4 and analyzed with L_max = 4
@@ -179,6 +183,38 @@ if __name__ == "__main__":
       makeIntensityPosDefinite = False,
       overrideBeamPolInfo      = None,
       scaleFactor              = scaleFactor,
+    )
+
+  if True:
+  # if False:
+    print("\n=== Step 6: overlay weighted MC from shifted moments and real data ============")
+    # weight accepted phase-space data in input format for generating kinematic plots in mass bins
+    massBinningForWeighting = deepcopy(cfg.massBinning)  # same binning as for moment values
+    massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
+    weightDataWithMoments(
+      cfg                       = cfg,
+      momentsFileName           = "moments_phys_shifted.pkl",
+      dataType                  = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,
+      useIntensityTerms         = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+      weightInputData           = True,
+      massBinningForWeighting   = massBinningForWeighting,
+      reweightMassDistribution  = True,
+      weightedDataDirPathSuffix = "_shifted",
+    )
+    # overlay weighted MC and real data
+    ROOT.EnableImplicitMT()
+    plotWeightedMc(
+      cfg                       = cfg,
+      useIntensityTerms         = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+      massBinning               = cfg.massBinning,
+      weightedDataDirPathSuffix = "_shifted",
+      nmbBinsAzim               = 72,
+      nmbBinsOther              = 100,
+      additionalColumnDefs      = {
+        "realData"   : {},  # no additional columns to define for real data
+        "weightedMc" : {},  # no additional columns to define for weighted MC
+      },
+      additionalFilterDefs      = [],
     )
 
   timer.stop("Total time for analysis")
