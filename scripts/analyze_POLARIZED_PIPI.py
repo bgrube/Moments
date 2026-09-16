@@ -285,16 +285,16 @@ if __name__ == "__main__":
     # weight accepted phase-space data in converted format
     massBinningForWeighting = deepcopy(cfg.massBinning)
     massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
-    # weightDataWithMoments(
-    #   cfg                       = cfgAcc,
-    #   momentsFileName           = "moments_phys_shifted.pkl",
-    #   dataType                  = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,
-    #   useIntensityTerms         = MomentResult.IntensityTermsType.PARITY_CONSERVING,
-    #   weightInputData           = False,
-    #   massBinningForWeighting   = massBinningForWeighting,
-    #   reweightMassDistribution  = True,
-    #   weightedDataDirPathSuffix = "_shifted",
-    # )
+    weightDataWithMoments(
+      cfg                       = cfgAcc,
+      momentsFileName           = "moments_phys_shifted.pkl",
+      dataType                  = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE,
+      useIntensityTerms         = MomentResult.IntensityTermsType.PARITY_CONSERVING,
+      weightInputData           = False,
+      massBinningForWeighting   = massBinningForWeighting,
+      reweightMassDistribution  = True,
+      weightedDataDirPathSuffix = "_shifted",
+    )
     # calculate moments from weighted MC
     def convertedFilePathNoAcc(
       cfg:          AnalysisConfig,
