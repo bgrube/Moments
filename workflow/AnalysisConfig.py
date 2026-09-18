@@ -490,6 +490,31 @@ class AnalysisConfig:
     """Generates base path of directory with data in converted format"""
     return f"{self.dataDirBasePath}/{dataPeriod}/{tBinLabel}/{self.subsystem.pairLabel}"
 
+  @staticmethod
+  def _default_convertedFilePath(
+    cfg:          AnalysisConfig,
+    dataType:     AnalysisConfig.DataType,
+    dataPeriod:   str,
+    tBinLabel:    str,
+    beamPolLabel: str,
+  ) -> str | None:
+    """Default function that returns path of data file in converted format based on data type, data period, t bin label, and beam polarization label"""
+    # one input file for each data type
+    if dataType == AnalysisConfig.DataType.REAL_DATA:
+      return f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
+    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
+      return f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_acc_flat_{beamPolLabel}.root"
+    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
+      return f"{cfg.convertedDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_gen_flat_{beamPolLabel}.root"
+    else:
+      raise ValueError(f"Unknown data type: {dataType}")
+
+  _convertedFilePath: Callable[[AnalysisConfig, AnalysisConfig.DataType, str, str, str], str | None] = field(
+        default_factory = lambda: AnalysisConfig._default_convertedFilePath,
+        repr            = False,
+        compare         = False,
+    )
+
   def convertedFilePath(
     self,
     dataType:     AnalysisConfig.DataType,
@@ -497,15 +522,8 @@ class AnalysisConfig:
     tBinLabel:    str,
     beamPolLabel: str,
   ) -> str | None:
-    """Generates path of data file in converted format based on data type, data period, t bin label, and beam polarization label"""
-    if dataType == AnalysisConfig.DataType.REAL_DATA:
-      return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/data_flat_{beamPolLabel}.root"
-    elif dataType == AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE:
-      return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_acc_flat_{beamPolLabel}.root"
-    elif dataType == AnalysisConfig.DataType.GENERATED_PHASE_SPACE:
-      return f"{self.convertedDataDirBasePath(dataPeriod, tBinLabel)}/phaseSpace_gen_flat_{beamPolLabel}.root"
-    else:
-      raise ValueError(f"Unknown data type: {dataType}")
+    """Returns path of data file in converted format based on data type, data period, t bin label, and beam polarization label"""
+    return self._convertedFilePath(self, dataType, dataPeriod, tBinLabel, beamPolLabel)
 
   @property
   def outFileNamePrefix(self) -> str:
