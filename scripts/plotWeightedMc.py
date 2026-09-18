@@ -119,15 +119,15 @@ def makePlots(
       histNameSuffix = f"{pairLabel}_{label}"  # i.e. "_RealData" or "_WeightedMc"
       histDefs += [
         # 1D histograms
-        HistogramDefinition(f"mass{histNameSuffix}",        f";m_{{{pairTLatex}}} [GeV];"            + yAxisLabel, (massBinning,                     ), (f"mass{pairLabel}",       )),
-        HistogramDefinition(f"minusT{histNameSuffix}",      f";#minus t_{{{pairTLatex}}} [GeV^{2}];" + yAxisLabel, ((nmbBinsOther,   0,       1   ), ), (f"minusT{pairLabel}",     )),
-        HistogramDefinition(f"cosThetaHF{histNameSuffix}",  ";cos#theta_{HF};"                       + yAxisLabel, ((nmbBinsOther,  -1,      +1   ), ), (f"cosThetaHF{pairLabel}", )),
-        HistogramDefinition(f"phiHF{pairLabel}Deg_{label}", ";#phi_{HF} [deg];"                      + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"phiHF{pairLabel}Deg",   )),
-        HistogramDefinition(f"cosThetaGJ{histNameSuffix}",  ";cos#theta_{GJ};"                       + yAxisLabel, ((nmbBinsOther,  -1,      +1   ), ), (f"cosThetaGJ{pairLabel}", )),
-        HistogramDefinition(f"phiGJ{pairLabel}Deg_{label}", ";#phi_{GJ} [deg];"                      + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"phiGJ{pairLabel}Deg",   )),
-        HistogramDefinition(f"Phi{pairLabel}Deg_{label}",   ";#Phi [deg];"                           + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"Phi{pairLabel}Deg",     )),
-        HistogramDefinition(f"PsiHF{pairLabel}Deg_{label}", ";#Psi = (#Phi#minus#phi_{HF}) [deg];"   + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"PsiHF{pairLabel}Deg",   )),
-        HistogramDefinition(f"PsiGJ{pairLabel}Deg_{label}", ";#Psi = (#Phi#minus#phi_{GJ}) [deg];"   + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"PsiGJ{pairLabel}Deg",   )),
+        HistogramDefinition(f"mass{histNameSuffix}",        f";m_{{{pairTLatex}}} [GeV];"              + yAxisLabel, (massBinning,                     ), (f"mass{pairLabel}",       )),
+        HistogramDefinition(f"minusT{histNameSuffix}",      f";#minus t_{{{pairTLatex}}} [GeV^{{2}}];" + yAxisLabel, ((nmbBinsOther,   0,       1   ), ), (f"minusT{pairLabel}",     )),
+        HistogramDefinition(f"cosThetaHF{histNameSuffix}",  ";cos#theta_{HF};"                         + yAxisLabel, ((nmbBinsOther,  -1,      +1   ), ), (f"cosThetaHF{pairLabel}", )),
+        HistogramDefinition(f"phiHF{pairLabel}Deg_{label}", ";#phi_{HF} [deg];"                        + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"phiHF{pairLabel}Deg",   )),
+        HistogramDefinition(f"cosThetaGJ{histNameSuffix}",  ";cos#theta_{GJ};"                         + yAxisLabel, ((nmbBinsOther,  -1,      +1   ), ), (f"cosThetaGJ{pairLabel}", )),
+        HistogramDefinition(f"phiGJ{pairLabel}Deg_{label}", ";#phi_{GJ} [deg];"                        + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"phiGJ{pairLabel}Deg",   )),
+        HistogramDefinition(f"Phi{pairLabel}Deg_{label}",   ";#Phi [deg];"                             + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"Phi{pairLabel}Deg",     )),
+        HistogramDefinition(f"PsiHF{pairLabel}Deg_{label}", ";#Psi = (#Phi#minus#phi_{HF}) [deg];"     + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"PsiHF{pairLabel}Deg",   )),
+        HistogramDefinition(f"PsiGJ{pairLabel}Deg_{label}", ";#Psi = (#Phi#minus#phi_{GJ}) [deg];"     + yAxisLabel, ((nmbBinsAzim, -180,    +180   ), ), (f"PsiGJ{pairLabel}Deg",   )),
         # 2D histograms
         HistogramDefinition(f"cosThetaHF{pairLabel}VsMass{histNameSuffix}",      f";m_{{{pairTLatex}}} [GeV];cos#theta_{{HF}}",          (massBinning,                     (nmbBinsOther // 2,   -1,   +1)), (f"mass{pairLabel}",       f"cosThetaHF{pairLabel}")),
         HistogramDefinition(f"phiHF{pairLabel}DegVsMass{histNameSuffix}",        f";m_{{{pairTLatex}}} [GeV];#phi_{{HF}} [deg]",         (massBinning,                     (nmbBinsAzim  // 2, -180, +180)), (f"mass{pairLabel}",       f"phiHF{pairLabel}Deg"  )),

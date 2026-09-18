@@ -179,7 +179,7 @@ if __name__ == "__main__":
     plotIntensityFunctions(
       cfg                      = cfg,
       momentType               = "phys",
-      # makeIntensityPosDefinite = True,
+      # makeIntensityPosDefinite = True,  # this is expensive
       makeIntensityPosDefinite = False,
       overrideBeamPolInfo      = None,
       scaleFactor              = scaleFactor,
