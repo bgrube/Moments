@@ -11,12 +11,7 @@ Usage: Run this module as a script to generate the output files.
 
 from __future__ import annotations
 
-# from copy import deepcopy
-# import ctypes
 import functools
-# import numpy as np
-# import os
-# from scipy.optimize import minimize
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
@@ -27,17 +22,13 @@ from moments.MomentCalculator import (
 )
 from scripts.plotIntensityFunctions import IntensityFunctor
 from workflow.AnalysisConfig import (
-#   AnalysisConfig,
   BeamPolInfo,
   BEAM_POL_INFOS,
-#   CFG_POLARIZED_ETAPI0,
-#   CFG_POLARIZED_PIPI,
 )
 from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
   setupPlotStyle,
-#   TF3toTH3,
 )
 from workflow import RootUtilities
 from workflow import Utilities
