@@ -20,7 +20,6 @@ from moments.MomentCalculator import (
   MomentResult,
   MomentResultsKinematicBinning,
 )
-from scripts.plotIntensityFunctions import IntensityFunctor
 from workflow.AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
