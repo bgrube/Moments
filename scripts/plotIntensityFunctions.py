@@ -53,20 +53,20 @@ class IntensityFunctor:
 
   def __init__(
     self,
-    momentResults: MomentResult,
+    momentResult:  MomentResult,
     beamPol:       float = 0.0,
     onlyNegValues: bool  = False,  # if True, return only negative values of intensity function
     invertSign:    bool  = False,  # if True, invert sign of intensity function
   ) -> None:
-    self.momentResults = momentResults
-    self.nmbMoments    = len(self.momentResults)
+    self.momentResult  = momentResult
+    self.nmbMoments    = len(self.momentResult)
     self.beamPol       = beamPol
     self.onlyNegValues = onlyNegValues
     self.invertSign    = invertSign
     self.baseFcnValues = np.zeros((self.nmbMoments, ), dtype = np.float64)  # array for basis function values
     # get moment values as flat, real-valued array
     # construct quantum-number index ranges that correspond to purely real and purely imaginary moments, respectively
-    indices = self.momentResults.indices
+    indices = self.momentResult.indices
     maxL = indices.maxL
     reIndexRange = (
       QnMomentIndex(momentIndex = 0, L = 0,    M = 0),
@@ -81,15 +81,15 @@ class IntensityFunctor:
     self.imSlice = slice(indices[imIndexRange[0]], indices[imIndexRange[1]] + 1)
     # copy moment values
     self.momentValues = np.zeros((self.nmbMoments, ), dtype = np.float64)
-    self.momentValues[self.reSlice] = np.real(self.momentResults._valsFlatIndex[self.reSlice])
-    self.momentValues[self.imSlice] = np.imag(self.momentResults._valsFlatIndex[self.imSlice])
+    self.momentValues[self.reSlice] = np.real(self.momentResult._valsFlatIndex[self.reSlice])
+    self.momentValues[self.imSlice] = np.imag(self.momentResult._valsFlatIndex[self.imSlice])
 
   def calcBaseFcnValues(
     self,
     args: np.ndarray,  # 3 arguments: <cos(theta)>, <phi [deg]>, <Phi [deg]>
   ) -> None:
     """Calculates basis function values for all moments"""
-    indices = self.momentResults.indices
+    indices  = self.momentResult.indices
     cosTheta = args[0]
     # convert azimuthal angles from degrees to radians
     phi      = args[1] * ROOT.TMath.DegToRad()
@@ -123,27 +123,27 @@ class IntensityUncertFunctor:
 
   def __init__(
     self,
-    momentResults: MomentResult,
+    momentResult:  MomentResult,
     beamPol:       float = 0.0,
     onlyNegValues: bool  = False,  # if True, return only negative values of intensity function
     invertSign:    bool  = False,  # if True, invert sign of significance function
   ) -> None:
     self.intensityFunctor = IntensityFunctor(
-      momentResults = momentResults,
+      momentResult  = momentResult,
       beamPol       = beamPol,
       onlyNegValues = onlyNegValues,
       invertSign    = invertSign,
     )
-    momentResults = self.intensityFunctor.momentResults
-    nmbMoments    = self.intensityFunctor.nmbMoments
+    momentResult = self.intensityFunctor.momentResult
+    nmbMoments   = self.intensityFunctor.nmbMoments
     # copy covariance matrix
     self.covMatrix = np.zeros((nmbMoments, nmbMoments), dtype = np.float64)
     reSlice = self.intensityFunctor.reSlice
     imSlice = self.intensityFunctor.imSlice
-    self.covMatrix[reSlice, reSlice] = momentResults._V_ReReFlatIndex[reSlice, reSlice]
-    self.covMatrix[imSlice, imSlice] = momentResults._V_ImImFlatIndex[imSlice, imSlice]
-    self.covMatrix[reSlice, imSlice] = momentResults._V_ReImFlatIndex[reSlice, imSlice]
-    self.covMatrix[imSlice, reSlice] = momentResults._V_ReImFlatIndex[reSlice, imSlice].T
+    self.covMatrix[reSlice, reSlice] = momentResult._V_ReReFlatIndex[reSlice, reSlice]
+    self.covMatrix[imSlice, imSlice] = momentResult._V_ImImFlatIndex[imSlice, imSlice]
+    self.covMatrix[reSlice, imSlice] = momentResult._V_ReImFlatIndex[reSlice, imSlice]
+    self.covMatrix[imSlice, reSlice] = momentResult._V_ReImFlatIndex[reSlice, imSlice].T
 
   def __call__(
     self,
@@ -262,24 +262,17 @@ class IntensityIntegralFunctor:
 
 
 def makeIntensityPositiveDefinite(
-  momentResults:    MomentResult,
-  beamPol:          float = 0.0,
-  # relMargin:        float = -1e-4,  # allow for small relative negative values of intensity integral to keep integral in a region, where its derivatives are still defined
+  momentResult:     MomentResult,
+  beamPol:          float,
+  maxNmbIterations: int,    # maximum number of iterations for minimization
+  relTolerance:     float,  # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
   relMargin:        float = 0.0,
-  # L_max = 4
-  relTolerance:     float = 5e-5,  # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
-  maxNmbIterations: int   = 2000,  # maximum number of iterations for minimization
-  # # L_max = 6
-  # relTolerance:     float = 5e-4,
-  # maxNmbIterations: int   = 7000,
-  # # L_max = 8
-  # relTolerance:     float = 5e-3,
-  # maxNmbIterations: int   = 20000,
+  # relMargin:        float = -1e-4,  # allow for small relative negative values of intensity integral to keep integral in a region, where its derivatives are still defined
 ) -> tuple[MomentResult, float]:
   """Performs minimal shift of moment values to make intensity function positive definite and returns shifted moments and the chi^2 of the shift"""
   print(f"Making intensity function positive definite by shifting moment values")
   negIntensitySignificanceFunctor = IntensitySignificanceFunctor(  # significance of negative part of intensity function
-    momentResults = momentResults,
+    momentResult  = momentResult,
     beamPol       = beamPol,
     onlyNegValues = True,
   )
@@ -339,16 +332,16 @@ def makeIntensityPositiveDefinite(
   print(f"Integral of negative intensity for original moment values = {integral}")
   print(f"Integral of negative intensity for shifted  moment values = {negIntensityIntegralFcn(H_shifted)}; ratio = {negIntensityIntegralFcn(H_shifted) / integral if integral != 0 else float('nan')}")
   # construct new MomentResult object with shifted moment values
-  momentResultsShifted = deepcopy(momentResults)
+  momentResultShifted = deepcopy(momentResult)
   reSlice = negIntensityFunctor.reSlice
   imSlice = negIntensityFunctor.imSlice
-  momentResultsShifted._valsFlatIndex[reSlice] = H_shifted[reSlice]
-  momentResultsShifted._valsFlatIndex[imSlice] = H_shifted[imSlice] * 1j  # convert to purely imaginary
-  return momentResultsShifted, result.fun
+  momentResultShifted._valsFlatIndex[reSlice] = H_shifted[reSlice]
+  momentResultShifted._valsFlatIndex[imSlice] = H_shifted[imSlice] * 1j  # convert to purely imaginary
+  return momentResultShifted, result.fun
 
 
-def plotIntensityFcn(
-  momentResults:            MomentResult,
+def makeIntensityFunctionPlots(
+  momentResult:             MomentResult,
   massBinIndex:             int,
   beamPolInfo:              BeamPolInfo | None,
   outputDirPath:            str,
@@ -358,15 +351,15 @@ def plotIntensityFcn(
   makeIntensityPosDefinite: bool                            = False,  # if True, shift moment values such that intensity function is positive definite
   scaleFactor:              float | None                    = None,   # scale intensity function with this factor
 ) -> MomentResult | None:  # return moments shifted such that intensity function is positive definite
-  """Draw intensity function in given mass bin and save PDF to output directory"""
+  """Plots intensity function in given mass bin and writes plots to output directory"""
   print(f"Plotting intensity function for mass bin {massBinIndex} using {beamPolInfo} and intensity terms {useIntensityTerms.value}")
   if scaleFactor is not None:
     print(f"Scaling moments by factor {scaleFactor}")
-    momentResults = deepcopy(momentResults)
-    momentResults.scaleBy(scaleFactor)
+    momentResult = deepcopy(momentResult)
+    momentResult.scaleBy(scaleFactor)
   # draw intensity function as 3D plot
   # formula uses variables: x = cos(theta) in [-1, +1]; y = phi in [-180, +180] deg; z = Phi in [-180, +180] deg
-  intensityFormula = momentResults.intensityFormula(
+  intensityFormula = momentResult.intensityFormula(
     polarization      = beamPolInfo.pol if beamPolInfo is not None else None,
     thetaFormula      = "std::acos(x)",
     phiFormula        = "TMath::DegToRad() * y",
@@ -402,8 +395,8 @@ def plotIntensityFcn(
   # draw statistical uncertainty of intensity function
   beamPol = beamPolInfo.pol if beamPolInfo is not None else 0.0
   intensityUncertFunctor = IntensityUncertFunctor(
-    momentResults = momentResults,
-    beamPol       = beamPol,
+    momentResult = momentResult,
+    beamPol      = beamPol,
   )
   intensityFcnUncert = ROOT.TF3(f"intensityFcnUncert_{useIntensityTerms.value}_bin_{massBinIndex}", intensityUncertFunctor, -1, +1, -180, +180, -180, +180)
   drawTF3(
@@ -414,7 +407,7 @@ def plotIntensityFcn(
   )
   # draw statistical significance of negative part of intensity function (if any)
   intensitySignificanceFunctor = IntensitySignificanceFunctor(
-    momentResults = momentResults,
+    momentResult  = momentResult,
     beamPol       = beamPol,
     onlyNegValues = True,  # only show negative part of intensity function
     invertSign    = True,  # invert sign of significance function to make negative part of intensity function positive
@@ -429,12 +422,26 @@ def plotIntensityFcn(
   momentsShifted = None
   if makeIntensityPosDefinite and useIntensityTerms == MomentResult.IntensityTermsType.PARITY_CONSERVING:
     #TODO this code works only for parity-conserving moments
+    maxL = momentResult.indices.maxL
+    maxNmbIterations = 20000  # maximum number of iterations for minimization
+    relTolerance     = 5e-3   # relative tolerance for violation of constraint that integral of negative part of intensity function is 0
+    if maxL <= 4:
+      maxNmbIterations = 2000
+      relTolerance     = 5e-5
+    elif 5 <= maxL <= 6:
+      maxNmbIterations = 7000
+      relTolerance     = 5e-4
     # make intensity function positive definite by shifting moment values and draw negative part to confirm
-    momentsShifted, chi2 = makeIntensityPositiveDefinite(momentResults, beamPol = beamPol)
+    momentsShifted, chi2 = makeIntensityPositiveDefinite(
+      momentResult     = momentResult,
+      beamPol          = beamPol,
+      maxNmbIterations = maxNmbIterations,
+      relTolerance     = relTolerance,
+    )
     # plot intensity function for shifted moment values
     intensityFunctorShifted = IntensityFunctor(
-      momentResults = momentsShifted,
-      beamPol       = beamPol,
+      momentResult = momentsShifted,
+      beamPol      = beamPol,
     )
     intensityFcnShifted = ROOT.TF3(f"intensityFcn_shifted_{useIntensityTerms.value}_bin_{massBinIndex}", intensityFunctorShifted, -1, +1, -180, +180, -180, +180)
     drawTF3(
@@ -476,7 +483,7 @@ def plotIntensityFcn(
     # draw intensity as function of phi and Phi for fixed cos(theta) value
     cosTheta = 0.0  # fixed value of cos(theta)
     # formula uses variables: x = phi in [-180, +180] deg; y = Phi in [-180, +180] deg
-    intensityFormulaFixedCosTheta = momentResults.intensityFormula(
+    intensityFormulaFixedCosTheta = momentResult.intensityFormula(
       polarization      = beamPolInfo.pol,
       thetaFormula      = f"std::acos({cosTheta})",
       phiFormula        = "TMath::DegToRad() * x",
@@ -528,11 +535,11 @@ def plotIntensityFunctions(
               # MomentResult.IntensityTermsType.PARITY_VIOLATING,
             ):
               momentsShifted = []
-              for massBinIndex, momentResultsForBin in enumerate(momentResults):
-                print(f"Plotting intensity function for {momentResultsForBin.binCenters=}")
+              for massBinIndex, momentResult in enumerate(momentResults):
+                print(f"Plotting intensity function for {momentResult.binCenters=}")
                 momentsShifted.append(
-                  plotIntensityFcn(
-                    momentResults            = momentResultsForBin,
+                  makeIntensityFunctionPlots(
+                    momentResult             = momentResult,
                     massBinIndex             = massBinIndex,
                     beamPolInfo              = overrideBeamPolInfo if overrideBeamPolInfo is not None else BEAM_POL_INFOS[dataPeriod[:7]][beamPolLabel],
                     outputDirPath            = fitResultDirPath,
