@@ -83,7 +83,7 @@ def calculateAllMoments(
     dataPsAcc = dataCfg.loadData(AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE, cfg.convertedTreeName, additionalCuts, additionalColumnDefs)
     if cfg.limitNmbPsAccEvents > 0 and dataPsAcc is not None:
       dataPsAcc = dataPsAcc.Range(cfg.limitNmbPsAccEvents)  #!Caution! Range() switches to single-threaded mode
-    dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.convertedTreeName, additionalCuts, additionalColumnDefs)
+    dataPsGen = dataCfg.loadData(AnalysisConfig.DataType.GENERATED_PHASE_SPACE, cfg.convertedTreeName, (), additionalColumnDefs)
     for labelDataSample, dataSample in dataSamples.items():
       if dataSample is None:
         print(f"No real-data events for type '{labelDataSample}'. Skipping.")

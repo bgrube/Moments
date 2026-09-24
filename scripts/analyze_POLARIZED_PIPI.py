@@ -117,7 +117,7 @@ if __name__ == "__main__":
       cfg                            = cfg,
       additionalColumnDefs           = {},
       additionalCuts                 = (
-        # "(0.100 < minusT and minusT < 0.114)",
+        # "(0.100 < minusT and minusT < 0.114)",  #NOTE changing the t-binning this way will yield wrong absolute scale; for the MC, the cut should actually be applied to the generated phase-space data
       ),
       forceIntegralMatrixCalculation = True,
     )
