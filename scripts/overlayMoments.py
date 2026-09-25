@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 import functools
+import math
 
 import ROOT
 ROOT.PyConfig.DisableRootLogon = True  # prevent loading of `~/.rootlogon.C`
@@ -60,18 +61,44 @@ def getHistFromMomentValues(
     if binning.var not in HVal.binCenters.keys():
       continue
     y, yErr = HVal.part(real = (momentPart == "Re"))
+    if math.isnan(y) or math.isnan(yErr):
+      continue
     binIndex = histData.GetXaxis().FindBin(HVal.binCenters[binning.var])
     histData.SetBinContent(binIndex, y)
     histData.SetBinError  (binIndex, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
   return histData
 
 
+def getGraphFromMomentValues(
+  HVals:      Sequence[MomentValue],
+  binningVar: KinematicBinningVariable,
+  momentPart: str,  # "Re" or "Im"
+  graphName:  str = "",
+  graphTitle: str = "",
+) -> ROOT.TGraphErrors:
+  """Creates graph from moment values"""
+  graphData = ROOT.TGraphErrors()
+  graphData.SetName(graphName)
+  graphData.SetTitle(graphTitle)
+  # print(f"!!! {HVals[0].binCenters=}")
+  for HVal in HVals:
+    x = HVal.binCenters[binningVar]
+    y, yErr = HVal.part(real = (momentPart == "Re"))
+    # print(f"!!! {graphName=}: {x=}, {y=}, {yErr=}")
+    if math.isnan(y) or math.isnan(yErr):
+      continue
+    graphData.AddPoint(x, y)
+    graphData.SetPointError(graphData.GetN() - 1, 0.0, 1e-100 if yErr < 1e-100 else yErr)  # ROOT does not draw points if uncertainty is zero; sigh
+  return graphData
+
+
 @dataclass
 class ResultToOverlay:
   """Stores input data that define a single overlay of moment results"""
   pklFilePath:    str  # path to pickled MomentResultsKinematicBinning file
+  binningVar:     KinematicBinningVariable  # kinematic variable to use for binning
   label:          str  # legend label for moment values
-  scaleFactor:    float | None = None  # optional scale factor to apply to moment values
+  scaleFactor:    float | None                         = None  # optional scale factor to apply to moment values
   _momentResults: MomentResultsKinematicBinning | None = None  # moment results loaded from pklFilePath
 
   @property
@@ -93,56 +120,50 @@ class ResultToOverlay:
 
 def overlayMomentsKinVar(
   resultsToOverlay:  Sequence[ResultToOverlay],
-  qnIndex:           QnMomentIndex,    # defines specific moment
-  binning:           HistAxisBinning,  # binning to use for plot
-  normalizedMoments: bool = True,  # indicates whether moment values were normalized to H_0(0, 0)
-  pdfFileNamePrefix: str  = "",    # name prefix for output files
-  styleIndexOffset:  int  = 0,     # allows to offset style indices for overlaid plots
-  styleIndexStride:  int  = 1,     # step size, by which style indices are incremented
-  yAxisUnit:         str  = "",    # allows to override default y-axis title
+  qnIndex:           QnMomentIndex,  # defines specific moment
+  normalizedMoments: bool = True,    # indicates whether moment values were normalized to H_0(0, 0)
+  pdfFileNamePrefix: str  = "",      # name prefix for output files
+  styleIndexOffset:  int  = 0,       # allows to offset style indices for overlaid plots
+  styleIndexStride:  int  = 1,       # step size, by which style indices are incremented
+  yAxisUnit:         str  = "",      # allows to override default y-axis title
 ) -> None:
   """Overlays moments from different analyses as function of kinematical variable"""
-  print(f"Overlaying {qnIndex.label} moments as a function of the '{binning.var.name}' variable")
+  binningVar = resultsToOverlay[0].binningVar
+  print(f"Overlaying {qnIndex.label} moments as a function of the '{binningVar.name}' variable")
   for momentPart, momentPartLabel in (("Re", "Real Part"), ("Im", "Imag Part")):  # plot real and imaginary parts separately
-    histStack = ROOT.THStack(
+    multiGraph = ROOT.TMultiGraph(
       f"{pdfFileNamePrefix}overlay_{qnIndex.label}_{momentPart}",
-      f"{qnIndex.title} {momentPartLabel};{binning.axisTitle};" + (("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value") + yAxisUnit,
+      f"{qnIndex.title} {momentPartLabel};{binningVar.axisTitle};" + (("Normalized" if normalizedMoments else "Unnormalized") + " Moment Value") + yAxisUnit,  #TODO first graph determines x-axis title; what to do if subsequent graphs have different binningVar?
     )
     for overlayIndex, resultToOverlay in enumerate(resultsToOverlay):
       # filter out specific moment given by qnIndex
       HVals: tuple[MomentValue, ...] = tuple(momentResult[qnIndex] for momentResult in resultToOverlay.momentResults if qnIndex in momentResult)
-      histData = getHistFromMomentValues(
+      graphData = getGraphFromMomentValues(
         HVals      = HVals,
-        binning    = binning,
+        binningVar = resultToOverlay.binningVar,
         momentPart = momentPart,
-        histName   = resultToOverlay.label,
+        graphName  = resultToOverlay.label,
       )
       setCbFriendlyStyle(
-        graphOrHist   = histData,
+        graphOrHist   = graphData,
         styleIndex    = overlayIndex * styleIndexStride + styleIndexOffset,
         filledMarkers = True,
       )
       if resultToOverlay.scaleFactor is not None:
         print(f"Applying scale factor {resultToOverlay.scaleFactor} to moment result '{resultToOverlay.label}'")
-        histData.Scale(resultToOverlay.scaleFactor)
-      histStack.Add(histData, "PE1X0")
+        graphData.Scale(resultToOverlay.scaleFactor)
+      multiGraph.Add(graphData)
     canv = ROOT.TCanvas()
-    histStack.Draw("NOSTACK")
+    multiGraph.Draw("AP")
     # adjust y-range
     canv.Update()
-    actualYRange = canv.GetUymax() - canv.GetUymin()
-    yRangeFraction = 0.1 * actualYRange
-    histStack.SetMinimum(canv.GetUymin() - yRangeFraction)
-    histStack.SetMaximum(canv.GetUymax() + yRangeFraction)
+    # actualYRange = canv.GetUymax() - canv.GetUymin()
+    # yRangeFraction = 0.1 * actualYRange
+    # multiGraph.SetMinimum(canv.GetUymin() - yRangeFraction)
+    # multiGraph.SetMaximum(canv.GetUymax() + yRangeFraction)
     canv.BuildLegend(0.7, 0.85, 0.99, 0.99)
     canv.Update()
-    if (canv.GetUymin() < 0) and (canv.GetUymax() > 0):
-      zeroLine = ROOT.TLine()
-      zeroLine.SetLineColor(ROOT.kBlack)
-      zeroLine.SetLineStyle(ROOT.kDashed)
-      xAxis = histStack.GetXaxis()
-      zeroLine.DrawLine(xAxis.GetBinLowEdge(xAxis.GetFirst()), 0, xAxis.GetBinUpEdge(xAxis.GetLast()), 0)
-    canv.SaveAs(f"{histStack.GetName()}.pdf")
+    canv.SaveAs(f"{multiGraph.GetName()}.pdf")
 
 
 def overlayMoments(
@@ -159,12 +180,6 @@ def overlayMoments(
   for resultToOverlay in resultsToOverlay:
     resultToOverlay.loadMomentResults()
 
-  # ensure that all moment results have identical kinematic binning and identical order of kinematic bins
-  momentResults: tuple[MomentResultsKinematicBinning, ...]         = tuple(resultToOverlay.momentResults for resultToOverlay in resultsToOverlay)
-  binCenters:    tuple[dict[KinematicBinningVariable, float], ...] = momentResults[0].binCenters  # bin centers of first moment result
-  for momentResult in momentResults[1:]:
-    assert momentResult.binCenters == binCenters
-
   if normToFirstResult:
     # set scale factors such that all moments are normalized to H_0(0, 0) of the first moment result
     firstMomentResults = resultsToOverlay[0].momentResults
@@ -180,7 +195,6 @@ def overlayMoments(
     overlayMomentsKinVar(
       resultsToOverlay  = resultsToOverlay,
       qnIndex           = qnIndex,
-      binning           = cfg.massBinning,
       normalizedMoments = cfg.normalizeMoments,
       pdfFileNamePrefix = f"{outputDirPath}/{cfg.outFileNamePrefix}_phys_{cfg.massBinning.var.name}_",
       # styleIndexOffset  = 1,
@@ -207,8 +221,8 @@ if __name__ == "__main__":
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
   # cfg.polarization = None  # treat data as unpolarized
 
-  normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first moment result
-  # normToFirstResult = False
+  # normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first moment result
+  normToFirstResult = False
   crossSectionScaleFactors = {
     # [ub / GeV^3] = 1 / ([40 MeV mass bin width] * [0.1 GeV^2 t bin width] * L)
     "2017_01" : 1.0 / (0.04 * 0.1 * 21.360196 * 1e6),  #  L(Spring 2017) = 21.360196 pb^{-1}
@@ -226,17 +240,17 @@ if __name__ == "__main__":
       scaleFactor_2018_08_AMO = 7.241007048362434  # scale factor to match Fall 2018 PARA 0 H_0(0, 0) integral for L_max = 4
       resultsToOverlay: tuple[ResultToOverlay, ...] = (  # last moment result in this tuple defines, which moments are plotted
         # # eta pi0
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl",     "GJ, L_{max} = 4", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}.bak/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "HF, L_{max} = 4", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "Physical", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "Measured", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_5/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 5", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_6/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_7/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 7", None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_8/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 8", None),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl",     "GJ, L_{max} = 4"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}.bak/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "HF, L_{max} = 4"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "Physical"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "Measured"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_5/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 5"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_6/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_7/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 7"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/All.maxL_8/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 8"),
         # #
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/Unpol.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "LOWT",   None),
-        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/XSCUTS/Unpol.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl",      "XSCUTS", None),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}/Unpol.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl", "LOWT"),
+        # ResultToOverlay(f"{cfg.outFileDirBasePath}/{dataPeriod}/XSCUTS/Unpol.maxL_4/{cfg.outFileNamePrefix}_moments_phys.pkl",      "XSCUTS"),
         # # K_S K_L
         # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4"),
         # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
@@ -248,12 +262,13 @@ if __name__ == "__main__":
         # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6, Nominal"),
         # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys_shifted.pkl", "L_{max} = 4, Shifted"),
         # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys_shifted.pkl", "L_{max} = 6, Shifted"),
-        ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl",                             "Truth L_{max} = 6"),
-        ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4"),
-        ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
+        # ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl",                             "Truth L_{max} = 6"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 4"),
+        # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 6)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 6"),
         # ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 8)}/{cfg.outFileNamePrefix}_moments_phys.pkl", "L_{max} = 8"),
-        # ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/unnorm_moments_phys_shifted.pkl",                             "Real data L_{max} = 4"),
-        ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/unnorm_moments_phys.pkl",                                     "Real data L_{max} = 4"),
+        # ResultToOverlay("./plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_4/unnorm_moments_phys.pkl",                                     "Real data L_{max} = 4"),
+        ResultToOverlay(f"{cfg.outFileDirPath(dataPeriod, tBinLabel, beamPolLabel = 'PARA_0', maxL = 4)}/{cfg.outFileNamePrefix}_moments_phys.pkl", cfg.massBinning.var,  "ver05"),
+        ResultToOverlay("./plots/PiPiPol/2017_01/tbin_0.1_0.2/PARA_0.maxL_4/unnorm_moments_phys.pkl",                                               cfg.massBinning.var,  "ver04", 593876.0468607476 / 3289419.7565139276),
       )
       outputDirPath = Utilities.makeDirPath(f"{cfg.outFileDirBasePath}/{dataPeriod}/{tBinLabel}.overlay")
 
