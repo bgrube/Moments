@@ -539,10 +539,10 @@ def readInputData(
   phis   = getStdVectorFromRdfColumn(data = data, columnName = "phi")
   Phis   = getStdVectorFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else \
     ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
-  print(f"Input data column: type = {type(thetas)}; length = {thetas.size()}; value type = {thetas.value_type}")
   nmbEvents = thetas.size()
   assert thetas.size() == phis.size() == Phis.size(), (
     f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
+  print(f"Input data column: type = {type(thetas)}; length = {nmbEvents}; value type = {thetas.value_type}")
 
   # get event weights
   eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
@@ -680,6 +680,7 @@ class AcceptanceIntegralMatrix:
       data         = self.dataSet.phaseSpaceData,
     )
     nmbAccEvents = thetas.size()
+    assert nmbAccEvents > 0, f"Data contain zero accepted events; cannot calculate acceptance integral matrix"
     # calculate basis-function values for measured moments; Eq. (175); defined in `cpp/basisFunctions.C`
     nmbMomentsMeas = len(self.indicesMeas)
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
@@ -1698,6 +1699,9 @@ class MomentCalculator:
       flipSignOfWeights = self.flipSignOfWeights,
     )
     nmbEvents = thetas.size()
+    if nmbEvents == 0:
+      print("WARNING: Input data do not contain any events; all moments are zero")
+      return
     # calculate basis-function values and values of measured moments
     bootstrapIndices = BootstrapIndices(nmbEvents, nmbBootstrapSamples, bootstrapRandomSeed)
     self.HMeas.nmbBootstrapSamples = nmbBootstrapSamples
@@ -1793,7 +1797,7 @@ class MomentCalculator:
         data              = momentCalculator.dataSet.data,
         flipSignOfWeights = self.flipSignOfWeights,
       )
-      nmbEvents  = len(thetas)
+      nmbEvents  = thetas.size()
       nmbMoments = len(momentCalculator.indicesPhys)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
