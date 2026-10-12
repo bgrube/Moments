@@ -8,31 +8,12 @@ import timeit
 
 import ROOT
 
+from moments import MomentCalculator
 from workflow import RootUtilities
 
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
-
-
-def vectorComplexToNumpyView(vecComplex: ROOT.std.vector["std::complex<double>"]) -> np.ndarray:
-  """Returns zero-copy NumPy view of std::vector<std::complex<double>>.
-
-  The returned array shares memory with vec, so `vecComplex` must stay alive while
-  the array is used.
-  """
-  size = int(vecComplex.size())
-  if size == 0:
-    return np.empty(0, dtype = np.complex128)
-  # Use address of first element; std::complex<double> occupies two doubles.
-  address = int(ROOT.addressof(vecComplex[0]))
-  bufferType = ctypes.c_double * (2 * size)
-  buffer = bufferType.from_address(address)
-  return np.ctypeslib.as_array(buffer).view(np.complex128)
-
-def vectorComplexToNumpyArray(vecComplex: ROOT.std.vector["std::complex<double>"]) -> np.ndarray:
-  """Returns NumPy array of std::vector<std::complex<double>> using 1 copy."""
-  return vectorComplexToNumpyView(vecComplex).copy()
 
 
 if __name__ == "__main__":
@@ -57,7 +38,8 @@ if __name__ == "__main__":
   thetas = ROOT.std.vector["double"](vals)
   phis   = ROOT.std.vector["double"](vals)
   Phis   = ROOT.std.vector["double"](vals)
-  for nmbThreads in (1, 2, 4, 8, 16, 32, 64, 128):
+  for nmbThreads in (16, ):
+  # for nmbThreads in (1, 2, 4, 8, 16, 32, 64, 128):
     with threadController.limit(limits = nmbThreads):
       print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
       # see https://root.cern/doc/master/pyroot001__arrayInterface_8py.html
@@ -75,10 +57,10 @@ if __name__ == "__main__":
       start = timeit.default_timer()
       print(f"!!! {type(fcnResults)=}")
       # foo = np.asarray(fcnResults)  # works well for std::vector<double>; but is extremely slow (minutes!) for std::vector<std::complex<double>>
-      foo = vectorComplexToNumpyArray(fcnResults)  # works well for std::vector<std::complex<double>>, i.e. conversion time is about 0.2 sec
+      foo = MomentCalculator.vectorComplexToNumpyArray(fcnResults)  # works well for std::vector<std::complex<double>>, i.e. conversion time is about 0.2 sec
       stop = timeit.default_timer()
       time = stop - start
       print(f"!!! needed {str(time)} sec for conversion to numpy array")
-      # for index, val in enumerate(foo):
-      #   if val.real != fcnResults[index].real or val.imag != fcnResults[index].imag:
-      #     print(f"Mismatch at index {index}: numpy view = {val}, original = {fcnResults[index]}")
+      for index, val in enumerate(foo):
+        if val.real != fcnResults[index].real or val.imag != fcnResults[index].imag:
+          print(f"Mismatch at index {index}: numpy view = {val}, original = {fcnResults[index]}")

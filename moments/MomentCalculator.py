@@ -7,6 +7,7 @@ from __future__ import annotations
 import bidict as bd
 from concurrent.futures import ProcessPoolExecutor
 import copy
+import ctypes
 import dataclasses
 from dataclasses import (
   dataclass,
@@ -41,6 +42,23 @@ import ROOT
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
+
+
+def vectorComplexToNumpyView(vecComplex: ROOT.std.vector["std::complex<double>"]) -> npt.NDArray[npt.Shape["N"], npt.Complex128]:
+  """Returns zero-copy NumPy view of std::vector<std::complex<double>>.
+  The returned array shares memory with `vecComplex`, so `vecComplex`
+  must stay alive while the array is used."""
+  size = int(vecComplex.size())
+  if size == 0:
+    return np.empty(0, dtype = np.complex128)
+  bufferType = ctypes.c_double * (2 * size)  # std::complex<double> occupies two doubles
+  address = int(ROOT.addressof(vecComplex[0]))  # address of data block is address of first element
+  buffer = bufferType.from_address(address)
+  return np.ctypeslib.as_array(buffer).view(np.complex128)
+
+def vectorComplexToNumpyArray(vecComplex: ROOT.std.vector["std::complex<double>"]) -> npt.NDArray[npt.Shape["N"], npt.Complex128]:
+  """Returns NumPy array of std::vector<std::complex<double>> using 1 copy. This is much faster than `np.asarray(vecComplex)`."""
+  return vectorComplexToNumpyView(vecComplex).copy()
 
 
 @functools.cache
@@ -686,7 +704,7 @@ class AcceptanceIntegralMatrix:
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
     for flatIndexMeas in self.indicesMeas.flatIndices:
       qnIndexMeas = self.indicesMeas[flatIndexMeas]
-      fMeas[flatIndexMeas] = np.asarray(ROOT.f_meas(  #TODO if ROOT.f_meas would be an RVec, np.asarray would be zero copy; not sure this is also true for std::vector
+      fMeas[flatIndexMeas] = vectorComplexToNumpyArray(ROOT.f_meas(  # np.asarray() is inefficient for std::vector<std::complex<double>>
         qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
         thetas,
         phis,
@@ -698,7 +716,7 @@ class AcceptanceIntegralMatrix:
     fPhys: npt.NDArray[npt.Shape["nmbMomentsPhys, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsPhys, nmbAccEvents), dtype = np.complex128)
     for flatIndexPhys in self.indicesPhys.flatIndices:
       qnIndexPhys = self.indicesPhys[flatIndexPhys]
-      fPhys[flatIndexPhys] = np.asarray(ROOT.f_phys(
+      fPhys[flatIndexPhys] = vectorComplexToNumpyArray(ROOT.f_phys(  # np.asarray() is inefficient for std::vector<std::complex<double>>
         qnIndexPhys.momentIndex, qnIndexPhys.L, qnIndexPhys.M,
         thetas,
         phis,
@@ -1710,7 +1728,7 @@ class MomentCalculator:
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbEvents), dtype = np.complex128)
     for flatIndex in self.indicesMeas.flatIndices:
       qnIndex = self.indicesMeas[flatIndex]
-      fMeas[flatIndex] = np.asarray(ROOT.f_meas(
+      fMeas[flatIndex] = vectorComplexToNumpyArray(ROOT.f_meas(  # np.asarray() is inefficient for std::vector<std::complex<double>>
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
         thetas,
         phis,
@@ -1803,7 +1821,7 @@ class MomentCalculator:
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
       for flatIndex in momentCalculator.indicesPhys.flatIndices:
         qnIndex = momentCalculator.indicesPhys[flatIndex]
-        self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
+        self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(  # np.asarray() is efficient for std::vector<double>
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetas,
           phis,
@@ -1837,7 +1855,7 @@ class MomentCalculator:
       for flatIndex in momentCalculator.indicesPhys.flatIndices:
         # calculate basis-functions value for each accepted phase-space event
         qnIndex = momentCalculator.indicesPhys[flatIndex]
-        baseFcnValsAccPs: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.asarray(ROOT.f_basis(
+        baseFcnValsAccPs: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.asarray(ROOT.f_basis(  # np.asarray() is efficient for std::vector<double>
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
           thetasAccPs,
           phisAccPs,
