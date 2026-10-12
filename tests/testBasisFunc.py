@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import ctypes
 import functools
 import numpy as np
 import threadpoolctl
@@ -12,6 +13,26 @@ from workflow import RootUtilities
 
 # always flush print() to reduce garbling of log files due to buffering
 print = functools.partial(print, flush = True)
+
+
+def vectorComplexToNumpyView(vecComplex: ROOT.std.vector["std::complex<double>"]) -> np.ndarray:
+  """Returns zero-copy NumPy view of std::vector<std::complex<double>>.
+
+  The returned array shares memory with vec, so `vecComplex` must stay alive while
+  the array is used.
+  """
+  size = int(vecComplex.size())
+  if size == 0:
+    return np.empty(0, dtype = np.complex128)
+  # Use address of first element; std::complex<double> occupies two doubles.
+  address = int(ROOT.addressof(vecComplex[0]))
+  bufferType = ctypes.c_double * (2 * size)
+  buffer = bufferType.from_address(address)
+  return np.ctypeslib.as_array(buffer).view(np.complex128)
+
+def vectorComplexToNumpyArray(vecComplex: ROOT.std.vector["std::complex<double>"]) -> np.ndarray:
+  """Returns NumPy array of std::vector<std::complex<double>> using 1 copy."""
+  return vectorComplexToNumpyView(vecComplex).copy()
 
 
 if __name__ == "__main__":
@@ -46,14 +67,18 @@ if __name__ == "__main__":
       # https://cppyy.readthedocs.io/en/latest/numba.html
       # https://cppyy.readthedocs.io/en/latest/lowlevel.html#numpy-casts
       start = timeit.default_timer()
-      fcnResults = ROOT.f_basis(1, 3, 2, thetas, phis, Phis, 1.0)  # 15 sec for 1 thread, 2.1 sec for 8 threads
-      # fcnResults = ROOT.f_phys(1, 3, 2, thetas, phis, Phis, 1.0)  # 16 sec for 1 thread, 3.0 sec for 8 threads
+      # fcnResults = ROOT.f_basis(1, 3, 2, thetas, phis, Phis, 1.0)  # 15 sec for 1 thread, 2.1 sec for 8 threads
+      fcnResults = ROOT.f_phys(1, 3, 2, thetas, phis, Phis, 1.0)  # 16 sec for 1 thread, 3.0 sec for 8 threads
       stop = timeit.default_timer()
       time = stop - start
       print(f"!!! {ROOT.getNmbOpenMpThreads()} threads: total time = {str(time)} sec; total time * number of threads = {str(time * nmbThreads)} sec")
       start = timeit.default_timer()
       print(f"!!! {type(fcnResults)=}")
-      foo = np.asarray(fcnResults)  #TODO 0.05 sec for std::vector<double> but 6!!! sec for std::vector<complex<double>>
+      # foo = np.asarray(fcnResults)  # works well for std::vector<double>; but is extremely slow (minutes!) for std::vector<std::complex<double>>
+      foo = vectorComplexToNumpyArray(fcnResults)  # works well for std::vector<std::complex<double>>, i.e. conversion time is about 0.2 sec
       stop = timeit.default_timer()
       time = stop - start
       print(f"!!! needed {str(time)} sec for conversion to numpy array")
+      # for index, val in enumerate(foo):
+      #   if val.real != fcnResults[index].real or val.imag != fcnResults[index].imag:
+      #     print(f"Mismatch at index {index}: numpy view = {val}, original = {fcnResults[index]}")
