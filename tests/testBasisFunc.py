@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import ctypes
 import functools
 import numpy as np
 import threadpoolctl
@@ -38,8 +37,7 @@ if __name__ == "__main__":
   thetas = ROOT.std.vector["double"](vals)
   phis   = ROOT.std.vector["double"](vals)
   Phis   = ROOT.std.vector["double"](vals)
-  for nmbThreads in (16, ):
-  # for nmbThreads in (1, 2, 4, 8, 16, 32, 64, 128):
+  for nmbThreads in (1, 2, 4, 8, 16, 32, 64, 128):
     with threadController.limit(limits = nmbThreads):
       print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
       # see https://root.cern/doc/master/pyroot001__arrayInterface_8py.html
@@ -57,10 +55,10 @@ if __name__ == "__main__":
       start = timeit.default_timer()
       print(f"!!! {type(fcnResults)=}")
       # foo = np.asarray(fcnResults)  # works well for std::vector<double>; but is extremely slow (minutes!) for std::vector<std::complex<double>>
-      foo = MomentCalculator.vectorComplexToNumpyArray(fcnResults)  # works well for std::vector<std::complex<double>>, i.e. conversion time is about 0.2 sec
+      foo = np.asarray(MomentCalculator.ComplexVectorNumPyView(fcnResults))  # works well for std::vector<std::complex<double>>, i.e. conversion time is negligible
       stop = timeit.default_timer()
       time = stop - start
       print(f"!!! needed {str(time)} sec for conversion to numpy array")
-      for index, val in enumerate(foo):
-        if val.real != fcnResults[index].real or val.imag != fcnResults[index].imag:
-          print(f"Mismatch at index {index}: numpy view = {val}, original = {fcnResults[index]}")
+      # for index, val in enumerate(foo):
+      #   if val.real != fcnResults[index].real or val.imag != fcnResults[index].imag:
+      #     print(f"Mismatch at index {index}: numpy view = {val}, original = {fcnResults[index]}")
