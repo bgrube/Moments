@@ -298,6 +298,7 @@ def calculateMoments(
               )
               timer.stop("Total execution time")
               print(timer.summary)
+              Utilities.printResourceUsage()
 
 
 if __name__ == "__main__":

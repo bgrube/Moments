@@ -134,3 +134,12 @@ class Timer:
         strings.append(f"{name}: {timeData.summary}")
     summary = "\n".join(strings)
     return summary if summary else None
+
+
+def printResourceUsage() -> None:
+  """Prints resource usage information for calling process and its children"""
+  import resource
+  usage = resource.getrusage(resource.RUSAGE_SELF)
+  print(f"User CPU time: {usage.ru_utime:.4g} sec")
+  print(f"System CPU time: {usage.ru_stime:.4g} sec")
+  print(f"Max resident set size: {usage.ru_maxrss} kB")
