@@ -60,7 +60,7 @@ class ComplexVectorNumPyView:
       self._array = np.empty(0, dtype = np.complex128)
       return
     buffer_type = ctypes.c_double * (2 * size)  # std::complex<double> occupies two doubles
-    address = int(ROOT.addressof(self.vectorComplex[0]))  # address of data block is address of first element
+    address = int(ROOT.addressof(self.vectorComplex[0]))  # address of data block of vector is address of its first element
     buffer = buffer_type.from_address(address)
     self._array = np.ctypeslib.as_array(buffer).view(np.complex128)
 
@@ -720,34 +720,40 @@ class AcceptanceIntegralMatrix:
     assert nmbAccEvents > 0, f"Data contain zero accepted events; cannot calculate acceptance integral matrix"
     # calculate basis-function values for measured moments; Eq. (175); defined in `cpp/basisFunctions.C`
     nmbMomentsMeas = len(self.indicesMeas)
+    fMeasView: list[ComplexVectorNumPyView] = []  # variable to keep NumPy array views alive
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
     for flatIndexMeas in self.indicesMeas.flatIndices:
       qnIndexMeas = self.indicesMeas[flatIndexMeas]
-      fMeas[flatIndexMeas] = np.asarray(ComplexVectorNumPyView(ROOT.f_meas(
+      fMeasView.append(ComplexVectorNumPyView(ROOT.f_meas(
         qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
         thetas,
         phis,
         Phis,
         beamPol,
       )))
+      fMeas[flatIndexMeas] = np.asarray(fMeasView[-1])
     # calculate basis-function values for physical moments; Eq. (176); defined in `cpp/basisFunctions.C`
     nmbMomentsPhys = len(self.indicesPhys)
+    fPhysView: list[ComplexVectorNumPyView] = []  # variable to keep NumPy array views alive
     fPhys: npt.NDArray[npt.Shape["nmbMomentsPhys, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsPhys, nmbAccEvents), dtype = np.complex128)
     for flatIndexPhys in self.indicesPhys.flatIndices:
       qnIndexPhys = self.indicesPhys[flatIndexPhys]
-      fPhys[flatIndexPhys] = np.asarray(ComplexVectorNumPyView(ROOT.f_phys(
+      fPhysView.append(ComplexVectorNumPyView(ROOT.f_phys(
         qnIndexPhys.momentIndex, qnIndexPhys.L, qnIndexPhys.M,
         thetas,
         phis,
         Phis,
         beamPol,
       )))
+      fPhys[flatIndexPhys] = np.asarray(fPhysView[-1])
     # calculate integral-matrix elements; Eq. (178)
     self._IFlatIndex = np.empty((nmbMomentsMeas, nmbMomentsPhys), dtype = np.complex128)
     for flatIndexMeas in self.indicesMeas.flatIndices:
       for flatIndexPhys in self.indicesPhys.flatIndices:
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = ((8 * np.pi**2 / self.dataSet.nmbGenEvents)
           * np.dot(np.multiply(eventWeights, fMeas[flatIndexMeas]), fPhys[flatIndexPhys]))
+    del fPhysView  # ensure NumPy array views are not garbage collected up to this point
+    del fMeasView  # ensure NumPy array views are not garbage collected up to this point
     assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
 
   def isValid(self) -> bool:
@@ -1744,16 +1750,18 @@ class MomentCalculator:
     self.HMeas.nmbBootstrapSamples = nmbBootstrapSamples
     self.HMeas.bootstrapRandomSeed = bootstrapRandomSeed
     nmbMomentsMeas = len(self.indicesMeas)
+    fMeasView: list[ComplexVectorNumPyView] = []  # variable to keep NumPy array views alive
     fMeas: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbEvents), dtype = np.complex128)
     for flatIndex in self.indicesMeas.flatIndices:
       qnIndex = self.indicesMeas[flatIndex]
-      fMeas[flatIndex] = np.asarray(ComplexVectorNumPyView(ROOT.f_meas(
+      fMeasView.append(ComplexVectorNumPyView(ROOT.f_meas(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
         thetas,
         phis,
         Phis,
         beamPol,
       )))  # Eq. (176)
+      fMeas[flatIndex] = np.asarray(fMeasView[-1])
       weightedSum = eventWeights.dot(fMeas[flatIndex])
       self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * weightedSum  # Eq. (179)
       # perform bootstrapping of HMeas
@@ -1767,6 +1775,7 @@ class MomentCalculator:
         self.HMeas._bsSamplesFlatIndex[flatIndex, bsSampleIndex] = 2 * np.pi * eventWeightsBsSample.dot(fMeasBsSample)
     # calculate covariance matrices for measured moments; Eqs. (88), (180), and (181) #TODO update eq numbers
     fMeasWeighted = eventWeights * fMeas
+    del fMeasView  # ensure NumPy array views are not garbage collected up to this point
     Vmeas_aug = (2 * np.pi)**2 * nmbEvents * np.cov(fMeasWeighted, np.conjugate(fMeasWeighted), ddof = 1)
     if applyCovPoissonCorrection:
       # add correction that accounts for Poissonian fluctuations of number of events; Eqs. (123) and (124)
