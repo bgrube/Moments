@@ -67,7 +67,7 @@ class BeamPolInfo:
 #TODO maybe using a function would be more flexible here
 BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period label> : {<beam-polarization label> : BeamPolInfo(...)}; `None` means unpolarized
   "merged" : {  # use for data merged across periods with different polarization values
-    "All" : BeamPolInfo(  # read polarization values for each event from the given column names
+    "ALL" : BeamPolInfo(  # read polarization values for each event from the given column names
       pol    = "beamPol",
       PhiLab = "beamPolPhiLabDeg",
     ),
@@ -94,6 +94,10 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
   # Phase-I polarization values are obtained using Version 9 of `makePolVals` tool from https://halldweb.jlab.org/wiki-private/index.php/TPOL_Polarization
   # beam polarization angles in lab frame are taken from `Lab Phi` column of tables 2 to 6 in GlueX-doc-3977-v7
   "2017_01" : {  # Spring 2017 polarization magnitudes obtained by running `.x makePolVals.C(17, 1, 0, 75)` in ROOT shell
+    "ALL" : BeamPolInfo(  # read polarization values for each event from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
     "PARA_0" : BeamPolInfo(
       pol    = 0.3537,
       PhiLab = 1.8,
@@ -114,6 +118,10 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "Unpol" : None,
   },
   "2018_01" : {  # Spring 2018 polarization magnitudes obtained by running `.x makePolVals.C(18, 1, 0, 75)` in ROOT shell
+    "ALL" : BeamPolInfo(  # read polarization values for each event from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
     "PARA_0" : BeamPolInfo(
       pol    = 0.3420,
       PhiLab = 4.1,
@@ -134,6 +142,10 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "Unpol" : None,
   },
   "2018_08" : {  # Fall 2018 polarization magnitudes obtained by running `.x makePolVals.C(18, 2, 0, 75)` in ROOT shell
+    "ALL" : BeamPolInfo(  # read polarization values for each event from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
     "PARA_0" : BeamPolInfo(
       pol    = 0.3563,
       PhiLab = 3.3,
@@ -154,6 +166,10 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "Unpol" : None,
   },
   "2019_11" : {  # Spring 2020 polarization magnitudes obtained by running `root makePolVals2020.C'(0)'` using version `V2`
+    "ALL" : BeamPolInfo(  # read polarization values for each event from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
     "PARA_0" : BeamPolInfo(
       pol    = 0.3525,
       PhiLab = 1.4,
@@ -174,6 +190,10 @@ BEAM_POL_INFOS: dict[str, dict[str, BeamPolInfo | None]] = {  # <data-period lab
     "Unpol" : None,
   },
   "2023_01" : {  # Spring 2023 polarization magnitudes obtained by running `root makePolVals2023.C'(0)'` using version `V1`
+    "ALL" : BeamPolInfo(  # read polarization values for each event from the given column names
+      pol    = "beamPol",
+      PhiLab = "beamPolPhiLabDeg",
+    ),
     "PARA_0" : BeamPolInfo(
       pol    = 0.3704,
       PhiLab = 1.8,
@@ -215,7 +235,7 @@ class DataConfig:
   dataFilePath:   str         # file path of real data to analyze
   psAccFilePath:  str | None  # file path of accepted phase-space MC
   psGenFilePath:  str | None  # file path of generated phase-space MC
-  polarization:   float | str | None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo
+  polarization:   float | str | None  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column  #TODO use BeamPolInfo  #TODO what about the polarization angle?
   maxL:           int | tuple[int, int]  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
   outFileDirPath: str  # base path of directory, into which all output of the moment calculation will be written
 
@@ -380,6 +400,7 @@ class AnalysisConfig:
       ),
     )
   )
+  #TODO add number of threads to use in moment calculation
 
   # data
   dataDirBasePath:     str                        = "./data/PiPi/unpolarized"  # base directory for data
