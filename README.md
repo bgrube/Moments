@@ -1,4 +1,4 @@
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bgrube/Moments)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-0A66C2?style=flat-square)](https://deepwiki.com/bgrube/Moments)
 
 # Framework for moment analysis of two-(pseudo)scalar meson systems from data of the GlueX experiment
 
