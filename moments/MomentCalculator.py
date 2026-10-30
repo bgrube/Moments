@@ -1583,9 +1583,9 @@ class MomentResultsKinematicBinning:
     pickleFilePath: str,
   ) -> MomentResultsKinematicBinning:
     """Loads `MomentResultsKinematicBinning` from pickle file"""
+    print(f"Loading moment results from file '{pickleFilePath}'")
     with open(pickleFilePath, "rb") as file:
       return pickle.load(file)
-    print(f"Loaded moment results from file '{pickleFilePath}'")
 
 
 @dataclass
