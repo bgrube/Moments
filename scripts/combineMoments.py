@@ -59,7 +59,6 @@ def combineMoments(
           print(f"Combining moments for data sets '{beamPolLabels}' for data period '{dataPeriod}', t bin '{tBinLabel}', and L_max = {maxL}")
           # constructing input file names
           momentResultsFilePaths = []
-          # for dataPeriod in dataPeriods:
           for beamPolLabel in beamPolLabels:
             dataCfg = cfg.getConfigConvertedData(
               dataPeriod   = dataPeriod,
@@ -100,15 +99,15 @@ def combineMoments(
 if __name__ == "__main__":
   combineMoments(
     # cfg = CFG_UNPOLARIZED_ETAPETA,  # perform analysis of Will's unpolarized eta' eta data
-    cfg = CFG_POLARIZED_ETAPPI0,  # perform analysis of Zach's polarized eta pi0 data
-    # cfg = CFG_POLARIZED_PIPI,  # perform analysis of polarized pi+ pi- data
+    # cfg = CFG_POLARIZED_ETAPPI0,  # perform analysis of Zach's polarized eta pi0 data
+    cfg = CFG_POLARIZED_PIPI,  # perform analysis of polarized pi+ pi- data
     # cfg = CFG_UNPOLARIZED_PIPI_PWA,  # perform analysis of unpolarized pi+ pi- data
     momentsFileName   = "moments_phys.pkl",
     beamPolsToCombine = {
-      # "0_90"      : ("PARA_0",   "PERP_90"),
-      # "-45_45"    : ("PARA_135", "PERP_45"),
-      # "0_-45"     : ("PARA_0",   "PARA_135"),
-      # "45_90"     : ("PERP_45",  "PERP_90"),
-      "allOrient" : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
+      # "0_90"   : ("PARA_0",   "PERP_90"),
+      # "-45_45" : ("PARA_135", "PERP_45"),
+      # "0_-45"  : ("PARA_0",   "PARA_135"),
+      # "45_90"  : ("PERP_45",  "PERP_90"),
+      "ALL"    : ("PARA_0", "PARA_135", "PERP_45", "PERP_90"),
     },
   )
