@@ -183,20 +183,20 @@ if __name__ == "__main__":
   # useIntensityTerms = MomentResult.IntensityTermsType.PARITY_VIOLATING   # include only parity-violating terms
 
   # weight accepted phase-space data in input format for generating kinematic plots in mass bins
-  # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
-  # weightInputData          = True
+  dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
+  weightInputData          = True
   # # weight accepted phase-space data in converted format for input-output studies with acceptance correction
   # dataType                 = AnalysisConfig.DataType.ACCEPTED_PHASE_SPACE
   # weightInputData          = False
   # weight generated phase-space data in converted format for input-output studies without acceptance correction
-  dataType                 = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
-  weightInputData          = False
+  # dataType                 = AnalysisConfig.DataType.GENERATED_PHASE_SPACE
+  # weightInputData          = False
 
   reweightMassDistribution = True
   limitNmbEventsTo         = None  # limit number of events to read from input tree
   # limitNmbEventsTo         = 70000000  # limit number of events to read from input tree
   massBinningForWeighting  = deepcopy(cfg.massBinning)  # same binning as for moment values
-  # massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
+  massBinningForWeighting.nmbBins *= 10  # finer binning than for moment values
   # massBinningForWeighting  = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76)  # rho(770) mass bin
 
   # momentsFileName = "moments_phys.pkl"

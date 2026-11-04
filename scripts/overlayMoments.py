@@ -109,7 +109,6 @@ class ResultToOverlay:
 
   def loadMomentResults(self) -> MomentResultsKinematicBinning:
     """Loads moment results from pklFilePath and caches them in _momentResults"""
-    print(f"Loading moment results from file '{self.pklFilePath}'")
     try:
       self._momentResults = MomentResultsKinematicBinning.loadPickle(self.pklFilePath)
     except FileNotFoundError as e:
@@ -219,7 +218,6 @@ if __name__ == "__main__":
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_PWA)  # perform analysis of unpolarized pi+ pi- data
   # cfg = deepcopy(CFG_UNPOLARIZED_PIPI_JPAC)  # perform analysis of unpolarized pi+ pi- data
   cfg = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized pi+ pi- data
-  # cfg.polarization = None  # treat data as unpolarized
 
   # normToFirstResult = True  # if set moments are normalized to H_0(0, 0) of first moment result
   normToFirstResult = False

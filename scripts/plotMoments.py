@@ -476,7 +476,7 @@ def makeAllPlots(
           histChi2.SetLineColor(ROOT.kBlue + 1)
           histChi2.SetFillColorAlpha(ROOT.kBlue + 1, 0.1)
           # histChi2.SetMaximum(10)
-          histChi2.SetMaximum(3)
+          histChi2.SetMaximum(5)
           histChi2.Draw("HIST")
           # add line at nominal chi2/ndf value to guide the eye
           line = ROOT.TLine()
