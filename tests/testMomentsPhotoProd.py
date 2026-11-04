@@ -9,6 +9,7 @@ from collections.abc import (
   Callable,
   Iterable,
 )
+from copy import deepcopy
 import functools
 import numpy as np
 import os
@@ -34,7 +35,11 @@ from moments.MomentCalculator import (
 )
 from scripts.calculateMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
 from workflow.DataWeightingUtilities import weightDataWithIntensityFormula
-from workflow.AnalysisConfig import AnalysisConfig
+from workflow.AnalysisConfig import (
+  BeamPolInfo,
+  BEAM_POL_INFOS,
+  CFG_POLARIZED_PIPI,
+)
 from workflow.PlottingUtilities import (
   drawTF3,
   HistAxisBinning,
@@ -63,6 +68,29 @@ class Th3PlotKwargsType(TypedDict):
   binnings:  tuple[HistAxisBinning, HistAxisBinning, HistAxisBinning]
   histTitle: str
 TH3_ANG_PLOT_KWARGS: Th3PlotKwargsType = {"histTitle" : TH3_ANG_TITLE, "binnings" : TH3_ANG_BINNINGS}
+
+PARTIAL_WAVE_AMPLITUDES = [  # set of all possible waves up to ell = 2
+  # negative-reflectivity waves
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
+  AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
+  # positive-reflectivity waves
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
+  AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
+]
 
 
 def genDataFromIntensityFormula(
@@ -234,41 +262,19 @@ if __name__ == "__main__":
   # ROOT.gStyle.SetOptStat(False)
 
   # set parameters of test case
-  # outputDirPath         = Utilities.makeDirPath("./plotsTestPhotoProd")
-  outputDirPath         = Utilities.makeDirPath("./plotsTestPhotoProd.momentsRd.accFull.phys.holes.maxL_4")
-  # nmbDataEvents         = 1000
-  # nmbAccPsEvents        = 1000000
-  nmbDataEvents         = 10000000
-  nmbAccPsEvents        = 100000000
-  # beamPolarization      = 1.0
-  beamPolarization      = 0.3563  # Fall 2018, PARA_0
-  binVarMass            = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
-  massBinning           = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)
-  maxL                  = 4  # define maximum L quantum number of moments
-  # maxL                  = 8
-  partialWaveAmplitudes = [  # set of all possible waves up to ell = 2
-    # negative-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 0, m =  0), val =  1.0 + 0.0j),  # S_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = -1), val = -0.4 + 0.1j),  # P_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m =  0), val =  0.3 - 0.8j),  # P_0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 1, m = +1), val = -0.8 + 0.7j),  # P_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -2), val =  0.1 - 0.4j),  # D_-2^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = -1), val =  0.5 + 0.2j),  # D_-1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m =  0), val = -0.1 - 0.2j),  # D_ 0^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +1), val =  0.2 - 0.1j),  # D_+1^-
-    AmplitudeValue(QnWaveIndex(refl = -1, l = 2, m = +2), val = -0.2 + 0.3j),  # D_+2^-
-    # positive-reflectivity waves
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 0, m =  0), val =  0.5 + 0.0j),  # S_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = -1), val =  0.5 - 0.1j),  # P_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m =  0), val = -0.8 - 0.3j),  # P_0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 1, m = +1), val =  0.6 + 0.3j),  # P_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -2), val =  0.2 + 0.1j),  # D_-2^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = -1), val =  0.2 - 0.3j),  # D_-1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m =  0), val =  0.1 - 0.2j),  # D_ 0^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +1), val =  0.2 + 0.5j),  # D_+1^+
-    AmplitudeValue(QnWaveIndex(refl = +1, l = 2, m = +2), val = -0.3 - 0.1j),  # D_+2^+
-  ]
-  amplitudeSet = AmplitudeSet(partialWaveAmplitudes)
+  cfg                       = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized gamma p -> (pi+ pi-) p data
+  outputDirPath             = Utilities.makeDirPath("./plots/testPhotoProd")
+  # nmbDataEvents             = 1000
+  # nmbAccPsEvents            = 100000
+  nmbDataEvents             = 10000000
+  nmbAccPsEvents            = 100000000
+  beamPolInfo: BeamPolInfo  = BEAM_POL_INFOS["2017_01"]["PARA_0"]
+  binVarMass                = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
+  massBinning               = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)  # single bin at rho(770) peak position
+  momentResultsMassBinIndex = 3  # index of the mass bin in the moment results
+  maxL                      = 4  # define maximum L quantum number of moments
+  # maxL                      = 8
+  generateDataFromPwa       = False  # is set to `False`, data are generated from moments
 
   # redirect all console output below into log file
   thisSourceFileName = os.path.basename(__file__)
@@ -295,8 +301,8 @@ if __name__ == "__main__":
       # efficiencyFormula = f"(1.5 - {xVar} * {xVar}) * (1.5 - {yVar} * {yVar} / (180 * 180)) * (1.5 - {zVar} * {zVar} / (180 * 180)) / pow(1.5, 3)"  # acc_1; even in all variables
       # efficiencyFormula = f"(0.75 + 0.25 * {xVar}) * (0.75 + 0.25 * ({yVar} / 180)) * (0.75 + 0.25 * ({zVar} / 180))"  # acc_2; odd in all variables
       # efficiencyFormula = f"(0.6 + 0.4 * {xVar}) * (0.6 + 0.4 * ({yVar} / 180)) * (0.6 + 0.4 * ({zVar} / 180))"  # acc_3; odd in all variables
-      accPsHistNameGen = "accPs3D"  # accFull
-      # accPsHistNameGen = "accPs3D_even"  # accEven
+      accPsHistNameGen = "accPs3D"  # full 3D acceptance histogram
+      # accPsHistNameGen = "accPs3D_even"  # phi_HF-even component of the 3D acceptance histogram
       accPsFilePathGen = f"./data/PiPi/{accPsHistNameGen}.root"
       accPsFileGen = ROOT.TFile.Open(accPsFilePathGen, "READ")
       accPSHistGen = accPsFileGen[accPsHistNameGen]
@@ -306,8 +312,8 @@ if __name__ == "__main__":
       efficiencyFormula = f"(1 / {accPSHistGen.GetMaximum()}) * PyVars::accPSHistGenFunctor({xVar}, {yVar}, {zVar})"
 
       # define holes in efficiency when generating data
-      # efficiencyHoleGen = ""  # do not punch hole
-      efficiencyHoleGen = f"!isInEfficiencyHoles({xVar}, {yVar})"  # holes
+      efficiencyHoleGen = ""  # do not punch hole
+      # efficiencyHoleGen = f"!isInEfficiencyHoles({xVar}, {yVar})"  # holes
       # efficiencyHoleGen = f"!((0.3 < {xVar} && {xVar} < 0.7) && (-180 < {yVar} && {yVar} < -120))"  # small hole
       # efficiencyHoleGen = "!(" \
       #   f"   ((-0.9 < {xVar} && {xVar} < -0.2) && ( -30 < {yVar} && {yVar} <  +30))" \
@@ -376,10 +382,15 @@ if __name__ == "__main__":
 
       # calculate true moment values and generate data
       t = timer.start("Time to generate MC data")
-      # HTruth: MomentResult = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
-      momentResultsFilePath = f"./plots/PiPiPol/2018_08/tbin_0.1_0.2/PARA_0.maxL_{maxL}/unnorm_moments_phys.pkl"
-      print(f"Reading moments from file '{momentResultsFilePath}'")
-      HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)[11]  # pick [0.72, 0.76] GeV bin
+      HTruth: MomentResult | None = None
+      if generateDataFromPwa:
+        print(f"Using PWA amplitudes to generate MC data")
+        amplitudeSet = AmplitudeSet(PARTIAL_WAVE_AMPLITUDES)
+        HTruth = amplitudeSet.photoProdMomentResult(maxL, normalize = False)
+      else:
+        momentResultsFilePath = f"plots/PiPiPol/2017_01_ver05/tbin_0.100_0.114/PARA_0.maxL_6/unnorm_moments_phys_shifted.pkl"
+        print(f"Using moments from file '{momentResultsFilePath}' to generate MC data")
+        HTruth = MomentResultsKinematicBinning.loadPickle(momentResultsFilePath)[momentResultsMassBinIndex]  # pick [0.72, 0.76] GeV bin
       if True:
       # if False:
         # set all unphysical parts of moment values to zero
@@ -391,14 +402,14 @@ if __name__ == "__main__":
             HTruth._valsFlatIndex[flatIndex] = 1j * HTruth._valsFlatIndex[flatIndex].imag
           else:
             raise ValueError(f"Unexpected moment index in {qnIndex=}")
-      print(f"True moment values\n{HTruth}")
+      print(f"Generating {nmbDataEvents} data events from true moment values for bin {HTruth.binCenters}\n{HTruth}")
       # if True:
       if False:
         # generate data by randomly drawing from the product of the intensity
         # function defined by MomentResult and the efficiency function
         dataIntensity = genData(
           nmbEvents         = nmbDataEvents,
-          polarization      = beamPolarization,
+          polarization      = beamPolInfo.pol,
           # inputData         = amplitudeSet,  # must yield the same intensity distribution as MomentResult
           inputData         = HTruth,
           outFileBasePath   = f"{outputDirPath}/data",
@@ -409,7 +420,7 @@ if __name__ == "__main__":
         # generate data using rejection sampling from a phase-space
         # sample with weights given by intensity and efficiency formula
         intensityFormula = HTruth.intensityFormula(
-          polarization      = beamPolarization,
+          polarization      = beamPolInfo.pol,
           thetaFormula      = "theta",
           phiFormula        = "phi",
           PhiFormula        = "Phi",
@@ -421,14 +432,15 @@ if __name__ == "__main__":
           massBinIndex         = 0,
           intensityFormula     = f"({intensityFormula}) * ({efficiencyFormulaGen})",
           weightedDataFilePath = f"{outputDirPath}/data.root",
-          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),  #TODO fix
+          cfg                  = cfg,
           seed                 = 1234567890,
+          beamPolInfo          = beamPolInfo,
         )
       t.stop()
 
+      # plot intensity and efficiency functions used to generate data
       if True:
       # if False:
-        # plot intensity and efficiency functions used to generate data
         #!NOTE! this does not work well for histogram-based efficiencies because binning used in plotting is coarser than histogram binning
         #       to fix this plotting should use the same binning and then a Rebin3D has to be applied
         for label, formula in {
@@ -447,6 +459,7 @@ if __name__ == "__main__":
       # raise SystemExit("STOP")
 
       # generate accepted phase-space data
+      print(f"Generating {nmbAccPsEvents} accepted phase-space events")
       t = timer.start("Time to generate phase-space MC data")
       if False:
         dataAccPs = genDataFromIntensityFormula(
@@ -462,8 +475,9 @@ if __name__ == "__main__":
           massBinIndex         = 0,
           intensityFormula     = efficiencyFormulaReco,
           weightedDataFilePath = f"{outputDirPath}/acceptedPhaseSpace.root",
-          cfg                  = AnalysisConfig(convertedTreeName = "data", polarization = beamPolarization),  #TODO fix
+          cfg                  = cfg,
           seed                 = 1234567890,
+          beamPolInfo          = beamPolInfo,
         )
       t.stop()
 
@@ -510,8 +524,8 @@ if __name__ == "__main__":
           data           = dataIntensity,
           phaseSpaceData = dataAccPs,
           nmbGenEvents   = nmbAccPsEvents,
-          polarization   = beamPolarization
-        )  #TODO nmbPsMcEvents is not correct number to normalize integral matrix
+          polarization   = beamPolInfo.pol
+        )  #TODO nmbAccPsEvents is not correct number to normalize integral matrix
         momentsInBins.append(
           MomentCalculator(
             indicesMeas          = momentIndices,
@@ -572,3 +586,4 @@ if __name__ == "__main__":
 
       timer.stop("Total execution time")
       print(timer.summary)
+      Utilities.printResourceUsage()
