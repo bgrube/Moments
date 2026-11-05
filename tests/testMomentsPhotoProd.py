@@ -258,12 +258,18 @@ def scaleHistAxes(
 if __name__ == "__main__":
   RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
   ROOT.gROOT.SetBatch(True)
+  nmbThreads = 4
+  # ROOT.EnableImplicitMT(nmbThreads)  # use 4 threads for parallel processing
   setupPlotStyle()
   # ROOT.gStyle.SetOptStat(False)
 
   # set parameters of test case
   cfg                       = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized gamma p -> (pi+ pi-) p data
-  outputDirPath             = Utilities.makeDirPath("./plots/testPhotoProd")
+  maxL                      = 4  # define maximum L quantum number of moments
+  # maxL                      = 6
+  # maxL                      = (6, 12)
+  # maxL                      = 8
+  outputDirPath             = Utilities.makeDirPath("./plots/testPhotoProd.maxL_4")
   # nmbDataEvents             = 1000
   # nmbAccPsEvents            = 100000
   nmbDataEvents             = 10000000
@@ -272,8 +278,6 @@ if __name__ == "__main__":
   binVarMass                = KinematicBinningVariable(name = "mass", label = "#it{m}", unit = "GeV/#it{c}^{2}", nmbDigits = 2)
   massBinning               = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)  # single bin at rho(770) peak position
   momentResultsMassBinIndex = 3  # index of the mass bin in the moment results
-  maxL                      = 4  # define maximum L quantum number of moments
-  # maxL                      = 8
   generateDataFromPwa       = False  # is set to `False`, data are generated from moments
 
   # redirect all console output below into log file
@@ -288,7 +292,7 @@ if __name__ == "__main__":
     ROOT.gRandom.SetSeed(1234567890)
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
-    with threadController.limit(limits = 4):
+    with threadController.limit(limits = nmbThreads):
       print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
       timer.start("Total execution time")
 
