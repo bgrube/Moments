@@ -17,7 +17,7 @@ from workflow.PlottingUtilities import (
 print = functools.partial(print, flush = True)
 
 
-FCN_CPP = """
+FCN_CPP = r"""
 // Functor that returns the bin content of a given 3D histogram
 // can be used to convert a TH3 into a TF3
 class histogram3DFunctor {

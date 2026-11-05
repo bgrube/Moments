@@ -71,7 +71,7 @@ def getDataFrameWithCorrectEventWeights(
 
 
 # C++ function to calculate invariant mass of a pair of particles
-CPP_CODE_MASSPAIR = """
+CPP_CODE_MASSPAIR = r"""
 double
 massPair(
 	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
@@ -84,7 +84,7 @@ massPair(
 """
 
 # C++ function to calculate Mandelstam t = (p1 - p2)^2
-CPP_CODE_MANDELSTAM_T = """
+CPP_CODE_MANDELSTAM_T = r"""
 double
 mandelstamT(
 	const double Px1, const double Py1, const double Pz1, const double E1,  // 4-momentum of particle 1 [GeV]
@@ -97,7 +97,7 @@ mandelstamT(
 """
 
 # C++ function to limit range of azimuthal angle to [-pi, +pi]
-CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE = """
+CPP_CODE_FIX_AZIMUTHAL_ANGLE_RANGE = r"""
 double
 fixAzimuthalAngleRange(double angle)  // [rad]
 {
@@ -113,7 +113,7 @@ fixAzimuthalAngleRange(double angle)  // [rad]
 """
 
 # C++ function to calculate angles and beam polarization angle for moment analysis
-CPP_CODE_TWO_BODY_ANGLES = """
+CPP_CODE_TWO_BODY_ANGLES = r"""
 // calculates helicity or Gottfried-Jackson angles (theta, phi)
 // and azimuthal angle Phi between photon polarization and production plane in lab frame
 // for reaction beam + target -> resonance + recoil with resonance -> A + B
@@ -168,7 +168,7 @@ twoBodyAngles(
 """
 
 # C++ function to calculate radial distance of particle track at FDC position assuming straight tracks
-CPP_CODE_TRACKDISTFDC = """
+CPP_CODE_TRACKDISTFDC = r"""
 // Code used by Naomi to cut out events with very forward-going track
 // see https://halldweb.jlab.org/doc-private/DocDB/ShowDocument?docid=6180
 //     https://halldweb.jlab.org/wiki-private/index.php/Tracking-9-7-2023
