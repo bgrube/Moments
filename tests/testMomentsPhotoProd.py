@@ -515,7 +515,6 @@ if __name__ == "__main__":
           canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.root")
 
       # setup moment calculator
-      momentIndices = MomentIndices(maxL)
       momentsInBins:      list[MomentCalculator] = []
       momentsInBinsTruth: list[MomentCalculator] = []
       for massBinCenter in massBinning:
@@ -528,8 +527,8 @@ if __name__ == "__main__":
         )  #TODO nmbAccPsEvents is not correct number to normalize integral matrix
         momentsInBins.append(
           MomentCalculator(
-            indicesMeas          = momentIndices,
-            indicesPhys          = momentIndices,
+            indicesMeas          = MomentIndices(maxL if isinstance(maxL, int) else maxL[1]),
+            indicesPhys          = MomentIndices(maxL if isinstance(maxL, int) else maxL[0]),
             dataSet              = dataSet,
             integralFileBaseName = f"{outputDirPath}/integralMatrix",
             binCenters           = {binVarMass : massBinCenter},
@@ -572,7 +571,7 @@ if __name__ == "__main__":
         )
       if False:
         # plot kinematic dependences of all moments #TODO normalize H_0(0, 0) to total number of events
-        for qnIndex in momentIndices.qnIndices:
+        for qnIndex in momentResultsPhys[0].indices.qnIndices:
           plotMomentsKinVar(
             momentResults     = momentResultsPhys,
             qnIndex           = qnIndex,

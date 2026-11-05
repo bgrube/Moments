@@ -287,19 +287,20 @@ class AmplitudeSet:
 
   def photoProdMomentResult(
     self,
-    maxL:                int,  # maximum L quantum number of moments
-    normalize:           bool | float = True,   # if set to true, moment values are normalized to H_0(0, 0)
-                                                # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
-    printMomentFormulas: bool         = False,  # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
+    maxL:                int | tuple[int, int],  # if int: maximum L of physical and measured moments; if tuple: (max L of physical moments, max L of measured moments)
+    normalize:           bool | float = True,    # if set to true, moment values are normalized to H_0(0, 0)
+                                                 # if set to # of events, moments are normalized such that H_0(0, 0) = # of events
+    printMomentFormulas: bool         = False,   # if set formulas for calculation of moments in terms of spin-density matrix elements are printed
     binCenters:          dict[KinematicBinningVariable, float] | None = None,  # center values of variables that define kinematic bin of `MomentResult`
   ) -> MomentResult:
     """Returns moments calculated from partial-wave amplitudes assuming rank-1 spin-density matrix; since they are 0 the moments H_2(L, 0) are omitted"""
     if binCenters is None:
       binCenters = {}
-    momentIndices = MomentIndices(maxL, polarized = self.polarized)
+    maxLPhys = maxL if isinstance(maxL, int) else maxL[0]  # maximum L for physical moments
+    momentIndices = MomentIndices(maxLPhys, polarized = self.polarized)
     momentsFlatIndex = np.zeros((len(momentIndices), ), dtype = np.complex128)
     norm: float = 1.0
-    for L in range(maxL + 1):
+    for L in range(maxLPhys + 1):
       for M in range(L + 1):
         # get all moments for given (L, M)
         moments: list[complex] = list(self.photoProdMoments(L, M, printMomentFormulas))
