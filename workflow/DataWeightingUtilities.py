@@ -29,6 +29,80 @@ from .RootUtilities import declareInCpp
 print = functools.partial(print, flush = True)
 
 
+CPP_CODE_RDF_RANDOM_NMB_GENERATOR = r"""
+#include <cassert>
+#include <iostream>
+#include <memory>
+#include <vector>
+
+#include "TRandom3.h"
+
+
+// Provides a random-number generator (RNG) that can be used in
+// multi-threaded mode of RDataFrame.  Although a seed can be defined,
+// the implementation does not guarantee reproducibility of the
+// random-number sequence across different runs.  If this is required,
+// the approach in https://root.cern/doc/master/df042__ThreadSafeRNG_8py.html
+// should be used.
+class rdfRng {
+
+private:
+
+	// implement thread safety by using one RNG per RDataFrame processing slot
+	inline static std::vector<std::unique_ptr<TRandom3>> rngs_;
+
+public:
+
+	// initializes one RNG for each RDataFrame processing slot
+	static
+	void
+	initialize(
+		const unsigned int seed = 123456789,
+		std::size_t    nmbSlots = 0  // if 0 value from `ROOT::GetThreadPoolSize()` is used
+	)
+	{
+		if (nmbSlots == 0) {
+			nmbSlots = (ROOT::GetThreadPoolSize() > 0) ? ROOT::GetThreadPoolSize() : 1;  // use at least one slot if multi-threading is disabled
+		}
+		std::cout << "Initializing RDataFrame random-number generator with " << nmbSlots << " threads and basis seed " << seed << std::endl;
+		rngs_.clear();
+		rngs_.reserve(nmbSlots);
+		for (std::size_t slot = 0; slot < nmbSlots; ++slot) {
+			rngs_.emplace_back(std::make_unique<TRandom3>(seed + slot));
+		}
+	}
+
+
+// generators for distributions using the thread-safe RNG
+// use in `DefineSlot("column", ROOT.<function>, (<distribution parameters>))` expressions
+	static
+	double
+	uniform(
+		const std::size_t slot,
+		const double      min = 0.0,
+		const double      max = 1.0
+	)
+	{
+		assert(("Invalid slot index; Ensure `rdfRng` was initialized correctly", slot < rngs_.size()));
+		return rngs_[slot]->Uniform(min, max);
+	}
+
+	static
+	double
+	gaussian(
+		const std::size_t slot,
+		const double      mean,
+		const double      stdDev
+	)
+	{
+		assert(("Invalid slot index; Ensure `rdfRng` was initialized correctly", slot < rngs_.size()));
+		return rngs_[slot]->Gaus(mean, stdDev);
+	}
+
+};
+"""
+
+
 def reweightData(
   dataToWeight: ROOT.RDataFrame,  # data to reweight
   treeName:     str,              # name of TTree holding the data
