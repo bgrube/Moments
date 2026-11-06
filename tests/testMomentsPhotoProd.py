@@ -199,7 +199,7 @@ def genData(
   )
 
 
-BIN_CONTENT_3D_FUNCTOR_CPP = """
+CPP_CODE_BIN_CONTENT_3D_FUNCTOR = r"""
 // Functor that returns the bin content of a 3D histogram at the given (x, y, z) point
 class BinContent3DFunctor {
 public:

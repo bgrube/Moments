@@ -233,7 +233,7 @@ def calculateAllMoments(
     raise ValueError(f"Unknown method {cfg.method}")
 
 
-CPP_CODE_IS_IN_EFFICIENCY_HOLES = """
+CPP_CODE_IS_IN_EFFICIENCY_HOLES = r"""
   bool
   isInEfficiencyHoles(
     const double cosTheta,

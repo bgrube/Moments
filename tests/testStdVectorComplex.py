@@ -5,7 +5,7 @@ import numpy as np
 import ROOT
 
 
-CPP_CODE = """
+CPP_CODE = r"""
 #include <complex>
 #include <vector>
 
