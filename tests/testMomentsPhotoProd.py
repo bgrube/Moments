@@ -34,7 +34,10 @@ from moments.MomentCalculator import (
   QnWaveIndex,
 )
 from scripts.calculateMoments import CPP_CODE_IS_IN_EFFICIENCY_HOLES
-from workflow.DataWeightingUtilities import weightDataWithIntensityFormula
+from workflow.DataWeightingUtilities import (
+  CPP_CODE_RDF_RANDOM_NMB_GENERATOR,
+  weightDataWithIntensityFormula,
+)
 from workflow.AnalysisConfig import (
   BeamPolInfo,
   BEAM_POL_INFOS,
@@ -259,7 +262,7 @@ if __name__ == "__main__":
   RootUtilities.loadBasisFunctionsLibrary(enableOpenMp = True)  # initializes OpenMP and loads `cpp/basisFunctions.C`
   ROOT.gROOT.SetBatch(True)
   nmbThreads = 4
-  # ROOT.EnableImplicitMT(nmbThreads)  # use 4 threads for parallel processing
+  # ROOT.EnableImplicitMT(nmbThreads)  # enable multi-threading with the specified number of threads
   setupPlotStyle()
   # ROOT.gStyle.SetOptStat(False)
 
@@ -287,9 +290,10 @@ if __name__ == "__main__":
   with open(logFilePath, "w") as logFile, pipes(stdout = logFile, stderr = STDOUT):
     Utilities.printGitInfo()
     timer = Utilities.Timer()
-    ROOT.gInterpreter.Declare(BIN_CONTENT_3D_FUNCTOR_CPP)
+    ROOT.gInterpreter.Declare(CPP_CODE_BIN_CONTENT_3D_FUNCTOR)
     ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
-    ROOT.gRandom.SetSeed(1234567890)
+    ROOT.gInterpreter.Declare(CPP_CODE_RDF_RANDOM_NMB_GENERATOR)
+    ROOT.rdfRng.initialize(1234567890)
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
     with threadController.limit(limits = nmbThreads):
