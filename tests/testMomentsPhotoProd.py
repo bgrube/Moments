@@ -233,6 +233,83 @@ public:
 """
 
 
+CPP_CODE_SMEAR_PARTICLE_DIRECTION = r"""
+#include <cmath>
+
+#include "Math/Vector3D.h"
+
+using ROOT::Math::Polar3DVector;
+using ROOT::Math::XYZVector;
+
+
+// Smears the direction of a particle given its polar and azimuthal
+// angles (theta, phi) by Gaussian displacements in the plane tangent
+// to the particle direction and along the directions defined by these
+// angles, i.e. the smearing is independent of the chosen coordinate
+// axes.  The approximation is valid for small displacement angles,
+// where the tangent-plane displacement can be interpreted as a
+// rotation along a great circle.  For large sigmas, the smeared
+// direction should be sampled from a Kent distribution
+// <https://en.wikipedia.org/wiki/Kent_distribution>.  The smeared
+// particle direction is returned as a Polar3DVector.
+Polar3DVector
+smearParticleDirection(
+	const std::size_t slot,
+	const double      theta,              // polar angle of the particle direction [rad]
+	const double      phi,                // azimuthal angle of the particle direction [rad]
+	const double      sigmaThetaTangent,  // standard deviation of the polar angle in the plane transverse to the particle direction [rad]
+	const double      sigmaPhiTangent     // standard deviation of the azimuthal angle in the plane transverse to the particle direction [rad]
+) {
+  const Polar3DVector particleDirectionPolar(1, theta, phi);  // unit vector of the particle direction in polar coordinates
+	const XYZVector particleDirection(particleDirectionPolar);  // unit vector of the particle direction in Cartesian coordinates
+	const XYZVector unitVectorTheta(
+		 std::cos(theta) * std::cos(phi),
+		 std::cos(theta) * std::sin(phi),
+		-std::sin(theta)
+	);  // unit vector along the polar angle direction (theta)
+	const XYZVector unitVectorPhi(
+		-std::sin(phi),
+		 std::cos(phi),
+		 0
+	);  // unit vector along the azimuthal angle direction (phi)
+
+	// throw Gaussian displacements along the theta and phi directions
+  // Note: this assumes that rdfRng is defined and initialized by the calling code
+	const double deltaTheta = rdfRng::gaussian(slot, 0.0, sigmaThetaTangent);
+	const double deltaPhi   = rdfRng::gaussian(slot, 0.0, sigmaPhiTangent);
+
+	const double delta = std::hypot(deltaTheta, deltaPhi);  // total displacement in the tangent plane, interpreted as a rotation angle in radians
+	if (delta <= 1e-15) {
+		return particleDirectionPolar;
+	}
+
+	const XYZVector tangentDirection = (deltaTheta * unitVectorTheta + deltaPhi * unitVectorPhi) / delta;  // unit vector of displacement in the tangent plane
+	// The tangent displacement vector and the particle direction vector
+	// are perpendicular unit vectors and define the plane of rotation
+	// for the displacement angle.  Hence, we can use the two vectors as
+	// coordinate axes to express the rotation by the displacement angle.
+	const XYZVector smearedParticleDirection = std::cos(delta) * particleDirection + std::sin(delta) * tangentDirection;
+	return Polar3DVector(smearedParticleDirection);
+}
+"""
+
+
+def smearAngles(
+  dataToSmear:          ROOT.RDataFrame,
+  sigmaThetaTangent:    float,
+  sigmaPhiTangent:      float,
+  sigmaPhiPolarization: float,
+) -> ROOT.RDataFrame:
+  """Smears the particle direction by Gaussian displacements in the plane transverse to the particle direction and the polarization plane angle by a Gaussian"""
+  dataToSmear = (
+    dataToSmear.Define("particleDirectionSmeared", f"smearParticleDirection(rdfslot_, theta, phi, {sigmaThetaTangent}, {sigmaPhiTangent})")
+               .Redefine("theta", "particleDirectionSmeared.theta()")
+               .Redefine("phi",   "particleDirectionSmeared.phi()")
+               .Redefine("Phi",  f"rdfRng::gaussian(rdfslot_, Phi, {sigmaPhiPolarization})")
+  )
+  return dataToSmear
+
+
 # taken from https://root-forum.cern.ch/t/can-we-shift-histogram-for-several-channels/12050/2
 #TODO move to more suitable module
 def scaleHistAxes(
