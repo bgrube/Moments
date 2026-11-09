@@ -74,7 +74,8 @@ public:
 
 
 // generators for distributions using the thread-safe RNG
-// use in `DefineSlot("column", ROOT.<function>, (<distribution parameters>))` expressions
+// use in `Define("column", "rdfRng::<function>(rdfslot_, <distribution parameters>)")` expressions, when distribution parameters are constants
+// use in `DefineSlot("column", ROOT.rdfRng.<function>, (<distribution parameters>))` expressions, when distribution parameters are given by column names
 	static
 	double
 	uniform(

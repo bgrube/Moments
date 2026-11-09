@@ -359,6 +359,10 @@ if __name__ == "__main__":
   massBinning               = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)  # single bin at rho(770) peak position
   momentResultsMassBinIndex = 3  # index of the mass bin in the moment results
   generateDataFromPwa       = False  # is set to `False`, data are generated from moments
+  simulateResolution        = False  # if True, particle directions and polarization-plane angle are smeared bhy Gaussians
+  sigmaThetaTangent         = 1  # standard deviation of the polar angle in the plane transverse to the particle direction [rad]
+  sigmaPhiTangent           = 1  # standard deviation of the azimuthal angle in the plane transverse to the particle direction [rad]
+  sigmaPhiPolarization      = 1  # standard deviation of the polarization-plane angle [rad]
 
   # redirect all console output below into log file
   thisSourceFileName = os.path.basename(__file__)
@@ -371,6 +375,7 @@ if __name__ == "__main__":
     ROOT.gInterpreter.Declare(CPP_CODE_IS_IN_EFFICIENCY_HOLES)
     ROOT.gInterpreter.Declare(CPP_CODE_RDF_RANDOM_NMB_GENERATOR)
     ROOT.rdfRng.initialize(1234567890)
+    ROOT.gInterpreter.Declare(CPP_CODE_SMEAR_PARTICLE_DIRECTION)
     threadController = threadpoolctl.ThreadpoolController()  # at this point all multi-threading libraries must be loaded
     print(f"Initial state of ThreadpoolController before setting number of threads\n{threadController.info()}")
     with threadController.limit(limits = nmbThreads):
@@ -522,6 +527,17 @@ if __name__ == "__main__":
           beamPolInfo          = beamPolInfo,
         )
       t.stop()
+
+      # simulate resolution effects by smearing angles of generated data
+      if simulateResolution:
+        t = timer.start("Time to generate MC data")
+        dataToWeight = smearAngles(
+          dataToSmear          = dataIntensity,
+          sigmaThetaTangent    = sigmaThetaTangent,
+          sigmaPhiTangent      = sigmaPhiTangent,
+          sigmaPhiPolarization = sigmaPhiPolarization,
+        )
+        t.stop()
 
       # plot intensity and efficiency functions used to generate data
       if True:
