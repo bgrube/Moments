@@ -562,7 +562,8 @@ def readInputData(
     print(f"Using photon-beam polarization of {beamPol}")
   else:
     raise TypeError(f"Invalid type of `polarization` argument: {type(polarization)}; expected float, str, or None")
-  # get input data as std::vectors
+
+  # get angular data as std::vectors
   if polarization is None:
     print("Reading values of decay angles from 'theta' and 'phi'")
   else:
@@ -576,7 +577,7 @@ def readInputData(
     f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
   print(f"Input data column: type = {type(thetas)}; length = {nmbEvents}; value type = {thetas.value_type}")
 
-  # get event weights
+  # get event weights as NumPy array
   eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
   if "eventWeight" in data.GetColumnNames():
     print("Applying weights from 'eventWeight' column")
@@ -590,6 +591,9 @@ def readInputData(
     # all events have weight 1
     eventWeights = np.ones(nmbEvents, dtype = np.float64)
 
+  sizeOfDouble = 8  # [byte]
+  nmbDoubleArrays = 5 if isinstance(polarization, str) else 4
+  print(f"Memory usage of input data: {nmbDoubleArrays * nmbEvents * sizeOfDouble / 1024**2:.2f} MByte")
   return beamPol, thetas, phis, Phis, eventWeights
 
 
