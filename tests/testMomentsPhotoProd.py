@@ -641,9 +641,9 @@ if __name__ == "__main__":
         dataSet = DataSet(
           data           = dataIntensity,
           phaseSpaceData = dataAccPs,
-          nmbGenEvents   = nmbAccPsEvents,
+          nmbGenEvents   = nmbAccPsEvents,  #TODO nmbAccPsEvents is not correct number to normalize integral matrix
           polarization   = beamPolInfo.pol
-        )  #TODO nmbAccPsEvents is not correct number to normalize integral matrix
+        )
         momentsInBins.append(
           MomentCalculator(
             indicesMeas          = MomentIndices(maxL if isinstance(maxL, int) else maxL[1]),
@@ -662,13 +662,17 @@ if __name__ == "__main__":
       moments.calculateIntegralMatrices(forceCalculation = False)
       # print acceptance integral matrix for first kinematic bin
       print(f"Acceptance integral matrix for first bin\n{moments[0].integralMatrix}")
-      eigenVals, _ = moments[0].integralMatrix.eigenDecomp
-      print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
+      if isinstance(maxL, int):
+        eigenVals, _ = moments[0].integralMatrix.eigenDecomp
+        print(f"Eigenvalues of acceptance integral matrix for first bin\n{np.sort(eigenVals)}")
       # plot acceptance integral matrices for all kinematic bins
       for HData in moments:
         label = binLabel(HData)
-        plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirPath}/I_acc_{label}")
-        plotComplexMatrix(moments[0].integralMatrix.inverse,          pdfFileNamePrefix = f"{outputDirPath}/I_inv_{label}")
+        if isinstance(maxL, int):
+          plotComplexMatrix(moments[0].integralMatrix.matrixNormalized, pdfFileNamePrefix = f"{outputDirPath}/I_acc_norm_{label}")
+        else:
+          plotComplexMatrix(moments[0].integralMatrix.matrix, pdfFileNamePrefix = f"{outputDirPath}/I_acc_{label}")
+        plotComplexMatrix(moments[0].integralMatrix.inverse, pdfFileNamePrefix = f"{outputDirPath}/I_inv_{label}")
       t.stop()
       Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
