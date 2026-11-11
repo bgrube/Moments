@@ -530,7 +530,7 @@ def getStdVectorFromRdfColumn(
   columnType = data.GetColumnType(columnName)
   assert columnType in ("double", "Double_t"), \
     f"Data column '{columnName}' must be of type 'double', 'Double_t', or 'Double32_t' but is of type '{columnType}'"
-  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName, ])[columnName])  #TODO check whether the conversion to std::vector could be made zero-copy
+  return ROOT.std.vector["double"](data.AsNumpy(columns = [columnName, ])[columnName])  #TODO use Take["double"](columnName) and return ROOT.RResultPtr[ROOT.std.vector["double"]]
 
 
 def readInputData(
@@ -538,7 +538,7 @@ def readInputData(
   data:              ROOT.RDataFrame,
   flipSignOfWeights: bool = False,  # if set, weights of real-data event are sign-flipped
 ) -> tuple[
-  float | ROOT.std.vector["double"] | None,         # beam polarization
+  float | ROOT.std.vector["double"] | None,         # beam polarization  #TODO is None needed here?
   ROOT.std.vector["double"],                        # theta values
   ROOT.std.vector["double"],                        # phi values
   ROOT.std.vector["double"],                        # Phi values
@@ -555,7 +555,7 @@ def readInputData(
     # polarized case: read polarization value from column of ROOT tree
     assert polarization in data.GetColumnNames(), f"No '{polarization}' column found in data"
     print(f"Reading photon-beam polarization from '{polarization}' column")
-    beamPol = getStdVectorFromRdfColumn(data = data, columnName = polarization)
+    beamPol = getStdVectorFromRdfColumn(data = data, columnName = polarization)  #TODO check consistency of size
   elif isinstance(polarization, float):
     # polarized case: use given polarization value for whole data set
     beamPol = polarization
@@ -572,10 +572,11 @@ def readInputData(
   phis   = getStdVectorFromRdfColumn(data = data, columnName = "phi")
   Phis   = getStdVectorFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else \
     ROOT.std.vector["double"](np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
+  #TODO first book all Take actions then trigger event loop to fill them all
   nmbEvents = thetas.size()
   assert thetas.size() == phis.size() == Phis.size(), (
     f"Not all std::vectors with input data have the correct size. Expected {nmbEvents} but got theta: {thetas.size()}, phi: {phis.size()}, and Phi: {Phis.size()}")
-  print(f"Input data column: type = {type(thetas)}; length = {nmbEvents}; value type = {thetas.value_type}")
+  print(f"Input data column 'theta': type = {type(thetas)}; length = {nmbEvents}; value type = {thetas.value_type}")
 
   # get event weights as NumPy array
   eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] = np.empty(nmbEvents, dtype = np.float64)
@@ -591,6 +592,7 @@ def readInputData(
     # all events have weight 1
     eventWeights = np.ones(nmbEvents, dtype = np.float64)
 
+  #TODO perform one size consistency check for all input vectors (thetas, phis, Phis, beamPol, eventWeights) here
   sizeOfDouble = 8  # [byte]
   nmbDoubleArrays = 5 if isinstance(polarization, str) else 4
   print(f"Memory usage of input data: {nmbDoubleArrays * nmbEvents * sizeOfDouble / 1024**2:.2f} MByte")
@@ -702,6 +704,7 @@ class AcceptanceIntegralMatrix:
 
   def calculate(self) -> None:
     """Calculates integral matrix of basis functions from (accepted) phase-space data"""
+    #TODO integral calculation seems to be broken when ROOT.EnableImplicitMT()  is used
     # ensure compatibility of moment indices for measured and physical moments
     assert self.indicesMeas.maxL >= self.indicesPhys.maxL, f"{self.indicesMeas.maxL=} must be equal to or larger than {self.indicesPhys.maxL=}"
     assert self.indicesMeas.polarized == self.indicesPhys.polarized, f"{self.indicesMeas.polarized=} and {self.indicesPhys.polarized=} must be the same"
@@ -717,34 +720,39 @@ class AcceptanceIntegralMatrix:
     )
     nmbAccEvents = thetas.size()
     assert nmbAccEvents > 0, f"Data contain zero accepted events; cannot calculate acceptance integral matrix"
-    # calculate basis-function values for measured moments; Eq. (175); defined in `cpp/basisFunctions.C`
-    nmbMomentsMeas = len(self.indicesMeas)
-    fMeasWeighted: npt.NDArray[npt.Shape["nmbMomentsMeas, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsMeas, nmbAccEvents), dtype = np.complex128)
-    for flatIndexMeas in self.indicesMeas.flatIndices:
-      qnIndexMeas = self.indicesMeas[flatIndexMeas]
-      fMeasView = ComplexVectorNumPyView(ROOT.f_meas(
-        qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
+    # precalculate basis-function values for physical moments; Eq. (176); defined in `cpp/basisFunctions.C`
+    # values are weighted by the event weights and stored for later use in the integral matrix calculation
+    #!NOTE! Since basis-function values are stored for all moments for
+    #       all events, this may consume a significant amount of
+    #       memory.  Memory consumption scales with the L_max of the
+    #       physical moments and the number of events.
+    nmbMomentsPhys = len(self.indicesPhys)
+    fPhysWeighted: npt.NDArray[npt.Shape["nmbMomentsPhys, nmbAccEvents"], npt.Complex128] = np.empty((nmbMomentsPhys, nmbAccEvents), dtype = np.complex128)
+    for flatIndexPhys in self.indicesPhys.flatIndices:
+      qnIndexPhys = self.indicesPhys[flatIndexPhys]
+      fPhysView = ComplexVectorNumPyView(ROOT.f_phys(
+        qnIndexPhys.momentIndex, qnIndexPhys.L, qnIndexPhys.M,
         thetas,
         phis,
         Phis,
         beamPol,
       ))
-      fMeasWeighted[flatIndexMeas] = np.multiply(eventWeights, fMeasView)  # element-wise multiplication
-    # calculate basis-function values for physical moments; Eq. (176); defined in `cpp/basisFunctions.C`
-    nmbMomentsPhys = len(self.indicesPhys)
+      fPhysWeighted[flatIndexPhys] = np.multiply(eventWeights, fPhysView)  # element-wise multiplication
     # calculate integral-matrix elements; Eq. (178)
+    nmbMomentsMeas = len(self.indicesMeas)
     self._IFlatIndex = np.empty((nmbMomentsMeas, nmbMomentsPhys), dtype = np.complex128)
-    for flatIndexMeas in self.indicesMeas.flatIndices:
-      for flatIndexPhys in self.indicesPhys.flatIndices:
-        qnIndexPhys = self.indicesPhys[flatIndexPhys]
-        fPhysView = ComplexVectorNumPyView(ROOT.f_phys(
-          qnIndexPhys.momentIndex, qnIndexPhys.L, qnIndexPhys.M,
+    for flatIndexPhys in self.indicesPhys.flatIndices:
+      for flatIndexMeas in self.indicesMeas.flatIndices:
+        # calculate basis-function values for measured moments; Eq. (175); defined in `cpp/basisFunctions.C`
+        qnIndexMeas = self.indicesMeas[flatIndexMeas]
+        fMeasView = ComplexVectorNumPyView(ROOT.f_meas(
+          qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
           thetas,
           phis,
           Phis,
           beamPol,
         ))
-        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeasWeighted[flatIndexMeas], fPhysView)
+        self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeasView, fPhysWeighted[flatIndexPhys])
     assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
 
   def isValid(self) -> bool:
