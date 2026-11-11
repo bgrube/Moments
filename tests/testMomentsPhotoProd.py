@@ -479,6 +479,7 @@ if __name__ == "__main__":
       # calculate true moment values and generate data
       t = timer.start("Time to generate MC data")
       HTruth: MomentResult | None = None
+      dataIntensity: ROOT.RDataFrame | None = None
       if generateDataFromPwa:
         print(f"Using PWA amplitudes to generate MC data")
         amplitudeSet = AmplitudeSet(PARTIAL_WAVE_AMPLITUDES)
@@ -538,8 +539,9 @@ if __name__ == "__main__":
 
       # simulate resolution effects by smearing angles of generated data
       if simulateResolution:
-        t = timer.start("Time to generate MC data")
-        dataToWeight = smearAngles(
+        t = timer.start("Time to smear angles")
+        print("Smearing angles of generated data")
+        dataIntensity = smearAngles(
           dataToSmear          = dataIntensity,
           sigmaThetaTangent    = sigmaThetaTangent,
           sigmaPhiTangent      = sigmaPhiTangent,
