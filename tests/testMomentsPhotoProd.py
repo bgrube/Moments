@@ -674,7 +674,7 @@ if __name__ == "__main__":
 
       # calculate integral matrices
       t = timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
-      moments.calculateIntegralMatrices(forceCalculation = False)
+      moments.calculateIntegralMatrices(forceCalculation = True)
       # print acceptance integral matrix for first kinematic bin
       print(f"Acceptance integral matrix for first bin\n{moments[0].integralMatrix}")
       if isinstance(maxL, int):

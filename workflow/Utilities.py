@@ -139,7 +139,11 @@ class Timer:
 def printResourceUsage() -> None:
   """Prints resource usage information for calling process and its children"""
   import resource
+  import psutil
   usage = resource.getrusage(resource.RUSAGE_SELF)
+  process = psutil.Process(os.getpid())
   print(f"User CPU time: {usage.ru_utime:.4g} sec")
   print(f"System CPU time: {usage.ru_stime:.4g} sec")
-  print(f"Max resident set size: {usage.ru_maxrss} kB")
+  print(f"Current resident set size of process: {process.memory_info().rss / 1024**2:.2f} MByte")
+  print(f"Max resident set size of process: {usage.ru_maxrss / 1024:.2f} MByte")
+  print(f"-------------------------------------------------------------------------------")
