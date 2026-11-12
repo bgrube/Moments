@@ -140,7 +140,7 @@ def reweightData(
     dataToWeight.Define("reweightingWeight", f"(Double32_t)PyVars::weightsHist.GetBinContent(PyVars::weightsHist.FindBin({variableName}))")
                 .Define("reweightingRndNmb",  "(Double32_t)rdfRng::uniform(rdfslot_)")  # random number uniformly distributed in [0, 1]
                 # add no-op filter that just prints a log message when event loop is running
-                .Filter('if (rdfentry_ == 0) { cout << "Running event weight-calculation loop in `reweightData`" << endl; } return true;')
+                .Filter('if (rdfentry_ == 0) { cout << "Running event weight-calculation loop in `reweightData()`" << endl; } return true;')
   )
   tmpFilePath = tempfile.mktemp(dir = "./", prefix = "unweighted.", suffix = ".root")
   dataToWeight.Snapshot(treeName, tmpFilePath)  # write unweighted data to temporary file to ensure that random column is filled only once
@@ -152,9 +152,9 @@ def reweightData(
   # apply weights by accepting each event with probability reweightingWeight / maxWeight
   reweightedData = (
     dataToWeight.Define("acceptEventReweight", f"(bool)(reweightingRndNmb < (reweightingWeight / {maxWeight}))")
-                .Filter("acceptEventReweight == true")
                 # add no-op filter that just prints a log message when event loop is running
-                .Filter('if (rdfentry_ == 0) { cout << "Running event rejection-sampling loop in `reweightData`" << endl; } return true;')
+                .Filter('if (rdfentry_ == 0) { cout << "Running event rejection-sampling loop in `reweightData()`" << endl; } return true;')
+                .Filter("acceptEventReweight == true")
   )
   nmbWeightedEvents = reweightedData.Count().GetValue()
   print(f"After reweighting, the sample contains {nmbWeightedEvents} accepted events; reweighting efficiency is {nmbWeightedEvents / nmbEvents}")
@@ -341,9 +341,9 @@ def weightDataWithIntensityFormula(
   # apply weights by accepting each event with probability intensityWeight / maxIntensityWeight
   weightedData = (
     dataToWeight.Define("acceptEventIntensityWeight", f"(bool)(intensityWeightRndNmb < (intensityWeight / {maxIntensityWeight}))")
-                .Filter("acceptEventIntensityWeight == true")
                 # add no-op filter that just prints a log message when event loop is running
                 .Filter('if (rdfentry_ == 0) { cout << "Running event rejection-sampling loop in `weightDataWithIntensityFormula()`" << endl; } return true;')
+                .Filter("acceptEventIntensityWeight == true")
   )
   nmbWeightedEvents = weightedData.Count().GetValue()
   print(f"After weighting with the intensity function, the sample contains {nmbWeightedEvents} accepted events; "
