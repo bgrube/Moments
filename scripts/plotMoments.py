@@ -574,7 +574,7 @@ def makeAllPlots(
       for HPhys in momentResultsPhys:
         # load integral matrix
         binLabel = MomentCalculator.binLabel(HPhys)
-        accIntMatrix = AcceptanceIntegralMatrix(
+        accIntMatrix = AcceptanceIntegralMatrix(  # dummy matrix without dataset
           indicesMeas = HPhys.indices,  #TODO use correct indices here
           indicesPhys = HPhys.indices,
           dataSet = DataSet(
@@ -583,10 +583,10 @@ def makeAllPlots(
             nmbGenEvents   = 0,
             polarization   = "beamPol" if HPhys.indices.polarized else None,
           ),
-        )  # dummy matrix without dataset
+        )
         accIntMatrix.load(f"{dataCfg.outFileDirPath}/integralMatrix_{binLabel}.npy")
         plotComplexMatrix(
-          complexMatrix     = accIntMatrix.matrixNormalized,
+          complexMatrix     = accIntMatrix.matrixNormalized,  #TODO can normalize matrix only if it is square; plot unnormalized otherwise
           pdfFileNamePrefix = f"{dataCfg.outFileDirPath}/accMatrix_{binLabel}_",
           axisTitles        = ("Physical Moment Index", "Measured Moment Index"),
           plotTitle         = f"{binLabel}: "r"$\mathrm{\mathbf{I}}_\text{acc}$, ",
