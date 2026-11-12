@@ -298,18 +298,31 @@ smearParticleDirection(
 
 def smearAngles(
   dataToSmear:          ROOT.RDataFrame,
-  sigmaThetaTangent:    float,
-  sigmaPhiTangent:      float,
-  sigmaPhiPolarization: float,
+  sigmaThetaTangent:    float,  # standard deviation of the polar angle in the plane transverse to the particle direction [rad]
+  sigmaPhiTangent:      float,  # standard deviation of the azimuthal angle in the plane transverse to the particle direction [rad]
+  sigmaPhiPolarization: float,  # standard deviation of the polarization plane angle [rad]
+  smearedDataFilePath:  str,
+  treeName:             str,
 ) -> ROOT.RDataFrame:
   """Smears the particle direction by Gaussian displacements in the plane transverse to the particle direction and the polarization plane angle by a Gaussian"""
+  print(f"Smearing angles with {sigmaThetaTangent=}, {sigmaPhiTangent=}, {sigmaPhiPolarization=}")
+  originalColumns = list(dataToSmear.GetColumnNames())
   dataToSmear = (
     dataToSmear.Define("particleDirectionSmeared", f"smearParticleDirection(rdfslot_, theta, phi, {sigmaThetaTangent}, {sigmaPhiTangent})")
-               .Redefine("theta", "particleDirectionSmeared.theta()")
-               .Redefine("phi",   "particleDirectionSmeared.phi()")
-               .Redefine("Phi",  f"rdfRng::gaussian(rdfslot_, Phi, {sigmaPhiPolarization})")
+               .Redefine("theta",    "(Double32_t)particleDirectionSmeared.theta()")
+               .Redefine("cosTheta", "(Double32_t)cos(theta)")
+               .Redefine("phi",      "(Double32_t)particleDirectionSmeared.phi()")
+               .Redefine("phiDeg",   "(Double32_t)(phi * TMath::RadToDeg())")
+               # approximate approach assuming sigmaPhiPolarization << 2 pi; where Gaussian displacement is wrapped back into [-pi, pi] range
+               # accurate approach would be to sample from von Mises distribution
+               .Redefine("Phi",     f"(Double32_t)ROOT::Math::VectorUtil::Phi_mpi_pi(rdfRng::gaussian(rdfslot_, Phi, {sigmaPhiPolarization}))")
+               .Redefine("PhiDeg",   "(Double32_t)(Phi * TMath::RadToDeg())")
+               # add no-op filter that just prints a log message when event loop is running
+               .Filter('if (rdfentry_ == 0) { cout << "Running event smearing loop in `smearAngles()`" << endl; } return true;')
   )
-  return dataToSmear
+  print(f"Writing data weighted with intensity function to file '{smearedDataFilePath}'")
+  dataToSmear.Snapshot(treeName, smearedDataFilePath, originalColumns)
+  return ROOT.RDataFrame(treeName, smearedDataFilePath)
 
 
 # taken from https://root-forum.cern.ch/t/can-we-shift-histogram-for-several-channels/12050/2
@@ -362,9 +375,9 @@ if __name__ == "__main__":
   momentResultsMassBinIndex = 3  # index of the mass bin in the moment results
   generateDataFromPwa       = False  # is set to `False`, data are generated from moments
   simulateResolution        = False  # if True, particle directions and polarization-plane angle are smeared bhy Gaussians
-  sigmaThetaTangent         = 1  # standard deviation of the polar angle in the plane transverse to the particle direction [rad]
-  sigmaPhiTangent           = 1  # standard deviation of the azimuthal angle in the plane transverse to the particle direction [rad]
-  sigmaPhiPolarization      = 1  # standard deviation of the polarization-plane angle [rad]
+  sigmaThetaTangent         = 0.2  # standard deviation of the polar angle in the plane transverse to the particle direction [rad]
+  sigmaPhiTangent           = 0.2  # standard deviation of the azimuthal angle in the plane transverse to the particle direction [rad]
+  sigmaPhiPolarization      = 0.2  # standard deviation of the polarization-plane angle [rad]
 
   # redirect all console output below into log file
   thisSourceFileName = os.path.basename(__file__)
@@ -476,7 +489,7 @@ if __name__ == "__main__":
       Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
 
-      # calculate true moment values and generate data
+      # calculate or load true moment values and generate data
       t = timer.start("Time to generate MC data")
       HTruth: MomentResult | None = None
       dataIntensity: ROOT.RDataFrame | None = None
@@ -546,6 +559,8 @@ if __name__ == "__main__":
           sigmaThetaTangent    = sigmaThetaTangent,
           sigmaPhiTangent      = sigmaPhiTangent,
           sigmaPhiPolarization = sigmaPhiPolarization,
+          smearedDataFilePath  = f"{outputDirPath}/data_smeared.root",
+          treeName             = cfg.convertedTreeName,
         )
         t.stop()
         Utilities.printResourceUsage()
