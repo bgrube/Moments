@@ -523,17 +523,18 @@ class KinematicBinningVariable:
     return f"{self.label} [{self.unit}]"
 
 
-stdVectorDoubleType: TypeAlias = ROOT.std.vector["double"]
+stdVectorDoubleType:          TypeAlias = ROOT.std.vector["double"]
+stdVectorDoubleResultPtrType: TypeAlias = ROOT.RDF.RResultPtr[stdVectorDoubleType]
 
-def getStdVectorFromRdfColumn(
+def getStdVectorResultPtrFromRdfColumn(
   data:       ROOT.RDataFrame,
   columnName: str,
-) -> stdVectorDoubleType:
-  """Returns given column of `RDataFrame` as `std::vector<double>`"""
+) -> stdVectorDoubleResultPtrType:
+  """Returns given column of `RDataFrame` as `ROOT.RResultPtr[ROOT.std.vector["double"]]`"""
   columnType = data.GetColumnType(columnName)
   assert columnType in ("double", "Double_t"), \
     f"Data column '{columnName}' must be of type 'double', 'Double_t', or 'Double32_t' but is of type '{columnType}'"
-  return stdVectorDoubleType(data.AsNumpy(columns = [columnName, ])[columnName])  #TODO use Take["double"](columnName) and return ROOT.RResultPtr[ROOT.std.vector["double"]]
+  return data.Take["double"](columnName)  # book lazy action
 
 
 def readInputData(
@@ -553,14 +554,11 @@ def readInputData(
     print("Reading values of decay angles from 'theta' and 'phi'")
   else:
     print("Reading values of decay angles from 'theta', 'phi', and 'Phi' columns")
-  thetas = getStdVectorFromRdfColumn(data = data, columnName = "theta")
-  phis   = getStdVectorFromRdfColumn(data = data, columnName = "phi")
-  Phis   = (
-    getStdVectorFromRdfColumn(data = data, columnName = "Phi") if polarization is not None
-    else stdVectorDoubleType(np.zeros(len(thetas), dtype = np.float64))  # for unpolarized production the basis functions are independent of Phi; set values to zero
-  )
+  thetas: stdVectorDoubleResultPtrType        = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "theta")
+  phis:   stdVectorDoubleResultPtrType        = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "phi")
+  Phis:   stdVectorDoubleResultPtrType | None = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else None
   # get photon-beam polarization
-  beamPol: float | stdVectorDoubleType
+  beamPol: float | stdVectorDoubleResultPtrType
   if polarization is None:
     # unpolarized case
     print("Setting beam polarization to 0 for unpolarized production")
@@ -569,7 +567,7 @@ def readInputData(
     # polarized case: read polarization value from column of ROOT tree
     assert polarization in data.GetColumnNames(), f"No '{polarization}' column found in data"
     print(f"Reading photon-beam polarization from '{polarization}' column")
-    beamPol = getStdVectorFromRdfColumn(data = data, columnName = polarization)
+    beamPol = getStdVectorResultPtrFromRdfColumn(data = data, columnName = polarization)
   elif isinstance(polarization, float):
     # polarized case: use given constant polarization value for whole data set
     beamPol = polarization
@@ -581,24 +579,30 @@ def readInputData(
   if "eventWeight" in data.GetColumnNames():
     print("Applying weights from 'eventWeight' column")
     #!NOTE! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
-    eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]  #!NOTE! this triggers the event loop of `data`
+    eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]  #!NOTE! this triggers the event loop of `data` and fills all `std::vector`s with column data
     if flipSignOfWeights:
       print("Inverting sign of event weights")
       eventWeights = -eventWeights
-  # perform one size consistency check for all input data
-  nmbEvents = thetas.size()
-  assert all(x.size() == nmbEvents for x in (phis, Phis, beamPol) if isinstance(x, stdVectorDoubleType)), \
-    f"std::vectors with input data have inconsistent sizes. Expected {nmbEvents} but got {thetas.size()=}, {phis.size()=}, {Phis.size()=}" \
-    + (f", {beamPol.size()=}" if isinstance(beamPol, stdVectorDoubleType) else "")
-  if eventWeights is None:  # all events have weight 1
-    eventWeights = np.ones(nmbEvents, dtype = np.float64)
-  assert eventWeights.shape == (nmbEvents, ), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents}, ) but got {eventWeights.shape}"
-  print(f"Input data column 'theta': type = {type(thetas)}; length = {nmbEvents}; value type = {thetas.value_type}")
+  # perform size consistency check for all input data
+  nmbEvents = thetas.GetValue().size()
+  assert all(colData.GetValue().size() == nmbEvents for colData in (phis, Phis, beamPol) if isinstance(colData, stdVectorDoubleResultPtrType)), \
+    f"`std::vectors` from `RDataFrame` columns have inconsistent sizes. Expected {nmbEvents} but got {thetas.GetValue().size()=}, {phis.GetValue().size()=}" \
+    + (f", {Phis.GetValue().size()=}"    if isinstance(Phis,    stdVectorDoubleResultPtrType) else "") \
+    + (f", {beamPol.GetValue().size()=}" if isinstance(beamPol, stdVectorDoubleResultPtrType) else "")
+  if eventWeights is not None:
+    assert eventWeights.shape == (nmbEvents, ), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents}, ) but got {eventWeights.shape}"
+  print(f"Input data column 'theta': type = {type(thetas.GetValue())}; length = {nmbEvents}; value type = {thetas.GetValue().value_type}")
   # report memory usage
   sizeOfDouble = 8  # [byte]
   nmbDoubleArrays = 5 if isinstance(polarization, str) else 4
   print(f"Memory usage of input data: {nmbDoubleArrays * nmbEvents * sizeOfDouble / 1024**2:.2f} MByte")
-  return beamPol, thetas, phis, Phis, eventWeights
+  return (
+    beamPol.GetValue() if isinstance(beamPol, stdVectorDoubleResultPtrType) else beamPol,
+    thetas.GetValue(),
+    phis.GetValue(),
+    Phis.GetValue() if isinstance(Phis, stdVectorDoubleResultPtrType) else stdVectorDoubleType(np.zeros(nmbEvents, dtype = np.float64)),  # for unpolarized production the basis functions are independent of Phi; set values to zero
+    eventWeights if eventWeights is not None else np.ones(nmbEvents, dtype = np.float64),  # all events have weight 1
+  )
 
 
 @dataclass
@@ -1865,7 +1869,6 @@ class MomentCalculator:
         self._phaseSpaceEfficiency      = 1.0
         return
       print("Reading phase-space data for the calculation of the acceptance integral vector")
-      #TODO add case with perfect acceptance when accepted phase-space data are not provided
       beamPolAccPs, thetasAccPs, phisAccPs, PhisAccPs, eventWeightsAccPs = readInputData(
         polarization = momentCalculator.dataSet.polarization,
         data         = momentCalculator.dataSet.phaseSpaceData,
