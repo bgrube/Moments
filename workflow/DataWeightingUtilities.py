@@ -64,7 +64,7 @@ public:
 		if (nmbSlots == 0) {
 			nmbSlots = (ROOT::GetThreadPoolSize() > 0) ? ROOT::GetThreadPoolSize() : 1;  // use at least one slot if multi-threading is disabled
 		}
-		std::cout << "Initializing RDataFrame random-number generator with " << nmbSlots << " threads and basis seed " << seed << std::endl;
+		std::cout << "Initializing RDataFrame random-number generator with " << nmbSlots << " thread(s) and basis seed " << seed << std::endl;
 		rngs_.clear();
 		rngs_.reserve(nmbSlots);
 		for (std::size_t slot = 0; slot < nmbSlots; ++slot) {

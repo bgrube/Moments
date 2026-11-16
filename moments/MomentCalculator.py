@@ -595,7 +595,7 @@ def readInputData(
     if polarization is not None:
       PhisThrown = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "Phi_thrown")
   else:
-    print(f"No thrown angle columns found; will not apply resolution correction")
+    print(f"No thrown angle columns found")
   # get photon-beam polarization
   beamPol: float | stdVectorDoubleResultPtrType
   if polarization is None:
