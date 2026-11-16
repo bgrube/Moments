@@ -45,8 +45,7 @@ import ROOT
 print = functools.partial(print, flush = True)
 
 
-# np.asarray() is highly inefficient for std::vector<std::complex<double>>
-# need to convert data by hand
+#!NOTE! np.asarray() is highly inefficient for std::vector<std::complex<double>>
 @dataclass
 class ComplexVectorNumPyView:
   """Provides a zero-copy view of a std::vector<std::complex<double>>
@@ -537,26 +536,66 @@ def getStdVectorResultPtrFromRdfColumn(
   return data.Take["double"](columnName)  # book lazy action
 
 
+@dataclass
+class InputData:
+  """Container for data for moment calculations read from an input RDataFrame"""
+  beamPol:       float | stdVectorDoubleType                       # beam polarization; 0.0 means unpolarized
+  thetas:        stdVectorDoubleType                               # reconstructed θ; used for basis functions for measured moments
+  phis:          stdVectorDoubleType                               # reconstructed φ; used for basis functions for measured moments
+  Phis:          stdVectorDoubleType                               # reconstructed Φ; used for basis functions for measured moments; vector of zeros for unpolarized production
+  _thetasThrown: stdVectorDoubleType | None                        # thrown θ; used for basis functions for physical moments; `None` if no thrown columns in input data
+  _phisThrown:   stdVectorDoubleType | None                        # thrown φ; used for basis functions for physical moments; `None` if no thrown columns in input data
+  _PhisThrown:   stdVectorDoubleType | None                        # thrown Φ; used for basis functions for physical moments; `None` if no thrown columns in input data
+  eventWeights:  npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]  # event weights; all ones if no "eventWeight" column in input data
+
+  @property
+  def thetasThrown(self) -> stdVectorDoubleType:
+    """Returns reconstructed values if thrown values are not available"""
+    return self._thetasThrown if self._thetasThrown is not None else self.thetas
+
+  @property
+  def phisThrown(self) -> stdVectorDoubleType:
+    """Returns reconstructed values if thrown values are not available"""
+    return self._phisThrown if self._phisThrown is not None else self.phis
+
+  @property
+  def PhisThrown(self) -> stdVectorDoubleType:
+    """Returns reconstructed values if thrown values are not available"""
+    return self._PhisThrown if self._PhisThrown is not None else self.Phis
+
+  #TODO add function that returns memory consumption of self
+  #TODO add function that returns number of events in self
+
+
 def readInputData(
   polarization:      float | str | None,  # photon-beam polarization; None = unpolarized photoproduction; polarized photoproduction: either polarization value or name of polarization column
   data:              ROOT.RDataFrame,
   flipSignOfWeights: bool = False,  # if set, weights of real-data event are sign-flipped
-) -> tuple[
-  float | stdVectorDoubleType,                      # beam polarization; 0.0 means unpolarized
-  stdVectorDoubleType,                              # theta values
-  stdVectorDoubleType,                              # phi values
-  stdVectorDoubleType,                              # Phi values
-  npt.NDArray[npt.Shape["nmbEvents"], npt.Float64]  # event weights
-]:
+) -> InputData:
   """Reads input data needed to calculate moments or acceptance integral matrix from given `RDataFrame`"""
-  # get angular data as std::vectors
+  # book reconstructed angular data as lazy actions; are triggered below
   if polarization is None:
     print("Reading values of decay angles from 'theta' and 'phi'")
   else:
-    print("Reading values of decay angles from 'theta', 'phi', and 'Phi' columns")
+    print("Reading values of reconstructed angles from 'theta', 'phi', and 'Phi' columns")
   thetas: stdVectorDoubleResultPtrType        = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "theta")
   phis:   stdVectorDoubleResultPtrType        = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "phi")
   Phis:   stdVectorDoubleResultPtrType | None = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "Phi") if polarization is not None else None
+  # book thrown angular data as lazy actions, if columns are available; are triggered below
+  dataColNames = data.GetColumnNames()
+  thrownColNames = ["theta_thrown", "phi_thrown"] + (["Phi_thrown"] if polarization is not None else [])
+  hasThrownColumns = all(colName in dataColNames for colName in thrownColNames)
+  thetasThrown: stdVectorDoubleResultPtrType | None = None
+  phisThrown:   stdVectorDoubleResultPtrType | None = None
+  PhisThrown:   stdVectorDoubleResultPtrType | None = None
+  if hasThrownColumns:
+    print(f"Reading values of thrown angles from {thrownColNames} columns; will be used for resolution correction")
+    thetasThrown = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "theta_thrown")
+    phisThrown   = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "phi_thrown")
+    if polarization is not None:
+      PhisThrown = getStdVectorResultPtrFromRdfColumn(data = data, columnName = "Phi_thrown")
+  else:
+    print(f"No thrown angle columns found; will not apply resolution correction")
   # get photon-beam polarization
   beamPol: float | stdVectorDoubleResultPtrType
   if polarization is None:
@@ -565,7 +604,7 @@ def readInputData(
     beamPol = 0.0  # for unpolarized production the basis functions are independent of beamPol; set value to zero
   elif isinstance(polarization, str):
     # polarized case: read polarization value from column of ROOT tree
-    assert polarization in data.GetColumnNames(), f"No '{polarization}' column found in data"
+    assert polarization in dataColNames, f"No '{polarization}' column found in data"
     print(f"Reading photon-beam polarization from '{polarization}' column")
     beamPol = getStdVectorResultPtrFromRdfColumn(data = data, columnName = polarization)
   elif isinstance(polarization, float):
@@ -576,7 +615,7 @@ def readInputData(
     raise TypeError(f"Invalid type of `polarization` argument: {type(polarization)}; expected float, str, or None")
   # get event weights as NumPy array
   eventWeights: npt.NDArray[npt.Shape["nmbEvents"], npt.Float64] | None = None
-  if "eventWeight" in data.GetColumnNames():
+  if "eventWeight" in dataColNames:
     print("Applying weights from 'eventWeight' column")
     #!NOTE! event weights must be normalized such that sum_i event_i = number of background-subtracted events (see Eq. (63))
     eventWeights = data.AsNumpy(columns = ["eventWeight"])["eventWeight"]  #!NOTE! this triggers the event loop of `data` and fills all `std::vector`s with column data
@@ -584,24 +623,33 @@ def readInputData(
       print("Inverting sign of event weights")
       eventWeights = -eventWeights
   # perform size consistency check for all input data
+  #TODO move this code into InputData class constructor
   nmbEvents = thetas.GetValue().size()
-  assert all(colData.GetValue().size() == nmbEvents for colData in (phis, Phis, beamPol) if isinstance(colData, stdVectorDoubleResultPtrType)), \
+  print(f"Input data column 'theta': type = {type(thetas.GetValue())}; length = {nmbEvents}; value type = {thetas.GetValue().value_type}")
+  assert all(colData.GetValue().size() == nmbEvents for colData in (phis, Phis, beamPol, thetasThrown, phisThrown, PhisThrown) if isinstance(colData, stdVectorDoubleResultPtrType)), \
     f"`std::vectors` from `RDataFrame` columns have inconsistent sizes. Expected {nmbEvents} but got {thetas.GetValue().size()=}, {phis.GetValue().size()=}" \
-    + (f", {Phis.GetValue().size()=}"    if isinstance(Phis,    stdVectorDoubleResultPtrType) else "") \
-    + (f", {beamPol.GetValue().size()=}" if isinstance(beamPol, stdVectorDoubleResultPtrType) else "")
+    + (f", {Phis.GetValue().size()=}"         if isinstance(Phis,         stdVectorDoubleResultPtrType) else "") \
+    + (f", {beamPol.GetValue().size()=}"      if isinstance(beamPol,      stdVectorDoubleResultPtrType) else "") \
+    + (f", {thetasThrown.GetValue().size()=}" if isinstance(thetasThrown, stdVectorDoubleResultPtrType) else "") \
+    + (f", {phisThrown.GetValue().size()=}"   if isinstance(phisThrown,   stdVectorDoubleResultPtrType) else "") \
+    + (f", {PhisThrown.GetValue().size()=}"   if isinstance(PhisThrown,   stdVectorDoubleResultPtrType) else "")
   if eventWeights is not None:
     assert eventWeights.shape == (nmbEvents, ), f"NumPy array with event weights does not have the correct shape. Expected ({nmbEvents}, ) but got {eventWeights.shape}"
-  print(f"Input data column 'theta': type = {type(thetas.GetValue())}; length = {nmbEvents}; value type = {thetas.GetValue().value_type}")
   # report memory usage
   sizeOfDouble = 8  # [byte]
   nmbDoubleArrays = 5 if isinstance(polarization, str) else 4
+  if hasThrownColumns:
+    nmbDoubleArrays += 3 if polarization is not None else 2
   print(f"Memory usage of input data: {nmbDoubleArrays * nmbEvents * sizeOfDouble / 1024**2:.2f} MByte")
-  return (
-    beamPol.GetValue() if isinstance(beamPol, stdVectorDoubleResultPtrType) else beamPol,
-    thetas.GetValue(),
-    phis.GetValue(),
-    Phis.GetValue() if isinstance(Phis, stdVectorDoubleResultPtrType) else stdVectorDoubleType(np.zeros(nmbEvents, dtype = np.float64)),  # for unpolarized production the basis functions are independent of Phi; set values to zero
-    eventWeights if eventWeights is not None else np.ones(nmbEvents, dtype = np.float64),  # all events have weight 1
+  return InputData(
+    beamPol       = beamPol.GetValue()      if isinstance(beamPol,      stdVectorDoubleResultPtrType) else beamPol,
+    thetas        = thetas.GetValue(),
+    phis          = phis.GetValue(),
+    Phis          = Phis.GetValue()         if isinstance(Phis,         stdVectorDoubleResultPtrType) else stdVectorDoubleType(np.zeros(nmbEvents, dtype = np.float64)),  # for unpolarized production the basis functions are independent of Phi; set values to zero
+    _thetasThrown = thetasThrown.GetValue() if isinstance(thetasThrown, stdVectorDoubleResultPtrType) else None,
+    _phisThrown   = phisThrown.GetValue()   if isinstance(phisThrown,   stdVectorDoubleResultPtrType) else None,
+    _PhisThrown   = PhisThrown.GetValue()   if isinstance(PhisThrown,   stdVectorDoubleResultPtrType) else None,
+    eventWeights  = eventWeights if eventWeights is not None else np.ones(nmbEvents, dtype = np.float64),  # all events have weight 1
   )
 
 
@@ -720,11 +768,8 @@ class AcceptanceIntegralMatrix:
       self._IFlatIndex = np.eye(len(self.indicesMeas), dtype = np.complex128)
       return
     print("Reading phase-space data for the calculation of the acceptance integral matrix")
-    beamPol, thetas, phis, Phis, eventWeights = readInputData(
-      polarization = self.dataSet.polarization,
-      data         = self.dataSet.phaseSpaceData,
-    )
-    nmbAccEvents = thetas.size()
+    inputData = readInputData(polarization = self.dataSet.polarization, data = self.dataSet.phaseSpaceData)
+    nmbAccEvents = inputData.thetas.size()
     assert nmbAccEvents > 0, f"Data contain zero accepted events; cannot calculate acceptance integral matrix"
     # precalculate basis-function values for physical moments; Eq. (176); defined in `cpp/basisFunctions.C`
     # values are weighted by the event weights and stored for later use in the integral matrix calculation
@@ -738,12 +783,12 @@ class AcceptanceIntegralMatrix:
       qnIndexPhys = self.indicesPhys[flatIndexPhys]
       fPhysView = ComplexVectorNumPyView(ROOT.f_phys(
         qnIndexPhys.momentIndex, qnIndexPhys.L, qnIndexPhys.M,
-        thetas,
-        phis,
-        Phis,
-        beamPol,
+        inputData.thetasThrown,
+        inputData.phisThrown,
+        inputData.PhisThrown,
+        inputData.beamPol,
       ))
-      fPhysWeighted[flatIndexPhys] = np.multiply(eventWeights, fPhysView)  # element-wise multiplication
+      fPhysWeighted[flatIndexPhys] = np.multiply(inputData.eventWeights, fPhysView)  # element-wise multiplication
     # calculate integral-matrix elements; Eq. (178)
     nmbMomentsMeas = len(self.indicesMeas)
     self._IFlatIndex = np.empty((nmbMomentsMeas, nmbMomentsPhys), dtype = np.complex128)
@@ -753,10 +798,10 @@ class AcceptanceIntegralMatrix:
         qnIndexMeas = self.indicesMeas[flatIndexMeas]
         fMeasView = ComplexVectorNumPyView(ROOT.f_meas(
           qnIndexMeas.momentIndex, qnIndexMeas.L, qnIndexMeas.M,
-          thetas,
-          phis,
-          Phis,
-          beamPol,
+          inputData.thetas,
+          inputData.phis,
+          inputData.Phis,
+          inputData.beamPol,
         ))
         self._IFlatIndex[flatIndexMeas, flatIndexPhys] = (8 * np.pi**2 / self.dataSet.nmbGenEvents) * np.dot(fMeasView, fPhysWeighted[flatIndexPhys])
     assert self.isValid(), f"Acceptance integral matrix does not exist or has wrong shape"
@@ -1741,12 +1786,12 @@ class MomentCalculator:
     else:
       raise ValueError(f"Unknown data source '{dataSourceType}'")
     print("Reading input data for moment calculation")
-    beamPol, thetas, phis, Phis, eventWeights = readInputData(
+    inputData = readInputData(
       polarization      = dataSet.polarization,
       data              = dataSet.data,
       flipSignOfWeights = self.flipSignOfWeights,
     )
-    nmbEvents = thetas.size()
+    nmbEvents = inputData.thetas.size()
     if nmbEvents == 0:
       print("WARNING: Input data do not contain any events; all moments are zero")
       return
@@ -1760,12 +1805,12 @@ class MomentCalculator:
       qnIndex = self.indicesMeas[flatIndex]
       fMeasView = ComplexVectorNumPyView(ROOT.f_meas(
         qnIndex.momentIndex, qnIndex.L, qnIndex.M,
-        thetas,
-        phis,
-        Phis,
-        beamPol,
+        inputData.thetas,
+        inputData.phis,
+        inputData.Phis,
+        inputData.beamPol,
       ))  # Eq. (176)
-      fMeasWeighted[flatIndex] = np.multiply(eventWeights, fMeasView)  # element-wise multiplication
+      fMeasWeighted[flatIndex] = np.multiply(inputData.eventWeights, fMeasView)  # element-wise multiplication
       self.HMeas._valsFlatIndex[flatIndex] = 2 * np.pi * np.sum(fMeasWeighted[flatIndex])  # Eq. (179)
       # perform bootstrapping of HMeas
       if nmbBootstrapSamples > 0:
@@ -1836,12 +1881,13 @@ class MomentCalculator:
     ) -> None:
       """Calculates values of basis functions for all real-data events"""
       print("Reading real data for moment fit")
-      beamPol, thetas, phis, Phis, self._eventWeights = readInputData(
+      inputData = readInputData(
         polarization      = momentCalculator.dataSet.polarization,
         data              = momentCalculator.dataSet.data,
         flipSignOfWeights = self.flipSignOfWeights,
       )
-      nmbEvents  = thetas.size()
+      self._eventWeights = inputData.eventWeights
+      nmbEvents  = inputData.thetas.size()
       nmbMoments = len(momentCalculator.indicesPhys)
       print(f"Calculating values of basis functions for {nmbMoments} moments and {nmbEvents} real-data events")
       self._baseFcnVals = np.zeros((nmbMoments, nmbEvents), dtype = np.float64)
@@ -1849,10 +1895,10 @@ class MomentCalculator:
         qnIndex = momentCalculator.indicesPhys[flatIndex]
         self._baseFcnVals[flatIndex] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
-          thetas,
-          phis,
-          Phis,
-          beamPol,
+          inputData.thetas,
+          inputData.phis,
+          inputData.Phis,
+          inputData.beamPol,
         ))
 
     def _calculateIntegralVector(
@@ -1869,11 +1915,8 @@ class MomentCalculator:
         self._phaseSpaceEfficiency      = 1.0
         return
       print("Reading phase-space data for the calculation of the acceptance integral vector")
-      beamPolAccPs, thetasAccPs, phisAccPs, PhisAccPs, eventWeightsAccPs = readInputData(
-        polarization = momentCalculator.dataSet.polarization,
-        data         = momentCalculator.dataSet.phaseSpaceData,
-      )
-      nmbEventsAccPs = len(thetasAccPs)
+      accPsData = readInputData(polarization = momentCalculator.dataSet.polarization, data = momentCalculator.dataSet.phaseSpaceData)
+      nmbEventsAccPs = len(accPsData.thetas)
       self._phaseSpaceEfficiency = nmbEventsAccPs / momentCalculator.dataSet.nmbGenEvents  # efficiency averaged over phase space
       print(f"Calculating acceptance integral vector for {nmbMoments} moments from {nmbEventsAccPs} accepted phase-space events")
       self._integralVector = np.zeros((nmbMoments, ), dtype = np.float64)
@@ -1882,15 +1925,15 @@ class MomentCalculator:
         qnIndex = momentCalculator.indicesPhys[flatIndex]
         baseFcnValsAccPs: npt.NDArray[npt.Shape["nmbAccEvents"], npt.Float64] = np.asarray(ROOT.f_basis(
           qnIndex.momentIndex, qnIndex.L, qnIndex.M,
-          thetasAccPs,
-          phisAccPs,
-          PhisAccPs,
-          beamPolAccPs,
+          accPsData.thetas,  #TODO should we use the thrown values here?
+          accPsData.phis,
+          accPsData.Phis,
+          accPsData.beamPol,
         ))
         # calculate accepted phase-space integral by summing basis-functions values over accepted phase-space events
         #TODO why prefactor is not 8 * np.pi**2 / N?
         self._integralVector[flatIndex] = ((4 * np.pi / momentCalculator.dataSet.nmbGenEvents)
-          * np.sum(np.sort(np.multiply(eventWeightsAccPs, baseFcnValsAccPs))))  # sorting values reduces rounding errors
+          * np.sum(np.sort(np.multiply(accPsData.eventWeights, baseFcnValsAccPs))))  # sorting values reduces rounding errors
 
     def __post_init__(
       self,
