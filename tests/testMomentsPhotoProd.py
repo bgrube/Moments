@@ -405,8 +405,8 @@ if __name__ == "__main__":
     with threadController.limit(limits = nmbThreads):
       print(f"State of ThreadpoolController after setting number of threads\n{threadController.info()}")
       timer.start("Total execution time")
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       xVar = "cosTheta"
       yVar = "phiDeg"
@@ -495,8 +495,8 @@ if __name__ == "__main__":
       if efficiencyFormulaDetune:
         efficiencyFormulaReco = f"(({efficiencyFormulaReco}) + ({efficiencyFormulaDetune}))"
       nmbOpenMpThreads = ROOT.getNmbOpenMpThreads()
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # calculate or load true moment values and generate data
       t = timer.start("Time to generate MC data")
@@ -556,8 +556,8 @@ if __name__ == "__main__":
           beamPolInfo          = beamPolInfo,
         )
       t.stop()
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # simulate resolution effects by smearing angles of generated data
       if simulateResolution:
@@ -572,8 +572,8 @@ if __name__ == "__main__":
           treeName             = cfg.convertedTreeName,
         )
         t.stop()
-        Utilities.printResourceUsage()
         ROOT.gROOT.GetListOfFiles().Print()
+        Utilities.printResourceUsage()
 
       # plot intensity and efficiency functions used to generate data
       if True:
@@ -593,9 +593,8 @@ if __name__ == "__main__":
             formula = formula.replace(old, new)
           fcn = ROOT.TF3(label, formula, -1, +1, -180, +180, -180, +180)
           drawTF3(fcn, **TH3_ANG_PLOT_KWARGS, outFilePath = f"{outputDirPath}/{label}.pdf")
-        Utilities.printResourceUsage()
         ROOT.gROOT.GetListOfFiles().Print()
-      # raise SystemExit("STOP")
+        Utilities.printResourceUsage()
 
       # generate accepted phase-space data
       print(f"Generating {nmbAccPsEvents} accepted phase-space events")
@@ -619,8 +618,8 @@ if __name__ == "__main__":
           beamPolInfo          = beamPolInfo,
         )
       t.stop()
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # plot data and accepted phase-space data
       for data in (dataIntensity, dataAccPs):
@@ -654,8 +653,8 @@ if __name__ == "__main__":
             hist.Draw("BOX2Z")
           canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.pdf")
           canv.SaveAs(f"{outputDirPath}/{hist.GetName()}.root")
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # setup moment calculator
       momentsInBins:      list[MomentCalculator] = []
@@ -678,8 +677,8 @@ if __name__ == "__main__":
           )
         )
       moments = MomentCalculatorsKinematicBinning(momentsInBins)
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # calculate integral matrices
       t = timer.start(f"Time to calculate integral matrices using {nmbOpenMpThreads} OpenMP threads")
@@ -698,8 +697,8 @@ if __name__ == "__main__":
           plotComplexMatrix(moments[0].integralMatrix.matrix, pdfFileNamePrefix = f"{outputDirPath}/I_acc_{label}")
         plotComplexMatrix(moments[0].integralMatrix.inverse, pdfFileNamePrefix = f"{outputDirPath}/I_inv_{label}")
       t.stop()
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # calculate moments from data
       t = timer.start(f"Time to calculate moments using {nmbOpenMpThreads} OpenMP threads")
@@ -707,8 +706,8 @@ if __name__ == "__main__":
       # print all moments for first kinematic bin
       print(f"Measured moments:\n{moments[0].HMeas}")
       print(f"Physical moments:\n{moments[0].HPhys}")
-      Utilities.printResourceUsage()
       ROOT.gROOT.GetListOfFiles().Print()
+      Utilities.printResourceUsage()
 
       # plot moments in each kinematic bin
       ROOT.gStyle.SetOptStat(False)
@@ -738,4 +737,5 @@ if __name__ == "__main__":
 
       timer.stop("Total execution time")
       print(timer.summary)
+      ROOT.gROOT.GetListOfFiles().Print()
       Utilities.printResourceUsage()
