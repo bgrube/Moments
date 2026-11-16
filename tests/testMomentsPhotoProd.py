@@ -303,25 +303,34 @@ def smearAngles(
   sigmaPhiPolarization: float,  # standard deviation of the polarization plane angle [rad]
   smearedDataFilePath:  str,
   treeName:             str,
+  suffixForOrigColumns: str = "",  # if non-empty, original unsmeared angle columns are copied to columns with this suffix, instead of being overwritten
 ) -> ROOT.RDataFrame:
   """Smears the particle direction by Gaussian displacements in the plane transverse to the particle direction and the polarization plane angle by a Gaussian"""
   print(f"Smearing angles with {sigmaThetaTangent=}, {sigmaPhiTangent=}, {sigmaPhiPolarization=}")
   originalColumns = list(dataToSmear.GetColumnNames())
+  angleColumnNames = ["theta", "cosTheta", "phi", "phiDeg", "Phi", "PhiDeg"]
+  if suffixForOrigColumns:
+    # copy original angle columns to columns with the given name suffix
+    print(f"Copying unsmeared angle columns {angleColumnNames} to columns with suffix '{suffixForOrigColumns}'")
+    for columnName in angleColumnNames:
+      dataToSmear = dataToSmear.Define(f"{columnName}{suffixForOrigColumns}", columnName)
+  # overwrite original angle columns with smeared values
   dataToSmear = (
     dataToSmear.Define("particleDirectionSmeared", f"smearParticleDirection(rdfslot_, theta, phi, {sigmaThetaTangent}, {sigmaPhiTangent})")
                .Redefine("theta",    "(Double32_t)particleDirectionSmeared.theta()")
                .Redefine("cosTheta", "(Double32_t)cos(theta)")
                .Redefine("phi",      "(Double32_t)particleDirectionSmeared.phi()")
                .Redefine("phiDeg",   "(Double32_t)(phi * TMath::RadToDeg())")
-               # approximate approach assuming sigmaPhiPolarization << 2 pi; where Gaussian displacement is wrapped back into [-pi, pi] range
-               # accurate approach would be to sample from von Mises distribution
+               # assuming sigmaPhiPolarization << 2 pi and use approximate approach, where Gaussian displacement is wrapped back into [-pi, pi] range
+               #!NOTE! accurate approach would be to sample from von Mises distribution
                .Redefine("Phi",     f"(Double32_t)ROOT::Math::VectorUtil::Phi_mpi_pi(rdfRng::gaussian(rdfslot_, Phi, {sigmaPhiPolarization}))")
                .Redefine("PhiDeg",   "(Double32_t)(Phi * TMath::RadToDeg())")
                # add no-op filter that just prints a log message when event loop is running
                .Filter('if (rdfentry_ == 0) { cout << "Running event smearing loop in `smearAngles()`" << endl; } return true;')
   )
-  print(f"Writing data weighted with intensity function to file '{smearedDataFilePath}'")
-  dataToSmear.Snapshot(treeName, smearedDataFilePath, originalColumns)
+  columnsToWrite = originalColumns + ([f"{columnName}{suffixForOrigColumns}" for columnName in angleColumnNames] if suffixForOrigColumns else [])
+  print(f"Writing smeared data to file '{smearedDataFilePath}' using columns {columnsToWrite}")
+  dataToSmear.Snapshot(treeName, smearedDataFilePath, columnsToWrite)
   return ROOT.RDataFrame(treeName, smearedDataFilePath)
 
 
