@@ -561,7 +561,7 @@ if __name__ == "__main__":
 
       # simulate resolution effects by smearing angles of generated data
       if simulateResolution:
-        t = timer.start("Time to smear angles")
+        t = timer.start("Time to smear angles of generated data")
         print("Smearing angles of generated data")
         dataIntensity = smearAngles(
           dataToSmear          = dataIntensity,
@@ -599,6 +599,7 @@ if __name__ == "__main__":
       # generate accepted phase-space data
       print(f"Generating {nmbAccPsEvents} accepted phase-space events")
       t = timer.start("Time to generate phase-space MC data")
+      dataAccPs: ROOT.RDataFrame | None = None
       if False:
         dataAccPs = genDataFromIntensityFormula(
           nmbEvents        = nmbAccPsEvents,
@@ -620,6 +621,21 @@ if __name__ == "__main__":
       t.stop()
       ROOT.gROOT.GetListOfFiles().Print()
       Utilities.printResourceUsage()
+      if simulateResolution:
+        t = timer.start("Time to smear angles of accepted phase-space data")
+        print("Smearing angles of accepted phase-space data")
+        dataAccPs = smearAngles(
+          dataToSmear          = dataAccPs,
+          sigmaThetaTangent    = sigmaThetaTangent,
+          sigmaPhiTangent      = sigmaPhiTangent,
+          sigmaPhiPolarization = sigmaPhiPolarization,
+          smearedDataFilePath  = f"{outputDirPath}/acceptedPhaseSpace_smeared.root",
+          treeName             = cfg.convertedTreeName,
+          suffixForOrigColumns = "_thrown",
+        )
+        t.stop()
+        ROOT.gROOT.GetListOfFiles().Print()
+        Utilities.printResourceUsage()
 
       # plot data and accepted phase-space data
       for data in (dataIntensity, dataAccPs):
