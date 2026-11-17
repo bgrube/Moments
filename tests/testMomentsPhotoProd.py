@@ -321,7 +321,7 @@ def smearAngles(
                .Redefine("cosTheta", "(Double32_t)cos(theta)")
                .Redefine("phi",      "(Double32_t)particleDirectionSmeared.phi()")
                .Redefine("phiDeg",   "(Double32_t)(phi * TMath::RadToDeg())")
-               # assuming sigmaPhiPolarization << 2 pi and use approximate approach, where Gaussian displacement is wrapped back into [-pi, pi] range
+               # assuming sigmaPhiPolarization << 2 pi and use approximate approach, where Gaussian displacement is wrapped back into [-pi, +pi] range
                #!NOTE! accurate approach would be to sample from von Mises distribution
                .Redefine("Phi",     f"(Double32_t)ROOT::Math::VectorUtil::Phi_mpi_pi(rdfRng::gaussian(rdfslot_, Phi, {sigmaPhiPolarization}))")
                .Redefine("PhiDeg",   "(Double32_t)(Phi * TMath::RadToDeg())")
@@ -369,11 +369,11 @@ if __name__ == "__main__":
 
   # set parameters of test case
   cfg                       = deepcopy(CFG_POLARIZED_PIPI)  # perform analysis of polarized gamma p -> (pi+ pi-) p data
-  maxL                      = 4  # define maximum L quantum number of moments
-  # maxL                      = 6
+  # maxL                      = 4  # define maximum L quantum number of moments
+  maxL                      = 6
   # maxL                      = (6, 12)
   # maxL                      = 8
-  outputDirPath             = Utilities.makeDirPath("./plots/testPhotoProd.maxL_4")
+  outputDirPath             = Utilities.makeDirPath("./plots/testPhotoProd.maxL_6")
   # nmbDataEvents             = 1000
   # nmbAccPsEvents            = 100000
   nmbDataEvents             = 10000000
@@ -383,7 +383,7 @@ if __name__ == "__main__":
   massBinning               = HistAxisBinning(nmbBins = 1, minVal = 0.72, maxVal = 0.76, _var = binVarMass)  # single bin at rho(770) peak position
   momentResultsMassBinIndex = 3  # index of the mass bin in the moment results
   generateDataFromPwa       = False  # is set to `False`, data are generated from moments
-  simulateResolution        = False  # if True, particle directions and polarization-plane angle are smeared bhy Gaussians
+  simulateResolution        = True  # if True, particle directions and polarization-plane angle are smeared bhy Gaussians
   sigmaThetaTangent         = 0.2  # standard deviation of the polar angle in the plane transverse to the particle direction [rad]
   sigmaPhiTangent           = 0.2  # standard deviation of the azimuthal angle in the plane transverse to the particle direction [rad]
   sigmaPhiPolarization      = 0.2  # standard deviation of the polarization-plane angle [rad]
@@ -545,6 +545,7 @@ if __name__ == "__main__":
           PhiFormula        = "Phi",
           useIntensityTerms = MomentResult.IntensityTermsType.ALL,
         )
+        # weight phase-space distribution with the product of intensity and efficiency formulas
         dataIntensity = weightDataWithIntensityFormula(
           inputDataDef         = nmbDataEvents,
           massBinning          = massBinning,
@@ -608,6 +609,7 @@ if __name__ == "__main__":
           regenerateData   = False,
         )
       else:
+        # weight phase-space distribution with the efficiency formula
         dataAccPs = weightDataWithIntensityFormula(
           inputDataDef         = nmbAccPsEvents,
           massBinning          = massBinning,
